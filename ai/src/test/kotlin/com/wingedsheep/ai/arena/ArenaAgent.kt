@@ -203,6 +203,10 @@ object ArenaAgents {
         ArenaAgent("production-candidate-deadsearch", AiProfile.PRODUCTION_CANDIDATE_DEADSEARCH),
         ArenaAgent("production-fuelloyalty", AiProfile.PRODUCTION_FUELLOYALTY),
         ArenaAgent("production-candidate-fuelloyalty", AiProfile.PRODUCTION_CANDIDATE_FUELLOYALTY),
+        // An activation whose payoff lands on nothing — an empty group, the current host, a
+        // second Equipment move after combat — is refused rather than paid for.
+        ArenaAgent("production-emptypayoff", AiProfile.PRODUCTION_EMPTYPAYOFF),
+        ArenaAgent("production-candidate-emptypayoff", AiProfile.PRODUCTION_CANDIDATE_EMPTYPAYOFF),
         ArenaAgent("production-targeted", AiProfile.PRODUCTION_TARGETED),
         // Explicit ECL candidates. Their resource-backed weights fail closed to production's
         // evaluator until a validated artifact is installed; automatic selection is set-gated.

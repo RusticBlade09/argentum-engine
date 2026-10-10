@@ -129,6 +129,11 @@ class Strategist(
      */
     private val refuseDeadSearches: Boolean = false,
     /**
+     * [AiProfile.refuseEmptyPayoffs] — passed straight through to [HoldPolicy], which hands it to
+     * [com.wingedsheep.ai.engine.knowledge.EmptyPayoff].
+     */
+    private val refuseEmptyPayoffs: Boolean = false,
+    /**
      * [AiProfile.targetPolarityFromEffect]: rank targets by what the effect does to them, drop a
      * candidate whose every legal target is on the wrong side, and keep "cast without the kicker"
      * as a candidate beside the kicked cast.
@@ -173,6 +178,7 @@ class Strategist(
         holdExpiringGrantsForCombat = holdExpiringGrantsForCombat,
         refuseUnspendableGrants = refuseUnspendableGrants,
         refuseDeadSearches = refuseDeadSearches,
+        refuseEmptyPayoffs = refuseEmptyPayoffs,
         holdUnusablePumps = holdUnusablePumps,
         boardPresenceWeight = boardPresenceWeight,
     )

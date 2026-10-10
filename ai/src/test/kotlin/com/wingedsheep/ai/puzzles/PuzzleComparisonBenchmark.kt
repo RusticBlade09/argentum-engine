@@ -141,6 +141,9 @@ class PuzzleComparisonBenchmark : ScenarioTestBase() {
                 // A minus-only planeswalker (the empower-Jace token) spends its loyalty.
                 AiProfile.PRODUCTION_FUELLOYALTY,
                 AiProfile.PRODUCTION_CANDIDATE_FUELLOYALTY,
+                // An activation that changes nothing refused outright.
+                AiProfile.PRODUCTION_EMPTYPAYOFF,
+                AiProfile.PRODUCTION_CANDIDATE_EMPTYPAYOFF,
                 // A beginning-of-combat pump bought only for creatures the attack plan sends.
                 AiProfile.PRODUCTION_PLANNEDPUMPS,
                 AiProfile.PRODUCTION_CANDIDATE_PLANNEDPUMPS,
