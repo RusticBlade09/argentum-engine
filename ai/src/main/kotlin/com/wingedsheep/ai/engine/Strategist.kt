@@ -27,19 +27,24 @@ import com.wingedsheep.engine.core.CastSpell
 import com.wingedsheep.engine.core.DeclareAttackers
 import com.wingedsheep.engine.core.DeclareBlockers
 import com.wingedsheep.engine.core.GameAction
+import com.wingedsheep.engine.core.PaymentStrategy
 import com.wingedsheep.engine.handlers.costs.GraveyardTotalExileResolver
 import com.wingedsheep.engine.legalactions.LegalAction
 import com.wingedsheep.engine.legalactions.MeaningfulActionFilter
+import com.wingedsheep.engine.mechanics.layers.ProjectedState
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.identity.CardComponent
+import com.wingedsheep.engine.state.components.identity.TokenComponent
 import com.wingedsheep.engine.state.ZoneKey
 import com.wingedsheep.engine.state.components.stack.ChosenTarget
+import com.wingedsheep.sdk.core.Color
 import com.wingedsheep.sdk.core.Format
 import com.wingedsheep.sdk.core.ManaCost
 import com.wingedsheep.sdk.core.ManaSymbol
 import com.wingedsheep.sdk.core.Step
 import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.model.EntityId
+import com.wingedsheep.sdk.scripting.AbilityCost
 import com.wingedsheep.sdk.scripting.AdditionalCostPayment
 import com.wingedsheep.sdk.scripting.AlternativePaymentChoice
 import com.wingedsheep.sdk.scripting.ConvokePayment
@@ -247,6 +252,9 @@ class Strategist(
         // without them makes the AI look like it never considered a play it in fact discarded.
         val dropped = if (insightSink != null) mutableListOf<AiActionOption>() else null
         var searched = 0
+        // Leaves whose line starts with a sacrifice-mana activation rather than the action itself —
+        // see [sacrificeManaFirst]. Keyed by identity: the leaf is scored as the cast it leads to.
+        val manaFirst = java.util.IdentityHashMap<LegalAction, LegalAction>()
         if (pass != null) {
             val passSimulation = simulator.simulate(evaluationState, pass.action)
             leaves += pass
@@ -261,7 +269,12 @@ class Strategist(
         }
         for (action in affordable) {
             searched++
-            val (materialized, simulation) = materialize(evaluationState, action, playerId, budget, here)
+            val (materialized, materializedSimulation) = materialize(evaluationState, action, playerId, budget, here)
+            // Only on failure, so a cast auto-pay can cover costs nothing extra.
+            val rescue = if (materializedSimulation is SimulationResult.Illegal && !forcedPlay) {
+                sacrificeManaFirst(evaluationState, legalActions, action, materialized, materializedSimulation)
+            } else null
+            val simulation = rescue?.second ?: materializedSimulation
             val usable = when {
                 // LegalAction affordability is necessarily a preview for costs such as convoke and
                 // modal/additional payments. If materializing the concrete action cannot pass the
@@ -280,7 +293,9 @@ class Strategist(
                     .let { leaf -> leaf != here && leaf !in positionsActedFrom }
             }
             if (usable) {
-                leaves += action.copy(action = materialized)
+                val leaf = action.copy(action = materialized)
+                if (rescue != null) manaFirst[leaf] = rescue.first
+                leaves += leaf
                 leafStates += simulation.state
             } else {
                 val illegal = simulation is SimulationResult.Illegal
@@ -353,7 +368,9 @@ class Strategist(
             // Fill in targets on the returned action so the processor can execute it.
             // The committed target is chosen by simulation (not just the heuristic) so the
             // AI sees the real resolved board, including effects already on the stack.
-            best.first
+            // A line that needs sacrificed mana commits its first activation now; the mana floats
+            // and the next decision casts with it, since auto-pay spends the pool first.
+            manaFirst[best.first] ?: best.first
         } else {
             if (forcedPlay) {
                 val fallback = affordable.first()
@@ -505,6 +522,106 @@ class Strategist(
         val refined = chooseCommittedTargets(state, action, playerId, budget, forceTargetRefinement = true)
         if (refined == materialized) return materialized to simulation
         return refined to simulator.simulate(state, refined)
+    }
+
+    /**
+     * Rescue an affordable action whose auto-pay failed because part of its mana can only come from
+     * **sacrificing** a source — Treasure, Gold, Eldrazi Spawn and Scion tokens.
+     *
+     * The enumerator counts that mana (`ManaSolver.canPay`), but auto-pay never sacrifices a
+     * permanent on the player's behalf, so the submitted AutoPay action is refused and the candidate
+     * used to be dropped: an MH3 deck held Devourer of Destiny for four turns because its second {C}
+     * had to come from a Spawn. Mana abilities are not candidates of their own (see
+     * [candidatesFrom]), so nothing else would float that mana either.
+     *
+     * The sources are activated cheapest first — tokens before anything else, then by board value —
+     * and only until the action simulates legal, an any-color source naming a color of the cost.
+     * Returns the first activation to commit with the simulation of the whole line, or null when no
+     * prefix of sacrifices makes the action payable. The caller commits only that activation: the
+     * mana floats, and on the next decision the cast is plain auto-pay, which spends the pool first.
+     */
+    private fun sacrificeManaFirst(
+        state: GameState,
+        legalActions: List<LegalAction>,
+        candidate: LegalAction,
+        payment: GameAction,
+        failure: SimulationResult.Illegal,
+    ): Pair<LegalAction, SimulationResult>? {
+        val autoPaid = when (payment) {
+            is CastSpell -> payment.paymentStrategy == PaymentStrategy.AutoPay
+            is ActivateAbility -> payment.paymentStrategy == PaymentStrategy.AutoPay
+            else -> false
+        }
+        // Every refusal of an unpayable cost names mana; anything else is not a payment problem.
+        if (!autoPaid || !failure.reason.contains("mana", ignoreCase = true)) return null
+        val ownSource = (payment as? ActivateAbility)?.sourceId
+        val projected = state.projectedState
+        val sources = legalActions
+            .filter { it.isManaAbility && it.affordable && sacrificesItself(state, it.action) }
+            .filter { (it.action as ActivateAbility).sourceId != ownSource }
+            .sortedWith(compareBy({ !isToken(state, it) }, { sacrificeCost(state, projected, it) }))
+        if (sources.isEmpty()) return null
+
+        val costColors = candidate.manaCostString?.let { ManaCost.parse(it).colors }.orEmpty()
+        var current = state
+        var first: LegalAction? = null
+        for (source in sources) {
+            val activations = manaColorOptions(source, costColors).map { color ->
+                (source.action as ActivateAbility).copy(manaColorChoice = color)
+            }
+            var fallback: Pair<GameState, ActivateAbility>? = null
+            for (activation in activations) {
+                val activated = simulator.simulate(current, activation)
+                if (activated !is SimulationResult.Terminal) continue
+                val line = simulator.simulate(activated.state, payment)
+                if (line !is SimulationResult.Illegal) {
+                    return (first ?: source.copy(action = activation)) to line
+                }
+                if (fallback == null) fallback = activated.state to activation
+            }
+            val (next, activation) = fallback ?: continue
+            current = next
+            if (first == null) first = source.copy(action = activation)
+        }
+        return null
+    }
+
+    /** Whether [action] activates a mana ability whose cost sacrifices its own source. */
+    private fun sacrificesItself(state: GameState, action: GameAction): Boolean {
+        val activation = action as? ActivateAbility ?: return false
+        val card = state.getEntity(activation.sourceId)?.get<CardComponent>() ?: return false
+        val ability = simulator.cardRegistry.getCard(card.cardDefinitionId)?.script?.activatedAbilities
+            ?.firstOrNull { it.id == activation.abilityId } ?: return false
+        return when (val cost = ability.cost) {
+            is AbilityCost.SacrificeSelf -> true
+            is AbilityCost.Composite -> cost.costs.any { it is AbilityCost.SacrificeSelf }
+            else -> false
+        }
+    }
+
+    private fun isToken(state: GameState, source: LegalAction): Boolean =
+        state.getEntity((source.action as ActivateAbility).sourceId)?.has<TokenComponent>() == true
+
+    private fun sacrificeCost(
+        state: GameState,
+        projected: ProjectedState,
+        source: LegalAction,
+    ): Double {
+        val id = (source.action as ActivateAbility).sourceId
+        val card = state.getEntity(id)?.get<CardComponent>() ?: return 0.0
+        return BoardPresence.permanentValue(state, projected, id, card, intents)
+    }
+
+    /**
+     * The colors worth trying for [source]: none for a fixed-color ability, else the cost's colors
+     * first and then one more, so a generic shortfall still gets paid.
+     */
+    private fun manaColorOptions(source: LegalAction, costColors: Set<Color>): List<Color?> {
+        if (!source.requiresManaColorChoice) return listOf(null)
+        val producible = source.availableManaColors ?: Color.entries
+        val preferred = producible.filter { it in costColors }
+        val rest = producible.filterNot { it in costColors }.take(1)
+        return (preferred + rest).ifEmpty { listOf(null) }
     }
 
     /**
