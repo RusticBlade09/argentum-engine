@@ -675,6 +675,7 @@ data class AiProfile(
      * pins the decision. `just arena-puzzles` unchanged.
      */
     val fuelLoyaltyIsNotBoardValue: Boolean = false,
+    /**
      * Refuse an activated ability whose whole payoff provably lands on nothing — [refuseDeadSearches]
      * generalised past library searches.
      *

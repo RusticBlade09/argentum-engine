@@ -46,6 +46,7 @@ class LoyaltyActivationAiTest : ScenarioTestBase() {
 
     private fun walkerBoard(walker: String, loyalty: Int): TestGame {
         val game = scenario().withPlayers()
+            .withRngSeed(RNG_SEED)
             .withCardOnBattlefield(1, walker, isToken = walker == "Jace")
             .withCardOnBattlefield(1, "Grizzly Bears")
             .withCardOnBattlefield(2, "Grizzly Bears")
@@ -111,5 +112,14 @@ class LoyaltyActivationAiTest : ScenarioTestBase() {
                 options.none { it.note?.contains("loyalty is only fuel") == true } shouldBe true
             }
         }
+    }
+
+    private companion object {
+        /**
+         * The AI's lookahead runs on the game's RNG, which a scenario seeds from the clock. Passing
+         * at 3 loyalty beats surveil by 0.3–1.1 depending on that seed, so an unpinned run can flip
+         * the reproduction; pinning it keeps the before/after comparison about the flag alone.
+         */
+        const val RNG_SEED = 20261010L
     }
 }
