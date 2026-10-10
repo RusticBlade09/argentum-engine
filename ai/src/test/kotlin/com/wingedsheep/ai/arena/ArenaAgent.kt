@@ -201,6 +201,8 @@ object ArenaAgents {
         // A fetch whose library holds nothing it can find is refused, not cracked for nothing.
         ArenaAgent("production-deadsearch", AiProfile.PRODUCTION_DEADSEARCH),
         ArenaAgent("production-candidate-deadsearch", AiProfile.PRODUCTION_CANDIDATE_DEADSEARCH),
+        ArenaAgent("production-fuelloyalty", AiProfile.PRODUCTION_FUELLOYALTY),
+        ArenaAgent("production-candidate-fuelloyalty", AiProfile.PRODUCTION_CANDIDATE_FUELLOYALTY),
         // An activation whose payoff lands on nothing — an empty group, the current host, a
         // second Equipment move after combat — is refused rather than paid for.
         ArenaAgent("production-emptypayoff", AiProfile.PRODUCTION_EMPTYPAYOFF),
