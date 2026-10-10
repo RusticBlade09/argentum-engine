@@ -13402,10 +13402,16 @@ default to "you" so card authors don't need to pass it explicitly.
   Graveyards store oldest first, so later arrivals are above earlier ones; removing a card leaves
   the remaining order intact. Simultaneous arrivals are ordered by their owner in APNAP order
   before the next instruction or SBA pass. The existing ordering UI labels the leftmost card as
-  the top of the graveyard. `GameConfig.preserveGraveyardOrder` defaults to true for real games;
-  scenario-server games also enable it. Deterministic fixtures and legacy replay states default
-  to false through `GameState`, choosing insertion order without asking. This setup rule never
-  depends on hidden card identities. Each atomic effect, SBA pass, and action-cost batch is separate.
+  the top of the graveyard, and the prompt names the spell or ability whose moves they are.
+  Owners are asked only in a game where some card reads graveyard order: `GraveyardRelativeCount`
+  implements the `ReadsGraveyardOrder` marker, `CardDefinition.readsGraveyardOrder` finds one
+  anywhere in a card's tree, and `GameConfig.preserveGraveyardOrder` (null by default) is derived
+  at setup from every card in every deck, sideboard and command zone. Any other game keeps arrival
+  order silently, since every order is the same game. A future positional reader implements the
+  marker and turns ordering on with no engine change. The derived setting is visible to all
+  players, so it reveals only that *some* deck holds such a card. An explicit true/false forces it
+  (replays record the effective value). Each atomic effect, SBA pass, and action-cost batch is
+  separate.
   Replay setup records the rule; absent fields in old replays retain insertion-order behavior.
   New vocabulary awaits a separate Assay grammar band.
 - `CardsInGraveyardMatchingAtLeast(count, filter)` — "there are `count` or more cards matching `filter`

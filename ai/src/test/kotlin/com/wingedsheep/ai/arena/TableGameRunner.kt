@@ -195,7 +195,7 @@ object TableGameRunner {
         recordActionStream: Boolean = false,
         featureCollector: ArenaFeatureCollector? = null,
         trainingObserver: ArenaTrainingObserver? = null,
-        preserveGraveyardOrder: Boolean = true,
+        preserveGraveyardOrder: Boolean? = null,
         /**
          * Wall-clock cap for this one game, or null (the default) for none. Checked between
          * actions — never by interrupting a thread — so an action in flight always finishes and the

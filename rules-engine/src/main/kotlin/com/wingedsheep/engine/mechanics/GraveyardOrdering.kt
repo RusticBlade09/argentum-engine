@@ -8,9 +8,20 @@ import com.wingedsheep.engine.state.components.identity.TokenComponent
 import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.model.EntityId
 
-/** Preserve existing cards and let each owner order only the simultaneous arrivals, top first. */
+/**
+ * Preserve existing cards and let each owner order only the simultaneous arrivals, top first.
+ *
+ * Asked only in a game where [GameState.preserveGraveyardOrder] is on, which game setup derives from
+ * whether any card in the game reads graveyard order (Nether Shadow); otherwise arrivals keep their
+ * arrival order without a prompt.
+ */
 object GraveyardOrdering {
-    fun finish(result: EffectResult): EffectResult {
+    /**
+     * [sourceId] is the spell or ability whose moves these are, named in the prompt. When the caller
+     * doesn't know it (a settle after resolution), the last spell or ability that resolved in
+     * [result]'s events stands in; state-based deaths and combat damage have none.
+     */
+    fun finish(result: EffectResult, sourceId: EntityId? = null): EffectResult {
         if (result.outcome !is Outcome.Done || !result.events.any { it is ZoneChangeEvent && it.toZone == Zone.GRAVEYARD && !it.graveyardOrderFinalized }) return result
         if (!result.state.preserveGraveyardOrder) return result
         val events = result.events.map { if (it is ZoneChangeEvent && it.toZone == Zone.GRAVEYARD) it.copy(graveyardOrderFinalized = true) else it }
@@ -19,7 +30,10 @@ object GraveyardOrdering {
             .groupBy { it.ownerId }.mapValues { (_, moves) -> moves.map { it.entityId }.distinct() }
             .filterValues { it.size > 1 && !allSameCard(result.state, it) }
         if (groups.isEmpty()) return result.copy(events = events)
-        val paused = ask(result.state, groups, events, result.updatedCollections, result.updatedStoredNumbers, result.updatedChosenValues, result.updatedSubtypeGroups, result.updatedSacrificedPermanents)
+        val source = sourceId ?: result.events.lastOrNull { it is ResolvedEvent || it is AbilityResolvedEvent }?.let {
+            when (it) { is ResolvedEvent -> it.entityId; is AbilityResolvedEvent -> it.sourceId; else -> null }
+        }
+        val paused = ask(result.state, groups, events, result.updatedCollections, result.updatedStoredNumbers, result.updatedChosenValues, result.updatedSubtypeGroups, result.updatedSacrificedPermanents, source)
         return result.copy(state = paused.state, events = paused.events, outcome = paused.outcome)
     }
 
@@ -31,29 +45,33 @@ object GraveyardOrdering {
     internal fun allSameCard(state: GameState, cards: List<EntityId>): Boolean =
         cards.map { state.getEntity(it)?.get<CardComponent>()?.cardDefinitionId ?: return false }.distinct().size == 1
 
-    fun finish(result: ExecutionResult): ExecutionResult =
-        finish(EffectResult.from(result)).toExecutionResult()
+    fun finish(result: ExecutionResult, sourceId: EntityId? = null): ExecutionResult =
+        finish(EffectResult.from(result), sourceId).toExecutionResult()
 
     fun ask(state: GameState, groups: Map<EntityId, List<EntityId>>, events: List<GameEvent>,
             collections: Map<String, List<EntityId>> = emptyMap(),
             numbers: Map<String, Int> = emptyMap(),
             chosenValues: Map<String, String> = emptyMap(),
             subtypeGroups: Map<String, List<Set<String>>> = emptyMap(),
-            sacrificed: List<com.wingedsheep.engine.state.components.stack.EntitySnapshot> = emptyList()): ExecutionResult {
+            sacrificed: List<com.wingedsheep.engine.state.components.stack.EntitySnapshot> = emptyList(),
+            sourceId: EntityId? = null): ExecutionResult {
         if (groups.isEmpty()) return ExecutionResult.success(state, events)
         val active = state.turnOrder.indexOf(state.activePlayerId).coerceAtLeast(0)
         val order = state.turnOrder.drop(active) + state.turnOrder.take(active)
         val owner = order.first { it in groups }
         val cards = groups.getValue(owner)
+        val sourceName = sourceId?.let { state.getEntity(it)?.get<CardComponent>()?.name }
+        val prompt = if (sourceName != null) "Order the cards $sourceName put into your graveyard (top card first)"
+            else "Order the cards entering your graveyard (top card first)"
         return state.suspendForDecision(
-            { id -> OrderObjectsDecision(id, owner, "Order the cards entering your graveyard (top card first)",
-                DecisionContext(phase = DecisionPhase.RESOLUTION), cards,
+            { id -> OrderObjectsDecision(id, owner, prompt,
+                DecisionContext(sourceId = sourceId, sourceName = sourceName, phase = DecisionPhase.RESOLUTION), cards,
                 cards.associateWith { cardId ->
                     val c = state.getEntity(cardId)?.get<CardComponent>()
                     SearchCardInfo(name = c?.name ?: "Card", manaCost = c?.manaCost?.toString() ?: "",
                         typeLine = c?.typeLine?.toString() ?: "", imageUri = c?.imageUri)
                 }, orderingTitle = "Order Graveyard", firstLabel = "TOP OF GRAVEYARD", lastLabel = "BOTTOM OF NEW CARDS") },
-            GraveyardOrderContinuation(owner, cards, groups - owner, events, collections, numbers, chosenValues, subtypeGroups, sacrificed)
+            GraveyardOrderContinuation(owner, cards, groups - owner, events, collections, numbers, chosenValues, subtypeGroups, sacrificed, sourceId)
         )
     }
 

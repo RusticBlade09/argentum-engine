@@ -468,6 +468,21 @@ data class CardDefinition(
      */
     val deliriumThreshold: Int? by lazy { GraveyardThresholds.delirium(this) }
 
+    /**
+     * Whether anything on this card — any ability, effect, cost or face — reads the order of cards
+     * in a graveyard (a [com.wingedsheep.sdk.scripting.values.ReadsGraveyardOrder] node, such as
+     * Nether Shadow's "creature cards above this card"). A game asks owners to order simultaneous
+     * graveyard arrivals only when one of its cards does. Derived from the whole typed tree once
+     * per definition; never authored or serialized.
+     */
+    val readsGraveyardOrder: Boolean by lazy {
+        var found = false
+        com.wingedsheep.sdk.serialization.ScriptTreeWalker.forEachNode(this) { node ->
+            if (node is com.wingedsheep.sdk.scripting.values.ReadsGraveyardOrder) found = true
+        }
+        found
+    }
+
     /** The effect when this spell resolves (for instants/sorceries) */
     val spellEffect get() = script.spellEffect
 

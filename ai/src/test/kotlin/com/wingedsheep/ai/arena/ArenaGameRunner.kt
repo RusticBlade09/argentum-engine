@@ -66,7 +66,7 @@ object ArenaGameRunner {
          *  default: it costs a string per action, and only `FrozenBaselineTest` needs it. */
         recordActionStream: Boolean = false,
         featureCollector: ArenaFeatureCollector? = null,
-        preserveGraveyardOrder: Boolean = true,
+        preserveGraveyardOrder: Boolean? = null,
         /** Wall-clock cap; null for none. Nondeterministic — see [TableGameRunner.play]. */
         gameTimeout: Duration? = null,
     ): ArenaGameOutcome {

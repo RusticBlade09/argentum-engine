@@ -206,7 +206,7 @@ class ScenarioBuilderService(
      */
     private class ScenarioBuilder(private val cardRegistry: CardRegistry) {
         private val entityIdCounter = AtomicLong(1000)
-        private var state = GameState(preserveGraveyardOrder = true)
+        private var state = GameState()
 
         private val playerIds = mutableListOf<EntityId>()
 
@@ -477,6 +477,8 @@ class ScenarioBuilderService(
         private fun createCard(cardName: String, ownerId: EntityId): EntityId {
             val cardDef = cardRegistry.getCard(cardName)
                 ?: error("Card not found in registry: $cardName")
+            // Like a real game, ask for graveyard order only once a card that reads it is in play.
+            if (cardDef.readsGraveyardOrder) state = state.copy(preserveGraveyardOrder = true)
 
             val cardId = EntityId.of("card-${entityIdCounter.incrementAndGet()}")
 

@@ -101,8 +101,15 @@ data class GameConfig(
      * before seats were mixed, whose RNG stream didn't include those shuffles.
      */
     val shuffledTeamSeats: Boolean = true,
-    /** Owner chooses simultaneous graveyard arrivals, independent of hidden deck contents. */
-    val preserveGraveyardOrder: Boolean = true,
+    /**
+     * Whether an owner orders several cards entering their graveyard at once (otherwise they keep
+     * arrival order silently). Null — the default — derives it from the game's cards: on exactly
+     * when some card in any deck, sideboard or command zone reads graveyard order
+     * ([com.wingedsheep.sdk.model.CardDefinition.readsGraveyardOrder], Nether Shadow), since
+     * otherwise every order is the same game. An explicit value forces it, which is how a replay
+     * reproduces the setting its game was recorded with.
+     */
+    val preserveGraveyardOrder: Boolean? = null,
 )
 
 /**
@@ -173,7 +180,7 @@ class GameInitializer(
         // is recorded on the result so the game is reproducible later. This clock read is the one
         // sanctioned non-determinism boundary — once seeded, the engine is a pure function again.
         val resolvedSeed: Long = config.seed ?: System.nanoTime()
-        var state = GameState(preserveGraveyardOrder = config.preserveGraveyardOrder, format = config.format, attackMode = config.attackMode, rng = GameRng.seeded(resolvedSeed))
+        var state = GameState(format = config.format, attackMode = config.attackMode, rng = GameRng.seeded(resolvedSeed))
         var idRng = GameRng.seeded(resolvedSeed).split().first
         val playerIds = mutableListOf<EntityId>()
 
@@ -331,6 +338,7 @@ class GameInitializer(
         // entity before the rest of the deck flows into the library. Phase 1 supports a single
         // commander per player; CommanderRegistryComponent is a list so Partner / Background
         // (Phase 4) can append without a schema change.
+        val definitionsInGame = mutableMapOf<String, com.wingedsheep.sdk.model.CardDefinition>()
         for ((index, playerConfig) in config.players.withIndex()) {
             val playerId = playerIds[index]
 
@@ -342,6 +350,7 @@ class GameInitializer(
 
             if (commanderName != null) {
                 val cardDef = cardRegistry.requireCard(commanderName)
+                definitionsInGame[cardDef.name] = cardDef
                 val (cardId, stateWithId) = state.newEntity()
                 state = stateWithId
                 val cardContainer = createCardEntity(cardDef, playerId, playerConfig.deck.commanderPrinting).with(
@@ -357,6 +366,7 @@ class GameInitializer(
             // for Vanguard avatars), surfaced by CommandZoneAbilityEnumerator.
             (config.format as? Format.MomirBasic)?.let { momir ->
                 val avatarDef = cardRegistry.requireCard(momir.avatarCardName)
+                definitionsInGame[avatarDef.name] = avatarDef
                 val (avatarId, stateWithAvatar) = state.newEntity()
                 state = stateWithAvatar
                 val avatarContainer = createCardEntity(avatarDef, playerId).with(
@@ -396,6 +406,7 @@ class GameInitializer(
             for ((entry, cardId) in entries.zip(idOrder)) {
                 val (cardEntry, zone) = entry
                 val cardDef = cardRegistry.requireCard(cardEntry.name)
+                definitionsInGame[cardDef.name] = cardDef
                 val cardContainer = createCardEntity(cardDef, playerId, cardEntry.printing)
                 state = state.withEntity(cardId, cardContainer)
                 state = state.addToZone(ZoneKey(playerId, zone), cardId)
@@ -409,6 +420,10 @@ class GameInitializer(
                 }
             }
         }
+
+        // Graveyard order is only worth a prompt when some card in the game reads it.
+        state = state.copy(preserveGraveyardOrder = config.preserveGraveyardOrder
+            ?: definitionsInGame.values.any { it.readsGraveyardOrder })
 
         // 4. Shuffle libraries
         for (playerId in playerIds) {

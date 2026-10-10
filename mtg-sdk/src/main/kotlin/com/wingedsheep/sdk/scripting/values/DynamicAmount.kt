@@ -1255,7 +1255,7 @@ sealed interface DynamicAmount : TextReplaceable<DynamicAmount> {
         val entity: EffectTarget.SingleEntity,
         val above: Boolean,
         val filter: GameObjectFilter = GameObjectFilter.Any,
-    ) : DynamicAmount {
+    ) : DynamicAmount, ReadsGraveyardOrder {
         override val description: String = "the number of ${pluralize(filter.description)} ${if (above) "above" else "below"} ${entity.description} in its graveyard"
         override fun applyTextReplacement(replacer: TextReplacer): DynamicAmount {
             val replaced = filter.applyTextReplacement(replacer)

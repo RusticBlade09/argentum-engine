@@ -176,7 +176,7 @@ class EffectExecutorRegistry(
         val recorded = finished.copy(state = com.wingedsheep.engine.core.ControlHistory.record(finished.state, finished.events))
         val completed = runReplacementRiders(recorded, context)
         return if (context.deferGraveyardOrdering) completed
-            else com.wingedsheep.engine.mechanics.GraveyardOrdering.finish(completed)
+            else com.wingedsheep.engine.mechanics.GraveyardOrdering.finish(completed, context.sourceId)
     }
 
     /**
