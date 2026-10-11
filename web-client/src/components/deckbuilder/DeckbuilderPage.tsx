@@ -66,6 +66,7 @@ import {
   type SharedDeck,
 } from './shareDeck'
 import { PageShell } from '@/components/ui/PageShell'
+import { BuilderModeSwitch } from './BuilderModeSwitch'
 import { getDeck as getAccountDeck, upsertDeckByName } from '@/api/account'
 import { useAuthStore } from '@/store/authStore'
 import { type UnifiedDeck, useUnifiedDecks } from '@/store/useUnifiedDecks'
@@ -1243,7 +1244,7 @@ export function DeckbuilderPage() {
 
   return (
     <>
-    <PageShell title="Deckbuilder" fit width="full" plain>
+    <PageShell title={<BuilderModeSwitch mode="deck" />} fit width="full" plain>
       <div className={styles.toolbar}>
         <div className={styles.viewToggle} role="group" aria-label="View mode">
           <button

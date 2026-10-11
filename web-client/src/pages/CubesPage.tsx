@@ -1,20 +1,16 @@
 /**
- * Cubes — the user's cube library, and the full-page cube editor.
+ * Cubes — the user's cube library at `/cubes`.
  *
- * - `/cubes` — every saved cube (account and this device, merged by `useUnifiedCubes`) as a tile:
- *   name, description, colour balance, pack style, where it's saved and whether it's shared, with
- *   Play, Edit, Share, Duplicate and Delete. An empty library teaches the two ways to start.
- * - `/cubes/new` — the editor on a blank cube (`?from=paste` opens it on the Paste tab).
- * - `/cubes/edit/:cubeId` — the editor on a saved cube.
+ * Every saved cube (account and this device, merged by `useUnifiedCubes`) as a tile: name,
+ * description, colour balance, pack style, where it's saved and whether it's shared, with Play, Edit,
+ * Share, Duplicate and Delete. An empty library teaches the two ways to start.
  *
- * The lobby keeps its own way in (the Card source → Cube panel opens the same editor as a dialog);
- * this page is for curating without a lobby open, and it is where share links and "Play this cube"
- * start from.
+ * Building and editing happen in the builder's cube mode ({@link CubeBuilderPage}, `/cubes/new` and
+ * `/cubes/edit/:cubeId`); the lobby keeps its own compact editor dialog. This page is where share links
+ * and "Play this cube" start from.
  */
-import { useEffect, useMemo, useState } from 'react'
-import { useMatch, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { listBasicLandSets } from '@/api/cubeSets'
-import { CubeEditor, type BasicLandSetOption } from '@/components/cube/CubeEditor'
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { CubePlayButton } from '@/components/cube/CubePlayButton'
 import { colorAndCurve } from '@/components/cube/CubeStats'
 import { boosterStyleInfo, cubeToText, isBoosterStyle, uniqueCubeName } from '@/components/cube/cubeModel'
@@ -26,63 +22,7 @@ import { type UnifiedCube, cubeToShared, useUnifiedCubes } from '@/store/useUnif
 import styles from '@/components/cube/CubesPage.module.css'
 
 export function CubesPage() {
-  const { cubeId } = useParams<{ cubeId?: string }>()
-  const [search] = useSearchParams()
-  const navigate = useNavigate()
   const library = useUnifiedCubes()
-  const [basicLandSets, setBasicLandSets] = useState<BasicLandSetOption[]>([])
-  /** A cube saved by this page's editor, which the library hook here hasn't re-fetched yet. */
-  const [savedHere, setSavedHere] = useState<UnifiedCube | null>(null)
-
-  const isNew = useMatch('/cubes/new') !== null
-  const editing = isNew || cubeId !== undefined
-
-  useEffect(() => {
-    if (!editing) return
-    let cancelled = false
-    void listBasicLandSets().then((sets) => {
-      if (!cancelled) setBasicLandSets(sets)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [editing])
-
-  if (editing) {
-    const cube = cubeId === undefined
-      ? null
-      : library.cubes.find((c) => c.id === cubeId) ?? (savedHere?.id === cubeId ? savedHere : null)
-    const waiting = cubeId !== undefined && !cube && !library.ready
-    return (
-      <PageShell title="Cubes" fit width="full">
-        {waiting ? (
-          <p className={p.empty}>Loading cube…</p>
-        ) : cubeId !== undefined && !cube ? (
-          <div className={p.panel}>
-            <p className={p.empty}>This cube isn’t in your library — it may have been deleted, or saved on another device.</p>
-            <button type="button" className={p.button} onClick={() => navigate('/cubes')}>
-              Back to your cubes
-            </button>
-          </div>
-        ) : (
-          // Keyed so saving a new cube (which moves it onto its own URL) keeps the editor's state.
-          <CubeEditor
-            key="cube-editor"
-            variant="page"
-            cube={cube}
-            availableSets={basicLandSets}
-            initialTab={search.get('from') === 'paste' ? 'PASTE' : undefined}
-            onClose={() => navigate('/cubes')}
-            onSaved={(saved) => {
-              setSavedHere(saved)
-              if (saved.id !== cubeId) navigate(`/cubes/edit/${encodeURIComponent(saved.id)}`, { replace: true })
-            }}
-          />
-        )}
-      </PageShell>
-    )
-  }
-
   return <CubeLibrary library={library} />
 }
 
@@ -182,7 +122,7 @@ function EmptyLibrary() {
   const navigate = useNavigate()
   return (
     <section className={styles.starts} aria-label="Start a cube">
-      <button type="button" className={styles.start} onClick={() => navigate('/cubes/new')}>
+      <button type="button" className={styles.start} onClick={() => navigate('/cubes/new?from=set')}>
         <span className={styles.startTitle}>Start from a set</span>
         <span className={styles.startBody}>
           Take a whole set at its own rarities — Bloomburrow, say, plus the new cards from Bloomburrow

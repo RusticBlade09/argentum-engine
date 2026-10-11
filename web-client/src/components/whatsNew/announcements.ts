@@ -35,7 +35,7 @@ export const ANNOUNCEMENTS: readonly Announcement[] = [
     kind: 'feature',
     title: 'Cubes, set cubes and share links',
     body:
-      'Cubes has its own page in the top bar. Start a cube from a whole set — each card at its printed rarity — extend it with any other cards, and draft it as real Play or Draft Boosters with mythics one pack in eight: all of Bloomburrow plus Bloomburrow Commander’s new cards is a few clicks. Share a cube by link so friends can view it, keep a copy, or open a lobby with it in one click.',
+      'The deckbuilder now builds cubes too — flip Decks | Cubes at the top and browse cards just as you would for a deck. Start a cube from a whole set — each card at its printed rarity — extend it with any other cards, and draft it as real Play or Draft Boosters with mythics one pack in eight: all of Bloomburrow plus Bloomburrow Commander’s new cards is a few clicks. Share a cube by link so friends can view it, keep a copy, or open a lobby with it in one click.',
   },
   {
     id: 'feature-avatars',

@@ -16,8 +16,7 @@
   z-index: 1400;
 }
 
-.dialog,
-.page {
+.dialog {
   display: flex;
   flex-direction: column;
   background: rgba(14, 16, 25, 0.94);
@@ -33,13 +32,6 @@
   position: fixed;
   inset: 3vh 3vw;
   z-index: 1401;
-}
-
-/* Inside the page shell's `fit` column: take the remaining height, scroll the columns, not the page. */
-.page {
-  flex: 1 1 auto;
-  min-height: 0;
-  background: rgba(12, 14, 22, 0.86);
 }
 
 /* ---------- header ---------- */
@@ -268,6 +260,27 @@
   border-bottom: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.02);
 }
+
+/* In the bar the size and land fields sit inline with the rest; in the builder's rail they share a row. */
+.packBar .packFields { display: contents; }
+
+.packStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.packStack .segmented { align-self: stretch; }
+.packStack .segment { flex: 1 1 0; }
+.packStack .packExplain { flex: none; align-items: flex-start; }
+
+.packFields {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+}
+
+.packStack .landField { flex: 1 1 auto; min-width: 0; }
 
 .packExplain {
   flex: 1 1 260px;
@@ -1053,14 +1066,11 @@ button.rarityChip {
 }
 
 /* Phones: the dialog takes the whole screen. Header, packs and stats leave too little height to
-   share between two stacked panes, so the editor scrolls as a whole and each pane gets a usable
+   share between two stacked panes, so the dialog scrolls as a whole and each pane gets a usable
    height of its own instead of a one-row sliver. */
 @media (max-width: 640px) {
   .dialog { inset: 0; border-radius: 0; border: none; }
-  .page,
   .dialog { overflow-y: auto; }
-  .page { border-radius: 12px; }
-  .page .body,
   .dialog .body {
     flex: none;
     grid-template-rows: 60dvh 75dvh;

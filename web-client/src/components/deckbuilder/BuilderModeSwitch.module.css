@@ -1,0 +1,27 @@
+.switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(10, 12, 20, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  vertical-align: middle;
+}
+
+.option {
+  min-height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #b4bccd;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.option:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+.option[aria-selected='true'] { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.option:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }

@@ -36,6 +36,9 @@ const AiSandboxPage = lazy(() =>
 const CubesPage = lazy(() =>
   import('./pages/CubesPage').then(({ CubesPage }) => ({ default: CubesPage }))
 )
+const CubeBuilderPage = lazy(() =>
+  import('./components/cube/CubeBuilderPage').then(({ CubeBuilderPage }) => ({ default: CubeBuilderPage }))
+)
 const SharedCubePage = lazy(() =>
   import('./pages/SharedCubePage').then(({ SharedCubePage }) => ({ default: SharedCubePage }))
 )
@@ -96,8 +99,8 @@ createRoot(rootElement).render(
           <Route path="/deckbuilder" element={<DeckbuilderPage />} />
           <Route path="/deckbuilder/:deckId" element={<DeckbuilderPage />} />
           <Route path="/cubes" element={<CubesPage />} />
-          <Route path="/cubes/new" element={<CubesPage />} />
-          <Route path="/cubes/edit/:cubeId" element={<CubesPage />} />
+          <Route path="/cubes/new" element={<CubeBuilderPage />} />
+          <Route path="/cubes/edit/:cubeId" element={<CubeBuilderPage />} />
           <Route path="/cubes/shared/:code" element={<SharedCubePage />} />
           <Route path="/scenario" element={<ScenarioBuilderPage />} />
           <Route path="/set-completion" element={<SetCompletionPage />} />

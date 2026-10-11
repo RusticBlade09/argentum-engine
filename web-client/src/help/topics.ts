@@ -135,7 +135,8 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     body: [
       { kind: 'h', text: 'Top bar' },
       { kind: 'ul', items: [
-        'Deckbuilder — build, import and save decks.',
+        'Deckbuilder — build, import and save decks, and (with the Decks | Cubes switch at the top) cubes.',
+        'Cubes — your cube library: play, share, duplicate or open a cube in the builder.',
         'Replays — every finished game you played, ready to rewatch (shown once you are connected).',
         'Sets — Set Completion: which sets and cards are playable.',
         'Learn — the Learn to Play course. Help — this wiki.',
@@ -918,13 +919,13 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'limited',
     title: 'Building a cube',
     summary:
-      'Build cubes on the Cubes page (Cubes in the top bar), or from the lobby’s Cube panel: add a whole set, paste a list or search for cards, choose how it becomes packs, and save it. Cubes live alongside your decks — in this browser as a guest, in your account when signed in.',
+      'Cubes are built in the deckbuilder: flip the Decks | Cubes switch at the top, or open a cube from the Cubes page. Browse and filter cards exactly as for a deck, add a whole set or paste a list, choose how the cube becomes packs, and save it. The lobby’s Cube panel has a compact editor for quick tweaks. Cubes live alongside your decks — in this browser as a guest, in your account when signed in.',
     body: [
-      { kind: 'p', text: 'A cube is a list of card names with counts, so it isn’t tied to any set or printing. Three ways to fill one:' },
+      { kind: 'p', text: 'A cube is a list of card names with counts, so it isn’t tied to any set or printing. The builder keeps the deckbuilder’s card grid and filters; what changes in cube mode is the right-hand panel — no sideboard, format or 4-copy limit, but packs, rarities and pack health instead. Three ways to fill a cube:' },
       { kind: 'ul', items: [
         'Add a set — every implemented card of a set at once, each at the rarity that set printed it at. Toggles choose its booster cards, cards from its other products, and whether to keep reprints.',
         'Paste a list — plain text, MTG Arena or Moxfield format, one “count name” per line. The same parser the deckbuilder’s import uses, and “Copy list” writes the same format back out.',
-        'Search and add — the same query language as the deckbuilder search, so “c:red t:creature cmc<=3” works.',
+        'Browse — the deckbuilder’s grid, filters and query language (“c:red t:creature cmc<=3”). Click a card to add it, right-click to take one out.',
       ] },
       { kind: 'p', text: 'Packs decides how the cube is played: a shuffled cube is dealt card by card, while Play Boosters and Draft Boosters print packs by rarity like a real set. The list filters by name and groups by type, colour or rarity, so a set-sized cube stays easy to work through.' },
       { kind: 'p', text: 'Cubes are usually singleton (one of each), but counts are yours to set — the editor lets any card run as many copies as you want, and each copy is a separate physical card when packs are dealt.' },
