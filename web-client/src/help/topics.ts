@@ -816,13 +816,14 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'limited',
     title: 'AI pick suggestions and Auto-build',
     summary:
-      'With the lobby’s AI assistance set to On, the draft screen gets a ✨ Suggest Pick button and the deck builder gets 🪄 Auto-build and ✨ Score cards. It is a learning aid; the host decides whether it is allowed.',
+      'With the lobby’s AI assistance set to On, the draft screen gets a ✨ Suggest Pick button and the deck builder gets an AI group in its top bar: Auto-build, Card scores and the deck Advisor. It is a learning aid; the host decides whether it is allowed.',
     body: [
       { kind: 'ul', items: [
         'Suggest Pick scores every card in the pack from 0 to 100 — green at 70 and up, amber from 45 — with a one-line reason on hover, and marks the top one “⭐ Best”. Re-suggest asks again; Clear hides the scores.',
-        'Auto-build proposes the best deck it can make from your pool, lands included. If you have already started, it becomes Complete Deck and fills the gaps.',
-        '“Builds:” chips switch between the candidate decks it found.',
-        'Score cards rates every card in your pool so you can make the cuts yourself.',
+        'Auto-build proposes the best deck it can make from your pool, lands included. If you have already started, it becomes Complete deck and keeps your picks while it fills the gaps.',
+        'When the engine finds several decks, the strip under the top bar lists them as Builds — click one to switch. Undo puts back the deck you had before, as long as you haven’t edited it since.',
+        'Card scores rates every card in your pool, and in your deck list, so you can make the cuts yourself. Scores use your deck so far for colour context; when the deck changes, the strip offers Re-score. Click Card scores again to hide them.',
+        'With more than one engine on the server, the picker at the start of the AI group chooses which one Auto-build and Card scores use.',
       ] },
       { kind: 'tip', text: 'Assistance is off by default, so nobody in a competitive pod gets it unless the host turns it on for everyone.' },
     ],
@@ -833,10 +834,11 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'limited',
     title: 'The deck advisor',
     summary:
-      'In the limited deck builder, “✨ Ask the deck advisor” opens a chat with an AI that can see your pool. Ask it questions, or ask it to highlight cards or build the deck for you.',
+      'In the limited deck builder, Advisor in the top bar’s AI group opens a chat with an AI that can see your pool and your deck. Ask it questions, or ask it to highlight cards or build the deck for you.',
     body: [
-      { kind: 'p', text: 'Try “highlight all removal”, “Is my mana curve okay?”, “Should I splash a third color?” or “Build me a control deck with lots of removal”. It can highlight pool cards, clear highlights, or replace your whole deck — lands included — and you can undo any of it by hand.' },
-      { kind: 'p', text: 'Enter sends, Shift+Enter adds a new line. The conversation is not saved; reloading starts a fresh one.' },
+      { kind: 'p', text: 'Try “highlight all removal”, “Is my mana curve okay?”, “Should I splash a third color?” or “Build me a control deck with lots of removal” — or click one of the suggestions it opens with. It can highlight pool cards, clear highlights, or replace your whole deck, lands included. A replaced deck can be undone from the chat or the strip under the top bar.' },
+      { kind: 'p', text: 'Building a whole deck can take the advisor up to a minute. Like Auto-build, it is only there when the lobby’s AI assistance is on.' },
+      { kind: 'p', text: 'Enter sends, Shift+Enter adds a new line, Esc closes the chat. Closing keeps the conversation; New chat starts over, and reloading the page starts a fresh one.' },
     ],
     related: ['limited-deckbuilding', 'draft-assist'],
   },

@@ -24,6 +24,30 @@ private val logger = LoggerFactory.getLogger(DeckbuildingChatService::class.java
 private const val DEFAULT_DECKBUILDING_MODEL = "minimax/minimax-m2.5:free"
 private val BASIC_LAND_NAMES = setOf("Plains", "Island", "Swamp", "Mountain", "Forest")
 
+/**
+ * Drop a reasoning model's `<think>…</think>` preamble. Its scratch work is full of mana costs like
+ * `{2}{R}`, so left in, the first `{` the JSON extraction finds is a mana symbol, the reply fails to
+ * parse, and the player is shown the model's whole chain of thought with its deck actions dropped.
+ */
+internal fun stripReasoning(raw: String): String {
+    val close = raw.lastIndexOf("</think>")
+    if (close >= 0) return raw.substring(close + "</think>".length).trim()
+    // An unterminated block (the reply was cut off mid-thought) has no answer to keep.
+    return if (raw.trimStart().startsWith("<think>")) "" else raw.trim()
+}
+
+/** The reply's JSON object: the whole text, or the outermost `{…}` inside fences or chatter. */
+internal fun extractChatJsonObject(raw: String, json: Json): JsonObject? {
+    val trimmed = raw.trim()
+    runCatching { return json.parseToJsonElement(trimmed).jsonObject }
+    val first = trimmed.indexOf('{')
+    val last = trimmed.lastIndexOf('}')
+    if (first >= 0 && last > first) {
+        runCatching { return json.parseToJsonElement(trimmed.substring(first, last + 1)).jsonObject }
+    }
+    return null
+}
+
 @Service
 class DeckbuildingChatService(
     gameProperties: GameProperties
@@ -195,8 +219,12 @@ class DeckbuildingChatService(
         appendLine("Total cards in current deck: ${request.deck.size + landTotal}")
     }
 
-    private fun parseAndValidate(raw: String, request: ChatRequest): ChatResponse {
-        val jsonObj = extractJsonObject(raw)
+    private fun parseAndValidate(rawWithReasoning: String, request: ChatRequest): ChatResponse {
+        val raw = stripReasoning(rawWithReasoning)
+        if (raw.isBlank()) {
+            return ChatResponse(assistantMessage = "I lost my train of thought there — could you ask again?", actions = emptyList())
+        }
+        val jsonObj = extractChatJsonObject(raw, json)
         if (jsonObj == null) {
             // Treat the whole response as plain assistant text.
             return ChatResponse(assistantMessage = raw.trim(), actions = emptyList())
@@ -252,20 +280,6 @@ class DeckbuildingChatService(
             if (name.isNotEmpty() && count > 0) result.add(NameCount(name, count))
         }
         return result
-    }
-
-    private fun extractJsonObject(raw: String): JsonObject? {
-        val trimmed = raw.trim()
-        // Direct parse
-        runCatching { return json.parseToJsonElement(trimmed).jsonObject }
-        // Try to find the first {...} block (handles markdown fences or trailing text)
-        val first = trimmed.indexOf('{')
-        val last = trimmed.lastIndexOf('}')
-        if (first >= 0 && last > first) {
-            val candidate = trimmed.substring(first, last + 1)
-            runCatching { return json.parseToJsonElement(candidate).jsonObject }
-        }
-        return null
     }
 
     // ============================================================

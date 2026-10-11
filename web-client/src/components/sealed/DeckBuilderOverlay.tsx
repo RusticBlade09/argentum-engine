@@ -9,7 +9,7 @@ import { HoverCardPreview } from '../ui/HoverCardPreview'
 import { useDfcHoverFlip } from '../ui/useDfcHoverFlip'
 import { SetSynergiesButton, type Archetype } from '../draft/SetSynergiesOverlay'
 import { DeckbuilderChatPanel } from './DeckbuilderChatPanel'
-import { fetchAdvisors, type AdvisorInfo } from '@/api/aiAssist'
+import { AssistStrip, AssistToolbar, ScoreBadge, useScoresStale } from './AssistControls'
 import { buildArenaDeckList } from './arenaExport'
 import { poolCardToSummary } from './poolCardSummary'
 import { parseQuery } from '../deckbuilder/query'
@@ -25,7 +25,6 @@ import {
   summarizeDeckTypes,
   type DeckCardType,
 } from './cardTypes'
-import type { AutoBuildResult } from '@/store/slices/types'
 import {
   detectProducedColors,
   suggestBasicLands,
@@ -163,6 +162,10 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
   // hide the controls AND any card score badges that were fetched before the host switched it off.
   const aiAssistEnabled = lobbyState ? lobbyState.settings.aiAssistEnabled : true
   const deckCardScores = aiAssistEnabled ? storedDeckCardScores : null
+  const scoresStale = useScoresStale(state)
+  // The deck advisor chat, opened from the header's AI group. It stays mounted while closed so the
+  // conversation survives; it closes once the deck is submitted (the AI group hides then).
+  const [advisorOpen, setAdvisorOpen] = useState(false)
 
   const [hoveredCard, setHoveredCard] = useState<SealedCardInfo | null>(null)
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null)
@@ -598,6 +601,14 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
               setArchetypeFilter((prev) => prev?.name === archetype.name ? null : archetype)
             }}
           />
+          {!isSubmitted && aiAssistEnabled && !responsive.isMobile && (
+            <AssistToolbar
+              hasCards={totalCount > 0}
+              advisorOpen={advisorOpen}
+              onToggleAdvisor={() => setAdvisorOpen((o) => !o)}
+              compact={responsive.isMobile}
+            />
+          )}
         </div>
 
         <div className={ls.headerGroup}>
@@ -643,10 +654,6 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
             >
               ♛ {state.commander}
             </div>
-          )}
-
-          {!isSubmitted && aiAssistEnabled && (
-            <AutoBuildControl hasCards={totalCount > 0} responsive={responsive} />
           )}
 
           {isSubmitted ? (
@@ -706,17 +713,41 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
             </button>
           )}
         </div>
+
+        {/* Phones: the AI group gets its own row so it doesn't squeeze the title. */}
+        {!isSubmitted && aiAssistEnabled && responsive.isMobile && (
+          <div className={ls.headerGroup}>
+            <AssistToolbar
+              hasCards={totalCount > 0}
+              advisorOpen={advisorOpen}
+              onToggleAdvisor={() => setAdvisorOpen((o) => !o)}
+              compact={responsive.isMobile}
+            />
+          </div>
+        )}
       </div>
+
+      {!isSubmitted && aiAssistEnabled && <AssistStrip state={state} />}
 
       {/* Main content: Pool (left ~70%) | Deck (right ~30%) */}
       <div
         style={{
           flex: 1,
+          position: 'relative',
           display: 'flex',
           flexDirection: responsive.isMobile ? 'column' : 'row',
           overflow: 'hidden',
         }}
       >
+        {/* Docked over the deck rail, so the pool — where its highlights land — stays in view. */}
+        {aiAssistEnabled && (
+          <DeckbuilderChatPanel
+            state={state}
+            open={advisorOpen && !isSubmitted}
+            onClose={() => setAdvisorOpen(false)}
+            mobile={responsive.isMobile}
+          />
+        )}
         {/* Card Pool (left) */}
         <div
           style={{
@@ -1164,12 +1195,11 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
           )}
 
           {/* Pool cards */}
-          {/* The bottom padding lets the last row scroll clear of the floating deck-advisor button. */}
           <div
             style={{
               flex: 1,
               overflow: 'auto',
-              padding: '8px 8px 56px',
+              padding: 8,
             }}
           >
             {sortBy === 'rarity' && poolByRarity ? (
@@ -1207,6 +1237,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                             highlighted={highlightedCards != null ? highlightedCards.has(card.name) : undefined}
                             score={deckCardScores?.[card.name]?.score ?? null}
                             reason={deckCardScores?.[card.name]?.reason}
+                            scoreStale={scoresStale}
                           />
                         ))}
                       </div>
@@ -1239,6 +1270,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                     highlighted={highlightedCards != null ? highlightedCards.has(card.name) : undefined}
                     score={deckCardScores?.[card.name]?.score ?? null}
                     reason={deckCardScores?.[card.name]?.reason}
+                    scoreStale={scoresStale}
                   />
                 ))}
               </div>
@@ -1450,8 +1482,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
             style={{
               flex: 1,
               overflow: 'auto',
-              // On phones the deck list sits under the floating deck-advisor button; let it scroll clear.
-              padding: responsive.isMobile ? '4px 0 56px' : '4px 0',
+              padding: '4px 0',
             }}
           >
             {deckCardGroups.map(({ card, count }) => (
@@ -1471,6 +1502,9 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                 canBeCommander={eligibleCommanderNames.has(card.name)}
                 offIdentity={offIdentityNames.has(card.name)}
                 searchMatch={deckSearchMatches == null ? undefined : deckSearchMatches.names.has(card.name)}
+                score={deckCardScores?.[card.name]?.score ?? null}
+                reason={deckCardScores?.[card.name]?.reason}
+                scoreStale={scoresStale}
                 onToggleCommander={() => {
                   setCommander(state.commander === card.name ? null : card.name)
                 }}
@@ -1567,7 +1601,6 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
         />
       )}
 
-      <DeckbuilderChatPanel state={state} />
     </div>
   )
 }
@@ -1724,207 +1757,8 @@ function ArenaExportModal({
 /**
  * Animated ellipsis dots for loading/waiting indicators.
  */
-/**
- * "Auto-build" control for the deckbuild header: an optional engine dropdown (shown when more than
- * one engine is registered) plus a button that builds the deck from the pool. An empty deck builds
- * fresh; a partial deck is completed (existing picks kept). Rendered only when AI assistance is
- * enabled for the tournament.
- */
-function AutoBuildControl({
-  hasCards,
-  responsive,
-}: {
-  hasCards: boolean
-  responsive: ReturnType<typeof useResponsive>
-}) {
-  const autoBuildDeck = useGameStore((s) => s.autoBuildDeck)
-  const applyAutoBuildOption = useGameStore((s) => s.applyAutoBuildOption)
-  const aiAssistBusy = useGameStore((s) => s.aiAssistBusy)
-  const aiAssistError = useGameStore((s) => s.aiAssistError)
-  const autoBuildResult = useGameStore((s) => s.autoBuildResult)
-  const scoreDeckCards = useGameStore((s) => s.scoreDeckCards)
-  const clearDeckCardScores = useGameStore((s) => s.clearDeckCardScores)
-  const hasCardScores = useGameStore((s) => s.deckCardScores != null)
-  // The selected engine lives in the store so it survives this control remounting on every edit.
-  const advisorId = useGameStore((s) => s.deckbuildAdvisorId)
-  const setAdvisorId = useGameStore((s) => s.setDeckbuildAdvisorId)
-
-  const [advisors, setAdvisors] = useState<readonly AdvisorInfo[]>([])
-
-  useEffect(() => {
-    let cancelled = false
-    fetchAdvisors()
-      .then((r) => {
-        if (cancelled) return
-        setAdvisors(r.deckbuild)
-        // Keep the player's saved choice; only fall back to the default if it's unset or stale.
-        const saved = useGameStore.getState().deckbuildAdvisorId
-        if (saved == null || !r.deckbuild.some((a) => a.id === saved)) {
-          setAdvisorId(r.deckbuild[0]?.id ?? null)
-        }
-      })
-      .catch(() => {
-        // Dropdown stays empty; the button still works using the server's default engine.
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [setAdvisorId])
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      {advisors.length > 1 && (
-        <select
-          value={advisorId ?? ''}
-          onChange={(e) => setAdvisorId(e.target.value)}
-          title="AI engine"
-          style={{
-            padding: '6px 8px',
-            fontSize: 13,
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
-            color: '#ddd',
-            border: '1px solid rgba(255, 255, 255, 0.16)',
-            borderRadius: 6,
-          }}
-        >
-          {advisors.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
-      )}
-      <button
-        onClick={() => void autoBuildDeck(advisorId ?? undefined)}
-        disabled={aiAssistBusy}
-        title={
-          hasCards
-            ? 'Keep your current picks and fill the rest of the deck from the pool'
-            : 'Build the best deck from your pool'
-        }
-        style={{
-          padding: responsive.isMobile ? '6px 14px' : '8px 20px',
-          fontSize: responsive.fontSize.normal,
-          backgroundColor: '#7e57c2',
-          color: 'white',
-          border: 'none',
-          borderRadius: 6,
-          cursor: aiAssistBusy ? 'wait' : 'pointer',
-          fontWeight: 600,
-          opacity: aiAssistBusy ? 0.7 : 1,
-        }}
-      >
-        {aiAssistBusy ? 'Building…' : hasCards ? '🪄 Complete Deck' : '🪄 Auto-build'}
-      </button>
-      <button
-        onClick={() => void scoreDeckCards(advisorId ?? undefined)}
-        disabled={aiAssistBusy}
-        title="Score every card in your pool (badge on each card); uses your current deck for colour context"
-        style={{
-          padding: responsive.isMobile ? '6px 12px' : '8px 16px',
-          fontSize: responsive.fontSize.normal,
-          backgroundColor: '#5e7ec2',
-          color: 'white',
-          border: 'none',
-          borderRadius: 6,
-          cursor: aiAssistBusy ? 'wait' : 'pointer',
-          fontWeight: 600,
-          opacity: aiAssistBusy ? 0.7 : 1,
-        }}
-      >
-        {aiAssistBusy ? 'Scoring…' : hasCardScores ? 'Re-score cards' : '✨ Score cards'}
-      </button>
-      {hasCardScores && !aiAssistBusy && (
-        <button
-          onClick={clearDeckCardScores}
-          title="Hide the per-card score badges"
-          style={{
-            padding: '6px 10px',
-            fontSize: 13,
-            backgroundColor: 'rgba(255, 255, 255, 0.12)',
-            color: '#ccc',
-            border: 'none',
-            borderRadius: 6,
-            cursor: 'pointer',
-          }}
-        >
-          Hide scores
-        </button>
-      )}
-      {!aiAssistBusy && autoBuildResult && (
-        <BuildOptionPicker result={autoBuildResult} onPick={applyAutoBuildOption} />
-      )}
-      {aiAssistError && <span style={{ color: '#ff6b6b', fontSize: 12 }}>{aiAssistError}</span>}
-    </div>
-  )
-}
-
-/**
- * The Auto-build outcome: the candidate decks as selectable chips. The recommended deck is applied
- * immediately (highlighted here); clicking another chip swaps the deck to that candidate. With a
- * single candidate (heuristic / completion) it renders one non-interactive score badge.
- */
-function BuildOptionPicker({
-  result,
-  onPick,
-}: {
-  result: AutoBuildResult
-  onPick: (index: number) => void
-}) {
-  const multiple = result.options.length > 1
-  return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-      {multiple && <span style={{ color: '#b9a6e0', fontSize: 12, fontWeight: 600 }}>Builds:</span>}
-      {result.options.map((option, i) => {
-        const isApplied = i === result.appliedIndex
-        const scoreText = option.score != null ? formatBuildScore(result.advisorId, option.score) : null
-        return (
-          <button
-            key={i}
-            onClick={() => onPick(i)}
-            disabled={!multiple}
-            title={
-              multiple
-                ? isApplied
-                  ? 'This build is applied to your deck'
-                  : 'Switch your deck to this build'
-                : 'Score of the most recent Auto-build'
-            }
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '4px 10px',
-              fontSize: 13,
-              fontWeight: 600,
-              color: isApplied ? '#e8d9ff' : '#b9a6e0',
-              backgroundColor: isApplied ? 'rgba(126, 87, 194, 0.35)' : 'rgba(126, 87, 194, 0.12)',
-              border: `1px solid ${isApplied ? '#9b7fd4' : 'rgba(126, 87, 194, 0.5)'}`,
-              borderRadius: 6,
-              cursor: multiple ? 'pointer' : 'default',
-            }}
-          >
-            {option.colors.length > 0 && (
-              <span style={{ display: 'inline-flex', gap: 2 }}>
-                {option.colors.map((c) => (
-                  <ManaSymbol key={c} symbol={c} size={14} />
-                ))}
-              </span>
-            )}
-            {option.archetype && <span>{option.archetype}</span>}
-            {scoreText && (
-              <span style={{ color: isApplied ? '#fff' : '#cdbbef', fontWeight: 700 }}>{scoreText}</span>
-            )}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-/** Draftsim reports a 0–10 deck score; the heuristic engine a raw rating sum. */
-function formatBuildScore(advisorId: string, score: number): string {
-  return advisorId === 'draftsim' ? `${score.toFixed(1)}/10` : score.toFixed(1)
+function scoreTitle(score: number, reason: string | undefined): string {
+  return reason ? `AI score ${score}/100 — ${reason}` : `AI score ${score}/100`
 }
 
 function AnimatedDots() {
@@ -2013,6 +1847,7 @@ function PoolCard({
   highlighted,
   score = null,
   reason,
+  scoreStale = false,
 }: {
   card: SealedCardInfo
   count: number
@@ -2030,13 +1865,13 @@ function PoolCard({
   score?: number | null
   /** Tooltip justification for the score. */
   reason?: string | undefined
+  /** The deck changed since scoring, so the score's colour context is out of date. */
+  scoreStale?: boolean
 }) {
   const cardWidth = 110
   const cardHeight = Math.round(cardWidth * 1.4)
   const imageUrl = getCardImageUrl(card.name, card.imageUri, 'small')
   const defaultBorder = highlighted ? '2px solid #a78bfa' : '2px solid #444'
-  // Score badge colour: green (great) → amber → grey (weak).
-  const scoreColor = score == null ? '#555' : score >= 70 ? '#4caf50' : score >= 45 ? '#ff9800' : '#777'
 
   return (
     <div
@@ -2044,7 +1879,7 @@ function PoolCard({
       onMouseEnter={(e) => onHover(card, e)}
       onMouseMove={(e) => onHover(card, e)}
       onMouseLeave={() => onHover(null)}
-      title={score != null && reason ? `AI score ${score}/100 — ${reason}` : undefined}
+      title={score != null ? scoreTitle(score, reason) : undefined}
       style={{
         position: 'relative',
         width: cardWidth,
@@ -2115,21 +1950,8 @@ function PoolCard({
             </div>
           )}
       {score != null && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 4,
-            left: 4,
-            backgroundColor: scoreColor,
-            color: '#fff',
-            borderRadius: 4,
-            padding: '1px 5px',
-            fontSize: 12,
-            fontWeight: 700,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.5)',
-          }}
-        >
-          {score}
+        <div style={{ position: 'absolute', top: 5, left: 5, pointerEvents: 'none' }}>
+          <ScoreBadge score={score} stale={scoreStale} />
         </div>
       )}
     </div>
@@ -2150,6 +1972,9 @@ function DeckListRow({
   canBeCommander,
   offIdentity,
   searchMatch,
+  score = null,
+  reason,
+  scoreStale = false,
   onToggleCommander,
 }: {
   card: SealedCardInfo
@@ -2163,6 +1988,10 @@ function DeckListRow({
   offIdentity?: boolean
   /** Set only while a pool search is active: true highlights the row, false dims it. */
   searchMatch?: boolean | undefined
+  /** AI per-card score 0–100, or null when scoring is off — so the weakest cards stand out as cuts. */
+  score?: number | null
+  reason?: string | undefined
+  scoreStale?: boolean
   onToggleCommander?: () => void
 }) {
   const cmc = getCmc(card)
@@ -2197,7 +2026,11 @@ function DeckListRow({
       onMouseOut={(e) => {
         e.currentTarget.style.backgroundColor = restingBackground
       }}
-      title={offIdentity ? `${card.name} is outside the commander's colour identity` : undefined}
+      title={
+        offIdentity
+          ? `${card.name} is outside the commander's colour identity`
+          : score != null ? scoreTitle(score, reason) : undefined
+      }
     >
       {/* Count */}
       <span
@@ -2258,6 +2091,11 @@ function DeckListRow({
           {formatTypeLine(card.typeLine)}
         </span>
       </span>
+      {score != null && (
+        <span style={{ marginLeft: 6, flexShrink: 0, display: 'inline-flex' }}>
+          <ScoreBadge score={score} stale={scoreStale} />
+        </span>
+      )}
       {/* Commander crown — only in commander-shape lobbies */}
       {showCommanderControls && (
         <button

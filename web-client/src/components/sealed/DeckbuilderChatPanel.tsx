@@ -1,26 +1,36 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useGameStore, type DeckBuildingState } from '@/store/gameStore.ts'
+import { sameDeck } from '@/store/slices/assistDeck'
+import { SparkleIcon } from './AssistControls'
+import styles from './chat.module.css'
 
 /**
- * Chat panel that talks to the deckbuilding LLM advisor on the server.
- * Subtle slide-out panel anchored to the right side of the deck builder.
+ * The deck advisor: a chat with the deckbuilding LLM on the server, docked over the deck rail and
+ * opened from the header's AI group. It stays mounted while closed so the conversation survives
+ * closing it; it is lost on reload, by design.
  *
- * The LLM may emit actions that:
+ * The LLM may answer with actions that:
  *  - highlight cards in the pool
  *  - clear highlights
- *  - replace the current deck (main + basic lands)
- *
- * Chat history is ephemeral — it lives in this component's state and is lost
- * on reload, by design.
+ *  - replace the current deck (main + basic lands) — undoable, like Auto-build
  */
 
 type ChatRole = 'user' | 'assistant' | 'system'
 
+type ActionNoteKind = 'highlight' | 'clear' | 'deck'
+
+interface ActionNote {
+  readonly kind: ActionNoteKind
+  readonly text: string
+}
+
 interface ChatMessage {
   readonly role: ChatRole
   readonly content: string
-  /** Lines describing actions that were executed locally for this assistant turn. */
-  readonly actionNotes?: readonly string[]
+  /** What this assistant turn did to the builder. */
+  readonly actionNotes?: readonly ActionNote[]
+  /** A failed turn: shown as an error with Retry, never sent back to the LLM (role 'system'). */
+  readonly retryText?: string
 }
 
 type ServerAction =
@@ -38,26 +48,47 @@ interface ServerResponse {
   readonly error?: string | null
 }
 
-export function DeckbuilderChatPanel({ state }: { state: DeckBuildingState }) {
-  const setDeck = useGameStore((s) => s.setDeck)
+export function DeckbuilderChatPanel({
+  state,
+  open,
+  onClose,
+  mobile,
+}: {
+  state: DeckBuildingState
+  open: boolean
+  onClose: () => void
+  mobile: boolean
+}) {
+  const applyAssistDeck = useGameStore((s) => s.applyAssistDeck)
+  const undoAssistDeck = useGameStore((s) => s.undoAssistDeck)
+  const assistUndo = useGameStore((s) => s.assistUndo)
   const setLlmHighlights = useGameStore((s) => s.setLlmHighlights)
 
-  const [open, setOpen] = useState(false)
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    { role: 'assistant', content: pickWelcomeMessage() },
-  ])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [welcome, setWelcome] = useState(pickWelcome)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
   }, [messages, sending])
 
-  const applyActions = useCallback((actions: readonly ServerAction[]): string[] => {
-    const notes: string[] = []
+  useEffect(() => {
+    if (open) inputRef.current?.focus()
+  }, [open])
+
+  // Grow the input with its text, up to a few lines.
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+  }, [input])
+
+  const applyActions = useCallback((actions: readonly ServerAction[]): ActionNote[] => {
+    const notes: ActionNote[] = []
     let highlightTouched = false
     for (const action of actions) {
       switch (action.type) {
@@ -66,15 +97,15 @@ export function DeckbuilderChatPanel({ state }: { state: DeckBuildingState }) {
           highlightTouched = true
           notes.push(
             action.cardNames.length === 0
-              ? 'Cleared highlights.'
-              : `Highlighted ${action.cardNames.length} card${action.cardNames.length === 1 ? '' : 's'}.`,
+              ? { kind: 'clear', text: 'Cleared highlights' }
+              : { kind: 'highlight', text: `Highlighted ${plural(action.cardNames.length, 'card')} in your pool` },
           )
           break
         }
         case 'clear_highlights': {
           setLlmHighlights(null)
           highlightTouched = true
-          notes.push('Cleared highlights.')
+          notes.push({ kind: 'clear', text: 'Cleared highlights' })
           break
         }
         case 'set_deck': {
@@ -91,8 +122,8 @@ export function DeckbuilderChatPanel({ state }: { state: DeckBuildingState }) {
             landCounts[entry.name] = (landCounts[entry.name] ?? 0) + entry.count
             landTotal += entry.count
           }
-          setDeck(flat, landCounts)
-          notes.push(`Set deck: ${mainTotal} non-land + ${landTotal} basic lands.`)
+          applyAssistDeck(flat, landCounts, 'advisor')
+          notes.push({ kind: 'deck', text: `Replaced your deck: ${mainTotal} spells + ${plural(landTotal, 'basic land')}` })
           break
         }
       }
@@ -102,264 +133,259 @@ export function DeckbuilderChatPanel({ state }: { state: DeckBuildingState }) {
       setLlmHighlights(null)
     }
     return notes
-  }, [setDeck, setLlmHighlights])
+  }, [applyAssistDeck, setLlmHighlights])
 
-  const handleSend = useCallback(async () => {
-    const text = input.trim()
+  const send = useCallback(async (raw: string, history: readonly ChatMessage[] = messages) => {
+    const text = raw.trim()
     if (!text || sending) return
 
-    const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: text }]
+    const nextMessages: ChatMessage[] = [...history, { role: 'user', content: text }]
     setMessages(nextMessages)
     setInput('')
     setSending(true)
 
+    const fail = (content: string) =>
+      setMessages((prev) => [...prev, { role: 'system', content, retryText: text }])
+
     try {
-      const payload = buildRequest(state, nextMessages)
       const response = await fetch('/api/deckbuilding/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        // A question whose turn failed never got an answer; leave it out of what the model sees.
+        body: JSON.stringify(buildRequest(
+          state,
+          nextMessages.filter((m, i) => !(m.role === 'user' && nextMessages[i + 1]?.retryText != null)),
+        )),
       })
       if (!response.ok) {
-        const body = await response.text().catch(() => '')
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: `Server returned ${response.status}. ${body || 'Please try again.'}`,
-          },
-        ])
+        fail(await describeFailure(response))
         return
       }
       const data = (await response.json()) as ServerResponse
       const notes = applyActions(data.actions ?? [])
-      const assistantMsg: ChatMessage = notes.length > 0
-        ? { role: 'assistant', content: data.assistantMessage, actionNotes: notes }
-        : { role: 'assistant', content: data.assistantMessage }
-      setMessages((prev) => [...prev, assistantMsg])
-    } catch (err) {
       setMessages((prev) => [
         ...prev,
-        {
-          role: 'assistant',
-          content: `Network error: ${err instanceof Error ? err.message : 'unknown'}.`,
-        },
+        notes.length > 0
+          ? { role: 'assistant', content: data.assistantMessage, actionNotes: notes }
+          : { role: 'assistant', content: data.assistantMessage },
       ])
+    } catch {
+      fail('Couldn’t reach the advisor — check your connection and try again.')
     } finally {
       setSending(false)
     }
-  }, [applyActions, input, messages, sending, state])
+  }, [applyActions, messages, sending, state])
+
+  // A retried turn replaces the failed question and its error rather than stacking another copy.
+  const retry = (failedIndex: number, text: string) => {
+    const question = lastIndexWhere(messages.slice(0, failedIndex), (m) => m.role === 'user')
+    void send(text, messages.slice(0, question >= 0 ? question : failedIndex))
+  }
+
+  const newChat = () => {
+    setMessages([])
+    setWelcome(pickWelcome())
+    setLlmHighlights(null)
+    inputRef.current?.focus()
+  }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
-      void handleSend()
+      void send(input)
     }
   }
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        title="Open deckbuilder assistant"
-        style={{
-          position: 'fixed',
-          left: 12,
-          bottom: 12,
-          zIndex: 1100,
-          padding: '8px 14px',
-          backgroundColor: 'rgba(14, 16, 24, 0.88)',
-          color: '#f6dca8',
-          border: '1px solid rgba(242, 180, 92, 0.45)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: 999,
-          cursor: 'pointer',
-          fontSize: 12,
-          fontWeight: 600,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-          letterSpacing: 0.4,
-        }}
-      >
-        ✨ Ask the deck advisor
-      </button>
-    )
-  }
+  // Only the newest deck rewrite can be undone, and only while the deck is still what it left.
+  const lastDeckChange = lastIndexWhere(messages, (m) => m.actionNotes?.some((n) => n.kind === 'deck') ?? false)
+  const canUndoDeck =
+    assistUndo?.source === 'advisor' &&
+    sameDeck({ deck: state.deck, landCounts: state.landCounts }, assistUndo.applied)
+  const hasHighlights = (state.llmHighlightedCards?.length ?? 0) > 0
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        right: 12,
-        bottom: 12,
-        zIndex: 1100,
-        width: 360,
-        maxWidth: 'calc(100vw - 24px)',
-        height: 480,
-        maxHeight: 'calc(100vh - 24px)',
-        display: 'flex',
-        flexDirection: 'column',
-        backgroundColor: '#181c22',
-        border: '1px solid #2c3744',
-        borderRadius: 10,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-        overflow: 'hidden',
+    <section
+      id="deck-advisor-panel"
+      className={styles.panel}
+      data-mobile={mobile}
+      hidden={!open}
+      aria-label="Deck advisor"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose()
       }}
     >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '8px 12px',
-          backgroundColor: '#1f2731',
-          borderBottom: '1px solid #2c3744',
-        }}
-      >
-        <span style={{ color: '#f6dca8', fontSize: 13, fontWeight: 600, letterSpacing: 0.3 }}>
-          Deck Advisor
-        </span>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          title="Close"
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: '#9ab',
-            cursor: 'pointer',
-            fontSize: 16,
-            lineHeight: 1,
-            padding: 4,
-          }}
-        >
+      <header className={styles.head}>
+        <span className={styles.avatar} aria-hidden><SparkleIcon size={14} /></span>
+        <div className={styles.headText}>
+          <h3 className={styles.title}>Deck advisor</h3>
+          <span className={styles.subtitle}>Sees your pool and your deck</span>
+        </div>
+        {messages.length > 0 && (
+          <button type="button" className={styles.headButton} onClick={newChat} disabled={sending} title="Start over">
+            New chat
+          </button>
+        )}
+        <button type="button" className={styles.iconButton} onClick={onClose} aria-label="Close the deck advisor" title="Close (Esc)">
           ×
         </button>
-      </div>
+      </header>
 
-      <div
-        ref={scrollRef}
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: 10,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-        }}
-      >
+      <div ref={scrollRef} className={styles.log} aria-live="polite">
+        <div className={styles.welcome}>
+          <p className={styles.welcomeIntro}>{welcome.intro}</p>
+          <p className={styles.welcomeHow}>
+            Ask about your pool, or have me highlight cards or build the deck — lands included.
+            Anything I change to your deck can be undone.
+          </p>
+          {messages.length === 0 && (
+            <div className={styles.suggestions}>
+              {welcome.suggestions.map((s) => (
+                <button key={s} type="button" className={styles.suggestion} onClick={() => void send(s)} disabled={sending}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {messages.map((m, i) => (
-          <MessageBubble key={i} message={m} />
+          <MessageBubble
+            key={i}
+            message={m}
+            onRetry={m.retryText != null && !sending ? () => retry(i, m.retryText!) : undefined}
+            onUndoDeck={i === lastDeckChange && canUndoDeck ? undoAssistDeck : undefined}
+            onClearHighlights={hasHighlights ? () => setLlmHighlights(null) : undefined}
+          />
         ))}
         {sending && <ThinkingBubble />}
       </div>
 
-      <div
-        style={{
-          display: 'flex',
-          gap: 6,
-          padding: 8,
-          borderTop: '1px solid #2c3744',
-          backgroundColor: '#161a20',
+      <form
+        className={styles.composer}
+        onSubmit={(e) => {
+          e.preventDefault()
+          void send(input)
         }}
       >
         <textarea
+          ref={inputRef}
+          className={styles.input}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
-          rows={2}
-          placeholder="Ask anything — try “highlight all removal”…"
+          rows={1}
+          placeholder="Ask the advisor…"
+          aria-label="Message the deck advisor"
           disabled={sending}
-          style={{
-            flex: 1,
-            resize: 'none',
-            padding: '6px 8px',
-            backgroundColor: '#11151a',
-            color: '#dde6ee',
-            border: '1px solid #2c3744',
-            borderRadius: 6,
-            fontSize: 12,
-            fontFamily: 'inherit',
-            outline: 'none',
-          }}
         />
         <button
-          type="button"
-          onClick={() => void handleSend()}
+          type="submit"
+          className={styles.send}
           disabled={sending || input.trim().length === 0}
-          style={{
-            padding: '0 12px',
-            backgroundColor: sending || input.trim().length === 0 ? '#2c3744' : '#f2b45c',
-            color: sending || input.trim().length === 0 ? '#9aa3b8' : '#1d1405',
-            border: 'none',
-            borderRadius: 6,
-            cursor: sending || input.trim().length === 0 ? 'not-allowed' : 'pointer',
-            fontSize: 12,
-            fontWeight: 600,
-          }}
+          aria-label="Send"
+          title="Send (Enter)"
         >
-          Send
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8"
+            strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" />
+          </svg>
         </button>
-      </div>
-    </div>
+      </form>
+      {!mobile && <div className={styles.hint}>Enter to send · Shift+Enter for a new line · Esc to close</div>}
+    </section>
   )
 }
 
-function MessageBubble({ message }: { message: ChatMessage }) {
+function MessageBubble({
+  message,
+  onRetry,
+  onUndoDeck,
+  onClearHighlights,
+}: {
+  message: ChatMessage
+  onRetry: (() => void) | undefined
+  onUndoDeck: (() => void) | undefined
+  onClearHighlights: (() => void) | undefined
+}) {
+  if (message.retryText != null) {
+    return (
+      <div className={styles.error} role="alert">
+        <span>{message.content}</span>
+        {onRetry && <button type="button" className={styles.noteAction} onClick={onRetry}>Retry</button>}
+      </div>
+    )
+  }
   const isUser = message.role === 'user'
   return (
-    <div
-      style={{
-        alignSelf: isUser ? 'flex-end' : 'flex-start',
-        maxWidth: '85%',
-        backgroundColor: isUser ? 'rgba(242, 180, 92, 0.14)' : '#222a33',
-        color: '#dde6ee',
-        border: `1px solid ${isUser ? 'rgba(242, 180, 92, 0.45)' : '#2c3744'}`,
-        borderRadius: 8,
-        padding: '6px 9px',
-        fontSize: 12,
-        lineHeight: 1.45,
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-word',
-      }}
-    >
-      <div>{message.content}</div>
-      {message.actionNotes && message.actionNotes.length > 0 && (
-        <div
-          style={{
-            marginTop: 6,
-            paddingTop: 6,
-            borderTop: '1px dashed #3a4654',
-            color: '#8fbf8f',
-            fontSize: 11,
-          }}
-        >
-          {message.actionNotes.map((note, i) => (
-            <div key={i}>✓ {note}</div>
-          ))}
+    <div className={styles.row} data-role={isUser ? 'user' : 'assistant'}>
+      <div className={styles.bubble} data-role={isUser ? 'user' : 'assistant'}>
+        {renderInline(message.content)}
+      </div>
+      {message.actionNotes?.map((note, i) => (
+        <div key={i} className={styles.note} data-kind={note.kind}>
+          <span aria-hidden>{note.kind === 'deck' ? '⟳' : note.kind === 'highlight' ? '◎' : '○'}</span>
+          <span>{note.text}</span>
+          {note.kind === 'deck' && onUndoDeck && (
+            <button type="button" className={styles.noteAction} onClick={onUndoDeck}>Undo</button>
+          )}
+          {note.kind === 'highlight' && onClearHighlights && (
+            <button type="button" className={styles.noteAction} onClick={onClearHighlights}>Clear</button>
+          )}
         </div>
-      )}
+      ))}
     </div>
   )
 }
 
 function ThinkingBubble() {
+  // A whole deck can take the model the best part of a minute; say so rather than look stuck.
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(true), 6000)
+    return () => clearTimeout(timer)
+  }, [])
   return (
-    <div
-      style={{
-        alignSelf: 'flex-start',
-        backgroundColor: '#222a33',
-        color: '#8aa',
-        border: '1px solid #2c3744',
-        borderRadius: 8,
-        padding: '6px 9px',
-        fontSize: 12,
-        fontStyle: 'italic',
-      }}
-    >
-      Thinking…
+    <div className={styles.row} data-role="assistant">
+      <div className={`${styles.bubble} ${styles.thinking}`} data-role="assistant" aria-label="The advisor is thinking">
+        <span /><span /><span />
+      </div>
+      {slow && <span className={styles.slow}>Still thinking — building a deck can take up to a minute.</span>}
     </div>
   )
+}
+
+/** Replies are plain text; honour the odd **bold** the model slips in rather than printing asterisks. */
+function renderInline(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g)
+  return parts.map((part, i) =>
+    part.startsWith('**') && part.endsWith('**') && part.length > 4
+      ? <strong key={i}>{part.slice(2, -2)}</strong>
+      : part,
+  )
+}
+
+/** The server answers a 503 with a JSON body explaining itself; show its sentence, not the JSON. */
+async function describeFailure(response: Response): Promise<string> {
+  const body = await response.text().catch(() => '')
+  try {
+    const parsed = JSON.parse(body) as Partial<ServerResponse>
+    if (parsed.error === 'llm_not_configured') return 'The deck advisor isn’t set up on this server.'
+    if (parsed.assistantMessage) return parsed.assistantMessage
+  } catch {
+    // Not JSON — fall through.
+  }
+  return response.status >= 500
+    ? 'The advisor ran into a problem. Try again in a moment.'
+    : `The advisor couldn’t answer that (error ${response.status}).`
+}
+
+function lastIndexWhere<T>(items: readonly T[], test: (item: T) => boolean): number {
+  for (let i = items.length - 1; i >= 0; i--) if (test(items[i]!)) return i
+  return -1
+}
+
+function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? '' : 's'}`
 }
 
 function buildRequest(state: DeckBuildingState, messages: readonly ChatMessage[]): unknown {
@@ -409,67 +435,46 @@ function buildRequest(state: DeckBuildingState, messages: readonly ChatMessage[]
 }
 
 const BUILD_EXAMPLES: readonly string[] = [
-  'Build me a Blue-Red Wizards deck',
-  'Build a mono-red aggro list from this pool',
-  'Make me a Green-White creatures deck',
-  'Try a Black-Green graveyard build',
-  'Put together the best two-color deck you can',
-  'Add 17 lands to my current deck in the right colors',
-  'Replace my deck with an aggressive Boros list',
+  'Build the best two-color deck you can',
+  'Build an aggressive deck from this pool',
   'Build me a control deck with lots of removal',
+  'Add lands to my deck in the right colors',
 ]
 
 const HIGHLIGHT_EXAMPLES: readonly string[] = [
   'Highlight all the removal',
-  'Show me the bomb rares in my pool',
+  'Show me the bombs in my pool',
   'Highlight every creature with flying',
-  'Highlight the playable Goblins',
-  'Show me cards that synergize with Wizards',
-  'Highlight all the ramp and mana fixing',
-  'Highlight every two-mana creature',
-  'Show me the cards I should never play',
+  'Highlight my two-drops',
+  'Highlight the mana fixing',
 ]
 
 const QUESTION_EXAMPLES: readonly string[] = [
   'Which color pair is strongest here?',
   'What archetypes does my pool support?',
   'Is my mana curve okay?',
-  'What are the best cards in my pool?',
   'How does my current deck look?',
-  'What am I missing for a Goblin deck?',
   'Should I splash a third color?',
-  'What\'s the best removal in my colors?',
 ]
 
 function pickRandom<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)] ?? arr[0]!
 }
 
-function pickExamples(): string {
-  return [
-    `• "${pickRandom(BUILD_EXAMPLES)}"`,
-    `• "${pickRandom(HIGHLIGHT_EXAMPLES)}"`,
-    `• "${pickRandom(QUESTION_EXAMPLES)}"`,
-  ].join('\n')
-}
-
-const HOW_IT_WORKS =
-  "I can see your pool, deck, and the set's archetypes — and I can highlight cards or rebuild your deck (40+ cards, lands included). Try:"
-
 const WELCOME_INTROS: readonly string[] = [
-  "Hey planeswalker. Before you ask — yes, I've already looked at your pool. Some of it is great, some of it is a 2/1 for three. We'll work with what we have.",
-  "Welcome to the deckbuilding table. So no, you can't sneak that fifth color past me.",
-  "Ah, a fresh sealed pool — the mana hums with possibility, the rares hum a bit louder.",
-  "Hail. Forty cards stand between you and a 0-3 record, and I'm here to make sure they're the right forty.",
-  "Your library is finite, your splash decisions even more so — luckily that's where I come in.",
-  "Salutations, summoner. Before you can swing, you must build the army — and before you build the army, we should probably count the lands.",
+  "I've already looked at your pool. Some of it is great, some of it is a 2/1 for three — we'll work with what we have.",
+  "Welcome to the deckbuilding table. No, you can't sneak that fifth color past me.",
+  'A fresh pool — the mana hums with possibility, the rares hum a bit louder.',
+  "Forty cards stand between you and a 0-3 record. Let's make sure they're the right forty.",
+  'Before you build the army, we should probably count the lands.',
   "A new pool, a new puzzle. I make no promises about the rares, but I'll help you make the best of them.",
-  "Step into the planar workshop. The cards are laid out, the colors are waiting.",
-  "Greetings, mage. Two colors, maybe three. A handful of bombs, a pile of removal, a curve that hopefully isn't all sevens.",
-  "Welcome back to the drafting hall. Your pool awaits, and so do I.",
+  'Two colors, maybe three. A handful of bombs, a pile of removal, and hopefully not a curve of all sevens.',
 ]
 
-function pickWelcomeMessage(): string {
-  const intro = pickRandom(WELCOME_INTROS)
-  return `${intro}\n\n${HOW_IT_WORKS}\n${pickExamples()}`
+/** One opener per conversation, plus a build, a highlight and a question to start from. */
+function pickWelcome(): { intro: string; suggestions: readonly string[] } {
+  return {
+    intro: pickRandom(WELCOME_INTROS),
+    suggestions: [pickRandom(QUESTION_EXAMPLES), pickRandom(HIGHLIGHT_EXAMPLES), pickRandom(BUILD_EXAMPLES)],
+  }
 }

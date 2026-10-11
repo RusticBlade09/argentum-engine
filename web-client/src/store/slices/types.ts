@@ -40,6 +40,7 @@ import type {
   MatchmakingQueueCount,
 } from '@/types'
 import type { ConnectionStatus } from '@/network/websocket.ts'
+import type { AssistDeckSource, AssistUndo, DeckSnapshot } from './assistDeck'
 import type { CounterRemovalCreatureInfo, PlayerSeatInfo, SpectatorCombatState, SpectatorDecisionStatus, UpdateLobbySettingsMessage } from '@/types/messages.ts'
 
 /**
@@ -1103,6 +1104,13 @@ export type GameStore = {
   deckCardScores: Readonly<Record<string, PickScore>> | null
   scoreDeckCards: (advisorId?: string) => Promise<void>
   clearDeckCardScores: () => void
+  deckCardScoresContext: DeckSnapshot | null
+  deckAssistTask: 'build' | 'score' | null
+  assistUndo: AssistUndo | null
+  applyAssistDeck: (deck: readonly string[], landCounts: Record<string, number>, source: AssistDeckSource) => void
+  undoAssistDeck: () => void
+  clearAutoBuildResult: () => void
+  clearAiAssistError: () => void
   suggestPick: (advisorId?: string) => Promise<void>
   clearPickSuggestion: () => void
   autoBuildDeck: (advisorId?: string) => Promise<void>
