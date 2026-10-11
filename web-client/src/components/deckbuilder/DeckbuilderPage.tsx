@@ -22,7 +22,6 @@ import type { PrintingRef } from '@/types'
 import { PrintingPicker, type PrintingDTO } from './PrintingPicker'
 import { ManaCost, ManaSymbol } from '@/components/ui/ManaSymbols'
 import { useDfcHoverFlip } from '@/components/ui/useDfcHoverFlip'
-import { getCardImageUrl } from '@/utils/cardImages'
 import {
   DeckTile,
   DeckTileActionButton,
@@ -67,6 +66,7 @@ import {
 } from './shareDeck'
 import { PageShell } from '@/components/ui/PageShell'
 import { BuilderModeSwitch } from './BuilderModeSwitch'
+import { DeckHoverPreview } from './DeckHoverPreview'
 import { getDeck as getAccountDeck, upsertDeckByName } from '@/api/account'
 import { useAuthStore } from '@/store/authStore'
 import { type UnifiedDeck, useUnifiedDecks } from '@/store/useUnifiedDecks'
@@ -2687,59 +2687,6 @@ function DeckFormatPicker({
  * the filter menu, which is meaningless when the right-rail catalog grid is hidden.
  * Driven by the lifted hover state in DeckbuilderPage.
  */
-function DeckHoverPreview({
-  name,
-  imageUri,
-  hint,
-  imageRotateDeg = 0,
-}: {
-  name: string | null
-  imageUri: string | null
-  hint?: React.ReactNode
-  imageRotateDeg?: 0 | 90
-}) {
-  if (!name) {
-    return (
-      <div className={styles.deckHoverPreviewEmpty}>
-        Hover a card to preview it here.
-      </div>
-    )
-  }
-  const imageUrl = getCardImageUrl(name, imageUri, 'large')
-  const landscape = imageRotateDeg === 90
-  return (
-    <div className={styles.deckHoverPreview}>
-      {/* Split cards (Rooms etc.) are printed sideways: swap the wrap to a landscape aspect
-          ratio and rotate the portrait image into it. The percentage dims are the relative
-          equivalent of HoverCardPreview's pixel approach — width 5/7 and height 7/5 of the
-          landscape box make the rotated 5:7 image fill it exactly. */}
-      <div
-        className={styles.deckHoverPreviewImageWrap}
-        style={landscape ? { aspectRatio: '7 / 5' } : undefined}
-      >
-        <img
-          className={styles.deckHoverPreviewImage}
-          src={imageUrl}
-          alt={name}
-          style={
-            landscape
-              ? {
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  width: '71.4286%',
-                  height: '140%',
-                  transform: 'translate(-50%, -50%) rotate(90deg)',
-                }
-              : undefined
-          }
-        />
-      </div>
-      {hint}
-    </div>
-  )
-}
-
 // ---------------------------------------------------------------------------
 // Deck list panel (right rail)
 // ---------------------------------------------------------------------------
