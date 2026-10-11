@@ -686,8 +686,11 @@ data class AiProfile(
      * three times in one postcombat main phase (game 1 turn 32). With this on, `HoldPolicy` floors
      * below passing: a group effect (counters, tap/untap) over a battlefield group nothing matches,
      * an attach to the permanent's current host (CR 701.3b: it does nothing), and an equip in our
-     * postcombat main of an Equipment already activated this turn. Only plain-resource costs (mana,
-     * tap, life). See [com.wingedsheep.ai.engine.knowledge.EmptyPayoff]. Needs [useCardIntent].
+     * postcombat main of an Equipment already activated this turn. A 2026-10-11 BLB-vs-LTR log added
+     * a fourth shape: Dúnedain Blade shuffled between two creatures precombat on turns 22 and 24 with
+     * nothing attacking, so an equip in our precombat main that moves an attached Equipment onto no
+     * better an attacker (can't attack, or adds no evasion over a holder that can) is floored too.
+     * Only plain-resource costs (mana, tap, life). See [com.wingedsheep.ai.engine.knowledge.EmptyPayoff]. Needs [useCardIntent].
      *
      * Measured 2026-10-10: `just arena production-candidate-expiring production-candidate-emptypayoff
      * 150` (BLB, seed 20260727) — 75W-75L-0D, every pair split, pair win 50.0% CI [50.0%, 50.0%],

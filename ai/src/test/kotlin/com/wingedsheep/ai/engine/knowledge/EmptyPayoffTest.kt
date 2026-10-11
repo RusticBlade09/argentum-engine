@@ -23,6 +23,8 @@ import io.kotest.matchers.shouldBe
  * putting counters on "each Frog, Rabbit, Raccoon, or Squirrel that entered this turn" when none
  * had (game 1, turns 19–25), Mandibular Kite re-equipped to the creature already wearing it (game 3
  * turn 19), and Dúnedain Blade moved three times in one postcombat main phase (game 1 turn 32).
+ * The precombat shape is from the 2026-10-11 BLB-vs-LTR log: Dúnedain Blade shuffled between Shire
+ * Shirriff and Mushroom Watchdogs on turns 22 and 24 with nothing attacking.
  */
 class EmptyPayoffTest : ScenarioTestBase() {
 
@@ -124,8 +126,10 @@ class EmptyPayoffTest : ScenarioTestBase() {
 
             game.equipVerdict(off, "Mandibular Kite", onto = "Eldrazi Repurposer") shouldBe TimingVerdict.Neutral
             game.equipVerdict(on, "Mandibular Kite", onto = "Eldrazi Repurposer") shouldBe TimingVerdict.NoWindow
-            // Moving it to another creature is a real choice the leaf score keeps pricing.
-            game.equipVerdict(on, "Mandibular Kite", onto = "Grizzly Bears") shouldBe TimingVerdict.Neutral
+            // Moving it precombat onto a creature that is no better an attacker is floored too (see
+            // the precombat section below); a move onto a creature that can attack while the holder
+            // can't is a real choice the leaf score keeps pricing.
+            game.equipVerdict(on, "Mandibular Kite", onto = "Grizzly Bears") shouldBe TimingVerdict.NoWindow
         }
 
         test("game 3 turn 19: the agent floors equipping the Kite to its own host") {
@@ -162,7 +166,7 @@ class EmptyPayoffTest : ScenarioTestBase() {
             game.equipVerdict(on, "Dúnedain Blade", onto = "Hill Giant") shouldBe TimingVerdict.NoWindow
         }
 
-        test("the first postcombat move, and any precombat move, are left to the score") {
+        test("the first postcombat move is left to the score") {
             val post = scenario().withPlayers()
                 .withLandsOnBattlefield(1, "Plains", 6)
                 .withCardOnBattlefield(1, "Grizzly Bears")
@@ -170,15 +174,101 @@ class EmptyPayoffTest : ScenarioTestBase() {
                 .withCardAttachedTo(1, "Dúnedain Blade", "Grizzly Bears")
                 .build().advanceToPriority(1, Step.POSTCOMBAT_MAIN)
             post.equipVerdict(on, "Dúnedain Blade", onto = "Hill Giant") shouldBe TimingVerdict.Neutral
+        }
 
-            val pre = scenario().withPlayers()
+        // --- A precombat Equipment move onto no better an attacker ------------------------------
+
+        test("precombat, moving the Blade between two equally able attackers: no window") {
+            val game = scenario().withPlayers()
                 .withLandsOnBattlefield(1, "Plains", 6)
                 .withCardOnBattlefield(1, "Grizzly Bears")
                 .withCardOnBattlefield(1, "Hill Giant")
                 .withCardAttachedTo(1, "Dúnedain Blade", "Grizzly Bears")
                 .build().advanceToPriority(1, Step.PRECOMBAT_MAIN)
-            pre.markActivatedThisTurn("Dúnedain Blade")
-            pre.equipVerdict(on, "Dúnedain Blade", onto = "Hill Giant") shouldBe TimingVerdict.Neutral
+
+            game.equipVerdict(off, "Dúnedain Blade", onto = "Hill Giant") shouldBe TimingVerdict.Neutral
+            game.equipVerdict(on, "Dúnedain Blade", onto = "Hill Giant") shouldBe TimingVerdict.NoWindow
+        }
+
+        test("precombat, moving the Blade onto a creature that can't attack this turn: no window") {
+            val game = scenario().withPlayers()
+                .withLandsOnBattlefield(1, "Plains", 6)
+                .withCardOnBattlefield(1, "Grizzly Bears", summoningSickness = true)
+                .withCardOnBattlefield(1, "Hill Giant", summoningSickness = true)
+                .withCardAttachedTo(1, "Dúnedain Blade", "Grizzly Bears")
+                .build().advanceToPriority(1, Step.PRECOMBAT_MAIN)
+
+            game.equipVerdict(on, "Dúnedain Blade", onto = "Hill Giant") shouldBe TimingVerdict.NoWindow
+        }
+
+        test("precombat, a move that buys an attack or evasion is left to the score") {
+            // The holder is summoning sick; the new holder can attack.
+            val sick = scenario().withPlayers()
+                .withLandsOnBattlefield(1, "Plains", 6)
+                .withCardOnBattlefield(1, "Grizzly Bears", summoningSickness = true)
+                .withCardOnBattlefield(1, "Hill Giant")
+                .withCardAttachedTo(1, "Dúnedain Blade", "Grizzly Bears")
+                .build().advanceToPriority(1, Step.PRECOMBAT_MAIN)
+            sick.equipVerdict(on, "Dúnedain Blade", onto = "Hill Giant") shouldBe TimingVerdict.Neutral
+
+            // Both can attack, but the new holder flies and the old one doesn't.
+            val flier = scenario().withPlayers()
+                .withLandsOnBattlefield(1, "Plains", 6)
+                .withCardOnBattlefield(1, "Grizzly Bears")
+                .withCardOnBattlefield(1, "Wax-Wane Witness")
+                .withCardAttachedTo(1, "Dúnedain Blade", "Grizzly Bears")
+                .build().advanceToPriority(1, Step.PRECOMBAT_MAIN)
+            flier.equipVerdict(on, "Dúnedain Blade", onto = "Wax-Wane Witness") shouldBe TimingVerdict.Neutral
+        }
+
+        test("precombat, equipping an unattached Blade is left to the score") {
+            val game = scenario().withPlayers()
+                .withLandsOnBattlefield(1, "Plains", 6)
+                .withCardOnBattlefield(1, "Grizzly Bears")
+                .withCardOnBattlefield(1, "Dúnedain Blade")
+                .build().advanceToPriority(1, Step.PRECOMBAT_MAIN)
+
+            game.equipVerdict(on, "Dúnedain Blade", onto = "Grizzly Bears") shouldBe TimingVerdict.Neutral
+        }
+
+        test("BLB vs LTR game 1 turn 22: the agent floors shuffling the Blade with nothing attacking") {
+            val game = scenario().withPlayers()
+                .withLandsOnBattlefield(1, "Plains", 10)
+                .withCardOnBattlefield(1, "Shire Shirriff")
+                .withCardOnBattlefield(1, "Mushroom Watchdogs")
+                .withCardAttachedTo(1, "Dúnedain Blade", "Shire Shirriff")
+                .withLandsOnBattlefield(2, "Plains", 8)
+                .withCardOnBattlefield(2, "Wax-Wane Witness")
+                .withCardOnBattlefield(2, "Brightblade Stoat")
+                .withTurnNumber(22)
+                .build().advanceToPriority(1, Step.PRECOMBAT_MAIN)
+
+            for (profile in listOf(AiProfile.PRODUCTION_CANDIDATE_EMPTYPAYOFF, AiProfile.LIVE)) {
+                val (action, option) = scoredOption(game, profile, "Dúnedain Blade") { true }
+                withClue("${profile.id} chose $action") {
+                    option.note shouldBe "hold policy: wrong window — floored below passing"
+                    ((action as? ActivateAbility)?.sourceId == game.findPermanent("Dúnedain Blade")) shouldBe false
+                }
+            }
+        }
+
+        test("an unattached Blade is still equipped onto an attacker precombat") {
+            val game = scenario().withPlayers()
+                .withLandsOnBattlefield(1, "Plains", 6)
+                .withCardOnBattlefield(1, "Hill Giant")
+                .withCardOnBattlefield(1, "Dúnedain Blade")
+                .withLandsOnBattlefield(2, "Island", 3)
+                .withTurnNumber(10)
+                .build().advanceToPriority(1, Step.PRECOMBAT_MAIN)
+
+            for (profile in listOf(AiProfile.PRODUCTION_CANDIDATE_EMPTYPAYOFF, AiProfile.LIVE)) {
+                val action = AIPlayer.create(cardRegistry, game.player1Id, profile).chooseAction(game.state)
+                withClue("${profile.id} chose $action") {
+                    val activation = action as? ActivateAbility
+                    activation?.sourceId shouldBe game.findPermanent("Dúnedain Blade")
+                    activation?.targets shouldBe listOf(ChosenTarget.Permanent(game.findPermanent("Hill Giant")!!))
+                }
+            }
         }
     }
 

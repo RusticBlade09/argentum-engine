@@ -1,5 +1,6 @@
 package com.wingedsheep.ai.engine.knowledge
 
+import com.wingedsheep.ai.engine.CombatMath
 import com.wingedsheep.engine.core.ActivateAbility
 import com.wingedsheep.engine.handlers.PredicateContext
 import com.wingedsheep.engine.handlers.PredicateEvaluator
@@ -7,6 +8,8 @@ import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.battlefield.AbilityActivatedThisTurnComponent
 import com.wingedsheep.engine.state.components.battlefield.AttachedToComponent
 import com.wingedsheep.engine.state.components.stack.ChosenTarget
+import com.wingedsheep.sdk.core.AbilityFlag
+import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.core.Step
 import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.model.EntityId
@@ -46,6 +49,14 @@ import com.wingedsheep.sdk.scripting.references.Player
  *    "precombat equip the attacker, postcombat move it onto a blocker" line. That reallocation is
  *    small (it costs the old host what it gives the new one) and the log shows the noisy version
  *    far more often than the deliberate one.
+ *  - **Moving an Equipment before combat onto no better attacker.** Dúnedain Blade shuffled from
+ *    Shire Shirriff to Mushroom Watchdogs and back on turns 22 and 24 of the 2026-10-11 BLB-vs-LTR
+ *    log, and nothing attacked either time. Before our combat, the only thing a move buys that the
+ *    same move after combat would not is a better attack, so a move is floored unless the new
+ *    holder can attack this turn and either the current holder cannot, or the new holder is
+ *    evasive in a way the current holder is not. Any blocking payoff is still on offer in the
+ *    postcombat main phase, where the leaf score keeps pricing it. Equipping an unattached
+ *    Equipment is never touched here.
  *
  * Like [DeadSearch], every shape declines unless the cost is plain resources (mana, tap, life), so
  * a cost that is a payoff of its own (a sacrifice, a discard) is never second-guessed here.
@@ -65,7 +76,8 @@ object EmptyPayoff {
         if (leaves.isEmpty()) return false
         if (leaves.all { it is AttachEquipmentEffect }) {
             return attachesToCurrentHost(state, activation) ||
-                movesAgainAfterCombat(state, playerId, ability, activation)
+                movesAgainAfterCombat(state, playerId, ability, activation) ||
+                movesBeforeCombatOntoNoBetterAttacker(state, playerId, ability, activation)
         }
         return predicates != null && gathersNothing(state, playerId, leaves, activation, predicates)
     }
@@ -93,6 +105,38 @@ object EmptyPayoff {
         if (source.get<AttachedToComponent>() == null) return false
         return source.get<AbilityActivatedThisTurnComponent>()?.anyActivated == true
     }
+
+    /**
+     * An equip, in our own precombat main phase, that moves an already-attached Equipment onto a
+     * creature that is no better an attacker than its current holder: the new holder cannot attack
+     * this turn, or the current holder can attack too and the new one adds no evasion.
+     */
+    private fun movesBeforeCombatOntoNoBetterAttacker(
+        state: GameState,
+        playerId: EntityId,
+        ability: ActivatedAbility,
+        activation: ActivateAbility,
+    ): Boolean {
+        if (!ability.isEquipAbility) return false
+        if (state.activePlayerId != playerId || state.step != Step.PRECOMBAT_MAIN) return false
+        val target = (activation.targets.singleOrNull() as? ChosenTarget.Permanent)?.entityId ?: return false
+        val host = state.getEntity(activation.sourceId)?.get<AttachedToComponent>()?.targetId ?: return false
+        if (host == target) return false
+        val projected = state.projectedState
+        // A holder we no longer control (or that is gone) makes this a recovery, not a shuffle.
+        if (projected.getController(host) != playerId || !projected.isCreature(host)) return false
+        val attackers = CombatMath.getCreaturesThatCanAttack(state, projected, playerId).toSet()
+        if (target !in attackers) return true
+        if (host !in attackers) return false
+        return EVASION.none { projected.hasKeyword(target, it) && !projected.hasKeyword(host, it) } &&
+            !(projected.hasKeyword(target, AbilityFlag.CANT_BE_BLOCKED) &&
+                !projected.hasKeyword(host, AbilityFlag.CANT_BE_BLOCKED))
+    }
+
+    private val EVASION = listOf(
+        Keyword.FLYING, Keyword.MENACE, Keyword.TRAMPLE, Keyword.SHADOW,
+        Keyword.HORSEMANSHIP, Keyword.INTIMIDATE, Keyword.FEAR,
+    )
 
     /**
      * Every leaf is a battlefield gather or a per-member effect over a collection one of them

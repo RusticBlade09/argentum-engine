@@ -85,7 +85,8 @@ class HoldPolicy(
     /**
      * [AiProfile.refuseEmptyPayoffs][com.wingedsheep.ai.engine.AiProfile.refuseEmptyPayoffs]
      * — refuse an activation whose whole payoff lands on nothing: a group effect over an empty
-     * group, an attach to the current host, or another Equipment move after combat. See
+     * group, an attach to the current host, another Equipment move after combat, or a move before
+     * combat onto no better an attacker. See
      * [EmptyPayoff], which is where the whole idea lives.
      */
     private val refuseEmptyPayoffs: Boolean = false,
