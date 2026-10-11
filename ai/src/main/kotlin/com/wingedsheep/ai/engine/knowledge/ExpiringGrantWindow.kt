@@ -6,6 +6,7 @@ import com.wingedsheep.engine.mechanics.layers.ProjectedState
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.battlefield.TappedComponent
 import com.wingedsheep.engine.state.components.combat.AttackingComponent
+import com.wingedsheep.engine.state.components.combat.BlockedComponent
 import com.wingedsheep.engine.state.components.combat.BlockingComponent
 import com.wingedsheep.engine.state.components.identity.ControllerComponent
 import com.wingedsheep.engine.state.components.stack.ActivatedAbilityOnStackComponent
@@ -228,7 +229,9 @@ internal object ExpiringGrantWindow {
                                 (pendingOnStack && payoff.target == EffectTarget.Self)
                             )
                     }
-                    fresh.any { canStillFight(state, projected, playerId, it, activation.sourceId, sourceTaps) }
+                    fresh.any {
+                        canStillFight(state, projected, playerId, it, activation.sourceId, sourceTaps, keyword)
+                    }
                 }
                 PayoffKind.LAND -> affected.any { canStillMatter(state, projected, playerId, it) }
             }
@@ -258,6 +261,14 @@ internal object ExpiringGrantWindow {
      * The combat damage step and everything after it is never a fight: priority there comes after
      * the damage (CR 510.2–510.3). An additional combat phase later in the turn is a shape this
      * does not try to see.
+     *
+     * A [keyword] in [MATTERS_ONLY_WHEN_BLOCKED] narrows the attacking side: first strike,
+     * deathtouch, indestructible and trample change nothing about an attacker no one blocks. So
+     * before blocks it must have a blocker to fear — an untapped opposing creature that can block
+     * it — and once blockers are declared it must actually be blocked. A pump, double strike and
+     * lifelink keep the wider reading: each still changes the damage an unblocked attacker deals.
+     * Off a live game: Leonardo, Leader in Blue buying first strike in the declare-attackers step
+     * with every opposing creature tapped, with the mana for a removal spell.
      */
     private fun canStillFight(
         state: GameState,
@@ -266,15 +277,21 @@ internal object ExpiringGrantWindow {
         creature: EntityId,
         sourceId: EntityId,
         sourceTaps: Boolean,
+        keyword: String? = null,
     ): Boolean {
         if (!projected.isCreature(creature)) return false
         val entity = state.getEntity(creature) ?: return false
         val tapsAway = sourceTaps && creature == sourceId
         return if (state.isActiveTurnFor(playerId)) {
+            val blockedOnly = keyword in MATTERS_ONLY_WHEN_BLOCKED
             when (state.step) {
                 in UNTIL_ATTACKERS_DECLARED -> !tapsAway &&
-                    creature in CombatMath.getCreaturesThatCanAttack(state, projected, playerId)
-                in FIGHT_STILL_AHEAD -> entity.has<AttackingComponent>()
+                    creature in CombatMath.getCreaturesThatCanAttack(state, projected, playerId) &&
+                    (!blockedOnly || couldBeBlocked(state, projected, playerId, creature))
+                Step.DECLARE_ATTACKERS -> entity.has<AttackingComponent>() &&
+                    (!blockedOnly || couldBeBlocked(state, projected, playerId, creature))
+                in FIGHT_STILL_AHEAD -> entity.has<AttackingComponent>() &&
+                    (!blockedOnly || entity.has<BlockedComponent>())
                 else -> false
             }
         } else {
@@ -285,6 +302,21 @@ internal object ExpiringGrantWindow {
                 in FIGHT_STILL_AHEAD -> entity.has<BlockingComponent>()
                 else -> false
             }
+        }
+    }
+
+    /**
+     * Whether any untapped creature of an opponent's can block [attacker] — the evasion check
+     * [CombatMath.canBeBlockedBy] makes, which is a heuristic, not the full blocking rules.
+     */
+    private fun couldBeBlocked(
+        state: GameState,
+        projected: ProjectedState,
+        playerId: EntityId,
+        attacker: EntityId,
+    ): Boolean = state.getOpponents(playerId).any { opponent ->
+        CombatMath.getOpponentUntappedCreatures(state, projected, opponent).any { blocker ->
+            CombatMath.canBeBlockedBy(state, projected, attacker, blocker)
         }
     }
 
@@ -492,8 +524,12 @@ internal object ExpiringGrantWindow {
      *     that grants indestructible until end of turn is exactly the thing you activate in
      *     response to one — a floor that deferred past it would be actively losing the board.
      *
-     * Our own spells and abilities are excluded throughout: an ETB trigger of ours resolving is not
-     * a deadline, and treating it as one would release the floor on most turns for no reason.
+     * Our own spells and abilities are excluded throughout, and that test runs **first**: an ETB
+     * trigger of ours resolving is not a deadline, and treating it as one would release the floor on
+     * most turns for no reason. Clause 1 used to run ahead of it, so our own spell aimed at our own
+     * creature read as a threat — a Rocky Rebuke of ours targeting our Avatar Kyoshi released the
+     * floor, and the AI tapped Deserter's Disciple to make a creature that was not attacking
+     * unblockable, after attackers were declared.
      *
      * The position that motivated this file has an opposing *creature spell* on the stack — read,
      * not ours, and carrying none of [THREATENS_A_BOARD] — so the floor correctly stands there.
@@ -508,14 +544,14 @@ internal object ExpiringGrantWindow {
         return state.stack.any { stackId ->
             val container = state.getEntity(stackId) ?: return@any false
 
+            // Ours: never a deadline, whatever it points at. Read off the base state — the
+            // projected-state rule is about battlefield permanents, and this is the stack.
+            if (container.get<ControllerComponent>()?.playerId == playerId) return@any false
+
             val aimedAtUs = container.get<TargetsComponent>()?.targets.orEmpty().any { target ->
                 target is ChosenTarget.Permanent && projected.getController(target.entityId) == playerId
             }
             if (aimedAtUs) return@any true
-
-            // Ours, and pointed at nothing of ours: not a deadline. Read off the base state —
-            // the projected-state rule is about battlefield permanents, and this is the stack.
-            if (container.get<ControllerComponent>()?.playerId == playerId) return@any false
 
             val intent = intents.forStackObject(container) ?: return@any true
             intent.tags.any { it in THREATENS_A_BOARD }
@@ -554,6 +590,14 @@ internal object ExpiringGrantWindow {
     private val FIGHT_STILL_AHEAD = setOf(
         Step.DECLARE_ATTACKERS, Step.DECLARE_BLOCKERS, Step.FIRST_STRIKE_COMBAT_DAMAGE,
     )
+
+    /**
+     * Keywords that change a fight only when the attacker is blocked — see [canStillFight]. Double
+     * strike and lifelink are left out on purpose: both still matter against an empty board.
+     */
+    private val MATTERS_ONLY_WHEN_BLOCKED = setOf(
+        Keyword.FIRST_STRIKE, Keyword.DEATHTOUCH, Keyword.INDESTRUCTIBLE, Keyword.TRAMPLE,
+    ).map { it.name }.toSet()
 
     /** The keywords a land-type change can open a path for — see [canStillMatter]. */
     private val LANDWALK_KEYWORDS = setOf(
