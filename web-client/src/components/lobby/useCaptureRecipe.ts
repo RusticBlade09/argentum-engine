@@ -17,7 +17,8 @@
 import { useCallback } from 'react'
 import type { LobbyState } from '@/store/slices/types'
 import type { QuickGameLobbyStateMessage } from '@/types'
-import { cubeCardNames } from '@/store/cubeLibrary'
+import type { SharedCube } from '@/api/account'
+import { recipeCubeOf } from '@/components/cube/cubeModel'
 import { useUnifiedCubes } from '@/store/useUnifiedCubes'
 import { recipeFromLobby, type LobbyRecipe, type RecipeCube, type RecipeDeck } from './lobbyRecipe'
 import type { UnifiedLobbyView } from './lobbyViewModel'
@@ -77,7 +78,7 @@ function deckRefFor(
 }
 
 function cubeByName(
-  cubes: ReadonlyArray<{ name: string; cards: readonly { name: string; count: number }[]; basicLandSetCode: string; packSize: number }>,
+  cubes: readonly SharedCube[],
   cubeName: string | null,
   /** Pool Play is a lobby setting, not a property of the cube — so it comes from the lobby. */
   poolPlay: boolean,
@@ -85,11 +86,5 @@ function cubeByName(
   if (!cubeName) return undefined
   const match = cubes.find((c) => c.name.trim().toLowerCase() === cubeName.trim().toLowerCase())
   if (!match) return undefined
-  return {
-    name: match.name,
-    cards: cubeCardNames(match.cards),
-    basicLandSetCode: match.basicLandSetCode,
-    packSize: match.packSize,
-    poolPlay,
-  }
+  return recipeCubeOf(match, poolPlay)
 }

@@ -38,6 +38,8 @@ import type {
   AttackMode,
   AvailableSet,
   CommanderPreset,
+  CubeBoosterStyle,
+  CubeRarity,
   DeckFormat,
   GameRules,
   QuickGameLobbyStateMessage,
@@ -104,6 +106,10 @@ export interface RecipeCube {
   readonly basicLandSetCode: string
   readonly packSize: number
   readonly poolPlay: boolean
+  /** How the cube becomes packs. Absent on recipes saved before booster styles = `SHUFFLED`. */
+  readonly boosterStyle?: CubeBoosterStyle
+  /** Card name → explicit rarity, for the cube's overridden entries. */
+  readonly rarities?: Readonly<Record<string, CubeRarity>>
 }
 
 /** What this seat brings. A reference, never a card list — see the module comment. */

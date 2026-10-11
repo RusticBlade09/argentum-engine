@@ -404,6 +404,12 @@ class TournamentLobby(
     val packSize: Int get() = cube?.packSize ?: 0
 
     /**
+     * A cube that prints its packs by rarity like a real set ([CubeBoosterStyle.printsPacks]) rather
+     * than dealing itself out. Nothing is consumed, so it has no capacity limit and no dealer.
+     */
+    val isCubeBoosters: Boolean get() = cube?.boosterStyle?.printsPacks == true
+
+    /**
      * Cube Pool Play: instead of dealing packs, every player deckbuilds from the *entire* cube at
      * once with copies unlimited (up to the normal 4-of cap). Because nothing is dealt there is no
      * contention between players and no capacity constraint — a 100-card cube is a fine Pool Play
@@ -447,9 +453,9 @@ class TournamentLobby(
     fun cubeCapacityError(): String? {
         val resolvedCube = cube ?: return null
         if (format == TournamentFormat.PREMADE_DECKS) return null
-        // Pool Play hands every player the whole cube instead of dealing from it, so no amount of
-        // players or packs can exhaust it.
-        if (isCubePoolPlay) return null
+        // Pool Play hands every player the whole cube instead of dealing from it, and a booster-style
+        // cube prints its packs like a set does, so no amount of players or packs can exhaust either.
+        if (isCubePoolPlay || isCubeBoosters) return null
         val packsNeeded = when (format) {
             TournamentFormat.SEALED, TournamentFormat.COMMANDER_SEALED,
             TournamentFormat.DRAFT, TournamentFormat.COMMANDER_DRAFT -> players.size * boosterCount
@@ -477,14 +483,20 @@ class TournamentLobby(
     private fun prepareCubeDealer(): Boolean {
         val resolvedCube = cube ?: return true
         if (cubeCapacityError() != null) return false
-        // Pool Play deals nothing — every player gets the whole cube (see [startDeckBuilding]).
-        if (isCubePoolPlay) return true
+        // Pool Play deals nothing — every player gets the whole cube (see [startDeckBuilding]) — and a
+        // booster-style cube prints each pack on demand in [packsFor].
+        if (isCubePoolPlay || isCubeBoosters) return true
         cubeDealer = CubeDealer(cubeCardsAfterBans(), resolvedCube.packSize, System.nanoTime())
         return true
     }
 
     private fun packsFor(count: Int): List<List<CardDefinition>> {
         cubeDealer?.let { return it.deal(count) }
+        if (isCubeBoosters) {
+            val generator = requireNotNull(cubeBoosterGenerator) { "Booster-style cube has no generator" }
+            val strategy = strategyOverrideForFormat()
+            return List(count) { generator.generateBooster(CubeSetConfig.SET_CODE, strategy, bannedCardNames) }
+        }
 
         val packGenerator = setPackGenerator()
         val strategy = strategyOverrideForFormat()
@@ -2003,7 +2015,8 @@ class TournamentLobby(
                 bannedCardNames = bannedCardNames.sorted(),
                 cubeName = cube?.name,
                 cubeCardCount = cube?.cards?.size,
-                packSize = cube?.packSize,
+                packSize = cube?.cardsPerPack,
+                cubeBoosterStyle = cube?.boosterStyle?.name,
                 cubePoolPlay = cubePoolPlay,
                 aiAssistEnabled = aiAssistEnabled,
                 gameMode = gameMode.name,

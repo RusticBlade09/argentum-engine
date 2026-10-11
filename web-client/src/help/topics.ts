@@ -421,19 +421,39 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'modes',
     title: 'Cards: Cube',
     summary:
-      'A cube is your own hand-picked card pool used instead of real sets. Any limited format can run on it — Sealed, Booster, Winston or Grid draft — and packs are dealt from the cube instead of from boosters.',
+      'A cube is your own hand-picked card pool used instead of real sets. Any limited format can run on it — Sealed, Booster, Winston or Grid draft. A shuffled cube deals its packs; a cube set to Play or Draft Boosters prints them by rarity, like a real set.',
     body: [
       { kind: 'p', text: 'A cube replaces the set picker: pick a cube in the lobby and the Sets, booster-mix and per-set pack controls disappear, because there are no sets involved any more. Everything else about the format is unchanged — the same pick timers, the same deck building, the same bracket.' },
-      { kind: 'p', text: 'Packs are dealt without replacement across the whole event. No card ever appears twice — not in two of your packs, and not in two different players’ pools. That is what makes a cube a curated pool rather than a set: every card in it is a deliberate choice, and each one shows up exactly as often as you put it in.' },
+      { kind: 'p', text: 'A shuffled cube — the classic kind — deals its packs without replacement across the whole event. No card ever appears twice — not in two of your packs, and not in two different players’ pools. That is what makes a cube a curated pool rather than a set: every card in it is a deliberate choice, and each one shows up exactly as often as you put it in.' },
+      { kind: 'p', text: 'A cube can instead open as boosters — see “Set cubes and booster packs”. Then packs are printed by rarity like a real set’s, and the capacity rule below doesn’t apply.' },
       { kind: 'ul', items: [
-        'Pack size is part of the cube (15 by default, the community standard).',
+        'Pack size is part of a shuffled cube (15 by default, the community standard).',
         'Capacity is the one new constraint: players × packs × pack size must fit inside the cube. A 360-card cube seats 8 players at 3 packs of 15 exactly, and the lobby shows the sum live.',
         'Basic lands aren’t part of a cube — it names a set to take their art from, and the deckbuilder gives you unlimited basics as usual.',
         'The host’s ban list still applies, and banned cards come off the cube before capacity is counted.',
       ] },
       { kind: 'p', text: 'Cube Pool Play is the exception to all the dealing: it skips packs entirely. See its own topic.' },
     ],
-    related: ['cube-building', 'cube-pool-play', 'cards-sealed', 'cards-draft'],
+    related: ['cube-building', 'cube-boosters', 'cube-sharing', 'cube-pool-play', 'cards-sealed', 'cards-draft'],
+  },
+  {
+    id: 'cube-boosters',
+    section: 'modes',
+    title: 'Set cubes and booster packs',
+    summary:
+      'Set a cube’s Packs to Play Boosters or Draft Boosters and its packs are printed by rarity, the way a real set’s are: commons, uncommons, a rare that is a mythic one pack in eight. Ideal for a set extended with extra cards.',
+    body: [
+      { kind: 'p', text: 'Every card in a cube has a rarity. Cards added with “Add a set” keep the rarity that set printed them at; any other card uses its own, and you can change any card’s rarity by clicking its chip in the editor. A filled chip is a rarity you set for this cube; an outlined one is the card’s own.' },
+      { kind: 'ul', items: [
+        'Play Boosters: 7 commons, 3 uncommons, a rare or mythic, and 2 wildcards of any rarity — 13 cards a pack.',
+        'Draft Boosters: 10 commons, 3 uncommons, and a rare or mythic — 14 cards a pack.',
+        'No card repeats inside a pack, but packs are printed independently, so two players can open the same rare. There is no capacity limit — any cube can seat a full table.',
+        'Running 2 copies of a card makes it twice as likely to show up in its rarity slot.',
+        'A full pack needs enough different commons, uncommons and rares to fill its slots; the editor’s pack strip shows any slot the cube can’t fill.',
+      ] },
+      { kind: 'p', text: 'Example — an extended Bloomburrow: start a new cube on the Cubes page, Add a set → Bloomburrow, then Add a set → Bloomburrow Commander with Reprints turned off, so only its new Bloomburrow cards come in. Set Packs to Play Boosters, save, and draft it like the real set.' },
+    ],
+    related: ['cards-cube', 'cube-building', 'cube-sharing', 'cards-draft'],
   },
   {
     id: 'cube-pool-play',
@@ -898,18 +918,34 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'limited',
     title: 'Building a cube',
     summary:
-      'Build a cube from the lobby’s Cube panel: paste a list or search for cards, set the pack size, and save it. Cubes live alongside your decks — in this browser as a guest, in your account when signed in.',
+      'Build cubes on the Cubes page (Cubes in the top bar), or from the lobby’s Cube panel: add a whole set, paste a list or search for cards, choose how it becomes packs, and save it. Cubes live alongside your decks — in this browser as a guest, in your account when signed in.',
     body: [
-      { kind: 'p', text: 'A cube is a list of card names with counts, so it isn’t tied to any set or printing. Two ways to fill one:' },
+      { kind: 'p', text: 'A cube is a list of card names with counts, so it isn’t tied to any set or printing. Three ways to fill one:' },
       { kind: 'ul', items: [
-        'Paste a list — plain text, MTG Arena or Moxfield format, one “count name” per line. The same parser the deckbuilder’s import uses.',
+        'Add a set — every implemented card of a set at once, each at the rarity that set printed it at. Toggles choose its booster cards, cards from its other products, and whether to keep reprints.',
+        'Paste a list — plain text, MTG Arena or Moxfield format, one “count name” per line. The same parser the deckbuilder’s import uses, and “Copy list” writes the same format back out.',
         'Search and add — the same query language as the deckbuilder search, so “c:red t:creature cmc<=3” works.',
       ] },
+      { kind: 'p', text: 'Packs decides how the cube is played: a shuffled cube is dealt card by card, while Play Boosters and Draft Boosters print packs by rarity like a real set. The list filters by name and groups by type, colour or rarity, so a set-sized cube stays easy to work through.' },
       { kind: 'p', text: 'Cubes are usually singleton (one of each), but counts are yours to set — the editor lets any card run as many copies as you want, and each copy is a separate physical card when packs are dealt.' },
       { kind: 'p', text: 'A cube whose names are all implemented is playable; one with cards the engine doesn’t have yet is not, and the editor says so in red with a one-click “drop the unimplemented cards”. You can still save a cube in that state — sets keep landing, so a cube naming a card that arrives next month is worth keeping — but a lobby won’t accept it until it resolves cleanly.' },
-      { kind: 'p', text: 'The editor also shows the colour spread and mana curve as you go, which are what a cube is usually balanced on.' },
+      { kind: 'p', text: 'The editor also shows the colour spread, mana curve and rarity spread as you go, which are what a cube is usually balanced on.' },
+      { kind: 'p', text: 'Each cube on the Cubes page has Play, which opens a lobby with the cube already loaded — a booster draft or sealed, with friends or against AI.' },
     ],
-    related: ['cards-cube', 'cube-pool-play', 'where-decks-live', 'search-syntax', 'deck-import-export'],
+    related: ['cards-cube', 'cube-boosters', 'cube-sharing', 'cube-pool-play', 'where-decks-live', 'search-syntax', 'deck-import-export'],
+  },
+  {
+    id: 'cube-sharing',
+    section: 'limited',
+    title: 'Sharing a cube',
+    summary:
+      'Share in the cube editor or on a cube’s tile creates a link anyone can open to view the cube, save a copy and play it. Links need an account; anyone can copy a cube as a text list.',
+    body: [
+      { kind: 'p', text: 'A share link always shows your latest saved version, so a friend who opens it next week sees your edits. Turn sharing off from the same dialog and the link stops working; turning it on again makes a new link.' },
+      { kind: 'p', text: 'Someone opening the link can save a copy into their own cubes — no account needed, it goes into their browser — and their copy is theirs from then on: it doesn’t change when yours does.' },
+      { kind: 'p', text: 'Links need the cube saved in your account, because the link has to open on someone else’s machine. As a guest, “Copy list” gives you the cube as text that anyone can paste into their own cube editor.' },
+    ],
+    related: ['cube-building', 'cards-cube', 'cube-boosters', 'where-decks-live'],
   },
 
   // ── Playing a game ─────────────────────────────────────────────────────

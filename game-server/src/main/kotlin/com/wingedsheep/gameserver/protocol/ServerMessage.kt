@@ -544,7 +544,10 @@ sealed interface ServerMessage {
         /** Per-lobby cube summary. Null fields mean catalogued sets are the pack source. */
         val cubeName: String? = null,
         val cubeCardCount: Int? = null,
+        /** Cards per pack — the cube's own size when shuffled, the booster layout's otherwise. */
         val packSize: Int? = null,
+        /** `CubeBoosterStyle` name of the lobby's cube; null without one. */
+        val cubeBoosterStyle: String? = null,
         /**
          * Cube Pool Play: no draft, every player deckbuilds from the whole cube with copies limited
          * only by the 4-of cap. Cube Sealed lobbies only; ignored (and hidden) elsewhere.

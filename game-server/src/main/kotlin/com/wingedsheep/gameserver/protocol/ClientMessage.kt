@@ -339,6 +339,16 @@ sealed interface ClientMessage {
         val packSize: Int? = null,
         val cubeBasicLandSetCode: String? = null,
         /**
+         * How the cube becomes packs — a `CubeBoosterStyle` name. Read only alongside [cubeCards];
+         * null means a classic shuffled cube.
+         */
+        val cubeBoosterStyle: String? = null,
+        /**
+         * Card name → rarity (`COMMON`…`MYTHIC`) for cube cards whose rarity in this cube differs from
+         * the card's own. Read only alongside [cubeCards]; what a booster-style cube prints them at.
+         */
+        val cubeRarities: Map<String, String>? = null,
+        /**
          * Cube Pool Play: skip the draft entirely and let every player deckbuild from the whole cube
          * with copies unlimited. Only honoured on a cube Sealed lobby. Null = unchanged.
          */

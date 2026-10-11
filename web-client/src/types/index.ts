@@ -239,6 +239,8 @@ export type {
   GameRules,
   LobbyPlayerInfo,
   LobbySettings,
+  CubeRarity,
+  CubeBoosterStyle,
   LobbyCreatedMessage,
   LobbyUpdateMessage,
   LobbyStoppedMessage,

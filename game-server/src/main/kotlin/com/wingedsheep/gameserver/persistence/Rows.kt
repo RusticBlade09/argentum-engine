@@ -72,6 +72,8 @@ data class CubeRow(
     val data: String,
     val createdAt: Instant = Instant.now(),
     val updatedAt: Instant = Instant.now(),
+    /** Unguessable public link code; null while the cube is private. */
+    val shareCode: String? = null,
 )
 
 @Table("match_results")

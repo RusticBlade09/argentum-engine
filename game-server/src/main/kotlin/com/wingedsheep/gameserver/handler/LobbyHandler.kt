@@ -25,12 +25,14 @@ import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.gameserver.deck.DeckValidator
 import com.wingedsheep.gameserver.deck.SideboardSanitizer
 import com.wingedsheep.gameserver.deck.EasterEggDeckInjector
+import com.wingedsheep.gameserver.cube.CubeBoosterStyle
 import com.wingedsheep.gameserver.cube.CubeCardEntry
 import com.wingedsheep.gameserver.cube.CubeList
 import com.wingedsheep.gameserver.cube.CubeResolution
 import com.wingedsheep.gameserver.cube.CubeResolver
 import com.wingedsheep.sdk.model.Deck
 import com.wingedsheep.sdk.model.EntityId
+import com.wingedsheep.sdk.model.Rarity
 import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -2430,12 +2432,28 @@ class LobbyHandler(
                     sender.sendError(session, ErrorCode.INVALID_ACTION, "Invalid cube basic-land set code: $basicLandSetCode")
                     return
                 }
+                val boosterStyle = CubeBoosterStyle.parse(message.cubeBoosterStyle)
+                if (boosterStyle == null) {
+                    sender.sendError(session, ErrorCode.INVALID_ACTION, "Unknown cube booster style: ${message.cubeBoosterStyle}")
+                    return
+                }
+                val rarities = message.cubeRarities.orEmpty().mapValues { (cardName, raw) ->
+                    Rarity.entries.firstOrNull { it.name == raw.trim().uppercase() } ?: run {
+                        sender.sendError(session, ErrorCode.INVALID_ACTION, "Unknown rarity for $cardName: $raw")
+                        return
+                    }
+                }
+                // The wire carries one name per physical card; fold them back into counted entries
+                // so each card's rarity is stamped once.
                 val cubeList = runCatching {
                     CubeList(
                         name = name,
-                        cards = names.map { CubeCardEntry(it) },
+                        cards = names.groupingBy { it }.eachCount().map { (cardName, count) ->
+                            CubeCardEntry(cardName, count, rarity = rarities[cardName])
+                        },
                         basicLandSetCode = basicLandSetCode,
                         packSize = message.packSize ?: CubeList.DEFAULT_PACK_SIZE,
+                        boosterStyle = boosterStyle,
                     )
                 }.getOrElse {
                     sender.sendError(session, ErrorCode.INVALID_ACTION, it.message ?: "Invalid cube settings")

@@ -37,6 +37,10 @@ data class PersistentTournamentLobby(
     val cubeBasicLandSetCode: String? = null,
     val cubePackSize: Int? = null,
     val cubeDealerRemainingCardNames: List<String> = emptyList(),
+    /** `CubeBoosterStyle` name; null for lobbies persisted before booster-style cubes (= shuffled). */
+    val cubeBoosterStyle: String? = null,
+    /** Each cube card's rarity *in the cube*, which can differ from the card's own. */
+    val cubeCardRarities: Map<String, String> = emptyMap(),
     /** Cube Pool Play (no draft, whole cube as everyone's pool). Meaningless without a cube. */
     val cubePoolPlay: Boolean = false,
     val bannedCardNames: Set<String> = emptySet(),

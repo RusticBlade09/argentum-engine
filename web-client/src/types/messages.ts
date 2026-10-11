@@ -1527,6 +1527,16 @@ export interface AvailableSet {
   readonly products?: readonly { readonly id: string; readonly cardCount: number }[]
 }
 
+/** The four booster rarities a cube card can be printed at. */
+export type CubeRarity = 'COMMON' | 'UNCOMMON' | 'RARE' | 'MYTHIC'
+
+/**
+ * How a cube becomes packs. `SHUFFLED` is the classic cube: the whole list is shuffled once and dealt,
+ * so every physical card appears at most once. The two booster styles print packs the way a real set
+ * does — by rarity slot, with replacement across packs — so a cube can be drafted like a retail set.
+ */
+export type CubeBoosterStyle = 'SHUFFLED' | 'PLAY_BOOSTER' | 'DRAFT_BOOSTER'
+
 export interface LobbySettings {
   readonly useJumpstart?: boolean
   readonly jumpstartEligible?: boolean
@@ -1573,6 +1583,8 @@ export interface LobbySettings {
    */
   readonly cubePoolPlay?: boolean
   readonly packSize?: number | null
+  /** How the lobby's cube becomes packs. Null when catalogued sets are the pack source. */
+  readonly cubeBoosterStyle?: CubeBoosterStyle | null
   /** Master switch for in-app AI assistance (Suggest Pick / Auto-build). */
   readonly aiAssistEnabled: boolean
   /** Lobby mode axis: bracket of 2-player matches vs one multiplayer Free-for-All game. */
@@ -2639,6 +2651,10 @@ export interface UpdateLobbySettingsMessage {
   readonly cubeBasicLandSetCode?: string
   /** Cube Sealed only: skip the draft and let everyone build from the whole cube. */
   readonly cubePoolPlay?: boolean
+  /** How the cube becomes packs; sent with `cubeCards`. Omitted = `SHUFFLED`. */
+  readonly cubeBoosterStyle?: CubeBoosterStyle
+  /** Card name → explicit rarity, for the cube's overridden entries only; sent with `cubeCards`. */
+  readonly cubeRarities?: Readonly<Record<string, CubeRarity>>
   /** Master switch for in-app AI assistance (Suggest Pick / Auto-build). Omit to leave unchanged. */
   readonly aiAssistEnabled?: boolean
   /** Lobby mode axis ('TOURNAMENT' / 'FREE_FOR_ALL'). Omit to leave unchanged. */
@@ -2900,6 +2916,8 @@ export function createUpdateLobbySettingsMessage(
     packSize?: number
     cubeBasicLandSetCode?: string
     cubePoolPlay?: boolean
+    cubeBoosterStyle?: CubeBoosterStyle
+    cubeRarities?: Readonly<Record<string, CubeRarity>>
     aiAssistEnabled?: boolean
     gameMode?: LobbyGameMode
     attackMode?: AttackMode

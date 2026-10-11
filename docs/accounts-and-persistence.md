@@ -238,7 +238,7 @@ Flyway migration `V12__cubes.sql` adds saved cubes — deliberately the `decks` 
 
 | Table / columns | Purpose |
 |-----------------|---------|
-| `cubes` | saved cube: denormalized `name` / `card_count` + full `SharedCube` JSON in `data` (name, card names + counts, basic-land art set, pack size), `user_id` → `users(id)` cascade, `idx_cubes_user`. `card_count` is total *physical* cards (sum of entry counts), which is what the lobby's capacity rule is measured against. |
+| `cubes` | saved cube: denormalized `name` / `card_count` + full `SharedCube` JSON in `data` (name, card names + counts, basic-land art set, pack size), `user_id` → `users(id)` cascade, `idx_cubes_user`. `card_count` is total *physical* cards (sum of entry counts), which is what the lobby's capacity rule is measured against. `V18__cube_share_codes.sql` adds a nullable, uniquely indexed `share_code` — the capability behind a public cube link. |
 
 ## Auth flow (magic link)
 
@@ -299,6 +299,9 @@ Every admin endpoint (`/api/admin/**` and `/api/stats/admin/**`) accepts either 
 | POST | `/api/account/cubes` | body = `SharedCube` JSON → created cube |
 | PUT | `/api/account/cubes/{id}` | replace |
 | DELETE | `/api/account/cubes/{id}` | |
+| POST | `/api/account/cubes/{id}/share` | mint (or return the existing) public link code → `{ shareCode }` |
+| DELETE | `/api/account/cubes/{id}/share` | revoke the link; old links 404 |
+| GET | `/api/cubes/shared/{code}` | **public** — the owner's latest saved cube: `{ shareCode, name, cardCount, updatedAt, ownerName, cube }` |
 
 > `/api/account/decks` is intentionally separate from the existing stateless `/api/decks`
 > (validation, formats, examples).

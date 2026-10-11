@@ -62,7 +62,7 @@ export interface PendingLobbyIntent {
 export type PendingCubeUpdate = Required<
   Pick<UpdateLobbySettingsMessage,
     'cubeCards' | 'cubeName' | 'cubeBasicLandSetCode' | 'packSize' | 'cubePoolPlay'>
->
+> & Pick<UpdateLobbySettingsMessage, 'cubeBoosterStyle' | 'cubeRarities'>
 
 /** The omnibus bag, minus anything the create message already carried. */
 export type PendingSettingsUpdate = Omit<UpdateLobbySettingsMessage, 'type'>

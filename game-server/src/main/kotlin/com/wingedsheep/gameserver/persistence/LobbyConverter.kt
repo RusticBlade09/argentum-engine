@@ -6,6 +6,7 @@ import com.wingedsheep.gameserver.lobby.LobbyPlayerState
 import com.wingedsheep.gameserver.lobby.LobbyState
 import com.wingedsheep.gameserver.lobby.TournamentFormat
 import com.wingedsheep.gameserver.lobby.TournamentLobby
+import com.wingedsheep.gameserver.cube.CubeBoosterStyle
 import com.wingedsheep.gameserver.cube.ResolvedCube
 import com.wingedsheep.gameserver.persistence.dto.*
 import com.wingedsheep.engine.limited.BoosterGenerator
@@ -19,6 +20,7 @@ import com.wingedsheep.gameserver.tournament.TournamentManager
 import com.wingedsheep.gameserver.tournament.TournamentMatch
 import com.wingedsheep.gameserver.tournament.TournamentRound
 import com.wingedsheep.sdk.model.EntityId
+import com.wingedsheep.sdk.model.Rarity
 
 // ============================================================================
 // TournamentLobby Conversion
@@ -64,6 +66,8 @@ fun TournamentLobby.toPersistent(): PersistentTournamentLobby {
         cubeBasicLandSetCode = cube?.basicLandSetCode,
         cubePackSize = cube?.packSize,
         cubeDealerRemainingCardNames = cubeDealerRemainingCards().map { it.name },
+        cubeBoosterStyle = cube?.boosterStyle?.name,
+        cubeCardRarities = cube?.rarityByName()?.mapValues { (_, rarity) -> rarity.name }.orEmpty(),
         cubePoolPlay = cubePoolPlay,
         bannedCardNames = bannedCardNames,
         includedSetProducts = includedSetProducts,
@@ -143,20 +147,29 @@ fun restoreTournamentLobby(
         persistent.cubeBasicLandSetCode != null &&
         persistent.cubePackSize != null
     ) {
-        val cubeCards = persistent.cubeCardNames.mapNotNull(cardRegistry::getCard)
+        // Re-stamp each card as the resolver did: its cube rarity, and booster-eligible.
+        val cubeCard = { name: String ->
+            cardRegistry.getCard(name)?.let { card ->
+                val rarity = persistent.cubeCardRarities[name]
+                    ?.let { raw -> Rarity.entries.firstOrNull { it.name == raw } }
+                    ?: card.metadata.rarity
+                card.copy(metadata = card.metadata.copy(rarity = rarity, inBooster = true))
+            }
+        }
         lobby.configureCube(
             ResolvedCube(
                 name = persistent.cubeName,
-                cards = cubeCards,
+                cards = persistent.cubeCardNames.mapNotNull(cubeCard),
                 basicLandSetCode = persistent.cubeBasicLandSetCode,
                 packSize = persistent.cubePackSize,
+                boosterStyle = CubeBoosterStyle.parse(persistent.cubeBoosterStyle) ?: CubeBoosterStyle.SHUFFLED,
             )
         )
         // configureCube() clears the flag (it is cube-scoped), so restore it afterwards.
         lobby.cubePoolPlay = persistent.cubePoolPlay
         if (persistent.cubeDealerRemainingCardNames.isNotEmpty()) {
             lobby.restoreCubeDealer(
-                persistent.cubeDealerRemainingCardNames.mapNotNull(cardRegistry::getCard)
+                persistent.cubeDealerRemainingCardNames.mapNotNull(cubeCard)
             )
         }
     }

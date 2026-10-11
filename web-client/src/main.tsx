@@ -33,6 +33,12 @@ const LlmTournamentPage = lazy(() =>
 const AiSandboxPage = lazy(() =>
   import('./components/aiSandbox/AiSandboxPage').then(({ AiSandboxPage }) => ({ default: AiSandboxPage }))
 )
+const CubesPage = lazy(() =>
+  import('./pages/CubesPage').then(({ CubesPage }) => ({ default: CubesPage }))
+)
+const SharedCubePage = lazy(() =>
+  import('./pages/SharedCubePage').then(({ SharedCubePage }) => ({ default: SharedCubePage }))
+)
 const SetCompletionPage = lazy(() =>
   import('./components/setCompletion/SetCompletionPage').then(({ SetCompletionPage }) => ({ default: SetCompletionPage }))
 )
@@ -89,6 +95,10 @@ createRoot(rootElement).render(
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/deckbuilder" element={<DeckbuilderPage />} />
           <Route path="/deckbuilder/:deckId" element={<DeckbuilderPage />} />
+          <Route path="/cubes" element={<CubesPage />} />
+          <Route path="/cubes/new" element={<CubesPage />} />
+          <Route path="/cubes/edit/:cubeId" element={<CubesPage />} />
+          <Route path="/cubes/shared/:code" element={<SharedCubePage />} />
           <Route path="/scenario" element={<ScenarioBuilderPage />} />
           <Route path="/set-completion" element={<SetCompletionPage />} />
           <Route path="/login/verify" element={<LoginVerifyPage />} />

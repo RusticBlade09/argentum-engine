@@ -30,6 +30,7 @@ import {
 } from './axes'
 import type { GroupId } from './settingsGroups'
 import { pickTimePhrase } from './pickTime'
+import { boosterStyleInfo, isBoosterStyle } from '@/components/cube/cubeModel'
 
 /** Which server implementation is backing this lobby. */
 export type LobbyKind = 'QUICK' | 'TOURNAMENT'
@@ -584,7 +585,9 @@ function tournamentSubtitle(lobbyState: LobbyState): string {
     ? poolPlay
       // Pool Play deals nothing, so pack size and booster count are meaningless here.
       ? `Cube Pool Play · ${s.cubeCardCount ?? 0} cards · everyone builds from the whole cube`
-      : `Cube · ${s.cubeCardCount ?? 0} cards · ${s.packSize ?? 15}-card packs · ${base}`
+      : isBoosterStyle(s.cubeBoosterStyle)
+        ? `Cube · ${s.cubeCardCount ?? 0} cards · ${boosterStyleInfo(s.cubeBoosterStyle).label} · ${base}`
+        : `Cube · ${s.cubeCardCount ?? 0} cards · ${s.packSize ?? 15}-card packs · ${base}`
     : base
 
   const isMultiplayer = s.gameMode !== 'TOURNAMENT'
@@ -656,6 +659,8 @@ function startBlockReason(lobbyState: LobbyState): { reason: string; group: Grou
     // Pool Play hands every player the whole cube instead of dealing from it, so it has no capacity
     // constraint at all — mirrors TournamentLobby.cubeCapacityError.
     if (s.cubePoolPlay && s.format === 'SEALED') return null
+    // Booster-style cubes print packs with replacement, like a real set, so they never run out.
+    if (isBoosterStyle(s.cubeBoosterStyle)) return null
     const packSize = s.packSize ?? 15
     const sharedPool = s.format === 'WINSTON_DRAFT' || s.format === 'GRID_DRAFT'
     const packsNeeded = sharedPool ? s.boosterCount : n * s.boosterCount

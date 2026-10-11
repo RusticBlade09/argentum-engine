@@ -30,6 +30,14 @@ export interface Announcement {
 
 export const ANNOUNCEMENTS: readonly Announcement[] = [
   {
+    id: 'feature-cubes-page',
+    date: '2026-10-11',
+    kind: 'feature',
+    title: 'Cubes, set cubes and share links',
+    body:
+      'Cubes has its own page in the top bar. Start a cube from a whole set — each card at its printed rarity — extend it with any other cards, and draft it as real Play or Draft Boosters with mythics one pack in eight: all of Bloomburrow plus Bloomburrow Commander’s new cards is a few clicks. Share a cube by link so friends can view it, keep a copy, or open a lobby with it in one click.',
+  },
+  {
     id: 'feature-avatars',
     date: '2026-10-09',
     kind: 'feature',

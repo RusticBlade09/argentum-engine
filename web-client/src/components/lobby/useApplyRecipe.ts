@@ -171,6 +171,8 @@ function cubeUpdateFor(settings: RecipeSettings): PendingCubeUpdate | null {
     cubeBasicLandSetCode: cube.basicLandSetCode,
     packSize: cube.packSize,
     cubePoolPlay: cube.poolPlay,
+    ...(cube.boosterStyle ? { cubeBoosterStyle: cube.boosterStyle } : {}),
+    ...(cube.rarities ? { cubeRarities: { ...cube.rarities } } : {}),
   }
 }
 

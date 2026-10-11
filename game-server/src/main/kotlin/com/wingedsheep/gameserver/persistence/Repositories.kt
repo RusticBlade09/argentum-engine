@@ -30,6 +30,7 @@ interface CubeRepository : CrudRepository<CubeRow, Long> {
     fun findByUserIdOrderByUpdatedAtDesc(userId: UUID): List<CubeRow>
     fun findByIdAndUserId(id: Long, userId: UUID): CubeRow?
     fun deleteByIdAndUserId(id: Long, userId: UUID): Int
+    fun findByShareCode(shareCode: String): CubeRow?
 }
 
 interface MatchResultRepository : CrudRepository<MatchResultRow, Long> {

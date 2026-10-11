@@ -424,9 +424,24 @@ duplicate physical cards. The server resolves the entire list atomically; an unr
 the update, and `cubeCards: []` clears cube mode. While a cube is active, `setCodes` changes,
 `boosterDistribution`, and `chaosBoosters` are inert.
 
-`LobbySettings` broadcasts only the public summary: `cubeName`, `cubeCardCount`, `packSize`, and
-`cubePoolPlay`. The synthetic `CUBE` set is deliberately absent from `availableSets`. The server
-rejects starting when the selected format would need more cards than the cube contains.
+`LobbySettings` broadcasts only the public summary: `cubeName`, `cubeCardCount`, `packSize`,
+`cubeBoosterStyle`, and `cubePoolPlay`. The synthetic `CUBE` set is deliberately absent from
+`availableSets`. The server rejects starting a shuffled cube when the selected format would need more
+cards than the cube contains.
+
+`cubeBoosterStyle` (sent with `cubeCards`; absent = `SHUFFLED`) picks how the cube becomes packs:
+
+| Style | Packs |
+|-------|-------|
+| `SHUFFLED` | The classic cube: shuffled once and dealt in packs of `packSize`; each physical card opens at most once, so capacity applies. |
+| `PLAY_BOOSTER` | Printed like a set's Play Booster: 7 commons, 3 uncommons, a rare/mythic, two any-rarity wildcards (13 cards). |
+| `DRAFT_BOOSTER` | Printed like a mythic-era Draft Booster: 10 commons, 3 uncommons, a rare/mythic (14 cards). |
+
+The booster styles print with replacement across packs (never a repeat within one), so they have no
+capacity limit and a card's count is its weight within its rarity. `cubeRarities` (card name →
+`COMMON`…`MYTHIC`) carries each card's rarity *in the cube* where it differs from the card's own — a
+cube built from a set carries the set's rarities, since a reprint's own rarity is its first printing's.
+Special and bonus rarities print as rares. `LobbySettings.packSize` reports the layout's size (13/14).
 
 Saved cubes are account data, not lobby data: `/api/account/cubes` (see
 [`accounts-and-persistence.md`](accounts-and-persistence.md)) stores them, and the lobby only ever
