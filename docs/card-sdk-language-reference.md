@@ -10120,10 +10120,11 @@ staticAbility {
   condition = IsInPhase(listOf(COMBAT), yoursOnly = false), nonManaAbilitiesOnly = true, anyZone = true)`
   plus `PlayersCantCastSpells(Player.Each, condition = IsInPhase(listOf(COMBAT), yoursOnly = false))`.
 - `ExtraOnceOnlyActivations(kind, extraActivations = null, condition = null)`
-  — the *permission* counterpart of the above, over the keyword-prefixed "Activate this ability only once"
-  limits: exhaust (CR 702.177) and power-up (CR 702.193), selected by `kind` (**required, no default** —
-  a default on a two-valued discriminator would silently mean the wrong keyword). Both keywords install the
-  same `ActivationRestriction.Once`, so the permission has to say which one it lifts. `extraActivations`
+  — the *permission* counterpart of the above, over the keyword-prefixed activation limits: exhaust
+  (CR 702.177) and power-up (CR 702.193) "Activate this ability only once", and boast (CR 702.142) "only
+  once each turn", selected by `kind` (**required, no default** — a default would silently mean the wrong
+  keyword). Exhaust and power-up install the same `ActivationRestriction.Once`, boast an
+  `ActivationRestriction.OncePerTurn`, so the permission has to say which one it lifts. `extraActivations`
   is the second axis: `null` waives the limit outright ("as though they hadn't been activated"), an
   integer ≥ 1 *raises* it by that many activations per instance and sums across the battlefield — except
   that a single waiver anywhere on the battlefield short-circuits the sum to "no limit".
@@ -10132,7 +10133,7 @@ staticAbility {
   Scoped to the activating player being this permanent's controller (there is no "who" axis — you can only
   activate abilities of permanents you control) and gated by `condition`, evaluated in the controller's
   context; `null` = always. Resolved by `OnceOnlyActivationAllowance`, which `LegalityKernel`'s `Once`
-  branch consults — the one check the enumerators, the activate handler and `ManaSolver`'s auto-tap all
+  branch (and, for a boast ability, its `OncePerTurn` branch) consults — the one check the enumerators, the activate handler and `ManaSolver`'s auto-tap all
   share — so they can't drift. It never reaches a plain `Once`/`OncePerTurn` restriction an ordinary ability printed
   for itself, nor the other `kind`.
   - **Waive** — Elvish Refueler = `ExtraOnceOnlyActivations(EXHAUST, extraActivations = null,
@@ -10146,6 +10147,10 @@ staticAbility {
     per-object lifetime tally the `Once` tracker gained for this; two Wonder Men allow three activations
     each. A prohibition still beats it (CR 101.2) — Kang the Conqueror's turn-scoped power-up lockout is
     checked ahead of the ability's restrictions, so a raised ceiling has nothing to raise.
+  - **Boast twice** — Birgi, God of Storytelling = `ExtraOnceOnlyActivations(BOAST, extraActivations = 1,
+    condition = Conditions.IsYourTurn)` ("Creatures you control can boast twice during each of your turns
+    rather than once"). Counted against the per-turn `AbilityActivatedThisTurnComponent.activationCount`,
+    so it resets each turn; the creature must still have attacked this turn.
 
 **Tapped-for-mana mana statics** (extra mana / replaced mana when a land is tapped for mana — resolve
 inline as triggered mana abilities, off the stack per CR 605). These fire on the *manual* mana-ability
@@ -11028,7 +11033,8 @@ Nothing about it is new machinery. "Attacked this turn" is already a turn-long p
 in the postcombat main phase and the end step; and the per-turn activation counter already backs
 every other "activate only once each turn" ability. Note boast is once **each turn**, not exhaust's
 once ever — so it never adds `ActivationRestriction.Once`, and a creature that attacks on two
-consecutive turns boasts on both.
+consecutive turns boasts on both. "Creatures you control can boast twice" (Birgi) raises that per-turn
+limit with `ExtraOnceOnlyActivations(OnceOnlyAbilityKind.BOAST, extraActivations = 1)`.
 
 ```kotlin
 // Baron Helmut Zemo — Boast — Exile any number of black cards from your graveyard with fifteen or

@@ -1362,13 +1362,15 @@ data class PlayersCantActivateAbilities(
 }
 
 /**
- * Which family of keyword-prefixed "Activate this ability only once" abilities an
- * [ExtraOnceOnlyActivations] permission reaches.
+ * Which family of keyword-prefixed activation-limited abilities an [ExtraOnceOnlyActivations]
+ * permission reaches.
  *
- * Both keywords install the same [com.wingedsheep.sdk.scripting.ActivationRestriction.Once] on the
- * ability they prefix, so the permission has to say *which* of them it lifts — a card that raises
- * the power-up limit must not also raise an exhaust limit, and neither ever touches a plain `Once`
- * an ordinary ability printed for itself.
+ * Exhaust and power-up install the same [com.wingedsheep.sdk.scripting.ActivationRestriction.Once]
+ * on the ability they prefix; boast installs a
+ * [com.wingedsheep.sdk.scripting.ActivationRestriction.OncePerTurn]. So the permission has to say
+ * *which* keyword it lifts — a card that raises the power-up limit must not also raise an exhaust
+ * limit, and none of them ever touches a plain `Once`/`OncePerTurn` an ordinary ability printed for
+ * itself.
  */
 @Serializable
 enum class OnceOnlyAbilityKind {
@@ -1376,12 +1378,19 @@ enum class OnceOnlyAbilityKind {
     EXHAUST,
 
     /** Power-up, CR 702.193. */
-    POWER_UP;
+    POWER_UP,
+
+    /**
+     * Boast, CR 702.142 — its limit is *once each turn*, so the raise applies to the per-turn count
+     * and resets with it (Birgi, God of Storytelling).
+     */
+    BOAST;
 
     /** How the keyword reads inside a rules sentence. */
     val displayName: String get() = when (this) {
         EXHAUST -> "exhaust"
         POWER_UP -> "power-up"
+        BOAST -> "boast"
     }
 }
 
@@ -1412,6 +1421,10 @@ enum class OnceOnlyAbilityKind {
  *    extraActivations = 1)`. Two copies grant two extra activations: the allowance is summed across
  *    every permanent whose condition currently holds, and compared against how many times *that*
  *    ability of *that* object has been activated.
+ *  - **Boast twice** — Birgi, God of Storytelling: "Creatures you control can boast twice during
+ *    each of your turns rather than once." = `ExtraOnceOnlyActivations(BOAST, extraActivations = 1,
+ *    condition = IsYourTurn)`. Boast's limit is once *each turn* (CR 702.142a), so the raised
+ *    ceiling is compared against the per-turn count, not the ever one.
  *
  * Abilities of the other kind, and any ability carrying a plain `Once`/`OncePerTurn` restriction it
  * printed for itself, are untouched.
@@ -1438,6 +1451,18 @@ data class ExtraOnceOnlyActivations(
     }
 
     override val description: String = buildString {
+        // Boast abilities are a creature's (CR 702.142a), and the printed wording counts boasts.
+        if (kind == OnceOnlyAbilityKind.BOAST && extraActivations != null) {
+            append("Creatures you control can boast ")
+            append(if (extraActivations == 1) "twice" else "${extraActivations + 1} times")
+            when (condition) {
+                null -> {}
+                is IsYourTurn -> append(" during each of your turns")
+                else -> append(" ${condition.description}")
+            }
+            append(" rather than once")
+            return@buildString
+        }
         when (condition) {
             is IsYourTurn -> append("During your turn, ")
             is IsNotYourTurn -> append("During your opponents' turns, ")
