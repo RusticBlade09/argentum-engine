@@ -18,7 +18,7 @@ import {
   autoBuildDeck as apiAutoBuildDeck,
 } from '@/api/aiAssist'
 import { getWebSocket, saveDeckState } from './shared'
-import { sameDeck, type AssistDeckSource, type AssistUndo, type DeckSnapshot } from './assistDeck'
+import { sameDeck, type AssistUndo, type DeckSnapshot } from './assistDeck'
 import { rulesFromLobbySettings } from '@/components/lobby/axes'
 
 export type { PickScore }
@@ -72,7 +72,7 @@ export interface DraftSliceState {
   deckCardScoresContext: DeckSnapshot | null
   /** Which deck-builder request `aiAssistBusy` is for, so the UI can say what it's waiting on. */
   deckAssistTask: 'build' | 'score' | null
-  /** The deck before the last AI rewrite (Auto-build or the deck advisor), for Undo. */
+  /** The deck before the last Auto-build, for Undo. */
   assistUndo: AssistUndo | null
 }
 
@@ -86,7 +86,6 @@ export interface DraftSliceActions {
   setDeck: (deck: readonly string[], landCounts: Record<string, number>) => void
   /** Set or clear the commander for Commander Draft / Sealed lobbies. */
   setCommander: (cardName: string | null) => void
-  setLlmHighlights: (cardNames: readonly string[] | null) => void
   submitSealedDeck: () => void
   unsubmitDeck: () => void
   makePick: (cardNames: string[]) => void
@@ -109,9 +108,9 @@ export interface DraftSliceActions {
   scoreDeckCards: (advisorId?: string) => Promise<void>
   /** Hide the deck-builder per-card score badges. */
   clearDeckCardScores: () => void
-  /** Replace the deck on the AI's behalf, remembering the deck it replaced so it can be undone. */
-  applyAssistDeck: (deck: readonly string[], landCounts: Record<string, number>, source: AssistDeckSource) => void
-  /** Restore the deck from before the last AI rewrite. */
+  /** Replace the deck with an Auto-build, remembering the deck it replaced so it can be undone. */
+  applyAssistDeck: (deck: readonly string[], landCounts: Record<string, number>) => void
+  /** Restore the deck from before the last Auto-build. */
   undoAssistDeck: () => void
   /** Dismiss the Auto-build outcome (its build choices and Undo). */
   clearAutoBuildResult: () => void
@@ -162,7 +161,6 @@ export const createDraftSlice: SliceCreator<DraftSlice> = (set, get) => ({
           ...state.deckBuildingState,
           deck: newDeck,
         },
-        autoBuildResult: null,
       }
     })
   },
@@ -183,7 +181,6 @@ export const createDraftSlice: SliceCreator<DraftSlice> = (set, get) => ({
           ...state.deckBuildingState,
           deck: newDeck,
         },
-        autoBuildResult: null,
       }
     })
   },
@@ -203,7 +200,6 @@ export const createDraftSlice: SliceCreator<DraftSlice> = (set, get) => ({
           deck: [],
           landCounts: emptyLandCounts,
         },
-        autoBuildResult: null,
       }
     })
   },
@@ -223,7 +219,6 @@ export const createDraftSlice: SliceCreator<DraftSlice> = (set, get) => ({
           ...state.deckBuildingState,
           landCounts: newLandCounts,
         },
-        autoBuildResult: null,
       }
     })
   },
@@ -282,19 +277,6 @@ export const createDraftSlice: SliceCreator<DraftSlice> = (set, get) => ({
         deckBuildingState: {
           ...state.deckBuildingState,
           commander: cardName,
-        },
-      }
-    })
-  },
-
-  setLlmHighlights: (cardNames) => {
-    set((state) => {
-      if (!state.deckBuildingState) return state
-      const next = cardNames && cardNames.length > 0 ? Array.from(new Set(cardNames)) : null
-      return {
-        deckBuildingState: {
-          ...state.deckBuildingState,
-          llmHighlightedCards: next,
         },
       }
     })
@@ -449,7 +431,7 @@ export const createDraftSlice: SliceCreator<DraftSlice> = (set, get) => ({
       const applied = Math.min(Math.max(result.recommended, 0), result.builds.length - 1)
       const basicNames = new Set(deckBuildingState.basicLands.map((c) => c.name))
       const { deck, landCounts } = splitDeckList(result.builds[applied]!.deckList, basicNames)
-      get().applyAssistDeck(deck, landCounts, 'auto-build')
+      get().applyAssistDeck(deck, landCounts)
       set({
         aiAssistBusy: false,
         deckAssistTask: null,
@@ -483,7 +465,7 @@ export const createDraftSlice: SliceCreator<DraftSlice> = (set, get) => ({
     // Re-applying the build already on the table is a no-op unless the player has edited it since.
     const basicNames = new Set(deckBuildingState.basicLands.map((c) => c.name))
     const { deck, landCounts } = splitDeckList(option.deckList, basicNames)
-    get().applyAssistDeck(deck, landCounts, 'auto-build')
+    get().applyAssistDeck(deck, landCounts)
     set({ autoBuildResult: { ...autoBuildResult, appliedIndex: index } })
   },
 
@@ -534,17 +516,17 @@ export const createDraftSlice: SliceCreator<DraftSlice> = (set, get) => ({
 
   clearDeckCardScores: () => set({ deckCardScores: null, deckCardScoresContext: null }),
 
-  applyAssistDeck: (deck, landCounts, source) => {
+  applyAssistDeck: (deck, landCounts) => {
     const { deckBuildingState, assistUndo } = get()
     if (!deckBuildingState) return
     const before: DeckSnapshot = { deck: deckBuildingState.deck, landCounts: deckBuildingState.landCounts }
-    // Switching between Auto-build's candidates (or asking the advisor again) without touching the
-    // deck in between keeps the original deck as the undo point, so Undo always means "my deck".
+    // Switching between Auto-build's candidates without touching the deck in between keeps the
+    // original deck as the undo point, so Undo always means "my deck".
     const previous = assistUndo && sameDeck(before, assistUndo.applied) ? assistUndo.previous : before
     get().setDeck(deck, landCounts)
     const after = get().deckBuildingState
     if (!after) return
-    set({ assistUndo: { source, previous, applied: { deck: after.deck, landCounts: after.landCounts } } })
+    set({ assistUndo: { previous, applied: { deck: after.deck, landCounts: after.landCounts } } })
   },
 
   undoAssistDeck: () => {

@@ -40,7 +40,7 @@ import type {
   MatchmakingQueueCount,
 } from '@/types'
 import type { ConnectionStatus } from '@/network/websocket.ts'
-import type { AssistDeckSource, AssistUndo, DeckSnapshot } from './assistDeck'
+import type { AssistUndo, DeckSnapshot } from './assistDeck'
 import type { CounterRemovalCreatureInfo, PlayerSeatInfo, SpectatorCombatState, SpectatorDecisionStatus, UpdateLobbySettingsMessage } from '@/types/messages.ts'
 
 /**
@@ -568,11 +568,6 @@ export interface DeckBuildingState {
   landCounts: Record<string, number>
   opponentReady: boolean
   /**
-   * Card names highlighted by the LLM deckbuilding assistant. When non-null,
-   * these replace any archetype-driven highlights in the pool view.
-   */
-  llmHighlightedCards: readonly string[] | null
-  /**
    * Selected commander name for Commander Draft / Sealed lobbies. Null when no commander
    * is chosen yet, or when the lobby format isn't commander-shape. The card MUST exist in
    * [cardPool] (the deckbuilder UI gates the picker to eligible pool cards).
@@ -1080,8 +1075,6 @@ export type GameStore = {
   setDeck: (deck: readonly string[], landCounts: Record<string, number>) => void
   /** Set or clear the commander for Commander Draft / Sealed lobbies. */
   setCommander: (cardName: string | null) => void
-  /** Set the LLM-driven highlight set. Pass null to clear. */
-  setLlmHighlights: (cardNames: readonly string[] | null) => void
   submitSealedDeck: () => void
   unsubmitDeck: () => void
   makePick: (cardNames: string[]) => void
@@ -1107,7 +1100,7 @@ export type GameStore = {
   deckCardScoresContext: DeckSnapshot | null
   deckAssistTask: 'build' | 'score' | null
   assistUndo: AssistUndo | null
-  applyAssistDeck: (deck: readonly string[], landCounts: Record<string, number>, source: AssistDeckSource) => void
+  applyAssistDeck: (deck: readonly string[], landCounts: Record<string, number>) => void
   undoAssistDeck: () => void
   clearAutoBuildResult: () => void
   clearAiAssistError: () => void

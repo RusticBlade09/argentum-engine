@@ -10,8 +10,8 @@ import styles from './assist.module.css'
 /**
  * The deck builder's AI assistance, in two pieces:
  *
- *  - {@link AssistToolbar} — one grouped control in the header: the engine, Auto-build, the card
- *    score toggle, and the deck advisor chat.
+ *  - {@link AssistToolbar} — one grouped control in the header: the engine, Auto-build and the
+ *    card score toggle.
  *  - {@link AssistStrip} — a strip under the header that only appears when there is something to
  *    say: what the AI is working on, what went wrong, the builds Auto-build found (with Undo), and
  *    the score legend.
@@ -75,13 +75,9 @@ function useDeckbuildEngines() {
 
 export function AssistToolbar({
   hasCards,
-  advisorOpen,
-  onToggleAdvisor,
   compact,
 }: {
   hasCards: boolean
-  advisorOpen: boolean
-  onToggleAdvisor: () => void
   /** Phones: icon-only labels so the group fits on one line. */
   compact: boolean
 }) {
@@ -150,20 +146,6 @@ export function AssistToolbar({
         {busy && task === 'score' ? <span className={styles.spinner} aria-hidden /> : <GaugeIcon />}
         {!compact && 'Card scores'}
       </button>
-      <span className={styles.divider} aria-hidden />
-      <button
-        type="button"
-        className={styles.btn}
-        aria-pressed={advisorOpen}
-        aria-expanded={advisorOpen}
-        aria-controls="deck-advisor-panel"
-        onClick={onToggleAdvisor}
-        aria-label="Deck advisor"
-        title="Chat with an AI that sees your pool and deck — ask questions, highlight cards, or have it build"
-      >
-        <ChatIcon />
-        {!compact && 'Advisor'}
-      </button>
       {!compact && <HelpTip topicId="draft-assist" size="sm" />}
     </div>
   )
@@ -185,8 +167,6 @@ export function AssistStrip({ state }: { state: DeckBuildingState }) {
   const hasScores = useGameStore((s) => s.deckCardScores != null)
   const scoreDeckCards = useGameStore((s) => s.scoreDeckCards)
   const scoresStale = useScoresStale(state)
-  const setLlmHighlights = useGameStore((s) => s.setLlmHighlights)
-  const highlightCount = state.llmHighlightedCards?.length ?? 0
 
   const current = useMemo(() => ({ deck: state.deck, landCounts: state.landCounts }), [state.deck, state.landCounts])
   // Undo only while the deck is still exactly what the AI left — after a hand edit it would wipe the edit.
@@ -206,8 +186,7 @@ export function AssistStrip({ state }: { state: DeckBuildingState }) {
   }
 
   const showBuild = result != null
-  const showAdvisorUndo = canUndo && undo?.source === 'advisor'
-  if (!error && !showBuild && !showAdvisorUndo && !hasScores && highlightCount === 0) return null
+  if (!error && !showBuild && !hasScores) return null
 
   return (
     <div className={styles.strip} data-tone={error ? 'error' : undefined} role="status" aria-live="polite">
@@ -221,28 +200,12 @@ export function AssistStrip({ state }: { state: DeckBuildingState }) {
       {showBuild && (
         <BuildChoices
           result={result}
-          isApplied={(i) => canUndo && undo?.source === 'auto-build' && i === result.appliedIndex}
+          isApplied={(i) => canUndo && i === result.appliedIndex}
           onPick={applyAutoBuildOption}
-          canUndo={canUndo && undo?.source === 'auto-build'}
+          canUndo={canUndo}
           onUndo={undoAssistDeck}
           onDismiss={clearAutoBuildResult}
         />
-      )}
-
-      {showAdvisorUndo && (
-        <span className={styles.section}>
-          <span className={styles.label}>Advisor</span>
-          <span>Replaced your deck.</span>
-          <button type="button" className={styles.link} onClick={undoAssistDeck}>Undo</button>
-        </span>
-      )}
-
-      {highlightCount > 0 && (
-        <span className={styles.section}>
-          <span className={styles.label}>Advisor</span>
-          <span>Highlighted {highlightCount} card{highlightCount === 1 ? '' : 's'} in your pool</span>
-          <button type="button" className={styles.link} onClick={() => setLlmHighlights(null)}>Clear</button>
-        </span>
       )}
 
       {hasScores && (
@@ -335,7 +298,7 @@ function BuildChoices({
             title={
               applied
                 ? 'This build is your deck'
-                : `Switch your deck to this build${score ? ` — ${scoreExplanation(result.advisorId)}` : ''}`
+                : `Replace your deck with this build${score ? ` — ${scoreExplanation(result.advisorId)}` : ''}`
             }
           >
             {option.colors.length > 0 && (
@@ -399,7 +362,7 @@ function SvgIcon({ size = 16, children }: { size?: number; children: React.React
   )
 }
 
-export function SparkleIcon({ size = 16 }: { size?: number }) {
+function SparkleIcon({ size = 16 }: { size?: number }) {
   return (
     <SvgIcon size={size}>
       <path d="M8 1.5l1.6 4.4 4.4 1.6-4.4 1.6L8 13.5 6.4 9.1 2 7.5l4.4-1.6z" fill="currentColor" stroke="none" />
@@ -423,14 +386,6 @@ function GaugeIcon() {
       <path d="M2.5 11.5a5.5 5.5 0 1 1 11 0" />
       <path d="M8 11.5l2.5-3.5" />
       <circle cx="8" cy="11.5" r="0.9" fill="currentColor" />
-    </SvgIcon>
-  )
-}
-
-function ChatIcon() {
-  return (
-    <SvgIcon>
-      <path d="M2.5 4.5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v4.5a2 2 0 0 1-2 2H7l-3 2.5v-2.5h0.5a2 2 0 0 1-2-2z" />
     </SvgIcon>
   )
 }

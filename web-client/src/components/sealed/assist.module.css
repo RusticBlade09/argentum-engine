@@ -1,6 +1,6 @@
 /*
- * The deck builder's AI assistance — Auto-build, card scores and the deck advisor chat — in one
- * visual voice. Violet is the AI's colour (it already marks advisor-highlighted pool cards); amber
+ * The deck builder's AI assistance — Auto-build and card scores — in one
+ * visual voice. Violet is the AI's colour (archetype-highlighted pool cards already wear it); amber
  * stays reserved for the one action that moves you forward, Submit Deck. Surfaces follow
  * `limitedScreen.module.css`: translucent raised panels on the dark backdrop.
  */
@@ -28,13 +28,6 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   user-select: none;
-}
-
-.divider {
-  width: 1px;
-  align-self: stretch;
-  margin: 4px 2px;
-  background: rgba(167, 139, 250, 0.22);
 }
 
 .btn {

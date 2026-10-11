@@ -8,7 +8,6 @@ import { ManaSymbol, ManaCost } from '../ui/ManaSymbols'
 import { HoverCardPreview } from '../ui/HoverCardPreview'
 import { useDfcHoverFlip } from '../ui/useDfcHoverFlip'
 import { SetSynergiesButton, type Archetype } from '../draft/SetSynergiesOverlay'
-import { DeckbuilderChatPanel } from './DeckbuilderChatPanel'
 import { AssistStrip, AssistToolbar, ScoreBadge, useScoresStale } from './AssistControls'
 import { buildArenaDeckList } from './arenaExport'
 import { poolCardToSummary } from './poolCardSummary'
@@ -140,7 +139,6 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
   const removeCardFromDeck = useGameStore((s) => s.removeCardFromDeck)
   const clearDeck = useGameStore((s) => s.clearDeck)
   const setLandCount = useGameStore((s) => s.setLandCount)
-  const setLlmHighlights = useGameStore((s) => s.setLlmHighlights)
   const setCommander = useGameStore((s) => s.setCommander)
   const submitSealedDeck = useGameStore((s) => s.submitSealedDeck)
   const unsubmitDeck = useGameStore((s) => s.unsubmitDeck)
@@ -163,9 +161,6 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
   const aiAssistEnabled = lobbyState ? lobbyState.settings.aiAssistEnabled : true
   const deckCardScores = aiAssistEnabled ? storedDeckCardScores : null
   const scoresStale = useScoresStale(state)
-  // The deck advisor chat, opened from the header's AI group. It stays mounted while closed so the
-  // conversation survives; it closes once the deck is submitted (the AI group hides then).
-  const [advisorOpen, setAdvisorOpen] = useState(false)
 
   const [hoveredCard, setHoveredCard] = useState<SealedCardInfo | null>(null)
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null)
@@ -523,12 +518,8 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
     return { MYTHIC: mythic, RARE: rare, UNCOMMON: uncommon, COMMON: common }
   }, [poolCardGroups, sortBy])
 
-  // Cards highlighted by archetype creature types OR by the LLM advisor.
-  // LLM highlights replace archetype highlights when present.
+  // Cards highlighted by the chosen archetype's creature types.
   const highlightedCards = useMemo(() => {
-    if (state.llmHighlightedCards && state.llmHighlightedCards.length > 0) {
-      return new Set(state.llmHighlightedCards)
-    }
     if (!archetypeFilter?.creatureTypes || archetypeFilter.creatureTypes.length === 0) return null
     const types = archetypeFilter.creatureTypes
     const names = new Set<string>()
@@ -544,7 +535,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
       }
     }
     return names
-  }, [state.cardPool, archetypeFilter, state.llmHighlightedCards])
+  }, [state.cardPool, archetypeFilter])
 
   // Group deck cards by name for vertical list
   const deckCardGroups = useMemo(() => {
@@ -596,16 +587,12 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
             setCodes={state.setCodes}
             cardPool={state.cardPool}
             onSelectArchetype={(archetype) => {
-              // Picking an archetype takes over the highlight slot from the LLM advisor.
-              setLlmHighlights(null)
               setArchetypeFilter((prev) => prev?.name === archetype.name ? null : archetype)
             }}
           />
           {!isSubmitted && aiAssistEnabled && !responsive.isMobile && (
             <AssistToolbar
               hasCards={totalCount > 0}
-              advisorOpen={advisorOpen}
-              onToggleAdvisor={() => setAdvisorOpen((o) => !o)}
               compact={responsive.isMobile}
             />
           )}
@@ -719,8 +706,6 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
           <div className={ls.headerGroup}>
             <AssistToolbar
               hasCards={totalCount > 0}
-              advisorOpen={advisorOpen}
-              onToggleAdvisor={() => setAdvisorOpen((o) => !o)}
               compact={responsive.isMobile}
             />
           </div>
@@ -733,21 +718,11 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
       <div
         style={{
           flex: 1,
-          position: 'relative',
           display: 'flex',
           flexDirection: responsive.isMobile ? 'column' : 'row',
           overflow: 'hidden',
         }}
       >
-        {/* Docked over the deck rail, so the pool — where its highlights land — stays in view. */}
-        {aiAssistEnabled && (
-          <DeckbuilderChatPanel
-            state={state}
-            open={advisorOpen && !isSubmitted}
-            onClose={() => setAdvisorOpen(false)}
-            mobile={responsive.isMobile}
-          />
-        )}
         {/* Card Pool (left) */}
         <div
           style={{

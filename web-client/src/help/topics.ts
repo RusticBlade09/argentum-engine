@@ -816,7 +816,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'limited',
     title: 'AI pick suggestions and Auto-build',
     summary:
-      'With the lobby’s AI assistance set to On, the draft screen gets a ✨ Suggest Pick button and the deck builder gets an AI group in its top bar: Auto-build, Card scores and the deck Advisor. It is a learning aid; the host decides whether it is allowed.',
+      'With the lobby’s AI assistance set to On, the draft screen gets a ✨ Suggest Pick button and the deck builder gets an AI group in its top bar: Auto-build and Card scores. It is a learning aid; the host decides whether it is allowed.',
     body: [
       { kind: 'ul', items: [
         'Suggest Pick scores every card in the pack from 0 to 100 — green at 70 and up, amber from 45 — with a one-line reason on hover, and marks the top one “⭐ Best”. Re-suggest asks again; Clear hides the scores.',
@@ -827,20 +827,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       ] },
       { kind: 'tip', text: 'Assistance is off by default, so nobody in a competitive pod gets it unless the host turns it on for everyone.' },
     ],
-    related: ['draft-picking', 'limited-deckbuilding', 'deck-advisor'],
-  },
-  {
-    id: 'deck-advisor',
-    section: 'limited',
-    title: 'The deck advisor',
-    summary:
-      'In the limited deck builder, Advisor in the top bar’s AI group opens a chat with an AI that can see your pool and your deck. Ask it questions, or ask it to highlight cards or build the deck for you.',
-    body: [
-      { kind: 'p', text: 'Try “highlight all removal”, “Is my mana curve okay?”, “Should I splash a third color?” or “Build me a control deck with lots of removal” — or click one of the suggestions it opens with. It can highlight pool cards, clear highlights, or replace your whole deck, lands included. A replaced deck can be undone from the chat or the strip under the top bar.' },
-      { kind: 'p', text: 'Building a whole deck can take the advisor up to a minute. Like Auto-build, it is only there when the lobby’s AI assistance is on.' },
-      { kind: 'p', text: 'Enter sends, Shift+Enter adds a new line, Esc closes the chat. Closing keeps the conversation; New chat starts over, and reloading the page starts a fresh one.' },
-    ],
-    related: ['limited-deckbuilding', 'draft-assist'],
+    related: ['draft-picking', 'limited-deckbuilding'],
   },
   {
     id: 'draft-archetypes',
@@ -873,7 +860,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       { kind: 'p', text: 'The cards you leave out become your sideboard — the “outside the game” cards that wish-style effects can fetch. There is no sideboarding between games: the deck you submit plays every round.' },
       { kind: 'p', text: 'Save Deck on the standings screen keeps the deck in My Decks, with the exact printings you opened or drafted.' },
     ],
-    related: ['cards-sealed', 'cards-draft', 'draft-assist', 'deck-advisor', 'cube-pool-play'],
+    related: ['cards-sealed', 'cards-draft', 'draft-assist', 'cube-pool-play'],
   },
   {
     id: 'tournament-flow',

@@ -1,6 +1,6 @@
 /**
- * Deck snapshots for the deck builder's AI assistance: what Auto-build or the deck advisor
- * replaced, so the player can undo it, and whether the deck has moved on since.
+ * Deck snapshots for the deck builder's AI assistance: what Auto-build replaced, so the player can
+ * undo it, and whether the deck has moved on since (also how card scores know they're stale).
  */
 
 /** A deck as the builder stores it: non-land card names (one entry per copy) + basic-land counts. */
@@ -9,12 +9,8 @@ export interface DeckSnapshot {
   readonly landCounts: Readonly<Record<string, number>>
 }
 
-/** Who rewrote the deck — the undo prompt names it. */
-export type AssistDeckSource = 'auto-build' | 'advisor'
-
-/** The deck before an AI rewrite and the deck it produced; undo is offered while the deck is still `applied`. */
+/** The deck before an Auto-build and the deck it produced; undo is offered while the deck is still `applied`. */
 export interface AssistUndo {
-  readonly source: AssistDeckSource
   readonly previous: DeckSnapshot
   readonly applied: DeckSnapshot
 }
