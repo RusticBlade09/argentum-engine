@@ -16161,7 +16161,9 @@
                                         "excludeSelf": true
                                     }
                                 },
-                                "storeAs": "target0"
+                                "storeAs": "target0",
+                                "nonTargeting": true,
+                                "prompt": "Choose another creature to sacrifice"
                             },
                             {
                                 "type": "SacrificeTarget",
@@ -20347,7 +20349,9 @@
                                         "baseFilter": "creature ctrl:you"
                                     }
                                 },
-                                "storeAs": "target0"
+                                "storeAs": "target0",
+                                "nonTargeting": true,
+                                "prompt": "Choose a creature to sacrifice"
                             },
                             {
                                 "type": "SacrificeTarget",

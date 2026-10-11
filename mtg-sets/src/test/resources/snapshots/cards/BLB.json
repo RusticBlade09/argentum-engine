@@ -16030,7 +16030,9 @@
                                         "baseFilter": "creature ctrl:you"
                                     }
                                 },
-                                "storeAs": "target0"
+                                "storeAs": "target0",
+                                "nonTargeting": true,
+                                "prompt": "Choose a creature you control to get a +1/+1 counter, vigilance, and trample"
                             },
                             {
                                 "type": "AddCounters",

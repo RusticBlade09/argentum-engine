@@ -1326,7 +1326,9 @@
                                         "excludeSelf": true
                                     }
                                 },
-                                "storeAs": "target0"
+                                "storeAs": "target0",
+                                "nonTargeting": true,
+                                "prompt": "Choose another creature or enchantment to sacrifice"
                             },
                             {
                                 "type": "SacrificeTarget",
@@ -3927,7 +3929,9 @@
                                         "excludeSelf": true
                                     }
                                 },
-                                "storeAs": "target0"
+                                "storeAs": "target0",
+                                "nonTargeting": true,
+                                "prompt": "Choose another enchantment or creature to sacrifice"
                             },
                             {
                                 "type": "SacrificeTarget",

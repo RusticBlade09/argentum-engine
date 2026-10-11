@@ -6339,7 +6339,9 @@
                                         "baseFilter": "creature|Vehicle ctrl:you"
                                     }
                                 },
-                                "storeAs": "target0"
+                                "storeAs": "target0",
+                                "nonTargeting": true,
+                                "prompt": "Choose a creature or Vehicle to sacrifice"
                             },
                             {
                                 "type": "SacrificeTarget",

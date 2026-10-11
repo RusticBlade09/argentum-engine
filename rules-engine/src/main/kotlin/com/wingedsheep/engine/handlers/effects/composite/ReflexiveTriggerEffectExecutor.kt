@@ -160,6 +160,10 @@ class ReflexiveTriggerEffectExecutor(
             requirement = action.requirement,
             controllerId = context.controllerId,
             sourceId = context.sourceId,
+            // Mirror SelectTargetPipelineExecutor: a non-targeting choice ("you may sacrifice an
+            // artifact") isn't limited by hexproof, shroud or protection, so an artifact with shroud
+            // must still make the "may" feasible.
+            ignoreTargetingRestrictions = action.nonTargeting,
             targetingSourceType = TargetingSourceType.TRIGGERED_ABILITY,
             // Carry granterId so the "may" feasibility check honors a granter-relative exclusion —
             // e.g. Dire Blunderbuss must NOT offer the sacrifice when the only artifact is the

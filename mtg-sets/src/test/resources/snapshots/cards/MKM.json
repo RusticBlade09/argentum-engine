@@ -6041,7 +6041,9 @@
                                         "baseFilter": "artifact ctrl:you"
                                     }
                                 },
-                                "storeAs": "target0"
+                                "storeAs": "target0",
+                                "nonTargeting": true,
+                                "prompt": "Choose an artifact to sacrifice"
                             },
                             {
                                 "type": "SacrificeTarget",

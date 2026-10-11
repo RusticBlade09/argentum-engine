@@ -2158,7 +2158,9 @@
                                     "baseFilter": "creature Dragon white ctrl:you"
                                 }
                             },
-                            "storeAs": "target0"
+                            "storeAs": "target0",
+                            "nonTargeting": true,
+                            "prompt": "Choose a white Dragon you control to get a +1/+1 counter"
                         },
                         {
                             "type": "AddCounters",
@@ -2177,7 +2179,9 @@
                                     "baseFilter": "creature Dragon blue ctrl:you"
                                 }
                             },
-                            "storeAs": "target2"
+                            "storeAs": "target2",
+                            "nonTargeting": true,
+                            "prompt": "Choose a blue Dragon you control to get a +1/+1 counter"
                         },
                         {
                             "type": "AddCounters",
@@ -2196,7 +2200,9 @@
                                     "baseFilter": "creature Dragon black ctrl:you"
                                 }
                             },
-                            "storeAs": "target4"
+                            "storeAs": "target4",
+                            "nonTargeting": true,
+                            "prompt": "Choose a black Dragon you control to get a +1/+1 counter"
                         },
                         {
                             "type": "AddCounters",
@@ -2215,7 +2221,9 @@
                                     "baseFilter": "creature Dragon red ctrl:you"
                                 }
                             },
-                            "storeAs": "target6"
+                            "storeAs": "target6",
+                            "nonTargeting": true,
+                            "prompt": "Choose a red Dragon you control to get a +1/+1 counter"
                         },
                         {
                             "type": "AddCounters",
@@ -2234,7 +2242,9 @@
                                     "baseFilter": "creature Dragon green ctrl:you"
                                 }
                             },
-                            "storeAs": "target8"
+                            "storeAs": "target8",
+                            "nonTargeting": true,
+                            "prompt": "Choose a green Dragon you control to get a +1/+1 counter"
                         },
                         {
                             "type": "AddCounters",
@@ -8465,7 +8475,9 @@
                                         "zone": "Graveyard"
                                     }
                                 },
-                                "storeAs": "target0"
+                                "storeAs": "target0",
+                                "nonTargeting": true,
+                                "prompt": "Choose a creature card in your graveyard to exile"
                             },
                             {
                                 "type": "MoveToZone",

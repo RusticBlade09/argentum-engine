@@ -14811,7 +14811,8 @@
                                     }
                                 },
                                 "storeAs": "target0",
-                                "nonTargeting": true
+                                "nonTargeting": true,
+                                "prompt": "Choose a creature to sacrifice"
                             },
                             {
                                 "type": "SacrificeTarget",

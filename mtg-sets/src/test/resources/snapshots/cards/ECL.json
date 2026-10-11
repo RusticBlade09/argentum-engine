@@ -9071,7 +9071,9 @@
                                         "excludeSelf": true
                                     }
                                 },
-                                "storeAs": "target0"
+                                "storeAs": "target0",
+                                "nonTargeting": true,
+                                "prompt": "Choose another untapped creature you control to tap"
                             },
                             {
                                 "type": "TapUntap",
@@ -11724,7 +11726,9 @@
                                         "excludeSelf": true
                                     }
                                 },
-                                "storeAs": "target0"
+                                "storeAs": "target0",
+                                "nonTargeting": true,
+                                "prompt": "Choose another untapped Merfolk you control to tap"
                             },
                             {
                                 "type": "TapUntap",
