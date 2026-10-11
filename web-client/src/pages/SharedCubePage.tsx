@@ -120,8 +120,8 @@ function SharedCube({ view }: { view: SharedCubeView }) {
           <div className={styles.sharedTitle}>
             <h1 className={p.h1}>{cube.name}</h1>
             <span className={styles.sharedByline}>
-              {view.ownerName ? `Shared by ${view.ownerName}` : 'A shared cube'}, {total} cards,{' '}
-              {boosterStyleInfo(style).label.toLowerCase()}
+              {view.ownerName ? `Shared by ${view.ownerName}` : 'A shared cube'} · {total} cards ·{' '}
+              {boosterStyleInfo(style).label}
             </span>
             {cube.description && <p className={styles.sharedDescription}>{cube.description}</p>}
           </div>

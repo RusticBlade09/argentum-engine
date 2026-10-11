@@ -1052,10 +1052,19 @@ button.rarityChip {
   }
 }
 
-/* Phones: the dialog takes the whole screen. */
+/* Phones: the dialog takes the whole screen. Header, packs and stats leave too little height to
+   share between two stacked panes, so the editor scrolls as a whole and each pane gets a usable
+   height of its own instead of a one-row sliver. */
 @media (max-width: 640px) {
   .dialog { inset: 0; border-radius: 0; border: none; }
+  .page,
+  .dialog { overflow-y: auto; }
   .page { border-radius: 12px; }
+  .page .body,
+  .dialog .body {
+    flex: none;
+    grid-template-rows: 60dvh 75dvh;
+  }
   .header,
   .packBar { padding: var(--space-2) var(--space-3); }
   .titleInput { font-size: 20px; }
