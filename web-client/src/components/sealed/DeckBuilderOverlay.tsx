@@ -34,6 +34,7 @@ import {
 import { rulesFromLobbySettings } from '../lobby/axes'
 import { randomBackground } from '@/utils/background'
 import ls from '../draft/limitedScreen.module.css'
+import { ChatButton } from '@/components/messages/ChatButton'
 
 /**
  * Hard per-card copy cap while deckbuilding (basic lands exempt, managed via `landCounts`). Mirrors
@@ -699,6 +700,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
               Cancel Game
             </button>
           )}
+          <ChatButton className={`${ls.button} ${ls.iconButton}`} />
         </div>
 
         {/* Phones: the AI group gets its own row so it doesn't squeeze the title. */}

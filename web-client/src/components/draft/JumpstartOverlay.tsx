@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { ChatButton } from '@/components/messages/ChatButton'
 import { useGameStore } from '@/store/gameStore'
 import { getCdnArtCropUrl } from '@/utils/cardImages'
 import { useHasHover } from '@/hooks/useHasHover'
@@ -186,7 +187,10 @@ export function JumpstartOverlay() {
             <span className={styles.eyebrow}>JUMP IN</span>
             <span className={styles.setName}>{[setName, table].filter(Boolean).join(' · ')}</span>
           </div>
-          <button className={styles.leave} onClick={leave}>Leave lobby</button>
+          <div className={styles.headerEnd}>
+            <button className={styles.leave} onClick={leave}>Leave lobby</button>
+            <ChatButton className={`${styles.leave} ${styles.chat}`} />
+          </div>
         </header>
         <h1>{ready ? 'Two themes. One deck. Let’s play.' : 'Choose two themes'}</h1>
         <p className={styles.intro}>

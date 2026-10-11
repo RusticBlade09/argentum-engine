@@ -9,6 +9,7 @@ import { useDfcHoverFlip } from '../ui/useDfcHoverFlip'
 import { SetSynergiesButton } from './SetSynergiesOverlay'
 import { RarityBadge } from './RarityBadge'
 import ls from './limitedScreen.module.css'
+import { ChatButton } from '@/components/messages/ChatButton'
 
 /**
  * Winston Draft overlay for 2-player Winston Draft mode.
@@ -173,6 +174,7 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
               Leave
             </button>
           )}
+          <ChatButton className={`${ls.button} ${ls.iconButton}`} />
         </div>
       </div>
 

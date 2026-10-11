@@ -12,6 +12,7 @@ import { MobileCardPreview, MobileDraftTabBar, MobilePoolView, type MobileDraftT
 import { getCardColors, getCmc, type PoolGrouping } from './draftPool'
 import { fetchAdvisors, type AdvisorInfo } from '@/api/aiAssist'
 import ls from './limitedScreen.module.css'
+import { ChatButton } from '@/components/messages/ChatButton'
 
 /**
  * Draft Pick overlay for draft mode.
@@ -283,6 +284,7 @@ function DraftPicker({ draftState, settings }: { draftState: DraftState; setting
                 Leave
               </button>
             )}
+            <ChatButton className={`${ls.button} ${ls.iconButton}`} />
           </div>
         </div>
       )}
@@ -494,6 +496,7 @@ function MobileDraftHeader({
         ) : (
           <span className={ls.pill} data-tone="warn">Waiting...</span>
         )}
+        <ChatButton className={`${ls.button} ${ls.iconButton}`} />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <SetSynergiesButton setCodes={settings.setCodes} cardPool={draftState.pickedCards} />

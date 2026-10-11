@@ -5,7 +5,9 @@
  * the chat dock's panel, which drops down from it.
  *
  * `bar` is the page and home top bars; `game` sits in the table's top-left row, after the
- * preferences gear. Renders nothing for guests, without accounts, and on the Messages page itself.
+ * preferences gear. A screen with its own button look (the draft and deckbuilder bars) passes
+ * `className` to dress it as one of its buttons. Renders nothing for guests, without accounts, and on
+ * the Messages page itself.
  */
 import { useEffect, useRef } from 'react'
 import type React from 'react'
@@ -20,12 +22,12 @@ import d from './ChatDock.module.css'
 /** Left offset of the in-game button: after fullscreen and the preferences gear. */
 export const GAME_CHAT_BUTTON_LEFT = { mobile: 84, desktop: 96 } as const
 
-export function ChatButton({ variant = 'bar' }: { variant?: 'bar' | 'game' }) {
+export function ChatButton({ variant = 'bar', className }: { variant?: 'bar' | 'game'; className?: string }) {
   const { pathname } = useLocation()
   const accountsEnabled = useAuthStore((s) => s.accountsEnabled)
   const signedIn = useAuthStore((s) => s.status === 'authenticated')
   if (!accountsEnabled || !signedIn || pathname.startsWith('/messages')) return null
-  return variant === 'game' ? <GameChatButton /> : <ChatToggle className={ui.fullscreenButtonCompact} iconSize={18} />
+  return variant === 'game' ? <GameChatButton /> : <ChatToggle className={className ?? ui.fullscreenButtonCompact} iconSize={18} />
 }
 
 function GameChatButton() {

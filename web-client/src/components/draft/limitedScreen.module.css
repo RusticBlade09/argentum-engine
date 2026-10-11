@@ -119,6 +119,9 @@
 .button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.14); }
 .button:disabled { opacity: 0.45; cursor: not-allowed; }
 
+/* A square icon-only button in the bar (the chat button); doubled up to outlast the slimmer bars below. */
+.button.iconButton { width: 36px; padding: 0; flex: none; }
+
 /* Leaving / stopping: quiet until hovered, so it is never mistaken for the way forward. */
 .leave {
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -202,6 +205,7 @@
   .title { font-size: 17px; }
   .pill { min-height: 28px; padding: 0 9px; font-size: 12px; }
   .primary, .button, .leave { min-height: 30px; padding: 0 12px; font-size: 13px; }
+  .button.iconButton { width: 30px; padding: 0; }
   .footer { padding: 6px 12px; }
   .large { min-height: 38px; padding: 0 24px; font-size: 15px; }
   .banner { padding: 4px 12px; }
@@ -220,5 +224,6 @@
   .pill { min-height: 28px; padding: 0 9px; font-size: 12px; }
   .footer { padding: 10px 12px; }
   .primary, .button, .leave { min-height: 34px; padding: 0 12px; font-size: 13px; }
+  .button.iconButton { width: 34px; padding: 0; }
   .large { min-height: 46px; padding: 0 24px; font-size: 15px; width: 100%; max-width: 420px; }
 }

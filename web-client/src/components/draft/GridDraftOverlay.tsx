@@ -10,6 +10,7 @@ import { useDfcHoverFlip } from '../ui/useDfcHoverFlip'
 import { SetSynergiesButton } from './SetSynergiesOverlay'
 import { RarityBadge } from './RarityBadge'
 import ls from './limitedScreen.module.css'
+import { ChatButton } from '@/components/messages/ChatButton'
 
 /**
  * Grid Draft overlay for 2-4 player Grid Draft mode.
@@ -371,6 +372,7 @@ function GridDrafter({ gridState, settings }: { gridState: GridDraftState; setti
               Leave
             </button>
           )}
+          <ChatButton className={`${ls.button} ${ls.iconButton}`} />
         </div>
       </div>
 
