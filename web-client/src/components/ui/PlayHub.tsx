@@ -45,6 +45,7 @@ import {
   type PlayWith,
   type SealedStyle,
   type TableCards,
+  offersAiAssist,
 } from '../lobby/playModes'
 import type { LobbyRecipe } from '../lobby/lobbyRecipe'
 import { AI_DISABLED_ON_SERVER } from '../lobby/modeMatrix'
@@ -324,6 +325,26 @@ function LaunchPanel({
               <span className={styles.setName}>{set?.name ?? 'Choose a set'}</span>
               <span className={styles.setChange}>Change</span>
             </button>
+          </Field>
+        )}
+
+        {offersAiAssist(effective) && (
+          <Field label="AI assistance">
+            <Segmented<'OFF' | 'ON'>
+              name="ai-assist"
+              value={effective.aiAssist ? 'ON' : 'OFF'}
+              onChange={(v) => setOptions({ aiAssist: v === 'ON' })}
+              options={[
+                { value: 'OFF', label: 'Off', sub: 'Your own picks' },
+                {
+                  value: 'ON',
+                  label: 'On',
+                  sub: mode === 'DRAFT' || (info.group === 'TABLE' && effective.tableCards === 'DRAFT')
+                    ? 'Suggest Pick, Auto-build, card scores'
+                    : 'Auto-build, card scores',
+                },
+              ]}
+            />
           </Field>
         )}
 
@@ -612,6 +633,7 @@ function loadOptions(mode: ModeId, aiEnabled: boolean): PlayOptions {
     setCode: typeof stored.setCode === 'string' ? stored.setCode : null,
     randomSetCode: typeof stored.randomSetCode === 'string' ? stored.randomSetCode : null,
     deck: storedDeck(stored),
+    aiAssist: stored.aiAssist === true,
   }
 }
 

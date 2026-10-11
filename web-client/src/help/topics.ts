@@ -825,7 +825,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         'Card scores rates every card in your pool, and in your deck list, so you can make the cuts yourself. Scores use your deck so far for colour context; when the deck changes, the strip offers Re-score. Click Card scores again to hide them.',
         'With more than one engine on the server, the picker at the start of the AI group chooses which one Auto-build and Card scores use.',
       ] },
-      { kind: 'tip', text: 'Assistance is off by default, so nobody in a competitive pod gets it unless the host turns it on for everyone.' },
+      { kind: 'tip', text: 'Assistance is off by default, so nobody in a competitive pod gets it unless the host turns it on for everyone. A draft or sealed game against the AI starts right away, so you choose it on the launch panel instead, under AI assistance.' },
     ],
     related: ['draft-picking', 'limited-deckbuilding'],
   },

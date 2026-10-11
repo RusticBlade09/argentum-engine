@@ -161,6 +161,8 @@ export interface PlayOptions {
   randomSetCode: string | null
   /** The deck to bring. Null = not decided — the panel fills in a default. */
   deck: PanelDeck | null
+  /** AI assistance (Suggest Pick, Auto-build, card scores). Only read where {@link offersAiAssist}. */
+  aiAssist: boolean
 }
 
 export function defaultOptions(mode: ModeId, aiEnabled: boolean): PlayOptions {
@@ -175,6 +177,7 @@ export function defaultOptions(mode: ModeId, aiEnabled: boolean): PlayOptions {
     setCode: null,
     randomSetCode: null,
     deck: null,
+    aiAssist: false,
   }
   return { ...base, opponents: opponentRange(base)?.fallback ?? 1 }
 }
@@ -254,6 +257,15 @@ export function needsSet(options: PlayOptions): boolean {
   const cards = cardsFor(options)
   if (cards.kind === 'SEALED' || cards.kind === 'DRAFT') return true
   return false
+}
+
+/**
+ * Whether the panel asks about AI assistance: a game against the AI whose cards come from packs, so
+ * there is a draft or a deck to build. It starts right away, with no lobby to switch it on in; a
+ * lobby with people keeps the choice in its own settings, where the host makes it for everyone.
+ */
+export function offersAiAssist(options: PlayOptions): boolean {
+  return options.playWith === 'AI' && needsSet(options)
 }
 
 /** The commander deck legality, which also implies Commander rules (`rulesForLegality`). */
@@ -341,6 +353,7 @@ export function recipeForOptions(options: PlayOptions): LobbyRecipe {
   const settings: { -readonly [K in keyof RecipeSettings]: RecipeSettings[K] } = { ...base.settings }
   if (options.setCode && needsSet(options)) settings.setCodes = [options.setCode]
   if (options.playWith === 'PUBLIC') settings.isPublic = true
+  if (offersAiAssist(options) && options.aiAssist) settings.aiAssistEnabled = true
   if (options.mode === 'COMMANDER') {
     // `rulesForCards` only infers Commander from a commander *pack* shape; a brought commander deck
     // has to say it, or the lobby would open on Standard rules with Commander deck legality.

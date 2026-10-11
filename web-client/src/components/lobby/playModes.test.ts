@@ -5,6 +5,7 @@ import {
   defaultOptions,
   effectiveOpponents,
   modeFromSlug,
+  offersAiAssist,
   opponentRange,
   recipeForOptions,
   rollsDeck,
@@ -117,6 +118,20 @@ describe('playModes', () => {
     expect(recipe.selection).toMatchObject({ roster: 'SOLO', cards: { kind: 'DRAFT', shape: 'BOOSTER' }, shape: 'BRACKET' })
     expect(recipe.aiSeats).toBe(3)
     expect(recipe.settings.setCodes).toEqual(['BLB'])
+  })
+
+  it('asks about AI assistance only for AI games built from packs, and carries the answer', () => {
+    expect(offersAiAssist(defaultOptions('SEALED', true))).toBe(true)
+    expect(offersAiAssist(defaultOptions('DRAFT', true))).toBe(true)
+    expect(offersAiAssist({ ...defaultOptions('FREE_FOR_ALL', true), tableCards: 'SEALED' })).toBe(true)
+    expect(offersAiAssist(defaultOptions('CONSTRUCTED', true))).toBe(false)
+    // People in a lobby: the host switches it on in the lobby's settings instead.
+    expect(offersAiAssist({ ...defaultOptions('SEALED', true), playWith: 'FRIENDS' })).toBe(false)
+
+    const sealed = defaultOptions('SEALED', true)
+    expect(recipeForOptions(sealed).settings.aiAssistEnabled).toBeUndefined()
+    expect(recipeForOptions({ ...sealed, aiAssist: true }).settings.aiAssistEnabled).toBe(true)
+    expect(recipeForOptions({ ...sealed, aiAssist: true, playWith: 'FRIENDS' }).settings.aiAssistEnabled).toBeUndefined()
   })
 
   it('pins Winston to one opponent and Team vs. Team to even tables', () => {
