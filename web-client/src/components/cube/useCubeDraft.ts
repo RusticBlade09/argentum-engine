@@ -105,20 +105,21 @@ export function useCubeDraft({ cube, availableSets, lookup, catalogReady, onSave
     window.setTimeout(() => setNotice((current) => (current === message ? null : current)), 2400)
   }, [])
 
-  function setCount(cardName: string, count: number) {
+  // Stable, so the cube view's memoized rows don't re-render on every keystroke elsewhere.
+  const setCount = useCallback((cardName: string, count: number) => {
     setEntries((prev) =>
       count <= 0 ? prev.filter((e) => e.name !== cardName) : prev.map((e) => (e.name === cardName ? { ...e, count } : e)),
     )
-  }
+  }, [])
 
-  function setRarity(cardName: string, rarity: CubeRarity | null) {
+  const setRarity = useCallback((cardName: string, rarity: CubeRarity | null) => {
     setEntries((prev) =>
       prev.map((e) => {
         if (e.name !== cardName) return e
         return rarity ? { ...e, rarity } : { name: e.name, count: e.count }
       }),
     )
-  }
+  }, [])
 
   /** One more copy of a card: a new entry, or a second copy of one already in. */
   function addOne(cardName: string) {

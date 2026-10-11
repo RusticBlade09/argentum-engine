@@ -18,6 +18,7 @@ import { CubeStats, PackStrip } from '@/components/cube/CubeStats'
 import { boosterStyleInfo, cubeToText, isBoosterStyle, uniqueCubeName } from '@/components/cube/cubeModel'
 import { useCardCatalog } from '@/components/cube/useCardCatalog'
 import { PageShell, pageStyles as p } from '@/components/ui/PageShell'
+import { useHoverStore } from '@/components/ui/hoverStore'
 import { cubeCardCount } from '@/store/cubeLibrary'
 import { type UnifiedCube, cubeToShared, useUnifiedCubes } from '@/store/useUnifiedCubes'
 import db from '@/components/deckbuilder/deckbuilder.module.css'
@@ -87,7 +88,7 @@ function SharedCube({ view }: { view: SharedCubeView }) {
   const [copied, setCopied] = useState<UnifiedCube | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [hovered, setHovered] = useState<CardSummary | null>(null)
+  const hover = useHoverStore<CardSummary>()
 
   const cube = view.cube
   const lookup = useMemo(
@@ -107,7 +108,6 @@ function SharedCube({ view }: { view: SharedCubeView }) {
     const first = groups[0]?.entries[0]
     return first ? lookup(first.name) ?? null : null
   }, [groups, lookup])
-  const previewCard = hovered ?? firstCard
 
   async function saveCopy() {
     setBusy(true)
@@ -135,7 +135,7 @@ function SharedCube({ view }: { view: SharedCubeView }) {
   return (
     <div className={`${db.workspace} ${db.workspaceDeckMode}`}>
       <aside className={db.left}>
-        <CubeRailPreview card={previewCard} />
+        <CubeRailPreview hover={hover} fallback={firstCard} />
         {rarityMatters && (
           <div className={styles.packCard}>
             <span className={styles.packLabel}>Each pack</span>
@@ -195,8 +195,8 @@ function SharedCube({ view }: { view: SharedCubeView }) {
           lookup={lookup}
           catalogReady={catalog.ready}
           rarityMatters={rarityMatters}
-          activeName={previewCard?.name ?? null}
-          onHover={setHovered}
+          hover={hover}
+          fallbackName={firstCard?.name ?? null}
         />
 
         <div className={styles.footer}>

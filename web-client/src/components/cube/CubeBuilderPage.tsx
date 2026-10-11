@@ -34,6 +34,7 @@ import { ShareCubeDialog } from './ShareCubeDialog'
 import { useCardHover } from './useCardHover'
 import { type BasicLandSetOption, useCubeDraft } from './useCubeDraft'
 import { ManaCost } from '@/components/ui/ManaSymbols'
+import { useHoverStore } from '@/components/ui/hoverStore'
 import db from '@/components/deckbuilder/deckbuilder.module.css'
 import editor from './CubeEditor.module.css'
 import shared from './SharedCube.module.css'
@@ -165,13 +166,12 @@ function CubeBuilder({
   const { onHover, preview } = useCardHover()
 
   const columns = useCubeColumns(entries, lookup, !loading)
-  const [railCard, setRailCard] = useState<CardSummary | null>(null)
+  const hover = useHoverStore<CardSummary>()
   // The rail is never blank: until something is hovered, it shows the cube's first card.
   const firstCard = useMemo(() => {
     const first = columns.groups[0]?.entries[0]
     return first ? lookup(first.name) ?? null : null
   }, [columns.groups, lookup])
-  const previewCard = railCard ?? firstCard
 
   const identityInputs = (
     <>
@@ -359,7 +359,7 @@ function CubeBuilder({
       {viewMode === 'cube' ? (
         <div className={`${db.workspace} ${db.workspaceDeckMode}`}>
           <aside className={db.left}>
-            <CubeRailPreview card={previewCard} />
+            <CubeRailPreview hover={hover} fallback={firstCard} />
             <section className={styles.startCard} aria-label="Add a whole set">
               <span className={styles.startTitle}>Start from a set</span>
               <span className={styles.startText}>
@@ -382,9 +382,9 @@ function CubeBuilder({
               counts={draft.counts}
               onAdd={(card) => {
                 draft.addOne(card.name)
-                setRailCard(card)
+                hover.set(card)
               }}
-              onHover={setRailCard}
+              onHover={hover.set}
               onAddSet={() => setDialog('set')}
             />
             <CubeColumnsToolbar state={columns} total={entries.length}>
@@ -399,8 +399,8 @@ function CubeBuilder({
               lookup={lookup}
               catalogReady={!loading}
               rarityMatters={isBoosterStyle(draft.boosterStyle)}
-              activeName={previewCard?.name ?? null}
-              onHover={setRailCard}
+              hover={hover}
+              fallbackName={firstCard?.name ?? null}
               onCount={draft.setCount}
               onRarity={draft.setRarity}
               emptyHint={

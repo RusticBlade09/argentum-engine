@@ -67,6 +67,7 @@ import {
 import { PageShell } from '@/components/ui/PageShell'
 import { BuilderModeSwitch } from './BuilderModeSwitch'
 import { DeckHoverPreview } from './DeckHoverPreview'
+import { type HoverStore, useHovered, useHoverStore } from '@/components/ui/hoverStore'
 import { getDeck as getAccountDeck, upsertDeckByName } from '@/api/account'
 import { useAuthStore } from '@/store/authStore'
 import { type UnifiedDeck, useUnifiedDecks } from '@/store/useUnifiedDecks'
@@ -1192,52 +1193,17 @@ export function DeckbuilderPage() {
   const handleOpenPicker = useCallback((name: string) => setPickerOpenFor({ name }), [])
   const handleClosePicker = useCallback(() => setPickerOpenFor(null), [])
 
-  // Deck-mode left-rail card preview. Hover state is lifted out of DeckCentricView so the
-  // (Moxfield-style) preview can live in the left rail instead of floating near the cursor.
-  const [deckHoverName, setDeckHoverName] = useState<string | null>(null)
-  const [deckHoverCard, setDeckHoverCard] = useState<CardSummary | null>(null)
-  const deckHoverArtOverride = deckHoverName ? pinnedPrintingArt[deckHoverName] : undefined
-  const effectiveDeckHoverCard = deckHoverCard
-    ? deckHoverArtOverride
-      ? {
-          ...deckHoverCard,
-          imageUri: deckHoverArtOverride.imageUri ?? deckHoverCard.imageUri,
-          backFaceImageUri: deckHoverArtOverride.backFaceImageUri ?? deckHoverCard.backFaceImageUri,
-        }
-      : deckHoverCard
-    : null
-  const deckHoverDfc = useDfcHoverFlip(
-    effectiveDeckHoverCard
-      ? {
-          name: effectiveDeckHoverCard.name,
-          imageUri: effectiveDeckHoverCard.imageUri ?? null,
-          isDoubleFaced: effectiveDeckHoverCard.isDoubleFaced ?? false,
-          backFaceName: effectiveDeckHoverCard.backFaceName ?? null,
-          backFaceImageUri: effectiveDeckHoverCard.backFaceImageUri ?? null,
-        }
-      : null,
+  // Deck-mode left-rail card preview. The hovered row lives in a store rather than page state, so a
+  // hover re-renders the preview alone, not this whole page and every row in it.
+  const deckHover = useHoverStore<DeckHoverEntry>()
+  const handleDeckHoverEnter = deckHover.set
+  const handleDeckHoverLeave = useCallback(() => deckHover.set(null), [deckHover])
+  const handleToggleCommander = useCallback(
+    (name: string) => setCommander((prev) => (prev === name ? null : name)),
+    [],
   )
-  const resetDeckHoverDfc = deckHoverDfc.resetFlip
-  const handleDeckHoverEnter = useCallback(
-    (entry: { name: string; card: CardSummary | undefined }) => {
-      setDeckHoverName((prev) => {
-        if (prev !== entry.name) resetDeckHoverDfc()
-        return entry.name
-      })
-      setDeckHoverCard(entry.card ?? null)
-    },
-    [resetDeckHoverDfc],
-  )
-  const handleDeckHoverLeave = useCallback(() => {
-    setDeckHoverName(null)
-    setDeckHoverCard(null)
-  }, [])
-  useEffect(() => {
-    if (deckHoverName && !(deckHoverName in deckCards) && deckHoverName !== commander) {
-      setDeckHoverName(null)
-      setDeckHoverCard(null)
-    }
-  }, [deckCards, commander, deckHoverName])
+  const handleSuggestBasics = () =>
+    suggestLandsForDeck(deckCards, catalogIndex, catalog, setCardCount, applySetPinIfAvailable)
 
   const closeTools = () => setToolsOpen(false)
   const isEmptyDeck = Object.keys(deckCards).length === 0
@@ -1385,15 +1351,11 @@ export function DeckbuilderPage() {
           }}
         />
         {viewMode === 'deck' ? (
-          <DeckHoverPreview
-            name={deckHoverName ? (deckHoverDfc.displayName ?? deckHoverName) : null}
-            imageUri={
-              deckHoverName
-                ? (deckHoverDfc.displayImageUri ?? effectiveDeckHoverCard?.imageUri ?? null)
-                : null
-            }
-            hint={deckHoverDfc.hint}
-            imageRotateDeg={deckHoverDfc.imageRotateDeg(effectiveDeckHoverCard)}
+          <DeckRailPreview
+            store={deckHover}
+            deckCards={deckCards}
+            commander={commander}
+            pinnedPrintingArt={pinnedPrintingArt}
           />
         ) : (
           <FilterSection
@@ -1460,14 +1422,10 @@ export function DeckbuilderPage() {
               onRemove={removeCard}
               commander={commander}
               showCommanderControls={isCommanderFormat}
-              onToggleCommander={(name) =>
-                setCommander((prev) => (prev === name ? null : name))
-              }
+              onToggleCommander={handleToggleCommander}
               rowViolations={rowViolations}
               isCommanderFormat={isCommanderFormat}
-              onSuggestBasics={() =>
-                suggestLandsForDeck(deckCards, catalogIndex, catalog, setCardCount, applySetPinIfAvailable)
-              }
+              onSuggestBasics={handleSuggestBasics}
               pinnedPrintings={pinnedPrintings}
               pinnedPrintingArt={pinnedPrintingArt}
               onOpenPicker={handleOpenPicker}
@@ -1526,9 +1484,7 @@ export function DeckbuilderPage() {
             deckCards={deckCards}
             isCommanderFormat={isCommanderFormat}
             onAdd={addCard}
-            onSuggestBasics={() =>
-              suggestLandsForDeck(deckCards, catalogIndex, catalog, setCardCount, applySetPinIfAvailable)
-            }
+            onSuggestBasics={handleSuggestBasics}
           />
 
           <DeckCentricView
@@ -1539,9 +1495,7 @@ export function DeckbuilderPage() {
             onRemove={removeCard}
             commander={commander}
             showCommanderControls={isCommanderFormat}
-            onToggleCommander={(name) =>
-              setCommander((prev) => (prev === name ? null : name))
-            }
+            onToggleCommander={handleToggleCommander}
             rowViolations={rowViolations}
             isCommanderFormat={isCommanderFormat}
             onHoverEnter={handleDeckHoverEnter}
@@ -1669,6 +1623,66 @@ export function DeckbuilderPage() {
 // Shared deck summary + action row — DeckSummary lives in @/components/ui so
 // the DeckPicker (quick-game / tournament lobbies) can reuse the same panel.
 // ---------------------------------------------------------------------------
+
+type DeckHoverEntry = { name: string; card: CardSummary | undefined }
+
+/**
+ * The Deck view's left-rail preview of the hovered row, with a pinned printing's art and F to flip a
+ * double-faced card. It subscribes to the hover store itself, so it is the one thing a hover renders.
+ */
+function DeckRailPreview({
+  store,
+  deckCards,
+  commander,
+  pinnedPrintingArt,
+}: {
+  store: HoverStore<DeckHoverEntry>
+  deckCards: Record<string, number>
+  commander: string | null
+  pinnedPrintingArt: Record<string, { imageUri: string | null; backFaceImageUri: string | null }>
+}) {
+  const hovered = useHovered(store)
+  // A row removed while hovered never fires its mouseleave; drop the preview with it.
+  const gone = !!hovered && !(hovered.name in deckCards) && hovered.name !== commander
+  useEffect(() => {
+    if (gone) store.set(null)
+  }, [gone, store])
+  const entry = gone ? null : hovered
+  const art = entry ? pinnedPrintingArt[entry.name] : undefined
+  const card = entry?.card
+    ? art
+      ? {
+          ...entry.card,
+          imageUri: art.imageUri ?? entry.card.imageUri ?? null,
+          backFaceImageUri: art.backFaceImageUri ?? entry.card.backFaceImageUri ?? null,
+        }
+      : entry.card
+    : null
+  // Keyed by name: a new card starts on its front face.
+  return <DeckRailPreviewCard key={entry?.name ?? ''} name={entry?.name ?? null} card={card} />
+}
+
+function DeckRailPreviewCard({ name, card }: { name: string | null; card: CardSummary | null }) {
+  const dfc = useDfcHoverFlip(
+    card
+      ? {
+          name: card.name,
+          imageUri: card.imageUri ?? null,
+          isDoubleFaced: card.isDoubleFaced ?? false,
+          backFaceName: card.backFaceName ?? null,
+          backFaceImageUri: card.backFaceImageUri ?? null,
+        }
+      : null,
+  )
+  return (
+    <DeckHoverPreview
+      name={name ? (dfc.displayName ?? name) : null}
+      imageUri={name ? (dfc.displayImageUri ?? card?.imageUri ?? null) : null}
+      hint={dfc.hint}
+      imageRotateDeg={dfc.imageRotateDeg(card)}
+    />
+  )
+}
 
 function DeckActionRow({
   saveLabel,
