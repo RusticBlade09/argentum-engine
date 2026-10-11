@@ -3,11 +3,16 @@ package com.wingedsheep.sdk.scripting.effects
 import com.wingedsheep.sdk.core.CounterType
 import com.wingedsheep.sdk.core.Subtype
 import com.wingedsheep.sdk.core.Zone
+import com.wingedsheep.sdk.dsl.Effects
+import com.wingedsheep.sdk.dsl.HandPatterns
 import com.wingedsheep.sdk.dsl.LibraryPatterns
 import com.wingedsheep.sdk.scripting.GameObjectFilter
 import com.wingedsheep.sdk.scripting.references.Player
+import com.wingedsheep.sdk.scripting.targets.EffectTarget
+import com.wingedsheep.sdk.scripting.values.DynamicAmount
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotStartWith
 
 /**
  * Player-facing text for pipelines whose steps only read as English together: a library search,
@@ -62,6 +67,56 @@ class StepTextDescriptionTest : DescribeSpec({
                 storeAs = "x",
                 search = true,
             ).description shouldBe "Search your library for basic land cards"
+        }
+    }
+
+    describe("a discard from your own hand reads as discard") {
+
+        it("Yuyan Archers: you may discard a card. If you do, draw a card") {
+            Effects.May(
+                effect = Effects.IfYouDo(action = HandPatterns.discardCards(1), then = Effects.DrawCards(1))
+            ).description shouldBe "You may discard a card. If you do, draw a card"
+        }
+
+        it("several cards take a number word") {
+            HandPatterns.discardCards(2).description shouldBe "Discard two cards"
+        }
+
+        it("a filtered discard names the card type") {
+            HandPatterns.discardCards(1, filter = GameObjectFilter.Creature).description shouldBe
+                "Discard a creature card"
+            HandPatterns.discardCards(1, filter = GameObjectFilter.Artifact).description shouldBe
+                "Discard an artifact card"
+        }
+
+        it("X, any number, and at random") {
+            HandPatterns.discardCards(DynamicAmount.XValue).description shouldBe "Discard X cards"
+            HandPatterns.discardAnyNumber().description shouldBe "Discard any number of cards"
+            HandPatterns.discardRandom(1).description shouldBe "Discard a card at random"
+        }
+
+        it("up to N") {
+            CompositeEffect(
+                listOf(
+                    GatherCardsEffect(CardSource.FromZone(Zone.HAND, Player.You), storeAs = "h"),
+                    SelectFromCollectionEffect("h", SelectionMode.ChooseUpTo(DynamicAmount.Fixed(1)), storeSelected = "d"),
+                    MoveCollectionEffect("d", CardDestination.ToZone(Zone.GRAVEYARD), moveType = MoveType.Discard),
+                )
+            ).description shouldBe "Discard up to one card"
+        }
+
+        it("another player's discard keeps its per-step text") {
+            HandPatterns.discardCards(1, target = EffectTarget.ContextTarget(0)).description shouldNotStartWith "Discard"
+        }
+
+        it("a plain move from hand to graveyard is not a discard") {
+            CompositeEffect(
+                listOf(
+                    GatherCardsEffect(CardSource.FromZone(Zone.HAND, Player.You), storeAs = "h"),
+                    SelectFromCollectionEffect("h", SelectionMode.ChooseExactly(DynamicAmount.Fixed(1)), storeSelected = "d"),
+                    MoveCollectionEffect("d", CardDestination.ToZone(Zone.GRAVEYARD)),
+                )
+            ).description shouldNotStartWith "Discard"
         }
     }
 

@@ -59,6 +59,9 @@ internal object SearchText {
  *  - **A library search** — `gather(search = true)` → pick → move (→ shuffle) — is one sentence in
  *    Oracle ("Search your library for a basic Island, Swamp, or Mountain card, put it onto the
  *    battlefield tapped, then shuffle"), not four ("Look at …. Choose up to 1 of those cards. …").
+ *  - **A discard from your own hand** — gather your hand → you pick → move to your graveyard as a
+ *    discard — is "Discard a card" / "Discard two creature cards" / "Discard up to one card", not
+ *    "Look at cards in your hand. Choose exactly 1 of those cards. Put those cards into a graveyard".
  *  - **A battlefield gather** feeding the next step is that step's object: "Put a +1/+1 counter on
  *    each Frog … you control that entered the battlefield this turn", not "Look at … in your
  *    battlefield. Put … on each of those permanents".
@@ -71,7 +74,7 @@ internal fun describeSteps(effects: List<Effect>, render: (Effect) -> String): S
     val sentences = mutableListOf<String>()
     var i = 0
     while (i < effects.size) {
-        val fused = fuseSearch(effects, i) ?: fuseBattlefieldGather(effects, i, render)
+        val fused = fuseSearch(effects, i) ?: fuseDiscard(effects, i) ?: fuseBattlefieldGather(effects, i, render)
         if (fused != null) {
             sentences += fused.first
             i += fused.second
@@ -138,9 +141,53 @@ private fun fuseSearch(effects: List<Effect>, start: Int): Pair<String, Int>? {
     return text to consumed
 }
 
+/**
+ * "Discard a card" — `Patterns.Hand.discardCards` / `discardAnyNumber` / a random discard: your
+ * hand gathered (optionally filtered), you pick, the picks go to your graveyard as a discard.
+ * Only your own hand and your own choice fuse; another player's hand or chooser keeps the
+ * per-step text, since its subject ("Target player discards …") isn't this sentence's.
+ */
+private fun fuseDiscard(effects: List<Effect>, start: Int): Pair<String, Int>? {
+    val gather = effects[start] as? GatherCardsEffect ?: return null
+    if (gather.search || gather.revealed) return null
+    val source = gather.source as? CardSource.FromZone ?: return null
+    if (source.zone != Zone.HAND || source.player != Player.You || source.excludeSacrificedThisWay) return null
+    val select = effects.getOrNull(start + 1) as? SelectFromCollectionEffect ?: return null
+    if (select.from != gather.storeAs || select.chooser != Chooser.Controller ||
+        select.filter != GameObjectFilter.Any || select.restrictions.isNotEmpty() || select.matchChosenCreatureType
+    ) return null
+    val move = effects.getOrNull(start + 2) as? MoveCollectionEffect ?: return null
+    if (move.from != select.storeSelected || move.revealed || !move.isPlainMove(MoveType.Discard)) return null
+    val toZone = move.destination as? CardDestination.ToZone ?: return null
+    if (toZone.zone != Zone.GRAVEYARD || toZone.player != Player.You || toZone.placement != ZonePlacement.Default) return null
+
+    val filter = source.filter
+    fun counted(count: DynamicAmount): String = when (val fixed = (count as? DynamicAmount.Fixed)?.amount) {
+        1 -> SearchText.noun(filter, plural = false).let { "${if (it.first().lowercaseChar() in "aeiou") "an" else "a"} $it" }
+        null -> if (count.description == "X") "X ${SearchText.noun(filter, plural = true)}"
+            else "a number of ${SearchText.noun(filter, plural = true)} equal to ${count.description}"
+        else -> "${numberToWord(fixed)} ${SearchText.noun(filter, plural = true)}"
+    }
+    val what = when (val selection = select.selection) {
+        is SelectionMode.ChooseExactly -> counted(selection.count)
+        is SelectionMode.ChooseUpTo -> when ((selection.count as? DynamicAmount.Fixed)?.amount) {
+            1 -> "up to one ${SearchText.noun(filter, plural = false)}"
+            // A hand-sized sentinel cap ("up to 100") is "any number" in Oracle.
+            in 11..Int.MAX_VALUE -> "any number of ${SearchText.noun(filter, plural = true)}"
+            else -> "up to ${counted(selection.count)}"
+        }
+        is SelectionMode.Random -> "${counted(selection.count)} at random"
+        SelectionMode.ChooseAnyNumber -> "any number of ${SearchText.noun(filter, plural = true)}"
+        SelectionMode.All -> "your hand".takeIf { filter == GameObjectFilter.Any }
+            ?: "all ${SearchText.noun(filter, plural = true)} in your hand"
+        SelectionMode.ChooseSpell -> return null
+    }
+    return "Discard $what" to 3
+}
+
 /** A move that only relocates the cards: no face-down, counters, links, or partial filters. */
-private fun MoveCollectionEffect.isPlainMove(): Boolean =
-    order == CardOrder.Preserve && moveType == MoveType.Default && !linkToSource && !unlinkFromSource &&
+private fun MoveCollectionEffect.isPlainMove(expectedType: MoveType = MoveType.Default): Boolean =
+    order == CardOrder.Preserve && moveType == expectedType && !linkToSource && !unlinkFromSource &&
         faceDown == null && !lookableInExile && !noRegenerate && !underOwnersControl && addCounterType == null &&
         !markEnteredViaSourceAbility && filter == null && attachTo == null
 
