@@ -1,8 +1,9 @@
 /*
- * The shared-cube page. Its frame is the deckbuilder's Deck view (`deckbuilder.module.css`: the
- * deck-mode workspace, the preview rail, the flowing group columns); this file styles what's
- * particular to reading someone else's cube — the header with its actions, the list toolbar, the
- * read-only rows and the stats footer.
+ * A cube in the deckbuilder's Deck-view layout — the shared-cube page, and the builder's Cube view
+ * ({@link CubeColumns}). The frame is the deckbuilder's own (`deckbuilder.module.css`: the deck-mode
+ * workspace, the preview rail, the flowing group columns); this file styles what's particular to a
+ * cube — the header, the list toolbar, the rows (read-only, or with copy steppers when editing) and
+ * the stats footer.
  */
 
 /* ── Left rail ────────────────────────────────────────────────────────── */
@@ -115,6 +116,15 @@
 
 .filter:focus { border-color: var(--color-accent-dark); }
 
+.listMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-sm);
+  color: #c3c9d7;
+  white-space: nowrap;
+}
+
 .segmented {
   display: inline-flex;
   gap: 2px;
@@ -165,6 +175,39 @@
 
 .row:hover,
 .row[data-active='true'] { background: rgba(255, 255, 255, 0.05); }
+
+/* Editing adds the copy steppers as a last column; they surface on hover so the list reads clean. */
+.row[data-editable] { grid-template-columns: 18px 20px minmax(0, 1fr) auto auto; }
+
+.steps {
+  display: inline-flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.row:hover .steps,
+.row:focus-within .steps { opacity: 1; }
+
+@media (hover: none) {
+  .steps { opacity: 1; }
+}
+
+.step {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text-muted);
+  background: var(--bg-surface-4);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.step:hover { color: var(--text-primary); border-color: var(--color-accent-dark); }
+.step:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
 
 .count {
   text-align: right;

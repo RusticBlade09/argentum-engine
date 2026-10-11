@@ -185,8 +185,6 @@
   .workspace[data-pane] { grid-template-columns: minmax(0, 1fr); }
   .saveState { display: none; }
 
-  /* The deckbuilder hides the off-screen panes for its own tabs; cube mode adds the cube tab. */
-  .workspace[data-pane='cube'] > .paneLeft,
-  .workspace[data-pane='cube'] > .paneCenter { display: none; }
+  /* On a phone the stats belong to the Cube view, not under the catalog grid. */
   .footer[data-mobile-hidden='true'] { display: none; }
 }

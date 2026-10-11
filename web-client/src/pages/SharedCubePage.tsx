@@ -12,22 +12,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { type SharedCubeView, getSharedCube } from '@/api/account'
 import type { CardSummary } from '@/components/deckbuilder/cardFilter'
-import { DeckHoverPreview } from '@/components/deckbuilder/DeckHoverPreview'
+import { CubeColumns, CubeColumnsToolbar, CubeRailPreview, useCubeColumns } from '@/components/cube/CubeColumns'
 import { CubePlayButton } from '@/components/cube/CubePlayButton'
 import { CubeStats, PackStrip } from '@/components/cube/CubeStats'
-import { GROUP_BY_LABEL, groupCubeEntries, type CubeGroupBy } from '@/components/cube/cubeGrouping'
-import { boosterStyleInfo, cubeToText, isBoosterStyle, resolveRarity, uniqueCubeName } from '@/components/cube/cubeModel'
-import { RarityChip } from '@/components/cube/RarityChip'
+import { boosterStyleInfo, cubeToText, isBoosterStyle, uniqueCubeName } from '@/components/cube/cubeModel'
 import { useCardCatalog } from '@/components/cube/useCardCatalog'
-import { ManaCost } from '@/components/ui/ManaSymbols'
 import { PageShell, pageStyles as p } from '@/components/ui/PageShell'
-import { useDfcHoverFlip } from '@/components/ui/useDfcHoverFlip'
 import { cubeCardCount } from '@/store/cubeLibrary'
 import { type UnifiedCube, cubeToShared, useUnifiedCubes } from '@/store/useUnifiedCubes'
 import db from '@/components/deckbuilder/deckbuilder.module.css'
 import styles from '@/components/cube/SharedCube.module.css'
-
-const GROUP_BYS: readonly CubeGroupBy[] = ['TYPE', 'COLOR', 'RARITY']
 
 type Load =
   | { state: 'loading' }
@@ -93,8 +87,6 @@ function SharedCube({ view }: { view: SharedCubeView }) {
   const [copied, setCopied] = useState<UnifiedCube | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [groupBy, setGroupBy] = useState<CubeGroupBy>('TYPE')
-  const [filter, setFilter] = useState('')
   const [hovered, setHovered] = useState<CardSummary | null>(null)
 
   const cube = view.cube
@@ -107,11 +99,8 @@ function SharedCube({ view }: { view: SharedCubeView }) {
   const style = cube.boosterStyle ?? 'SHUFFLED'
   const rarityMatters = isBoosterStyle(style)
 
-  const groups = useMemo(() => {
-    const needle = filter.trim().toLowerCase()
-    const visible = needle ? cube.cards.filter((e) => e.name.toLowerCase().includes(needle)) : cube.cards
-    return groupCubeEntries(visible, lookup, groupBy)
-  }, [cube.cards, filter, lookup, groupBy])
+  const columns = useCubeColumns(cube.cards, lookup, catalog.ready)
+  const { groups } = columns
 
   // The rail is never blank: until something is hovered, it shows the cube's first card.
   const firstCard = useMemo(() => {
@@ -119,17 +108,6 @@ function SharedCube({ view }: { view: SharedCubeView }) {
     return first ? lookup(first.name) ?? null : null
   }, [groups, lookup])
   const previewCard = hovered ?? firstCard
-  const dfc = useDfcHoverFlip(
-    previewCard
-      ? {
-          name: previewCard.name,
-          imageUri: previewCard.imageUri ?? null,
-          isDoubleFaced: previewCard.isDoubleFaced ?? false,
-          backFaceName: previewCard.backFaceName ?? null,
-          backFaceImageUri: previewCard.backFaceImageUri ?? null,
-        }
-      : null,
-  )
 
   async function saveCopy() {
     setBusy(true)
@@ -157,12 +135,7 @@ function SharedCube({ view }: { view: SharedCubeView }) {
   return (
     <div className={`${db.workspace} ${db.workspaceDeckMode}`}>
       <aside className={db.left}>
-        <DeckHoverPreview
-          name={previewCard ? (dfc.displayName ?? previewCard.name) : null}
-          imageUri={previewCard ? (dfc.displayImageUri ?? previewCard.imageUri ?? null) : null}
-          hint={dfc.hint}
-          imageRotateDeg={dfc.imageRotateDeg(previewCard)}
-        />
+        <CubeRailPreview card={previewCard} />
         {rarityMatters && (
           <div className={styles.packCard}>
             <span className={styles.packLabel}>Each pack</span>
@@ -214,69 +187,17 @@ function SharedCube({ view }: { view: SharedCubeView }) {
           </p>
         )}
 
-        <div className={styles.listToolbar}>
-          <input
-            className={styles.filter}
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder={`Filter ${cube.cards.length} cards`}
-            aria-label="Filter the cube"
-          />
-          <div className={styles.segmented} role="radiogroup" aria-label="Group cards by">
-            {GROUP_BYS.map((by) => (
-              <button
-                key={by}
-                type="button"
-                role="radio"
-                aria-checked={groupBy === by}
-                className={styles.segment}
-                onClick={() => setGroupBy(by)}
-              >
-                {GROUP_BY_LABEL[by]}
-              </button>
-            ))}
-          </div>
-        </div>
+        <CubeColumnsToolbar state={columns} total={cube.cards.length} />
 
-        <div className={db.deckCentric}>
-          {groups.length === 0 ? (
-            <p className={styles.empty}>No card in the cube matches “{filter}”.</p>
-          ) : (
-            <div className={db.deckCentricColumns}>
-              {groups.map((group) => (
-                <section key={group.label} className={`${db.deckCentricGroup} ${styles.group}`} aria-label={group.label}>
-                  <h3 className={db.deckCentricGroupLabel}>
-                    {group.label} ({cubeCardCount(group.entries)})
-                  </h3>
-                  {group.entries.map((entry) => {
-                    const card = lookup(entry.name)
-                    return (
-                      <div
-                        key={entry.name}
-                        className={styles.row}
-                        data-active={previewCard?.name === entry.name}
-                        data-missing={catalog.ready && !card}
-                        onMouseEnter={() => card && setHovered(card)}
-                        onClick={() => card && setHovered(card)}
-                      >
-                        <span className={styles.count}>{entry.count}</span>
-                        <RarityChip
-                          cardName={entry.name}
-                          resolved={resolveRarity(entry, card?.rarity)}
-                          muted={!rarityMatters}
-                        />
-                        <span className={styles.name}>{entry.name}</span>
-                        <span className={styles.cost}>
-                          {card?.manaCost ? <ManaCost cost={card.manaCost} size={12} /> : null}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </section>
-              ))}
-            </div>
-          )}
-        </div>
+        <CubeColumns
+          groups={groups}
+          filter={columns.filter}
+          lookup={lookup}
+          catalogReady={catalog.ready}
+          rarityMatters={rarityMatters}
+          activeName={previewCard?.name ?? null}
+          onHover={setHovered}
+        />
 
         <div className={styles.footer}>
           <CubeStats entries={cube.cards} lookup={lookup} boosterStyle={style} packSize={cube.packSize} />

@@ -8,6 +8,11 @@
  * the two cube-sized ways in: a whole set at its own rarities ({@link SetPane}) and a pasted list
  * ({@link PastePane}).
  *
+ * Like the deckbuilder it has two views, toggled in the toolbar and kept in the URL (`?view=cube`):
+ * "Cards to add" — the catalog grid with the cube in the right rail — and "Cube", the deckbuilder's
+ * Deck view for a cube: the hovered card large on the left and the whole cube in flowing columns
+ * ({@link CubeColumns}), edited in place, with a search-and-add bar above it.
+ *
  * The editing rules live in {@link useCubeDraft}, shared with the lobby's compact {@link CubeEditor}
  * dialog, so the two surfaces can't drift.
  */
@@ -20,6 +25,7 @@ import { CardGrid, FilterSection, SearchBar, useCardBrowse, useCardCatalog } fro
 import { PageShell, pageStyles as p } from '@/components/ui/PageShell'
 import { type UnifiedCube, useUnifiedCubes } from '@/store/useUnifiedCubes'
 import { CubeCardList } from './CubeCardList'
+import { CubeColumns, CubeColumnsToolbar, CubeRailPreview, useCubeColumns } from './CubeColumns'
 import { CubePackControls } from './CubePackControls'
 import { cubeToText, isBoosterStyle } from './cubeModel'
 import { CubeStats } from './CubeStats'
@@ -27,12 +33,17 @@ import { PastePane, SetPane } from './CubeSources'
 import { ShareCubeDialog } from './ShareCubeDialog'
 import { useCardHover } from './useCardHover'
 import { type BasicLandSetOption, useCubeDraft } from './useCubeDraft'
+import { ManaCost } from '@/components/ui/ManaSymbols'
 import db from '@/components/deckbuilder/deckbuilder.module.css'
 import editor from './CubeEditor.module.css'
+import shared from './SharedCube.module.css'
 import styles from './CubeBuilder.module.css'
 
-/** Narrow screens show one column at a time; these tabs pick it. */
-type Pane = 'cards' | 'filters' | 'cube'
+/** The catalog grid with the cube in the rail, or the cube itself in columns. */
+type ViewMode = 'cards' | 'cube'
+
+/** Narrow screens show one column of the cards view at a time; these tabs pick it. */
+type Pane = 'cards' | 'filters'
 
 /** A source dialog over the builder: a whole set, or a pasted list. */
 type SourceDialog = 'set' | 'paste' | null
@@ -115,7 +126,7 @@ function CubeBuilder({
   onSaved: (cube: UnifiedCube) => void
 }) {
   const navigate = useNavigate()
-  const [search] = useSearchParams()
+  const [search, setSearch] = useSearchParams()
   const { catalog, setInfos, loading, error } = useCardCatalog()
   const byName = useMemo(() => {
     const map = new Map<string, CardSummary>()
@@ -133,11 +144,75 @@ function CubeBuilder({
   const from = search.get('from')
   const [dialog, setDialog] = useState<SourceDialog>(from === 'paste' ? 'paste' : from === 'set' ? 'set' : null)
   const [pane, setPane] = useState<Pane>('cards')
+  const viewMode: ViewMode = search.get('view') === 'cube' ? 'cube' : 'cards'
+  const setViewMode = useCallback(
+    (next: ViewMode) =>
+      setSearch(
+        (prev) => {
+          const params = new URLSearchParams(prev)
+          if (next === 'cube') params.set('view', 'cube')
+          else params.delete('view')
+          return params
+        },
+        { replace: true },
+      ),
+    [setSearch],
+  )
   const [toolsOpen, setToolsOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   /** Where an exit with unsaved changes was headed, while the confirm bar asks about it. */
   const [pendingExit, setPendingExit] = useState<(() => void) | null>(null)
   const { onHover, preview } = useCardHover()
+
+  const columns = useCubeColumns(entries, lookup, !loading)
+  const [railCard, setRailCard] = useState<CardSummary | null>(null)
+  // The rail is never blank: until something is hovered, it shows the cube's first card.
+  const firstCard = useMemo(() => {
+    const first = columns.groups[0]?.entries[0]
+    return first ? lookup(first.name) ?? null : null
+  }, [columns.groups, lookup])
+  const previewCard = railCard ?? firstCard
+
+  const identityInputs = (
+    <>
+      <input
+        className={editor.titleInput}
+        value={draft.name}
+        onChange={(e) => draft.setName(e.target.value)}
+        placeholder="Name your cube"
+        aria-label="Cube name"
+      />
+      <input
+        className={editor.descriptionInput}
+        value={draft.description}
+        onChange={(e) => draft.setDescription(e.target.value)}
+        placeholder="What it plays like, who it's for"
+        aria-label="Cube description"
+        maxLength={280}
+      />
+    </>
+  )
+
+  const unresolvedWarning = unresolved.length > 0 && (
+    <div className={`${editor.warning} ${viewMode === 'cards' ? styles.railWarning : ''}`}>
+      <span>
+        <strong>{unresolved.length}</strong> card{unresolved.length === 1 ? ' isn’t' : 's aren’t'} implemented
+        yet, so this cube can’t be played.
+      </span>
+      <button type="button" className={editor.secondaryButton} onClick={draft.dropUnresolved}>
+        Drop {unresolved.length === 1 ? 'it' : 'them'}
+      </button>
+    </div>
+  )
+
+  const countLabel = `${totalCards} card${totalCards === 1 ? '' : 's'}${
+    entries.length !== totalCards ? ` · ${entries.length} different` : ''
+  }`
+  const clearAll = entries.length > 0 && (
+    <button type="button" className={editor.linkButton} onClick={() => draft.setEntries([])}>
+      Clear all
+    </button>
+  )
 
   const guard = (proceed: () => void) => (dirty ? setPendingExit(() => proceed) : proceed())
   const openTool = (action: () => void) => () => {
@@ -148,21 +223,52 @@ function CubeBuilder({
   return (
     <PageShell title={<BuilderModeSwitch mode="cube" guard={guard} />} fit width="full" plain>
       <div className={db.toolbar}>
+        <div className={db.viewToggle} role="group" aria-label="View mode">
+          <button
+            type="button"
+            className={db.viewToggleButton}
+            onClick={() => setViewMode('cards')}
+            aria-pressed={viewMode === 'cards'}
+            title="Browse the catalog and click cards to add them"
+          >
+            Cards to add
+          </button>
+          <button
+            type="button"
+            className={db.viewToggleButton}
+            onClick={() => setViewMode('cube')}
+            aria-pressed={viewMode === 'cube'}
+            title="See the whole cube in columns, grouped by type, colour or rarity"
+          >
+            Cube
+          </button>
+        </div>
+        {/* Narrow screens: one tab bar picks the pane and stands in for the view toggle. */}
         <div className={db.paneTabs} role="tablist" aria-label="Cube builder panes">
-          {(['cards', 'filters', 'cube'] as const).map((p) => (
+          {(['cards', 'filters'] as const).map((p) => (
             <button
               key={p}
               type="button"
               role="tab"
               className={db.paneTab}
-              aria-selected={pane === p}
-              onClick={() => setPane(p)}
+              aria-selected={viewMode === 'cards' && pane === p}
+              onClick={() => {
+                setViewMode('cards')
+                setPane(p)
+              }}
             >
-              {p === 'cards' ? 'Cards' : p === 'filters' ? 'Filters' : (
-                <>Cube <span className={db.paneTabCount}>{totalCards}</span></>
-              )}
+              {p === 'cards' ? 'Cards' : 'Filters'}
             </button>
           ))}
+          <button
+            type="button"
+            role="tab"
+            className={db.paneTab}
+            aria-selected={viewMode === 'cube'}
+            onClick={() => setViewMode('cube')}
+          >
+            Cube <span className={db.paneTabCount}>{totalCards}</span>
+          </button>
         </div>
         <div className={db.toolbarSpacer} />
         {toolsOpen && <div className={db.toolsBackdrop} onClick={() => setToolsOpen(false)} aria-hidden />}
@@ -250,120 +356,152 @@ function CubeBuilder({
       )}
       {draft.saveError && <div className={`${editor.warning} ${styles.banner}`}>{draft.saveError}</div>}
 
-      <div className={`${db.workspace} ${styles.workspace}`} data-pane={pane}>
-        <aside className={`${db.left} ${styles.paneLeft}`}>
-          <section className={styles.startCard} aria-label="Add a whole set">
-            <span className={styles.startTitle}>Start from a set</span>
-            <span className={styles.startText}>
-              Add a whole set at its own rarities — then extend it with cards from anywhere.
-            </span>
-            <button type="button" className={editor.primaryButton} onClick={() => setDialog('set')}>
-              Add a set…
-            </button>
-          </section>
-          <FilterSection
-            query={browse.query}
-            onQueryChange={browse.setQuery}
-            catalog={browsable}
-            setInfos={setInfos}
-            advanced={browse.advanced}
-          />
-        </aside>
-
-        <main className={`${db.center} ${styles.paneCenter}`}>
-          <SearchBar
-            query={browse.query}
-            onQueryChange={browse.setQuery}
-            sortMode={browse.sortMode}
-            onSortChange={browse.setSortMode}
-            errors={browse.errors}
-            resultLabel={loading ? 'Loading…' : `Showing ${browse.displayed.length} of ${browse.filtered.length}`}
-          />
-          {error ? (
-            <p className={styles.notice}>Couldn’t load the card catalogue: {error}</p>
-          ) : (
-            <CardGrid
-              cards={browse.displayed}
-              deckCards={draft.counts}
-              onAdd={(card) => draft.addOne(card.name)}
-              onRemove={draft.removeOne}
-              hasMore={browse.hasMore}
-              onShowMore={browse.showMore}
-            />
-          )}
-        </main>
-
-        <aside className={`${db.right} ${styles.rail}`}>
-          <div className={styles.identity}>
-            <input
-              className={editor.titleInput}
-              value={draft.name}
-              onChange={(e) => draft.setName(e.target.value)}
-              placeholder="Name your cube"
-              aria-label="Cube name"
-            />
-            <input
-              className={editor.descriptionInput}
-              value={draft.description}
-              onChange={(e) => draft.setDescription(e.target.value)}
-              placeholder="What it plays like, who it's for"
-              aria-label="Cube description"
-              maxLength={280}
-            />
-          </div>
-
-          <div className={styles.railSection}>
-            <CubePackControls draft={draft} layout="stacked" />
-          </div>
-
-          {unresolved.length > 0 && (
-            <div className={`${editor.warning} ${styles.railWarning}`}>
-              <span>
-                <strong>{unresolved.length}</strong> card{unresolved.length === 1 ? ' isn’t' : 's aren’t'} implemented
-                yet, so this cube can’t be played.
+      {viewMode === 'cube' ? (
+        <div className={`${db.workspace} ${db.workspaceDeckMode}`}>
+          <aside className={db.left}>
+            <CubeRailPreview card={previewCard} />
+            <section className={styles.startCard} aria-label="Add a whole set">
+              <span className={styles.startTitle}>Start from a set</span>
+              <span className={styles.startText}>
+                Add a whole set at its own rarities — then extend it with cards from anywhere.
               </span>
-              <button type="button" className={editor.secondaryButton} onClick={draft.dropUnresolved}>
-                Drop {unresolved.length === 1 ? 'it' : 'them'}
+              <button type="button" className={editor.primaryButton} onClick={() => setDialog('set')}>
+                Add a set…
               </button>
+            </section>
+          </aside>
+
+          <main className={db.centerDeck}>
+            <header className={shared.header}>
+              <div className={shared.titleBlock}>{identityInputs}</div>
+            </header>
+            <CubePackControls draft={draft} layout="bar" />
+            {unresolvedWarning}
+            <CubeAddSearch
+              catalog={browsable}
+              counts={draft.counts}
+              onAdd={(card) => {
+                draft.addOne(card.name)
+                setRailCard(card)
+              }}
+              onHover={setRailCard}
+              onAddSet={() => setDialog('set')}
+            />
+            <CubeColumnsToolbar state={columns} total={entries.length}>
+              <span className={shared.listMeta}>
+                {countLabel}
+                {clearAll}
+              </span>
+            </CubeColumnsToolbar>
+            <CubeColumns
+              groups={columns.groups}
+              filter={columns.filter}
+              lookup={lookup}
+              catalogReady={!loading}
+              rarityMatters={isBoosterStyle(draft.boosterStyle)}
+              activeName={previewCard?.name ?? null}
+              onHover={setRailCard}
+              onCount={draft.setCount}
+              onRarity={draft.setRarity}
+              emptyHint={
+                <div className={db.deckCentricEmpty}>
+                  <p className={db.deckCentricEmptyText}>
+                    This cube is empty. Type a card name above, start from a whole set with{' '}
+                    <strong>Add a set</strong>, or switch to <strong>Cards to add</strong> to browse the catalog.
+                  </p>
+                </div>
+              }
+            />
+            <div className={shared.footer}>
+              <CubeStats entries={entries} lookup={lookup} boosterStyle={draft.boosterStyle} packSize={draft.packSize} />
             </div>
-          )}
-
-          <div className={styles.listHeader}>
-            <span className={styles.listTitle}>
-              {totalCards} card{totalCards === 1 ? '' : 's'}
-              {entries.length !== totalCards ? ` · ${entries.length} different` : ''}
-            </span>
-            {entries.length > 0 && (
-              <button type="button" className={editor.linkButton} onClick={() => draft.setEntries([])}>
-                Clear all
+          </main>
+        </div>
+      ) : (
+        <>
+        <div className={`${db.workspace} ${styles.workspace}`} data-pane={pane}>
+          <aside className={db.left}>
+            <section className={styles.startCard} aria-label="Add a whole set">
+              <span className={styles.startTitle}>Start from a set</span>
+              <span className={styles.startText}>
+                Add a whole set at its own rarities — then extend it with cards from anywhere.
+              </span>
+              <button type="button" className={editor.primaryButton} onClick={() => setDialog('set')}>
+                Add a set…
               </button>
-            )}
-          </div>
-          <CubeCardList
-            entries={entries}
-            lookup={lookup}
-            catalogReady={!loading}
-            rarityMatters={isBoosterStyle(draft.boosterStyle)}
-            onHover={onHover}
-            onCount={draft.setCount}
-            onRarity={draft.setRarity}
-            emptyHint={
-              <>
-                <p className={editor.emptyTitle}>This cube is empty</p>
-                <p className={editor.hint}>
-                  Click cards in the grid to add them, or start from a whole set with <strong>Add a set</strong>.
-                  A shuffled cube of 360 cards seats 8 players at 3 packs of 15.
-                </p>
-              </>
-            }
-          />
-        </aside>
-      </div>
+            </section>
+            <FilterSection
+              query={browse.query}
+              onQueryChange={browse.setQuery}
+              catalog={browsable}
+              setInfos={setInfos}
+              advanced={browse.advanced}
+            />
+          </aside>
 
-      {/* The cube's balance numbers. On a phone they belong to the Cube pane, not under the grid. */}
-      <div className={styles.footer} data-mobile-hidden={pane !== 'cube'}>
-        <CubeStats entries={entries} lookup={lookup} boosterStyle={draft.boosterStyle} packSize={draft.packSize} />
-      </div>
+          <main className={db.center}>
+            <SearchBar
+              query={browse.query}
+              onQueryChange={browse.setQuery}
+              sortMode={browse.sortMode}
+              onSortChange={browse.setSortMode}
+              errors={browse.errors}
+              resultLabel={loading ? 'Loading…' : `Showing ${browse.displayed.length} of ${browse.filtered.length}`}
+            />
+            {error ? (
+              <p className={styles.notice}>Couldn’t load the card catalogue: {error}</p>
+            ) : (
+              <CardGrid
+                cards={browse.displayed}
+                deckCards={draft.counts}
+                onAdd={(card) => draft.addOne(card.name)}
+                onRemove={draft.removeOne}
+                hasMore={browse.hasMore}
+                onShowMore={browse.showMore}
+              />
+            )}
+          </main>
+
+          <aside className={`${db.right} ${styles.rail}`}>
+            <div className={styles.identity}>{identityInputs}</div>
+
+            <div className={styles.railSection}>
+              <CubePackControls draft={draft} layout="stacked" />
+            </div>
+
+            {unresolvedWarning}
+
+            <div className={styles.listHeader}>
+              <span className={styles.listTitle}>{countLabel}</span>
+              {clearAll}
+            </div>
+            <CubeCardList
+              entries={entries}
+              lookup={lookup}
+              catalogReady={!loading}
+              rarityMatters={isBoosterStyle(draft.boosterStyle)}
+              onHover={onHover}
+              onCount={draft.setCount}
+              onRarity={draft.setRarity}
+              emptyHint={
+                <>
+                  <p className={editor.emptyTitle}>This cube is empty</p>
+                  <p className={editor.hint}>
+                    Click cards in the grid to add them, or start from a whole set with <strong>Add a set</strong>.
+                    A shuffled cube of 360 cards seats 8 players at 3 packs of 15.
+                  </p>
+                </>
+              }
+            />
+          </aside>
+        </div>
+
+        {/* The cube's balance numbers. On a phone they belong to the Cube view, not under the grid. */}
+        <div className={styles.footer} data-mobile-hidden>
+          <CubeStats entries={entries} lookup={lookup} boosterStyle={draft.boosterStyle} packSize={draft.packSize} />
+        </div>
+        </>
+      )}
 
       {dialog && (
         <>
@@ -413,5 +551,110 @@ function CubeBuilder({
 
       {preview}
     </PageShell>
+  )
+}
+
+/**
+ * The Cube view's search-and-add bar — the Deck view's, minus the copy cap: type a name, Enter or
+ * click adds one copy. Hovering a match shows it in the rail; "Add a set…" sits where the deck view
+ * offers basic lands.
+ */
+function CubeAddSearch({
+  catalog,
+  counts,
+  onAdd,
+  onHover,
+  onAddSet,
+}: {
+  catalog: readonly CardSummary[]
+  counts: Readonly<Record<string, number>>
+  onAdd: (card: CardSummary) => void
+  onHover: (card: CardSummary) => void
+  onAddSet: () => void
+}) {
+  const [text, setText] = useState('')
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+
+  const matches = useMemo(() => {
+    const t = text.trim().toLowerCase()
+    if (!t) return []
+    const rank = (name: string) => (name === t ? 0 : name.startsWith(t) ? 1 : 2)
+    return catalog
+      .filter((c) => c.name.toLowerCase().includes(t))
+      .sort((a, b) => {
+        const al = a.name.toLowerCase()
+        const bl = b.name.toLowerCase()
+        return rank(al) - rank(bl) || al.localeCompare(bl)
+      })
+      .slice(0, 14)
+  }, [catalog, text])
+
+  // The dropdown floats over the columns; close it on an outside click so it doesn't swallow hovers.
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [open])
+
+  const add = (card: CardSummary) => {
+    onAdd(card)
+    inputRef.current?.focus()
+  }
+
+  return (
+    <div ref={containerRef} className={db.addCardSearch}>
+      <input
+        ref={inputRef}
+        className={db.addCardInput}
+        type="text"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value)
+          setOpen(true)
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            setOpen(false)
+            inputRef.current?.blur()
+          } else if (e.key === 'Enter' && matches[0]) {
+            e.preventDefault()
+            add(matches[0])
+          }
+        }}
+        placeholder="Find and add cards to your cube…"
+        aria-label="Find and add cards to your cube"
+      />
+      <button type="button" className={db.addCardBasicsButton} onClick={onAddSet} title="Add a whole set at its own rarities">
+        Add a set…
+      </button>
+      {open && matches.length > 0 && (
+        <div className={db.addCardDropdown} role="listbox">
+          {matches.map((card) => (
+            <button
+              key={card.name}
+              type="button"
+              role="option"
+              aria-selected={false}
+              className={db.addCardResult}
+              onClick={() => add(card)}
+              onMouseEnter={() => onHover(card)}
+              title={`Add ${card.name}`}
+            >
+              <span className={db.addCardResultCount}>{counts[card.name] ?? 0}×</span>
+              <span className={db.addCardResultName}>{card.name}</span>
+              <span className={db.addCardResultCost}>
+                <ManaCost cost={card.manaCost || null} size={11} />
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
