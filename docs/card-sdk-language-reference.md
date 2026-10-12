@@ -10955,6 +10955,15 @@ enumerated as legal actions today, each by its own `ActionEnumerator`:
   of Misery, Urban Retreat's return-a-creature put-onto-battlefield, etc. Pair `activateFromZone =
   Zone.HAND` with a `Costs.Composite(Costs.Mana(…), Costs.DiscardSelf)` (or a `ReturnToHand` cost)
   — `Costs.DiscardSelf` is always payable because the source card is the object being discarded.
+  **Hand mana abilities** — Simian Spirit Guide's "Exile this card from your hand: Add {R}." is
+  `activatedAbility { cost = Costs.ExileSelf; effect = Effects.AddMana(Color.RED); manaAbility = true;
+  activateFromZone = Zone.HAND }` (CR 605.1a: still a mana ability). It resolves immediately like any
+  mana ability, is offered inside an open mana-payment window (`LegalActionEnumerator.enumerateManaAbilities`,
+  CR 605.3a), and counts toward affordability (`ManaSolver.calculateExplicitActivationBonusMana`) — but
+  auto-pay never spends it: a cast or activation auto-pay alone can't cover opens the payment window
+  (`ManaPaymentWindow.hasManualOnlyMana`) so the player exiles the card themselves. Every battlefield
+  mana reader (`ManaSolver`, `ManaAbilityEnumerator`, `ManaAbilityPresence`) skips abilities whose
+  `activateFromZone` isn't `BATTLEFIELD`, so the card on the battlefield has no usable mana ability.
 - `Zone.COMMAND` — `CommandZoneAbilityEnumerator` (Momir Basic avatar).
 
 `ActivateAbilityHandler` accepts any non-battlefield `activateFromZone` generically (it just checks
