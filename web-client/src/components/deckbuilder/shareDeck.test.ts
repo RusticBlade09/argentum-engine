@@ -154,6 +154,62 @@ describe('shareDeck codec', () => {
     expect((await decodeSharedDeck(code, partial))?.cards).toEqual({ 'Lightning Bolt': 2 })
   })
 
+  it('round-trips a partner pair, with and without printing pins', async () => {
+    const pinned: SharedDeck = {
+      name: 'Partners',
+      cards: { 'Sol Ring': 1, Forest: 10 },
+      format: 'COMMANDER',
+      commander: 'Kodama of the East Tree',
+      commanderPrinting: { setCode: 'C16', collectorNumber: '40' },
+      secondCommander: 'Ishai, Ojutai Dragonspeaker',
+      secondCommanderPrinting: { setCode: 'C16', collectorNumber: '41' },
+    }
+    expect(await roundTrip(pinned)).toEqual(pinned)
+    const bare: SharedDeck = {
+      name: 'Partners',
+      cards: { Forest: 10 },
+      commander: 'Kodama of the East Tree',
+      secondCommander: 'Ishai, Ojutai Dragonspeaker',
+    }
+    expect(await roundTrip(bare)).toEqual(bare)
+  })
+
+  it('decodes a pre-partner v2 commander record unchanged', async () => {
+    // The exact rec-1 shapes the single-commander encoder emitted: name, and name+printing.
+    const pinned = await encodeAsV2(['2\x1fOld\x1fCOMMANDER', 'Atraxa, Praetors’ Voice\x1fC16\x1f28', '', 'Island\x1f2'])
+    expect(await decodeSharedDeck(pinned, resolveName)).toEqual({
+      name: 'Old',
+      cards: { Island: 2 },
+      format: 'COMMANDER',
+      commander: 'Atraxa, Praetors’ Voice',
+      commanderPrinting: { setCode: 'C16', collectorNumber: '28' },
+    })
+    const bare = await encodeAsV2(['2\x1fOld\x1f', 'Atraxa, Praetors’ Voice', '', 'Island\x1f2'])
+    expect(await decodeSharedDeck(bare, resolveName)).toEqual({
+      name: 'Old',
+      cards: { Island: 2 },
+      commander: 'Atraxa, Praetors’ Voice',
+    })
+  })
+
+  it('decodes a legacy v1 code with a second commander', async () => {
+    const code = await encodeAsCode({
+      v: 1,
+      n: 'Legacy Partners',
+      c: 'Kodama of the East Tree',
+      c2: 'Ishai, Ojutai Dragonspeaker',
+      cp2: ['C16', '41'],
+      d: [['Forest', 10]],
+    })
+    expect(await decodeSharedDeck(code, resolveName)).toEqual({
+      name: 'Legacy Partners',
+      cards: { Forest: 10 },
+      commander: 'Kodama of the East Tree',
+      secondCommander: 'Ishai, Ojutai Dragonspeaker',
+      secondCommanderPrinting: { setCode: 'C16', collectorNumber: '41' },
+    })
+  })
+
   it('sums duplicate names that resolve to the same card', async () => {
     // Two pins to the same non-default printing both fall to overflow and merge by name.
     const code = await encodeAsV2(['2\x1fDupes\x1f', '', '', 'Island\x1f2\x1fM10\x1f235', 'Island\x1f3\x1fM10\x1f235'])

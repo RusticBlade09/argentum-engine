@@ -57,28 +57,27 @@ class DeckValidator @Autowired constructor(
     ): DeckValidationResult = runValidation(
         deckList = deckList,
         format = format,
-        commander = null,
+        commanders = emptyList(),
         commanderAware = false,
         cardEntries = cardEntries,
-        commanderPrinting = commanderPrinting,
+        commanderPrintings = emptyMap(),
     )
 
     /**
-     * Validate a [Deck] — the structured form that carries an explicit commander. For
-     * commander-shaped formats this enables the full set of commander rules (eligibility,
-     * color identity, library + command zone size). For other formats the [Deck.commander]
-     * field is ignored.
+     * Validate a [Deck] — the structured form that carries explicit commanders. For
+     * commander-shaped formats this enables the full set of commander rules (eligibility or
+     * partner pairing, combined color identity, library + command zone size). For other formats
+     * the [Deck.commanders] are ignored.
      *
-     * The library and the commander are merged into a single counts map for copy-cap and
-     * format-legality checks (so e.g. submitting the commander a second time inside [Deck.cards]
-     * trips the singleton cap).
+     * The library and the commanders are merged into a single counts map for copy-cap and
+     * format-legality checks (so e.g. submitting a commander a second time inside [Deck.cards]
+     * trips the singleton cap), and so a two-commander deck's 100 cards include both commanders
+     * (CR 702.124b).
      */
     fun validate(deck: Deck, format: DeckFormat? = null): DeckValidationResult {
-        val commander = deck.commander
+        val commanders = deck.commanders
         val counts = deck.cards.groupingBy { it }.eachCount().toMutableMap()
-        if (commander != null) {
-            counts.merge(commander, 1, Int::plus)
-        }
+        for (commander in commanders) counts.merge(commander, 1, Int::plus)
         // Mirror the rich-entry check from the Map overload: if the [Deck] carries pinned
         // printings, validate them against [printingRegistry].
         val richEntries = deck.cardEntries.takeIf { it.isNotEmpty() }?.map {
@@ -87,10 +86,12 @@ class DeckValidator @Autowired constructor(
         return runValidation(
             counts,
             format,
-            commander = commander,
+            commanders = commanders,
             commanderAware = true,
             cardEntries = richEntries,
-            commanderPrinting = deck.commanderPrinting,
+            commanderPrintings = commanders
+                .mapNotNull { name -> deck.commanderPrintingOf(name)?.let { name to it } }
+                .toMap(),
         )
     }
 
@@ -103,10 +104,10 @@ class DeckValidator @Autowired constructor(
     private fun runValidation(
         deckList: Map<String, Int>,
         format: DeckFormat?,
-        commander: String?,
+        commanders: List<String>,
         commanderAware: Boolean,
         cardEntries: List<DeckEntryDTO>? = null,
-        commanderPrinting: PrintingRef? = null,
+        commanderPrintings: Map<String, PrintingRef> = emptyMap(),
     ): DeckValidationResult {
         val errors = mutableListOf<DeckValidationIssue>()
         val warnings = mutableListOf<DeckValidationIssue>()
@@ -134,7 +135,7 @@ class DeckValidator @Autowired constructor(
                     )
                 }
             }
-            if (commander != null && commanderPrinting != null) {
+            for ((commander, commanderPrinting) in commanderPrintings) {
                 val printing = printings.getPrinting(commanderPrinting)
                 when {
                     printing == null -> errors += DeckValidationIssue(
@@ -210,7 +211,7 @@ class DeckValidator @Autowired constructor(
         }
 
         if (format != null && format.isCommanderShape && commanderAware) {
-            validateCommanderRules(commander, countsByBaseName, format.displayName, errors)
+            validateCommanderRules(commanders, countsByBaseName, format.displayName, errors)
         }
 
         return DeckValidationResult(
@@ -223,21 +224,22 @@ class DeckValidator @Autowired constructor(
 
     /**
      * Enforces the commander-specific rules layered on top of the constructed baseline:
-     * a designated commander is required, it must be a legal commander (CR 903.3), and every
-     * other card's color identity must fit within the commander's (CR 903.4).
+     * a designated commander is required; one commander must be a legal commander (CR 903.3),
+     * and two must pair through a partner ability (CR 702.124); and every other card's color
+     * identity must fit within the commanders' combined identity (CR 903.5c, 702.124c).
      *
-     * Called only when [format] is commander-shaped. When [commander] is null, only the
+     * Called only when [format] is commander-shaped. When [commanders] is empty, only the
      * MISSING_COMMANDER error is raised — color-identity checks need a known commander to
-     * compare against. Callers using the legacy [Map] entry point pass null and skip identity
+     * compare against. Callers using the legacy [Map] entry point pass none and skip identity
      * enforcement until the surrounding flow is updated to provide a [Deck].
      */
     private fun validateCommanderRules(
-        commander: String?,
+        commanders: List<String>,
         countsByBaseName: Map<String, Int>,
         formatLabel: String,
         errors: MutableList<DeckValidationIssue>,
     ) {
-        if (commander == null) {
+        if (commanders.isEmpty()) {
             errors += DeckValidationIssue(
                 code = "MISSING_COMMANDER",
                 message = "$formatLabel decks require a designated commander",
@@ -245,31 +247,61 @@ class DeckValidator @Autowired constructor(
             )
             return
         }
-        val commanderCard = cardRegistry.getCard(commander)
-        if (commanderCard == null) {
-            // UNKNOWN_CARD already raised by the main loop if the commander is also missing
-            // from the registry — no second error needed.
-            return
-        }
-        if (!CommanderEligibility.isLegalCommander(commanderCard)) {
-            errors += DeckValidationIssue(
-                code = "INVALID_COMMANDER",
-                message = "${commanderCard.name} cannot be a $formatLabel commander",
-                cardName = commanderCard.name,
-            )
-            // Identity check against an illegal commander would be misleading — bail.
-            return
+        // UNKNOWN_CARD is already raised by the main loop for a commander missing from the
+        // registry — no second error needed.
+        val commanderCards = commanders.map { cardRegistry.getCard(it) ?: return }
+        when (commanderCards.size) {
+            1 -> {
+                val commanderCard = commanderCards.single()
+                if (!CommanderEligibility.isLegalCommander(commanderCard)) {
+                    val why = if (CommanderEligibility.isBackground(commanderCard)) {
+                        " on its own — a Background needs a commander with \"Choose a Background\" beside it"
+                    } else {
+                        ""
+                    }
+                    errors += DeckValidationIssue(
+                        code = "INVALID_COMMANDER",
+                        message = "${commanderCard.name} cannot be a $formatLabel commander$why",
+                        cardName = commanderCard.name,
+                    )
+                    // Identity check against an illegal commander would be misleading — bail.
+                    return
+                }
+            }
+            2 -> {
+                val (first, second) = commanderCards
+                val pairingError = CommanderEligibility.pairingError(first, second)
+                if (pairingError != null) {
+                    errors += DeckValidationIssue(
+                        code = "INVALID_COMMANDER_PAIR",
+                        message = pairingError,
+                        cardName = null,
+                    )
+                    return
+                }
+            }
+            else -> {
+                // No partner ability can give a deck more than two commanders (CR 702.124g).
+                errors += DeckValidationIssue(
+                    code = "INVALID_COMMANDER_PAIR",
+                    message = "A deck can have at most two commanders",
+                    cardName = null,
+                )
+                return
+            }
         }
 
-        val allowed: Set<Color> = commanderCard.colorIdentity
+        val commanderNames = commanderCards.map { it.name }.toSet()
+        val allowed: Set<Color> = CommanderEligibility.identityOf(commanderCards)
+        val commanderLabel = commanderCards.joinToString(" and ") { it.name }
         for ((cardName, _) in countsByBaseName) {
-            if (cardName == commanderCard.name) continue
+            if (cardName in commanderNames) continue
             val card = cardRegistry.getCard(cardName) ?: continue
             val violating = card.colorIdentity - allowed
             if (violating.isNotEmpty()) {
                 errors += DeckValidationIssue(
                     code = "COLOR_IDENTITY_VIOLATION",
-                    message = colorIdentityMessage(cardName, violating, commanderCard.name, allowed),
+                    message = colorIdentityMessage(cardName, violating, commanderLabel, allowed),
                     cardName = cardName,
                 )
             }
@@ -318,10 +350,10 @@ class DeckValidator @Autowired constructor(
 
     private fun profileFor(format: DeckFormat?): FormatProfile = when (format) {
         DeckFormat.COMMANDER, DeckFormat.BRAWL -> FormatProfile(
-            // 100-card singleton. Commander eligibility and color identity are enforced by
-            // validateCommanderRules() when the caller supplies a Deck (with explicit
-            // commander). Partner / Background pairs are not yet supported — that's the
-            // remaining structural rule a future revision needs to handle.
+            // 100-card singleton, counting the commander — or both commanders of a partner
+            // pair (CR 702.124b). Commander eligibility, pairing and color identity are enforced
+            // by validateCommanderRules() when the caller supplies a Deck (with explicit
+            // commanders).
             minSize = SINGLETON_HUNDRED_DECK_SIZE,
             exactSize = SINGLETON_HUNDRED_DECK_SIZE,
             maxCopiesNonBasic = 1,
@@ -368,13 +400,10 @@ class DeckValidator @Autowired constructor(
         val warnings = mutableListOf<DeckValidationIssue>()
 
         val poolCounts: Map<String, Int> = pool.groupingBy { it.name }.eachCount()
-        val commander = deck.commander
+        val commanders = deck.commanders
 
-        val mainboardCounts: Map<String, Int> = deck.cards.groupingBy { it }.eachCount()
-        val allCounts: Map<String, Int> = if (commander != null) {
-            mainboardCounts.toMutableMap().apply { merge(commander, 1, Int::plus) }
-        } else {
-            mainboardCounts
+        val allCounts: Map<String, Int> = deck.cards.groupingBy { it }.eachCount().toMutableMap().apply {
+            for (commander in commanders) merge(commander, 1, Int::plus)
         }
 
         // Resolve every submitted card; basic lands bypass the pool-membership check (the lobby
@@ -424,7 +453,7 @@ class DeckValidator @Autowired constructor(
         // Commander rules: required, legal commander, colour identity bounds the rest of the
         // deck. Reuse the shared helper so the error codes match the constructed path.
         validateCommanderRules(
-            commander = commander,
+            commanders = commanders,
             countsByBaseName = allCounts,
             formatLabel = "Commander Draft",
             errors = errors,

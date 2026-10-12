@@ -169,6 +169,12 @@ class DecksController(
          */
         val cardEntries: List<DeckEntryDTO>? = null,
         val commanderPrinting: PrintingRef? = null,
+        /**
+         * The other half of a partner pair (CR 702.124). Honoured only beside [commander]; like
+         * it, kept out of [deckList]. The validator decides whether the two may be paired.
+         */
+        val secondCommander: String? = null,
+        val secondCommanderPrinting: PrintingRef? = null,
     )
 
     @GetMapping("/examples")
@@ -208,6 +214,8 @@ class DecksController(
                 cardEntries = request.cardEntries,
                 commander = request.commander,
                 commanderPrinting = request.commanderPrinting,
+                secondCommander = request.secondCommander,
+                secondCommanderPrinting = request.secondCommanderPrinting,
             )
             return deckValidator.validate(deck, request.format)
         }

@@ -6,6 +6,7 @@ import com.wingedsheep.sdk.dsl.Effects
 import com.wingedsheep.sdk.dsl.Triggers
 import com.wingedsheep.sdk.dsl.card
 import com.wingedsheep.sdk.model.Rarity
+import com.wingedsheep.sdk.scripting.KeywordAbility
 import com.wingedsheep.sdk.scripting.targets.EffectTarget
 
 /**
@@ -17,8 +18,8 @@ import com.wingedsheep.sdk.scripting.targets.EffectTarget
  * Whenever an opponent casts a spell, put a +1/+1 counter on Ishai.
  * Partner (You can have two commanders if both have partner.)
  *
- * Partner is omitted, as on Kodama of the East Tree: the engine does not model
- * multi-commander decks, and Partner has no effect during play.
+ * Partner is a deck-construction ability (CR 702.124h): it lets Ishai share command with
+ * another partner and does nothing during play.
  */
 val IshaiOjutaiDragonspeaker = card("Ishai, Ojutai Dragonspeaker") {
     manaCost = "{2}{W}{U}"
@@ -31,6 +32,7 @@ val IshaiOjutaiDragonspeaker = card("Ishai, Ojutai Dragonspeaker") {
         "Partner (You can have two commanders if both have partner.)"
 
     keywords(Keyword.FLYING)
+    keywordAbility(KeywordAbility.partner())
 
     triggeredAbility {
         trigger = Triggers.anOpponent.casts()

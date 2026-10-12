@@ -45,7 +45,7 @@ data class Deck(
     /**
      * Card names in the main deck (the library at game start).
      * Duplicates are allowed (e.g., 4x Lightning Bolt). Does NOT include the commander —
-     * for Commander/Brawl decks the commander begins in the command zone (CR 903.6a),
+     * for Commander/Brawl decks the commanders begin in the command zone (CR 903.6),
      * not in the library.
      */
     val cards: List<String>,
@@ -77,17 +77,41 @@ data class Deck(
      * Limited sideboard editor, every opened/drafted card not in the deck is automatically here.
      */
     val sideboard: List<CardEntry> = emptyList(),
+    /**
+     * Optional second commander, for a deck whose commanders pair through a partner ability
+     * (CR 702.124 — partner, partner—[text], partner with [name], choose a Background, Doctor's
+     * companion). Honoured only when [commander] is non-null; like it, the card is kept out of
+     * [cards] and begins the game in the command zone (CR 702.124b). Whether the two may actually
+     * be paired is [CommanderEligibility.pairingError]'s question, not this data class's.
+     */
+    val secondCommander: String? = null,
+    /** Optional printing reference for [secondCommander]. */
+    val secondCommanderPrinting: PrintingRef? = null,
 ) {
+    /**
+     * The deck's designated commanders, in designation order: none, [commander] alone, or
+     * [commander] and [secondCommander].
+     */
+    val commanders: List<String>
+        get() = if (commander == null) emptyList() else listOfNotNull(commander, secondCommander)
+
+    /** The pinned printing for the commander named [name], if this deck pins one. */
+    fun commanderPrintingOf(name: String): PrintingRef? = when (name) {
+        commander -> commanderPrinting
+        secondCommander -> secondCommanderPrinting
+        else -> null
+    }
+
     /**
      * Total number of cards in the deck (library + command zone). Excludes the sideboard, which
      * is outside the game.
      */
-    val size: Int get() = cards.size + (if (commander != null) 1 else 0)
+    val size: Int get() = cards.size + commanders.size
 
     /**
      * Check if the deck is empty.
      */
-    val isEmpty: Boolean get() = cards.isEmpty() && commander == null
+    val isEmpty: Boolean get() = cards.isEmpty() && commanders.isEmpty()
 
     /**
      * Count occurrences of a specific card in the main deck (library). Always operates on
@@ -96,9 +120,9 @@ data class Deck(
     fun countOf(cardName: String): Int = cards.count { it == cardName }
 
     /**
-     * Get unique card names in the deck (main deck + commander, if any).
+     * Get unique card names in the deck (main deck + commanders, if any).
      */
-    fun uniqueCards(): Set<String> = cards.toSet() + listOfNotNull(commander)
+    fun uniqueCards(): Set<String> = cards.toSet() + commanders
 
     /**
      * Every entry in the library matching the given card name. Empty if [cardEntries] is
@@ -109,12 +133,13 @@ data class Deck(
         cardEntries.filter { it.name == cardName }
 
     /**
-     * Every distinct printing pinned by any entry in the deck (library + commander).
+     * Every distinct printing pinned by any entry in the deck (library + commanders).
      * Useful for warming a printings cache before game-init.
      */
     fun printingsUsed(): Set<PrintingRef> = buildSet {
         cardEntries.forEach { entry -> entry.printing?.let(::add) }
         commanderPrinting?.let(::add)
+        if (commander != null) secondCommanderPrinting?.let(::add)
     }
 
     companion object {
@@ -143,12 +168,16 @@ data class Deck(
             commander: String? = null,
             commanderPrinting: PrintingRef? = null,
             sideboard: List<CardEntry> = emptyList(),
+            secondCommander: String? = null,
+            secondCommanderPrinting: PrintingRef? = null,
         ): Deck = Deck(
             cards = entries.map { it.name },
             commander = commander,
             cardEntries = entries,
             commanderPrinting = commanderPrinting,
             sideboard = sideboard,
+            secondCommander = secondCommander,
+            secondCommanderPrinting = secondCommanderPrinting,
         )
 
         /**

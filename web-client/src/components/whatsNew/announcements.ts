@@ -30,6 +30,14 @@ export interface Announcement {
 
 export const ANNOUNCEMENTS: readonly Announcement[] = [
   {
+    id: 'feature-partner-commanders',
+    date: '2026-10-12',
+    kind: 'feature',
+    title: 'Partner commanders',
+    body:
+      'Commander decks can now have two commanders: Partner, Partner—Friends forever and the other “Partner—” pairs, “Partner with”, Choose a Background and Doctor’s companion. Crown both in the deckbuilder, and imported lists with two commanders keep both. The deck is 100 cards including the pair, its colour identity is theirs combined, and each commander has its own tax and its own commander damage.',
+  },
+  {
     id: 'set-blc',
     date: '2026-10-12',
     kind: 'set',

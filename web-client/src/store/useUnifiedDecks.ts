@@ -50,6 +50,10 @@ function detailToUnified(detail: DeckDetail): UnifiedDeck {
     ...(d.format ? { format: d.format } : {}),
     ...(d.commander ? { commander: d.commander } : {}),
     ...(d.commanderPrinting ? { commanderPrinting: d.commanderPrinting } : {}),
+    ...(d.commander && d.secondCommander ? { secondCommander: d.secondCommander } : {}),
+    ...(d.commander && d.secondCommander && d.secondCommanderPrinting
+      ? { secondCommanderPrinting: d.secondCommanderPrinting }
+      : {}),
     ...(entries ? { entries } : {}),
     ...(d.sideboard && Object.keys(d.sideboard).length > 0 ? { sideboard: d.sideboard } : {}),
     ...(d.note ? { note: d.note } : {}),

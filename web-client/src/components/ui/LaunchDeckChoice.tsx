@@ -22,6 +22,7 @@
  */
 import { useId, useState, type ReactNode } from 'react'
 import type { UnifiedDeck } from '@/store/useUnifiedDecks'
+import { commandersOf, mergeCommanderIntoCards } from '@/store/deckLibrary'
 import { useDeckSummaries } from '@/store/useDeckSummaries'
 import { starterDeckSize, type StarterDeck, type StarterDeckSummary } from '@/store/useStarterDecks'
 import { getCdnArtCropUrl, getScryfallArtCropUrl } from '@/utils/cardImages'
@@ -171,7 +172,8 @@ function describe(
 }
 
 function deckSize(deck: UnifiedDeck): number {
-  return Object.values(deck.cards).reduce((a, b) => a + b, 0) + (deck.commander ? 1 : 0)
+  // Saved decks keep their commander(s) out of `cards`; a partner pair adds two.
+  return Object.values(mergeCommanderIntoCards(deck.cards, ...commandersOf(deck))).reduce((a, b) => a + b, 0)
 }
 
 /**

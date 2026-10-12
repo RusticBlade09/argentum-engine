@@ -2367,6 +2367,13 @@ export interface SubmitSealedDeckMessage {
   /** Optional pinned printing for the commander. Ignored when `commander` is null. */
   readonly commanderPrinting?: PrintingRef
   /**
+   * The second commander of a partner pair (CR 702.124). Like `commander`, it appears once in
+   * `deckList`. Ignored when `commander` is null; the server rejects an illegal pair.
+   */
+  readonly secondCommander?: string
+  /** Optional pinned printing for the second commander. */
+  readonly secondCommanderPrinting?: PrintingRef
+  /**
    * Constructed sideboard ("outside the game", CR 100.4a), card name → count. Used for
    * constructed/premade lobbies; ignored for Limited lobbies, which derive the sideboard as
    * pool − maindeck server-side (CR 100.4b).
@@ -2536,6 +2543,8 @@ export function createSubmitSealedDeckMessage(
   cardEntries?: readonly DeckEntry[],
   commanderPrinting?: PrintingRef,
   sideboard?: Record<string, number>,
+  secondCommander?: string | null,
+  secondCommanderPrinting?: PrintingRef,
 ): SubmitSealedDeckMessage {
   return {
     type: 'submitSealedDeck',
@@ -2543,6 +2552,8 @@ export function createSubmitSealedDeckMessage(
     ...(commander ? { commander } : {}),
     ...(cardEntries && cardEntries.length > 0 ? { cardEntries } : {}),
     ...(commanderPrinting ? { commanderPrinting } : {}),
+    ...(commander && secondCommander ? { secondCommander } : {}),
+    ...(commander && secondCommander && secondCommanderPrinting ? { secondCommanderPrinting } : {}),
     ...(sideboard && Object.keys(sideboard).length > 0 ? { sideboard } : {}),
   }
 }
@@ -3395,6 +3406,13 @@ export interface SubmitQuickGameLobbyDeckMessage {
   /** Optional pinned printing for the commander. Ignored when `commander` is null. */
   readonly commanderPrinting?: PrintingRef
   /**
+   * The second commander of a partner pair (CR 702.124). Like `commander`, it appears once in
+   * `deckList`. Ignored when `commander` is null; the server rejects an illegal pair.
+   */
+  readonly secondCommander?: string
+  /** Optional pinned printing for the second commander. */
+  readonly secondCommanderPrinting?: PrintingRef
+  /**
    * Constructed sideboard ("outside the game", CR 400.11a), card name → count. Omitted for a
    * random pool, whose sideboard the server derives from the pool instead.
    */
@@ -3476,6 +3494,8 @@ export function createSubmitQuickGameLobbyDeckMessage(
   cardEntries?: readonly DeckEntry[],
   commanderPrinting?: PrintingRef,
   sideboard?: Record<string, number>,
+  secondCommander?: string | null,
+  secondCommanderPrinting?: PrintingRef,
 ): SubmitQuickGameLobbyDeckMessage {
   return {
     type: 'submitQuickGameLobbyDeck',
@@ -3483,6 +3503,8 @@ export function createSubmitQuickGameLobbyDeckMessage(
     ...(commander ? { commander } : {}),
     ...(cardEntries && cardEntries.length > 0 ? { cardEntries } : {}),
     ...(commanderPrinting ? { commanderPrinting } : {}),
+    ...(commander && secondCommander ? { secondCommander } : {}),
+    ...(commander && secondCommander && secondCommanderPrinting ? { secondCommanderPrinting } : {}),
     ...(sideboard && Object.keys(sideboard).length > 0 ? { sideboard } : {}),
   }
 }

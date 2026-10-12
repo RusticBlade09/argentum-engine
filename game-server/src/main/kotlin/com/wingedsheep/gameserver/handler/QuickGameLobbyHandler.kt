@@ -17,6 +17,7 @@ import com.wingedsheep.gameserver.lobby.QuickGameLobbyRepository
 import com.wingedsheep.gameserver.matchmaking.MatchmakingMode
 import com.wingedsheep.gameserver.matchmaking.QueueKey
 import com.wingedsheep.gameserver.protocol.ClientMessage
+import com.wingedsheep.gameserver.protocol.DeckRequestConverter
 import com.wingedsheep.gameserver.protocol.ErrorCode
 import com.wingedsheep.gameserver.protocol.ServerMessage
 import com.wingedsheep.gameserver.repository.GameRepository
@@ -580,24 +581,14 @@ class QuickGameLobbyHandler(
             // `cards`. Strip one copy here so the validator (which re-adds it) doesn't trip the
             // singleton check on the commander itself.
             val result = if (message.commander != null) {
-                val cardsWithoutCommander = stripCommanderFromCards(message.deckList, message.commander)
-                val deckCards = cardsWithoutCommander.flatMap { (name, count) -> List(count) { name } }
-                val richEntries = message.cardEntries
-                    ?.filterNot { it.name == message.commander && it.printing == message.commanderPrinting }
-                    ?.takeIf { it.isNotEmpty() }
-                val deck = if (richEntries != null) {
-                    com.wingedsheep.sdk.model.Deck.fromEntries(
-                        entries = richEntries.map { com.wingedsheep.sdk.model.CardEntry(it.name, it.printing) },
-                        commander = message.commander,
-                        commanderPrinting = message.commanderPrinting,
-                    )
-                } else {
-                    com.wingedsheep.sdk.model.Deck(
-                        cards = deckCards,
-                        commander = message.commander,
-                        commanderPrinting = message.commanderPrinting,
-                    )
-                }
+                val deck = DeckRequestConverter.toCommanderDeck(
+                    deckList = message.deckList,
+                    cardEntries = message.cardEntries,
+                    commander = message.commander,
+                    commanderPrinting = message.commanderPrinting,
+                    secondCommander = message.secondCommander,
+                    secondCommanderPrinting = message.secondCommanderPrinting,
+                )
                 deckValidator.validate(deck, lobby.format)
             } else {
                 deckValidator.validate(
@@ -639,8 +630,10 @@ class QuickGameLobbyHandler(
             // (which can re-emit its current value on every render) and keeps the ready flag
             // sticky as long as the player's chosen deck hasn't actually changed. The sideboard is
             // part of "the same deck" — editing only the sideboard still has to resubmit.
+            val secondCommander = message.secondCommander.takeIf { message.commander != null }
             if (player.deckList == message.deckList &&
                 player.commander == message.commander &&
+                player.secondCommander == secondCommander &&
                 player.sideboard == sanitizedSideboard
             ) {
                 return@withLock
@@ -650,6 +643,7 @@ class QuickGameLobbyHandler(
             // For random-pool submissions the commander field is meaningless; drop it so a stale
             // commander from a prior submission doesn't leak into the game start.
             player.commander = if (message.deckList.isNotEmpty()) message.commander else null
+            player.secondCommander = if (message.deckList.isNotEmpty()) secondCommander else null
             // Submitting a *new* deck un-readies the player so they have to confirm again.
             player.ready = false
             broadcastState(current)
@@ -834,11 +828,15 @@ class QuickGameLobbyHandler(
             // (= library) excluding the commander, matching `Deck.cards` convention.
             val commander = humanDecks.getValue(lobbyPlayer.playerId).commander
                 ?.takeIf { lobby.usesCommanderRules }
+            // A partner pair (CR 702.124) only ever comes from a submitted deck, never a generated one.
+            val commanders = listOfNotNull(
+                commander,
+                lobbyPlayer.secondCommander?.takeIf { commander != null && commander == lobbyPlayer.commander },
+            )
             // Momir Basic ignores any submitted deck: every seat plays the same fixed 60 basics.
             val engineDeckList = when {
                 lobby.momirBasic -> MomirBasicSetup.fixedBasicDeck
-                commander != null -> stripCommanderFromCards(deckList, commander)
-                else -> deckList
+                else -> DeckRequestConverter.stripCommanders(deckList, commanders)
             }
             // Momir Basic substitutes a fixed deck and has no sideboard; every other seat brings
             // whatever it submitted (empty for a random pool).
@@ -846,7 +844,7 @@ class QuickGameLobbyHandler(
             gameSession.addPlayer(
                 playerSession,
                 engineDeckList,
-                commanderCardName = commander,
+                commanderCardNames = commanders,
                 sideboard = sideboard,
             )
             // Persistence info so a mid-game reconnect can find the player by token.
@@ -970,22 +968,6 @@ class QuickGameLobbyHandler(
             aiDeck = if (lobby.vsAi) AiDeckSpecView.of(lobby.aiDeckSpec) else null,
             matchmade = lobby.matchmade,
         )
-
-    /**
-     * Subtract one copy of [commander] from [deckList]. Mirrors the web-client's
-     * `stripCommanderFromCards` helper — the wire format ships the merged deck (commander
-     * counted in `deckList`), but the server's `Deck.cards` convention excludes it. Idempotent
-     * when the commander isn't present.
-     */
-    private fun stripCommanderFromCards(
-        deckList: Map<String, Int>,
-        commander: String,
-    ): Map<String, Int> {
-        val current = deckList[commander] ?: return deckList
-        val next = deckList.toMutableMap()
-        if (current <= 1) next.remove(commander) else next[commander] = current - 1
-        return next
-    }
 
     private fun broadcastClosed(lobby: QuickGameLobby, reason: String) {
         for (player in lobby.players) {

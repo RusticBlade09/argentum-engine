@@ -168,6 +168,8 @@ class GameTestDriver {
      * @param commanders Commander card name per seat, positionally matched to [decks]. Empty for a
      *   non-commander game. As in a real game the commander is *not* part of its deck list —
      *   `GameInitializer` instantiates it separately into that seat's command zone.
+     * @param partners Optional second commander per seat (a partner pair, CR 702.124), positionally
+     *   matched to [commanders]; a null or missing entry leaves that seat with one commander.
      * @param teams Seat indices per team (`listOf(listOf(0, 1), listOf(2, 3))` with
      *   `Format.TwoHeadedGiant`); null for a free-for-all.
      */
@@ -179,6 +181,7 @@ class GameTestDriver {
         format: com.wingedsheep.sdk.core.Format = com.wingedsheep.sdk.core.Format.Standard,
         commanders: List<String> = emptyList(),
         teams: List<List<Int>>? = null,
+        partners: List<String?> = emptyList(),
     ): List<EntityId> {
         val initializer = GameInitializer(cardRegistry)
         val result = initializer.initializeGame(
@@ -188,7 +191,10 @@ class GameTestDriver {
                 players = decks.mapIndexed { index, deck ->
                     PlayerConfig(
                         "Player ${index + 1}", deck, startingLife,
-                        commanderCardName = commanders.getOrNull(index),
+                        commanderCardNames = listOfNotNull(
+                            commanders.getOrNull(index),
+                            partners.getOrNull(index),
+                        ),
                     )
                 },
                 skipMulligans = skipMulligans,

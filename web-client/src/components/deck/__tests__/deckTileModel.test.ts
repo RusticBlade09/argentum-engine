@@ -50,6 +50,12 @@ describe('deckTileModel', () => {
     expect(model.total).toBe(25)
     expect(model.colors).toEqual(['RED', 'GREEN'])
   })
+
+  it('counts both commanders of a partner pair, and keeps a cover chosen from either', () => {
+    const deck = { cards: { Bolt: 4, Mountain: 20 }, commander: 'Elf', secondCommander: 'Dragon', coverCard: 'Dragon' }
+    expect(deckTileModel(deck, catalog).total).toBe(26)
+    expect(deckCover({ ...deck, coverCard: 'Elf' }, catalog)?.name).toBe('Elf')
+  })
 })
 
 describe('applyDeckDetails', () => {

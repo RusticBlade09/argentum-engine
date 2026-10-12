@@ -52,6 +52,7 @@ Families:
 - [ManaSymbol](#manasymbol)
 - [MayPlayExpiry](#mayplayexpiry)
 - [NumberProperty](#numberproperty)
+- [PartnerKind](#partnerkind)
 - [PayCost](#paycost)
 - [Player](#player)
 - [PlayerRankMetric](#playerrankmetric)
@@ -1272,6 +1273,7 @@ Families:
 - `KeywordAbility.Numeric(keyword: Keyword, n: Int, onceEachTurn: Boolean)` — A keyword parameterized by a single integer.
 - `KeywordAbility.OptionalAdditionalCost(manaCost: ManaCost?, additionalCost: AdditionalCost?, multi: Boolean, displayPrefix: String, keyword: Keyword?, branchesEffect: Boolean, grantsFlashTiming: Boolean, declaredSlot: ChoiceSlot)` — **Optional additional cost paid at cast time.** Generalises Kicker, Multikicker, Offspring, Bargain, and the pre-kicker "pay {N} more to cast as though it had flash" pattern (Ghitu Fire et al.).
 - `KeywordAbility.Overload(cost: ManaCost)` — Overload cost (CR 702.96).
+- `KeywordAbility.Partner(kind: PartnerKind)` — A partner ability (CR 702.124) — a deck-construction keyword for the Commander variant that lets a deck designate **two** commanders instead of one.
 - `KeywordAbility.Plot(cost: ManaCost)` — Plot (CR 718, Outlaws of Thunder Junction).
 - `KeywordAbility.Protection(scope: ProtectionScope)` — Protection from a quality.
 - `KeywordAbility.Prototype(cost: ManaCost, power: Int, toughness: Int)` — Prototype cost — power/toughness (CR 702.160, 718).
@@ -1357,6 +1359,14 @@ Families:
 - `NumberProperty.MultipleOf(divisor: Int)` — A multiple of divisor (0 counts as a multiple of every nonzero divisor).
 - `NumberProperty.Odd` — An odd number.
 - `NumberProperty.Prime` — A prime number (CR has no notion of this — it's a card-defined property; 0 and 1 are not prime).
+
+## PartnerKind
+
+- `PartnerKind.ChooseABackground` — "Choose a Background" (CR 702.124k): the other commander is a legendary Background enchantment card — which can't be a commander on its own.
+- `PartnerKind.DoctorsCompanion` — "Doctor's companion" (CR 702.124m): the other commander is a legendary Time Lord Doctor creature card with no other creature types.
+- `PartnerKind.Named(text: String)` — "Partner—text" (CR 702.124i): both commanders have the *same* partner—text ability — "Friends forever", "Character select", "Father & son", "Survivors".
+- `PartnerKind.Plain` — "Partner" (CR 702.124h): both commanders have plain partner.
+- `PartnerKind.With(name: String)` — "Partner with name" (CR 702.124j): each commander has "partner with" naming the other.
 
 ## PayCost
 

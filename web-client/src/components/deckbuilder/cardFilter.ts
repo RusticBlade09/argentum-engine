@@ -81,6 +81,16 @@ export interface CardSummary {
    * hover preview rotates it to landscape; a flipped battle's back face stays portrait.
    */
   isLandscape?: boolean
+  /**
+   * Whether the card can be a commander on its own (the server's `CommanderEligibility`: a
+   * legendary creature, or a card that says it can be your commander). Absent on legacy fixtures.
+   */
+  canBeCommander?: boolean
+  /**
+   * The card's printed partner abilities (CR 702.124) — "Partner", "Partner—Friends forever",
+   * "Partner with <name>", "Choose a Background", "Doctor's companion". Empty or absent when none.
+   */
+  partnerAbilities?: string[]
 }
 
 export type { CardPredicate, ParseResult, ParseError } from './query'

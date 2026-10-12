@@ -198,6 +198,9 @@
     "keywords": [
         "FLYING"
     ],
+    "keywordAbilities": [
+        "Partner"
+    ],
     "script": {
         "triggeredAbilities": [
             {

@@ -10,6 +10,7 @@ import com.wingedsheep.search.SearchCard
 import com.wingedsheep.search.SearchService
 import com.wingedsheep.search.Span
 import com.wingedsheep.sdk.model.CardDefinition
+import com.wingedsheep.sdk.model.CommanderEligibility
 import com.wingedsheep.sdk.model.PrintingRef
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -147,6 +148,19 @@ class CardsController(
          * the deckbuilder can show the printing a search matched by its printed name.
          */
         val printedNamePrintings: List<PrintedNamePrintingDTO> = emptyList(),
+        /**
+         * True when this card can be a commander on its own ([CommanderEligibility.isLegalCommander],
+         * CR 903.3). The deckbuilder offers its crown from this rather than guessing from the type
+         * line — a planeswalker only qualifies when it says it can be your commander.
+         */
+        val canBeCommander: Boolean = false,
+        /**
+         * The partner abilities this card has (CR 702.124), as their printed names — "Partner",
+         * "Partner—Friends forever", "Partner with [name]", "Choose a Background",
+         * "Doctor's companion". Non-empty means the deckbuilder may offer a second commander
+         * beside it; whether a given pair is legal is the deck validator's call.
+         */
+        val partnerAbilities: List<String> = emptyList(),
     ) : SearchCard {
         @get:JsonIgnore
         override val printedNames: List<String> get() = printedNamePrintings.map { it.name }
@@ -199,6 +213,8 @@ class CardsController(
                     PrintedNamePrintingDTO(it, p.setCode, p.collectorNumber, p.imageUri, p.backFaceImageUri)
                 }
             },
+            canBeCommander = CommanderEligibility.isLegalCommander(this),
+            partnerAbilities = CommanderEligibility.partnerKinds(this).map { it.description },
         )
     }
 

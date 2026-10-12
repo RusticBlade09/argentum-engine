@@ -846,6 +846,27 @@ sealed interface KeywordAbility {
     }
 
     // =========================================================================
+    // Partner abilities (two commanders)
+    // =========================================================================
+
+    /**
+     * A partner ability (CR 702.124) — a deck-construction keyword for the Commander variant that
+     * lets a deck designate **two** commanders instead of one. It functions before the game begins
+     * (CR 702.124a) and does nothing during play; [kind] says which partner ability it is, and only
+     * two cards whose kinds pair up may be designated together (CR 702.124f).
+     *
+     * Read by [com.wingedsheep.sdk.model.CommanderEligibility.pairingError], which the
+     * game-server deck validator consults before a two-commander deck reaches game setup.
+     * "Partner with [name]" also represents an enters-the-battlefield search trigger
+     * (CR 702.124j); that half is not synthesised from this keyword — see [PartnerKind.With].
+     */
+    @SerialName("Partner")
+    @Serializable
+    data class Partner(val kind: PartnerKind = PartnerKind.Plain) : KeywordAbility {
+        override val description: String = kind.description
+    }
+
+    // =========================================================================
     // Casualty
     // =========================================================================
 
@@ -1597,6 +1618,21 @@ sealed interface KeywordAbility {
          */
         fun conspire(): KeywordAbility = Conspire
 
+        /** "Partner" (CR 702.124h) — pairs with any other card that has plain partner. */
+        fun partner(): KeywordAbility = Partner(PartnerKind.Plain)
+
+        /** "Partner—[text]" (CR 702.124i), e.g. `partnerNamed("Friends forever")`. */
+        fun partnerNamed(text: String): KeywordAbility = Partner(PartnerKind.Named(text))
+
+        /** "Partner with [name]" (CR 702.124j) — pairs only with the named card. */
+        fun partnerWith(name: String): KeywordAbility = Partner(PartnerKind.With(name))
+
+        /** "Choose a Background" (CR 702.124k) — pairs with a legendary Background enchantment. */
+        fun chooseABackground(): KeywordAbility = Partner(PartnerKind.ChooseABackground)
+
+        /** "Doctor's companion" (CR 702.124m) — pairs with a legendary Time Lord Doctor creature. */
+        fun doctorsCompanion(): KeywordAbility = Partner(PartnerKind.DoctorsCompanion)
+
         /**
          * Create Casualty N keyword ability.
          */
@@ -1654,5 +1690,63 @@ sealed interface KeywordAbility {
          * "Hideaway 4"-style display text on the card's keyword list.
          */
         fun hideaway(n: Int): KeywordAbility = Numeric(Keyword.HIDEAWAY, n)
+    }
+}
+
+/**
+ * Which partner ability a [KeywordAbility.Partner] is (CR 702.124a). Each kind has its own pairing
+ * requirement, and different kinds never combine (CR 702.124f) — a card with "partner" can't be
+ * designated alongside one with "partner with [name]".
+ */
+@Serializable
+sealed interface PartnerKind {
+    val description: String
+
+    /** "Partner" (CR 702.124h): both commanders have plain partner. */
+    @SerialName("Plain")
+    @Serializable
+    data object Plain : PartnerKind {
+        override val description: String = "Partner"
+    }
+
+    /**
+     * "Partner—[text]" (CR 702.124i): both commanders have the *same* partner—[text] ability —
+     * "Friends forever", "Character select", "Father & son", "Survivors".
+     */
+    @SerialName("Named")
+    @Serializable
+    data class Named(val text: String) : PartnerKind {
+        override val description: String = "Partner—$text"
+    }
+
+    /**
+     * "Partner with [name]" (CR 702.124j): each commander has "partner with" naming the other.
+     * The keyword's second meaning — "When this permanent enters, target player may search their
+     * library for a card named [name]…" — is a triggered ability the card writes out itself.
+     */
+    @SerialName("With")
+    @Serializable
+    data class With(val name: String) : PartnerKind {
+        override val description: String = "Partner with $name"
+    }
+
+    /**
+     * "Choose a Background" (CR 702.124k): the other commander is a legendary Background
+     * enchantment card — which can't be a commander on its own.
+     */
+    @SerialName("ChooseABackground")
+    @Serializable
+    data object ChooseABackground : PartnerKind {
+        override val description: String = "Choose a Background"
+    }
+
+    /**
+     * "Doctor's companion" (CR 702.124m): the other commander is a legendary Time Lord Doctor
+     * creature card with no other creature types.
+     */
+    @SerialName("DoctorsCompanion")
+    @Serializable
+    data object DoctorsCompanion : PartnerKind {
+        override val description: String = "Doctor's companion"
     }
 }

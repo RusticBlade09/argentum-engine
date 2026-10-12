@@ -31,6 +31,9 @@ multi-paragraph entry down the same way when you touch it.
   `commanderDamageThreshold`, `deckSize`, `startingLife`, `startingHandSize`, and
   `alwaysDivertToCommand`. Nothing in it is per-seat-count: commander damage is tallied per
   *(commander, defending player)* pair, so the same instance runs a 1v1 match and an N-player pod.
+  A seat has one commander or — through a partner ability ([§11](#11-keywords), `KeywordAbility.Partner`)
+  — two: `Deck.commander` + `Deck.secondCommander` (`Deck.commanders`), set up by
+  `PlayerConfig.commanderCardNames`.
 - `CommanderPreset` — the life / commander-damage / deck-size tunings a limited Commander lobby
   converts to a `Format.Commander` at match start: `BRAWL` (60/25/16) and `COMMANDER` (60/30/21) pace
   a 1v1 match, `POD` (60/40/21) is paper multiplayer Commander and is what any multiplayer table
@@ -11791,6 +11794,29 @@ composite abilities).
   "Each instant and sorcery spell you cast has casualty 1"). `GrantedKeywordResolver.casualtyThreshold`
   reads the printed `KeywordAbility.Casualty.threshold` first, then the granting source's
   `keywordParameter`.
+- **Partner abilities** (`KeywordAbility.Partner(kind: PartnerKind)`) — the CR 702.124 family that
+  lets a Commander deck designate **two** commanders. Deck-construction only: they function before
+  the game (CR 702.124a) and nothing at the table reads them, so there is no `Keyword` enum value.
+  Declare with `keywordAbility(...)` and one of the factories, which map 1:1 onto `PartnerKind`:
+  - `KeywordAbility.partner()` → `PartnerKind.Plain` — "Partner" (702.124h): pairs with another plain partner.
+  - `KeywordAbility.partnerNamed("Friends forever")` → `PartnerKind.Named(text)` — "Partner—[text]"
+    (702.124i): pairs only with the same text (Friends forever, Survivors, Character select, Father & son).
+  - `KeywordAbility.partnerWith("Toothy, Imaginary Friend")` → `PartnerKind.With(name)` — "Partner with
+    [name]" (702.124j): pairs only with the named card, which must name this one back. Its second meaning,
+    "When this permanent enters, target player may search their library for a card named [name]…", is
+    **not** synthesised — write the trigger on the card.
+  - `KeywordAbility.chooseABackground()` → `PartnerKind.ChooseABackground` — (702.124k): pairs with a
+    legendary Background enchantment card (`Subtype.BACKGROUND`), which can't be a commander alone.
+  - `KeywordAbility.doctorsCompanion()` → `PartnerKind.DoctorsCompanion` — (702.124m): pairs with a
+    legendary Time Lord Doctor creature card with no other creature types.
+
+  Different partner abilities never combine (702.124f); a card with several may use any one (702.124g).
+  The rule lives in `CommanderEligibility.pairingError(first, second)` (null = legal pair), which the
+  server's `DeckValidator` applies to `Deck.commander` + `Deck.secondCommander` (error code
+  `INVALID_COMMANDER_PAIR`); `CommanderEligibility.identityOf(commanders)` is the pair's combined
+  identity (702.124c). In play the pair needs nothing new: each commander is its own
+  `CommanderComponent` (own tax, own commander-damage tally, 702.124d) and `ManaColorSet.CommanderIdentity`
+  already unions every registered commander.
 - **Replicate** (`KeywordAbility.replicate(cost)` / `KeywordAbility.replicate(additionalCost)`) —
   Replicate [cost] (CR 702.56a): "As an additional cost to cast this spell, you may pay [cost] any
   number of times" and "When you cast this spell, if a replicate cost was paid for it, copy it for

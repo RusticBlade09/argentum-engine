@@ -200,6 +200,36 @@ export function parseArenaDeckList(text: string): ParseResult {
     : { entries, sideboard, commander, errors }
 }
 
+/** Most commanders a deck designates: one, or a partner pair (CR 702.124). */
+export const MAX_COMMANDERS = 2
+
+/**
+ * The commanders an imported list designates: the first two distinct names under its
+ * `Commander` section (a partner pair), canonicalised by [canonicalName]. Any further entries
+ * aren't designated — they stay ordinary deck cards, which is what the import already merges
+ * them into. Server validation decides whether the pair is legal.
+ */
+export function designatedCommanders(
+  commanderEntries: readonly ParsedEntry[],
+  canonicalName: (name: string) => string = (name) => name,
+): string[] {
+  const out: string[] = []
+  for (const entry of commanderEntries) {
+    const name = canonicalName(entry.name)
+    if (!out.includes(name)) out.push(name)
+    if (out.length === MAX_COMMANDERS) break
+  }
+  return out
+}
+
+/**
+ * A [designatedCommanders] canonicaliser over a card catalogue: the catalogue's own casing for a
+ * name it knows (case-insensitively), the name as written otherwise.
+ */
+export function canonicalNameIn(catalog: readonly { readonly name: string }[]): (name: string) => string {
+  return (name) => catalog.find((c) => c.name.toLowerCase() === name.toLowerCase())?.name ?? name
+}
+
 export interface ResolvedEntry {
   entry: ParsedEntry
   match: CardSummary | null

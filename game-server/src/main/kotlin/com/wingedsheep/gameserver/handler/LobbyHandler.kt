@@ -538,6 +538,8 @@ class LobbyHandler(
                 message.cardEntries,
                 message.commanderPrinting,
                 message.sideboard,
+                message.secondCommander,
+                message.secondCommanderPrinting,
             )
             return
         }
@@ -2796,6 +2798,8 @@ class LobbyHandler(
         cardEntries: List<com.wingedsheep.gameserver.protocol.DeckEntryDTO>? = null,
         commanderPrinting: com.wingedsheep.sdk.model.PrintingRef? = null,
         sideboard: Map<String, Int> = emptyMap(),
+        secondCommander: String? = null,
+        secondCommanderPrinting: com.wingedsheep.sdk.model.PrintingRef? = null,
     ) {
         val lobby = lobbyRepository.findLobbyById(lobbyId)
         if (lobby == null) {
@@ -2810,6 +2814,9 @@ class LobbyHandler(
         val commanderShape = lobby.usesCommanderRules
         val effectiveCommander = if (commanderShape) commander?.takeIf { it.isNotBlank() } else null
         val effectiveCommanderPrinting = if (commanderShape) commanderPrinting else null
+        // The other half of a partner pair (CR 702.124) rides along only beside a first commander.
+        val effectiveSecondCommander = effectiveCommander?.let { secondCommander?.takeIf { it.isNotBlank() } }
+        val effectiveSecondCommanderPrinting = effectiveSecondCommander?.let { secondCommanderPrinting }
 
         // A pool-built lobby validates the commander deck against the player's *pool* (its legality
         // universe) rather than against Scryfall legality — so the branch is "Commander rules over a
@@ -2817,26 +2824,10 @@ class LobbyHandler(
         // from the lobby's host configuration.
         if (commanderShape && lobby.format != TournamentFormat.PREMADE_DECKS) {
             val pool = lobby.players[identity.playerId]?.cardPool ?: emptyList()
-            val withoutCommander = effectiveCommander
-                ?.let { stripCommanderFromCards(deckList, it) }
-                ?: deckList
-            val deckCards = withoutCommander.flatMap { (name, count) -> List(count) { name } }
-            val richEntries = cardEntries
-                ?.filterNot { it.name == effectiveCommander && it.printing == effectiveCommanderPrinting }
-                ?.takeIf { it.isNotEmpty() }
-            val deck = if (richEntries != null) {
-                com.wingedsheep.sdk.model.Deck.fromEntries(
-                    entries = richEntries.map { com.wingedsheep.sdk.model.CardEntry(it.name, it.printing) },
-                    commander = effectiveCommander,
-                    commanderPrinting = effectiveCommanderPrinting,
-                )
-            } else {
-                com.wingedsheep.sdk.model.Deck(
-                    cards = deckCards,
-                    commander = effectiveCommander,
-                    commanderPrinting = effectiveCommanderPrinting,
-                )
-            }
+            val deck = commanderDeck(
+                deckList, cardEntries, effectiveCommander, effectiveCommanderPrinting,
+                effectiveSecondCommander, effectiveSecondCommanderPrinting,
+            )
             val validation = deckValidator.validateCommanderLimited(
                 deck = deck,
                 pool = pool,
@@ -2859,28 +2850,10 @@ class LobbyHandler(
             val validation = if (commanderShape) {
                 // Always go through the commander-aware path for commander-shape formats so a
                 // missing commander surfaces as MISSING_COMMANDER instead of silently passing.
-                val withoutCommander = effectiveCommander
-                    ?.let { stripCommanderFromCards(deckList, it) }
-                    ?: deckList
-                val deckCards = withoutCommander.flatMap { (name, count) -> List(count) { name } }
-                val richEntries = cardEntries
-                    ?.filterNot { it.name == effectiveCommander && it.printing == effectiveCommanderPrinting }
-                    ?.takeIf { it.isNotEmpty() }
-                val deck = if (richEntries != null) {
-                    com.wingedsheep.sdk.model.Deck.fromEntries(
-                        entries = richEntries.map {
-                            com.wingedsheep.sdk.model.CardEntry(it.name, it.printing)
-                        },
-                        commander = effectiveCommander,
-                        commanderPrinting = effectiveCommanderPrinting,
-                    )
-                } else {
-                    com.wingedsheep.sdk.model.Deck(
-                        cards = deckCards,
-                        commander = effectiveCommander,
-                        commanderPrinting = effectiveCommanderPrinting,
-                    )
-                }
+                val deck = commanderDeck(
+                    deckList, cardEntries, effectiveCommander, effectiveCommanderPrinting,
+                    effectiveSecondCommander, effectiveSecondCommanderPrinting,
+                )
                 deckValidator.validate(deck, lobby.deckFormat)
             } else {
                 deckValidator.validate(
@@ -2910,7 +2883,9 @@ class LobbyHandler(
 
         // For a PREMADE_DECKS (constructed) lobby this explicit sideboard is honored; for Limited
         // lobbies TournamentLobby.submitDeck ignores it and derives pool − maindeck (CR 100.4b).
-        val result = lobby.submitDeck(identity.playerId, deckList, effectiveCommander, sanitizedSideboard)
+        val result = lobby.submitDeck(
+            identity.playerId, deckList, effectiveCommander, sanitizedSideboard, effectiveSecondCommander,
+        )
         when (result) {
             is TournamentLobby.DeckSubmissionResult.Success -> {
                 val deckSize = deckList.values.sum()
@@ -2982,17 +2957,22 @@ class LobbyHandler(
     }
 
     /**
-     * Subtract one copy of [commander] from [deckList]. Mirrors the QuickGame helper — the
-     * wire format ships the merged deck (commander counted in `deckList`), but `Deck.cards`
-     * excludes it. Idempotent when the commander isn't present.
+     * The commander-rules [Deck] for a wire submission, whose [deckList] counts each commander once.
+     * With no [commander] the deck has none, so validation reports MISSING_COMMANDER.
      */
-    private fun stripCommanderFromCards(
+    private fun commanderDeck(
         deckList: Map<String, Int>,
-        commander: String,
-    ): Map<String, Int> {
-        val current = deckList[commander] ?: return deckList
-        val next = deckList.toMutableMap()
-        if (current <= 1) next.remove(commander) else next[commander] = current - 1
-        return next
-    }
+        cardEntries: List<com.wingedsheep.gameserver.protocol.DeckEntryDTO>?,
+        commander: String?,
+        commanderPrinting: com.wingedsheep.sdk.model.PrintingRef?,
+        secondCommander: String?,
+        secondCommanderPrinting: com.wingedsheep.sdk.model.PrintingRef?,
+    ): com.wingedsheep.sdk.model.Deck =
+        if (commander == null) {
+            com.wingedsheep.gameserver.protocol.DeckRequestConverter.toDeck(deckList, cardEntries)
+        } else {
+            com.wingedsheep.gameserver.protocol.DeckRequestConverter.toCommanderDeck(
+                deckList, cardEntries, commander, commanderPrinting, secondCommander, secondCommanderPrinting,
+            )
+        }
 }

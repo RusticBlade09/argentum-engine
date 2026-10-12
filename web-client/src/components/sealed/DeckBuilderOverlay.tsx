@@ -226,9 +226,9 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
   const isValidDeck = totalCount >= requiredSize && (!isCommanderShape || state.commander != null)
 
   // Pool-filtered eligible commanders for the limited commander formats. Matches the backend's
-  // CommanderEligibility: legendary creature, legendary planeswalker, or any card with an
-  // explicit "can be your commander" override clause in the oracle text. Returned as a Set so
-  // each deck row can check eligibility in O(1) when deciding whether to enable its crown.
+  // CommanderEligibility: legendary creature, or any card with an explicit "can be your
+  // commander" clause in the oracle text (a planeswalker needs that clause too). Returned as a Set
+  // so each deck row can check eligibility in O(1) when deciding whether to enable its crown.
   const eligibleCommanderNames = useMemo<Set<string>>(() => {
     const out = new Set<string>()
     if (!isCommanderShape) return out
@@ -237,9 +237,8 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
       const tl = card.typeLine.toLowerCase()
       const isLegendary = tl.includes('legendary')
       const isCreature = tl.includes('creature')
-      const isPlaneswalker = tl.includes('planeswalker')
       const override = re.test(card.oracleText ?? '')
-      if ((isLegendary && (isCreature || isPlaneswalker)) || override) {
+      if ((isLegendary && isCreature) || override) {
         out.add(card.name)
       }
     }

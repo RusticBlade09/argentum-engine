@@ -373,7 +373,7 @@ class AiGameManager(
         // sealed deck, using the same set as the human player when one was provided.
         val aiDeck = deckOverride
             ?: if (setCode != null) deckGenerator.generate(setCode) else deckGenerator.generate()
-        gameSession.addPlayer(playerSession, aiDeck, commanderCardName = commanderCardName)
+        gameSession.addPlayer(playerSession, aiDeck, commanderCardNames = listOfNotNull(commanderCardName))
 
         // Give the AI knowledge of its deck composition
         controller.setDeckList(aiDeck)

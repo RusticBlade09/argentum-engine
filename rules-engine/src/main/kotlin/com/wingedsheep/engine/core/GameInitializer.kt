@@ -34,11 +34,14 @@ data class PlayerConfig(
     val startingLife: Int = 20,
     val playerId: EntityId? = null,
     /**
-     * Name of the card in [deck] that should be designated this player's commander. Required when
-     * [GameConfig.format] is [Format.Commander]. Phase 1 supports a single commander; partner /
-     * Background pairings are Phase 4 territory.
+     * Names of the cards designated this player's commanders — one, or two for a partner pair
+     * (CR 702.124). Required (non-empty) when [GameConfig.format] uses commanders. Each begins the
+     * game in the command zone (CR 903.6, 702.124b), honouring [Deck.commanderPrintingOf]. Whether
+     * a pair is legal is deck construction's question (the server's deck validator asks
+     * [com.wingedsheep.sdk.model.CommanderEligibility.pairingError]); setup only refuses more than
+     * two (CR 702.124g) or the same card twice.
      */
-    val commanderCardName: String? = null,
+    val commanderCardNames: List<String> = emptyList(),
 )
 
 /**
@@ -190,13 +193,17 @@ class GameInitializer(
         // and routed to Zone.COMMAND.
         if (config.format.usesCommanders) {
             for (playerConfig in config.players) {
-                val name = playerConfig.commanderCardName
-                require(!name.isNullOrBlank()) {
-                    "Commander format requires PlayerConfig.commanderCardName for player '${playerConfig.name}'"
+                val names = playerConfig.commanderCardNames
+                require(names.isNotEmpty() && names.none { it.isBlank() }) {
+                    "Commander format requires PlayerConfig.commanderCardNames for player '${playerConfig.name}'"
                 }
-                // Make sure the registry can resolve the commander before we touch any state —
+                // No partner ability can give a player more than two commanders (CR 702.124g).
+                require(names.size <= 2 && names.toSet().size == names.size) {
+                    "Player '${playerConfig.name}' designated $names — a deck has one commander or two distinct partners"
+                }
+                // Make sure the registry can resolve the commanders before we touch any state —
                 // we'd rather fail here than mid-init with a half-built game.
-                cardRegistry.requireCard(name)
+                names.forEach { cardRegistry.requireCard(it) }
             }
         }
 
@@ -335,25 +342,24 @@ class GameInitializer(
 
         // 3. Instantiate cards and place in libraries (or command zone for commanders).
         // Commander setup runs first so a CommanderRegistryComponent is attached to the player
-        // entity before the rest of the deck flows into the library. Phase 1 supports a single
-        // commander per player; CommanderRegistryComponent is a list so Partner / Background
-        // (Phase 4) can append without a schema change.
+        // entity before the rest of the deck flows into the library. A partner pair puts both
+        // commanders in the command zone, each with its own CommanderComponent — so its own tax
+        // and its own commander-damage tally (CR 702.124d).
         val definitionsInGame = mutableMapOf<String, com.wingedsheep.sdk.model.CardDefinition>()
         for ((index, playerConfig) in config.players.withIndex()) {
             val playerId = playerIds[index]
 
-            val commanderName: String? = when {
-                config.format.usesCommanders -> playerConfig.commanderCardName
-                else -> null
-            }
+            val commanderNames: List<String> =
+                if (config.format.usesCommanders) playerConfig.commanderCardNames else emptyList()
             val commanderEntityIds = mutableListOf<EntityId>()
 
-            if (commanderName != null) {
+            for (commanderName in commanderNames) {
                 val cardDef = cardRegistry.requireCard(commanderName)
                 definitionsInGame[cardDef.name] = cardDef
                 val (cardId, stateWithId) = state.newEntity()
                 state = stateWithId
-                val cardContainer = createCardEntity(cardDef, playerId, playerConfig.deck.commanderPrinting).with(
+                val printing = playerConfig.deck.commanderPrintingOf(commanderName)
+                val cardContainer = createCardEntity(cardDef, playerId, printing).with(
                     com.wingedsheep.engine.state.components.identity.CommanderComponent(ownerId = playerId)
                 )
                 state = state.withEntity(cardId, cardContainer)

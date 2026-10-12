@@ -146,6 +146,14 @@ sealed interface ClientMessage {
         /** Optional pinned printing for [commander]. Ignored when [commander] is null. */
         val commanderPrinting: PrintingRef? = null,
         /**
+         * Optional second commander — the other half of a partner pair (CR 702.124). Honoured only
+         * alongside [commander], and, like it, MUST appear in [deckList]. Whether the two may be
+         * paired is the deck validator's call.
+         */
+        val secondCommander: String? = null,
+        /** Optional pinned printing for [secondCommander]. */
+        val secondCommanderPrinting: PrintingRef? = null,
+        /**
          * Constructed sideboard ("outside the game", CR 100.4a), card name → count. Used for
          * constructed/premade lobbies; ignored for Limited lobbies, which derive the sideboard as
          * pool − maindeck server-side (CR 100.4b).
@@ -629,6 +637,14 @@ sealed interface ClientMessage {
         val cardEntries: List<DeckEntryDTO>? = null,
         /** Optional pinned printing for [commander]. Ignored when [commander] is null. */
         val commanderPrinting: PrintingRef? = null,
+        /**
+         * Optional second commander — the other half of a partner pair (CR 702.124). Honoured only
+         * alongside [commander], and, like it, MUST appear in [deckList]. Whether the two may be
+         * paired is the deck validator's call.
+         */
+        val secondCommander: String? = null,
+        /** Optional pinned printing for [secondCommander]. */
+        val secondCommanderPrinting: PrintingRef? = null,
         /**
          * Constructed sideboard ("outside the game", CR 400.11a), card name → count — the cards a
          * wish effect can fetch. Null / empty for a random pool, which has no constructed sideboard

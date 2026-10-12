@@ -65,6 +65,8 @@ export interface QuickGameLobbySliceActions {
     deckList: Record<string, number>,
     commander?: string | null,
     sideboard?: Record<string, number>,
+    /** The second commander of a partner pair; ignored without `commander`. */
+    secondCommander?: string | null,
   ) => void
   setQuickGameLobbyReady: (ready: boolean) => void
   setQuickGameLobbySetCode: (setCodes: readonly string[]) => void
@@ -104,9 +106,11 @@ export const createQuickGameLobbySlice: SliceCreator<QuickGameLobbySlice> = (set
     set({ quickGameLobbyState: null })
   },
 
-  submitQuickGameLobbyDeck: (deckList, commander, sideboard) => {
+  submitQuickGameLobbyDeck: (deckList, commander, sideboard, secondCommander) => {
     getWebSocket()?.send(
-      createSubmitQuickGameLobbyDeckMessage(deckList, commander, undefined, undefined, sideboard),
+      createSubmitQuickGameLobbyDeckMessage(
+        deckList, commander, undefined, undefined, sideboard, secondCommander,
+      ),
     )
   },
 

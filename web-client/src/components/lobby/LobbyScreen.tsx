@@ -864,6 +864,7 @@ function QuickGameDeckPicker({
 
   const pendingDeckRef = useRef<Record<string, number> | null>(null)
   const pendingCommanderRef = useRef<string | null>(null)
+  const pendingSecondCommanderRef = useRef<string | null>(null)
   const pendingSideboardRef = useRef<Record<string, number>>({})
   const lastSubmittedKeyRef = useRef<string | null>(null)
   const debounceRef = useRef<number | null>(null)
@@ -873,14 +874,16 @@ function QuickGameDeckPicker({
       deckList: Record<string, number>,
       commander?: string | null,
       sideboard?: Record<string, number>,
+      secondCommander?: string | null,
     ) => {
-      // The commander and the sideboard ride in the dedupe key, so swapping either on otherwise-
-      // identical deck contents still resubmits — editing only the sideboard is a real change.
+      // The commanders and the sideboard ride in the dedupe key, so swapping any of them on
+      // otherwise-identical deck contents still resubmits — editing only the sideboard is a real change.
       const board = sideboard ?? {}
-      const key = `${serializeDeck(deckList)}|${commander ?? ''}|${serializeDeck(board)}`
+      const key = `${serializeDeck(deckList)}|${commander ?? ''}+${secondCommander ?? ''}|${serializeDeck(board)}`
       if (key === lastSubmittedKeyRef.current) return
       pendingDeckRef.current = deckList
       pendingCommanderRef.current = commander ?? null
+      pendingSecondCommanderRef.current = secondCommander ?? null
       pendingSideboardRef.current = board
       if (debounceRef.current !== null) window.clearTimeout(debounceRef.current)
       onSubmitPendingChange(true)
@@ -889,11 +892,13 @@ function QuickGameDeckPicker({
         const pending = pendingDeckRef.current
         if (!pending) return
         const pendingCmdr = pendingCommanderRef.current
+        const pendingSecond = pendingSecondCommanderRef.current
         const pendingSide = pendingSideboardRef.current
-        const pendingKey = `${serializeDeck(pending)}|${pendingCmdr ?? ''}|${serializeDeck(pendingSide)}`
+        const pendingKey =
+          `${serializeDeck(pending)}|${pendingCmdr ?? ''}+${pendingSecond ?? ''}|${serializeDeck(pendingSide)}`
         if (pendingKey === lastSubmittedKeyRef.current) return
         lastSubmittedKeyRef.current = pendingKey
-        submitDeck(pending, pendingCmdr, pendingSide)
+        submitDeck(pending, pendingCmdr, pendingSide, pendingSecond)
       }, 250)
     },
     [submitDeck, onSubmitPendingChange],
@@ -905,16 +910,17 @@ function QuickGameDeckPicker({
       if (debounceRef.current !== null) window.clearTimeout(debounceRef.current)
       const pending = pendingDeckRef.current
       const pendingCmdr = pendingCommanderRef.current
+      const pendingSecond = pendingSecondCommanderRef.current
       const pendingSide = pendingSideboardRef.current
       const pendingKey = pending
-        ? `${serializeDeck(pending)}|${pendingCmdr ?? ''}|${serializeDeck(pendingSide)}`
+        ? `${serializeDeck(pending)}|${pendingCmdr ?? ''}+${pendingSecond ?? ''}|${serializeDeck(pendingSide)}`
         : null
       if (pending && pendingKey !== lastSubmittedKeyRef.current) {
         // Recorded like any other submission, so a remount (StrictMode's, or the picker's) that
         // re-emits the same deck doesn't send it again — once the game has started, that second
         // send lands on a lobby that no longer exists.
         lastSubmittedKeyRef.current = pendingKey
-        submitDeck(pending, pendingCmdr, pendingSide)
+        submitDeck(pending, pendingCmdr, pendingSide, pendingSecond)
       }
     }
   }, [submitDeck])
@@ -1022,14 +1028,21 @@ function PremadeDeckPickerPanel({
 
   const [pendingDeck, setPendingDeck] = useState<Record<string, number>>({})
   const [pendingCommander, setPendingCommander] = useState<string | null>(null)
+  const [pendingSecondCommander, setPendingSecondCommander] = useState<string | null>(null)
   const [pendingSideboard, setPendingSideboard] = useState<Record<string, number>>({})
   const [isValid, setIsValid] = useState(false)
   const autoSubmitted = useRef(false)
 
   const handleDeckChange = useCallback(
-    (deck: Record<string, number>, commander?: string | null, sideboard?: Record<string, number>) => {
+    (
+      deck: Record<string, number>,
+      commander?: string | null,
+      sideboard?: Record<string, number>,
+      secondCommander?: string | null,
+    ) => {
       setPendingDeck(deck)
       setPendingCommander(commander ?? null)
+      setPendingSecondCommander(secondCommander ?? null)
       setPendingSideboard(sideboard ?? {})
     },
     [],
@@ -1048,8 +1061,16 @@ function PremadeDeckPickerPanel({
   useEffect(() => {
     if (!autoSubmit || autoSubmitted.current || hasSubmitted || !canSubmit) return
     autoSubmitted.current = true
-    submitLobbyDeck(pendingDeck, isCommanderShape ? pendingCommander : null, pendingSideboard)
-  }, [autoSubmit, hasSubmitted, canSubmit, submitLobbyDeck, pendingDeck, isCommanderShape, pendingCommander, pendingSideboard])
+    submitLobbyDeck(
+      pendingDeck,
+      isCommanderShape ? pendingCommander : null,
+      pendingSideboard,
+      isCommanderShape ? pendingSecondCommander : null,
+    )
+  }, [
+    autoSubmit, hasSubmitted, canSubmit, submitLobbyDeck, pendingDeck, isCommanderShape, pendingCommander,
+    pendingSecondCommander, pendingSideboard,
+  ])
 
   if (hasSubmitted) {
     return (
@@ -1085,7 +1106,12 @@ function PremadeDeckPickerPanel({
           onExampleNameChange={onExampleNameChange}
         />
         <button
-          onClick={() => submitLobbyDeck(pendingDeck, isCommanderShape ? pendingCommander : null, pendingSideboard)}
+          onClick={() => submitLobbyDeck(
+            pendingDeck,
+            isCommanderShape ? pendingCommander : null,
+            pendingSideboard,
+            isCommanderShape ? pendingSecondCommander : null,
+          )}
           disabled={!canSubmit}
           title={
             canSubmit ? undefined

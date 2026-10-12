@@ -186,8 +186,11 @@ class GameSession(
      * start so wish effects (Burning Wish, …) can fetch from it.
      */
     private val sideboards = mutableMapOf<EntityId, List<String>>()
-    /** Per-player commander card name for commander-shape formats. Null = no commander. */
-    private val commanderCardNames = mutableMapOf<EntityId, String>()
+    /**
+     * Per-player commander card names for commander-shape formats — one, or two for a partner pair
+     * (CR 702.124). Absent = no commander.
+     */
+    private val commanderCardNames = mutableMapOf<EntityId, List<String>>()
     /**
      * Active spectators, keyed by player id. Keyed by *identity* rather than held as a set of
      * sessions because a reconnect (refresh, or leaving and coming back) arrives on a brand-new
@@ -412,7 +415,7 @@ class GameSession(
     fun addPlayer(
         playerSession: PlayerSession,
         deckList: Map<String, Int>,
-        commanderCardName: String? = null,
+        commanderCardNames: List<String> = emptyList(),
         sideboard: Map<String, Int> = emptyMap(),
     ): EntityId {
         require(!isFull) { "Game session is full" }
@@ -427,10 +430,10 @@ class GameSession(
         }
         deckLists[playerId] = cards
         sideboards[playerId] = sideboard.flatMap { (cardName, count) -> List(count) { cardName } }
-        if (commanderCardName != null) {
-            commanderCardNames[playerId] = commanderCardName
+        if (commanderCardNames.isNotEmpty()) {
+            this.commanderCardNames[playerId] = commanderCardNames
         } else {
-            commanderCardNames.remove(playerId)
+            this.commanderCardNames.remove(playerId)
         }
         playerSession.currentGameSessionId = sessionId
 
@@ -665,7 +668,7 @@ class GameSession(
                     sideboard = sideboards[playerId].orEmpty().map(::cardEntryFromIdentifier),
                 ),
                 playerId = playerId,  // Pass existing player ID to the engine
-                commanderCardName = commanderCardNames[playerId],
+                commanderCardNames = commanderCardNames[playerId].orEmpty(),
             )
         }
 
@@ -703,7 +706,8 @@ class GameSession(
                     name = pc.name,
                     deck = pc.deck,
                     startingLife = pc.startingLife,
-                    commanderCardName = pc.commanderCardName,
+                    commanderCardName = pc.commanderCardNames.firstOrNull(),
+                    secondCommanderCardName = pc.commanderCardNames.getOrNull(1),
                 )
             },
             seatRoster = seatInfos(),

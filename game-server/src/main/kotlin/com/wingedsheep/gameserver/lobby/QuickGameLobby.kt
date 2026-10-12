@@ -181,6 +181,8 @@ data class QuickGameLobbyPlayer(
      * shape. Resubmitted by the client alongside the deck list.
      */
     var commander: String? = null,
+    /** The other half of a partner pair (CR 702.124), or null. Only meaningful beside [commander]. */
+    var secondCommander: String? = null,
     /**
      * Constructed sideboard ("outside the game", CR 400.11a), card name → count. Submitted
      * alongside the deck list and handed to the engine at game start, so wish effects have

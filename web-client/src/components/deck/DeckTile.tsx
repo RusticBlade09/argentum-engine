@@ -18,6 +18,7 @@ import { rarityColor } from '@/components/draft/RarityBadge'
 import { COLOR_DOT } from '@/components/ui/DeckSummary'
 import { labelForFormat } from '@/utils/deckLegality'
 import { getCdnArtCropUrl, getScryfallArtCropUrl } from '@/utils/cardImages'
+import { commandersOf, mergeCommanderIntoCards } from '@/store/deckLibrary'
 import styles from './DeckTile.module.css'
 
 /**
@@ -195,6 +196,8 @@ export function DeckTileActionButton({
 export interface DeckTileSource {
   cards: Record<string, number>
   commander?: string | null | undefined
+  /** The second commander of a partner pair; like `commander`, kept out of `cards` when saved. */
+  secondCommander?: string | null | undefined
   coverCard?: string | null | undefined
   coverImageUri?: string | null | undefined
 }
@@ -220,9 +223,7 @@ export function deckTileModel<T extends DeckTileCard>(
   deck: DeckTileSource,
   catalog: Record<string, T>,
 ): DeckTileModel<T> {
-  const full = deck.commander && !deck.cards[deck.commander]
-    ? { ...deck.cards, [deck.commander]: 1 }
-    : deck.cards
+  const full = mergeCommanderIntoCards(deck.cards, ...commandersOf(deck))
   const total = Object.values(full).reduce((a, b) => a + b, 0)
   return { total, colors: deckColors(full, catalog), hero: deckCover(deck, catalog) }
 }
@@ -233,7 +234,7 @@ export function deckCover<T extends DeckTileCard>(
   catalog: Record<string, T>,
 ): T | null {
   const cover = deck.coverCard
-  if (cover && (deck.cards[cover] || deck.commander === cover)) {
+  if (cover && (deck.cards[cover] || commandersOf(deck).includes(cover))) {
     const known = catalog[cover]
     if (known) return deck.coverImageUri ? { ...known, imageUri: deck.coverImageUri } : known
     // Catalogue not loaded (or the card left it): the stored art is still enough to paint it.
@@ -244,9 +245,7 @@ export function deckCover<T extends DeckTileCard>(
       } as DeckTileCard as T
     }
   }
-  const full = deck.commander && !deck.cards[deck.commander]
-    ? { ...deck.cards, [deck.commander]: 1 }
-    : deck.cards
+  const full = mergeCommanderIntoCards(deck.cards, ...commandersOf(deck))
   return rarestCard(full, catalog, deck.commander ?? null)
 }
 

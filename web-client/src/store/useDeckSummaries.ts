@@ -29,8 +29,12 @@ function requestFor(deck: SavedDeck): SummaryRequestDeck {
   const printings: Record<string, PrintingRef> = {}
   for (const e of deck.entries ?? []) if (e.printing) printings[e.name] = e.printing
   if (deck.commander && deck.commanderPrinting) printings[deck.commander] = deck.commanderPrinting
+  if (deck.commander && deck.secondCommander && deck.secondCommanderPrinting) {
+    printings[deck.secondCommander] = deck.secondCommanderPrinting
+  }
   return {
-    cards: mergeCommanderIntoCards(deck.cards, deck.commander ?? null),
+    // Both commanders of a partner pair are part of the deck list the summary describes.
+    cards: mergeCommanderIntoCards(deck.cards, deck.commander, deck.commander ? deck.secondCommander : null),
     ...(deck.commander ? { commander: deck.commander } : {}),
     ...(Object.keys(printings).length > 0 ? { printings } : {}),
     ...(deck.coverCard ? { coverCard: deck.coverCard } : {}),

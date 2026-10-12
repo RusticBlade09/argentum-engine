@@ -96,12 +96,12 @@ interface CoverCandidate {
 const RARITY_RANK: Record<string, number> = { MYTHIC: 3, RARE: 2, UNCOMMON: 1, COMMON: 0 }
 
 /**
- * A gallery of the deck's cards as art crops to choose the cover from. Commander first, then
+ * A gallery of the deck's cards as art crops to choose the cover from. Commander(s) first, then
  * spells from the rarest and biggest down, lands last — the order you'd look for a deck's face in.
  */
 export function CoverPicker({
   deckCards,
-  commander,
+  commanders,
   catalog,
   artFor,
   chosen,
@@ -109,7 +109,8 @@ export function CoverPicker({
   onClose,
 }: {
   deckCards: Record<string, number>
-  commander: string | null
+  /** The designated commander(s) — two for a partner pair. */
+  commanders: readonly string[]
   catalog: Record<string, CardSummary>
   /** The image URL for a card as it appears in this deck (pinned printing aware). */
   artFor: (name: string) => string | null
@@ -132,7 +133,7 @@ export function CoverPicker({
   const candidates = useMemo(() => {
     const out: CoverCandidate[] = []
     const names = new Set(Object.keys(deckCards).filter((n) => (deckCards[n] ?? 0) > 0))
-    if (commander) names.add(commander)
+    for (const c of commanders) names.add(c)
     for (const name of names) {
       const card = catalog[name]
       if (!card || card.basicLand) continue
@@ -141,7 +142,7 @@ export function CoverPicker({
       out.push({
         card,
         art,
-        isCommander: name === commander,
+        isCommander: commanders.includes(name),
         isLand: card.cardTypes.some((t) => t.toUpperCase() === 'LAND'),
       })
     }
@@ -154,12 +155,13 @@ export function CoverPicker({
         b.card.cmc - a.card.cmc ||
         a.card.name.localeCompare(b.card.name),
     )
-  }, [deckCards, commander, catalog, artFor])
+  }, [deckCards, commanders, catalog, artFor])
 
   const automatic = useMemo(() => {
-    const full = commander && !deckCards[commander] ? { ...deckCards, [commander]: 1 } : deckCards
-    return rarestCard(full, catalog, commander)
-  }, [deckCards, commander, catalog])
+    const full = { ...deckCards }
+    for (const c of commanders) if (!full[c]) full[c] = 1
+    return rarestCard(full, catalog, commanders[0] ?? null)
+  }, [deckCards, commanders, catalog])
   const automaticArt = automatic
     ? heroArtUrl({ ...automatic, imageUri: artFor(automatic.name) ?? automatic.imageUri ?? null })
     : null

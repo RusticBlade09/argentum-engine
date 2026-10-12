@@ -25,6 +25,7 @@ import type { PrintingRef } from '@/types'
 import type { AvailableSet } from '@/types/messages'
 import {
   type SavedDeck,
+  commandersOf,
   mergeCommanderIntoCards,
   stripCommanderFromCards,
 } from '@/store/deckLibrary'
@@ -59,12 +60,14 @@ export interface DeckPickerProps {
    * commander, when applicable, merged into the card counts). The optional `commander` is the
    * designated commander card name when the active selection is a saved deck with one. Quick
    * Game / Premade-Decks tournament flows pass it through to the server so commander-shape
-   * formats can wire the engine into Format.Commander.
+   * formats can wire the engine into Format.Commander. `secondCommander` is the partner of
+   * `commander` for a partner pair (CR 702.124); both are stripped from `deckList` alike.
    */
   onDeckChange: (
     deckList: Record<string, number>,
     commander?: string | null,
     sideboard?: Record<string, number>,
+    secondCommander?: string | null,
   ) => void
   onValidityChange?: (isValid: boolean) => void
   /** Set selection for quick-game Random decks. Empty means the server chooses a set. */
@@ -135,6 +138,8 @@ interface ExampleDeck {
   printings?: Record<string, PrintingRef> | null
   /** Preferred printing for the commander, when one is designated. */
   commanderPrinting?: PrintingRef | null
+  /** The second commander of a partner pair, when the example has one. */
+  secondCommander?: string | null
 }
 
 type ValidationResult = DeckValidationResult
@@ -219,7 +224,7 @@ export function DeckPicker({
   // commander UI of its own — loading a commander-shape example is the only way this gets
   // populated. Cleared whenever the user edits the paste text manually so a stale designation
   // can't outlive the original example contents.
-  const [pasteCommander, setPasteCommander] = useState<string | null>(null)
+  const [pasteCommanders, setPasteCommanders] = useState<readonly string[]>([])
   const [selectedSavedId, setSelectedSavedId] = useState<string | null>(null)
   const [selectedExampleId, setSelectedExampleId] = useState<string | null>(null)
   const [pendingName, setPendingName] = useState('')
@@ -398,7 +403,7 @@ export function DeckPicker({
         // cards. Quick Game / Premade-Decks tournament submission flows feed
         // the result straight into the lobby payload, so without this the
         // server would receive 99 cards and the commander would be missing.
-        return mergeCommanderIntoCards(saved.cards, saved.commander ?? null)
+        return mergeCommanderIntoCards(saved.cards, ...commandersOf(saved))
       }
       case 'examples':
         // A starter deck is played as-is, like a saved one; "Customize" is the way into Paste.
@@ -417,16 +422,22 @@ export function DeckPicker({
   }, [parsedPaste.deckName])
 
   // Commander designation. Saved decks store one explicitly; commander-shape examples carry
-  // theirs through Paste via [pasteCommander]. Random has no commander hint.
-  const currentCommander: string | null = useMemo(() => {
+  // theirs through Paste via [pasteCommanders]. Random has no commander hint.
+  // A partner pair (CR 702.124) designates two; the first is `commander`, the second its partner.
+  const currentCommanders: readonly string[] = useMemo(() => {
     if (tab === 'saved') {
       const saved = decks.find((d) => d.id === selectedSavedId)
-      return saved?.commander ?? null
+      return saved ? commandersOf(saved) : []
     }
-    if (tab === 'paste') return pasteCommander
-    if (tab === 'examples') return examples.find((ex) => ex.id === selectedExampleId)?.commander ?? null
-    return null
-  }, [tab, decks, selectedSavedId, pasteCommander, examples, selectedExampleId])
+    if (tab === 'paste') return pasteCommanders
+    if (tab === 'examples') {
+      const ex = examples.find((e) => e.id === selectedExampleId)
+      return ex ? commandersOf(ex) : []
+    }
+    return []
+  }, [tab, decks, selectedSavedId, pasteCommanders, examples, selectedExampleId])
+  const currentCommander: string | null = currentCommanders[0] ?? null
+  const currentSecondCommander: string | null = currentCommanders[1] ?? null
 
   // The constructed sideboard ("outside the game", CR 400.11a) the wish effects fetch from.
   // Saved decks carry one (the deckbuilder persists it) and a pasted list carries whatever sat
@@ -447,8 +458,8 @@ export function DeckPicker({
   // validator / lobby registrar adds the commander on top of `cards`. Sending both would count
   // the commander twice. Mirrors the equivalent strip in DeckbuilderPage.
   const deckListForServer = useMemo(
-    () => stripCommanderFromCards(currentDeck, currentCommander),
-    [currentDeck, currentCommander],
+    () => stripCommanderFromCards(currentDeck, ...currentCommanders),
+    [currentDeck, currentCommanders],
   )
 
   // Push the current deck up. We deliberately suppress empty emissions from non-Random tabs
@@ -458,8 +469,8 @@ export function DeckPicker({
   // On the Random tab `{}` *is* the chosen deck (server generates a random pool), so emit it.
   useEffect(() => {
     if (tab !== 'random' && Object.keys(currentDeck).length === 0) return
-    onDeckChange(deckListForServer, currentCommander, currentSideboard)
-  }, [tab, currentDeck, deckListForServer, currentCommander, currentSideboard, onDeckChange])
+    onDeckChange(deckListForServer, currentCommander, currentSideboard, currentSecondCommander)
+  }, [tab, currentDeck, deckListForServer, currentCommander, currentSecondCommander, currentSideboard, onDeckChange])
 
   // Server-side validation when the deck is non-empty.
   useEffect(() => {
@@ -478,6 +489,7 @@ export function DeckPicker({
         deckList: deckListForServer,
         ...(format ? { format } : {}),
         ...(currentCommander ? { commander: currentCommander } : {}),
+        ...(currentCommander && currentSecondCommander ? { secondCommander: currentSecondCommander } : {}),
       }),
       signal: ctrl.signal,
     })
@@ -497,7 +509,7 @@ export function DeckPicker({
     return () => {
       ctrl.abort()
     }
-  }, [currentDeck, deckListForServer, currentCommander, onValidityChange, format])
+  }, [currentDeck, deckListForServer, currentCommander, currentSecondCommander, onValidityChange, format])
 
   const stats = useMemo(() => computeDeckStats(currentDeck, cards), [currentDeck, cards])
   const totalCards = Object.values(currentDeck).reduce((a, b) => a + b, 0)
@@ -510,7 +522,7 @@ export function DeckPicker({
 
   const handleCustomizeExample = (ex: ExampleDeck) => {
     setPasteText(formatDeckText(ex.cards))
-    setPasteCommander(ex.commander ?? null)
+    setPasteCommanders(commandersOf(ex))
     setPendingName(ex.name)
     setPendingDetails(ex.note ? { note: ex.note } : {})
     setTab('paste')
@@ -539,7 +551,7 @@ export function DeckPicker({
   const legalityInput = useMemo(() => {
     const out: Record<string, Record<string, number>> = {}
     for (const d of decks) {
-      out[d.id] = mergeCommanderIntoCards(d.cards, d.commander ?? null)
+      out[d.id] = mergeCommanderIntoCards(d.cards, ...commandersOf(d))
     }
     return out
   }, [decks])
@@ -598,7 +610,7 @@ export function DeckPicker({
               // which is stored separately on `SavedDeck` but should appear in the
               // text the user can edit.
               setPasteText(
-                formatDeckText(mergeCommanderIntoCards(d.cards, d.commander ?? null), d.sideboard),
+                formatDeckText(mergeCommanderIntoCards(d.cards, ...commandersOf(d)), d.sideboard),
               )
               setPendingName(d.name)
               setPendingDetails({
@@ -631,7 +643,7 @@ export function DeckPicker({
                 setPasteText(e.target.value)
                 // A manual edit voids any commander designation an example may have carried —
                 // the user might have removed the commander card from the list entirely.
-                if (pasteCommander !== null) setPasteCommander(null)
+                if (pasteCommanders.length > 0) setPasteCommanders([])
               }}
               disabled={disabled}
               className={styles.textarea}

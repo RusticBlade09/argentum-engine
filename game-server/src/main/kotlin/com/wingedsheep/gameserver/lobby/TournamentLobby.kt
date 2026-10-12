@@ -223,6 +223,11 @@ data class LobbyPlayerState(
      */
     var commander: String? = null,
     /**
+     * The other half of a partner pair (CR 702.124), or null. Only meaningful beside [commander];
+     * like it, the card is counted inside [submittedDeck].
+     */
+    var secondCommander: String? = null,
+    /**
      * For an AI seat: what the host chose for it to play — the same [AiDeckSpec] vocabulary the
      * quick lobby's single AI seat uses, held per seat because a pod has several and there is no
      * reason they should all bring the same thing.
@@ -1754,7 +1759,8 @@ class TournamentLobby(
      * MUST already be counted inside [deckList] (the wire convention — picker emits the merged
      * deck). Storage follows that convention: the merged [deckList] is kept verbatim in
      * [LobbyPlayerState.submittedDeck] and the commander is held alongside in
-     * [LobbyPlayerState.commander]. The match-start path strips one copy when handing the
+     * [LobbyPlayerState.commander] (and [secondCommander], for a partner pair, in
+     * [LobbyPlayerState.secondCommander]). The match-start path strips one copy of each when handing the
      * deck to the engine (see TournamentMatchHandler.startSingleMatch).
      */
     fun submitDeck(
@@ -1762,6 +1768,7 @@ class TournamentLobby(
         deckList: Map<String, Int>,
         commander: String? = null,
         sideboard: Map<String, Int> = emptyMap(),
+        secondCommander: String? = null,
     ): DeckSubmissionResult {
         val isPremade = format == TournamentFormat.PREMADE_DECKS
         // PREMADE_DECKS: players pick their deck while WAITING_FOR_PLAYERS, before the host starts.
@@ -1821,6 +1828,7 @@ class TournamentLobby(
             // Commander is meaningful only under Commander rules; keep whatever the caller passed
             // (LobbyHandler is responsible for clearing it for non-commander submissions).
             commander = commander,
+            secondCommander = secondCommander.takeIf { commander != null },
         )
 
         return DeckSubmissionResult.Success(allReady = allDecksSubmitted())
@@ -1863,6 +1871,7 @@ class TournamentLobby(
             submittedDeck = null,
             submittedSideboard = emptyMap(),
             commander = null,
+            secondCommander = null,
         )
         playersReadyForNextRound.remove(playerId)
     }

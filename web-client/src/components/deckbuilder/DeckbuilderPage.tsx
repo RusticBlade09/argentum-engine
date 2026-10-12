@@ -13,6 +13,7 @@ import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useStat
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   useDeckLibrary,
+  commandersOf,
   mergeCommanderIntoCards,
   stripCommanderFromCards,
   type SavedDeck,
@@ -53,10 +54,13 @@ import {
   type SortMode,
 } from './browser'
 import {
+  canonicalNameIn,
+  designatedCommanders,
   parseArenaDeckList,
   resolveAgainstCatalog,
   type ResolveResult,
 } from './parseArenaDeck'
+import { canCrown, canPairAsCommanders, toggleCommanderDesignation } from './commanderPairing'
 import {
   encodeSharedDeck,
   decodeSharedDeck,
@@ -120,6 +124,10 @@ interface ExampleDeck {
   printings?: Record<string, PrintingRef> | null
   /** Preferred printing for the commander. */
   commanderPrinting?: PrintingRef | null
+  /** The second commander of a partner pair, when the example has one. */
+  secondCommander?: string | null
+  /** Preferred printing for the second commander. */
+  secondCommanderPrinting?: PrintingRef | null
 }
 
 // "cards" = original layout (catalog grid in center, deck list on right).
@@ -156,12 +164,6 @@ function entriesFromCards(
 }
 
 /**
- * Inverse of [entriesFromCards]: rebuild the per-name pin map from a persisted
- * deck's `entries` field. The optional [commanderName] / [commanderPrinting]
- * pair is folded in so the commander's pinned printing survives a save → load
- * round-trip alongside the rest.
- */
-/**
  * The printed name of the pinned printing when it differs from the oracle name — a deck that
  * pinned Through the Omenpaths' Spider Manifestation lists it as "Leyline Weaver".
  */
@@ -173,16 +175,37 @@ function pinnedPrintedName(card: CardSummary | undefined, pinned: PrintingRef | 
   return match?.name ?? null
 }
 
+/**
+ * Inverse of [entriesFromCards]: rebuild the per-name pin map from a persisted
+ * deck's `entries` field. The deck's commander pins (both halves of a partner
+ * pair) are folded in so they survive a save → load round-trip alongside the rest.
+ */
 function pinnedPrintingsFromEntries(
   entries: readonly SavedDeckEntry[] | undefined,
-  commanderName?: string | null,
-  commanderPrinting?: PrintingRef,
+  commanders?: CommanderPins,
 ): Record<string, PrintingRef> {
   const out: Record<string, PrintingRef> = {}
   for (const e of entries ?? []) {
     if (e.printing) out[e.name] = e.printing
   }
-  if (commanderName && commanderPrinting) out[commanderName] = commanderPrinting
+  return { ...out, ...(commanders ? commanderPinsOf(commanders) : {}) }
+}
+
+/** The commander fields a saved, shared or example deck carries. */
+interface CommanderPins {
+  readonly commander?: string | null | undefined
+  readonly commanderPrinting?: PrintingRef | null | undefined
+  readonly secondCommander?: string | null | undefined
+  readonly secondCommanderPrinting?: PrintingRef | null | undefined
+}
+
+/** Name → pinned printing for a deck's commander(s). */
+function commanderPinsOf(deck: CommanderPins): Record<string, PrintingRef> {
+  const out: Record<string, PrintingRef> = {}
+  if (deck.commander && deck.commanderPrinting) out[deck.commander] = deck.commanderPrinting
+  if (deck.commander && deck.secondCommander && deck.secondCommanderPrinting) {
+    out[deck.secondCommander] = deck.secondCommanderPrinting
+  }
   return out
 }
 
@@ -328,10 +351,13 @@ export function DeckbuilderPage() {
   const [pinnedPrintingArt, setPinnedPrintingArt] = useState<
     Record<string, { imageUri: string | null; backFaceImageUri: string | null }>
   >({})
-  // Designated commander for Commander/Brawl/Standard Brawl decks. Null when no commander has
-  // been picked yet, or when the current format doesn't use a commander. The deckbuilder UI
-  // exposes a crown toggle on each row to set/clear this — see DeckListPanel below.
-  const [commander, setCommander] = useState<string | null>(null)
+  // Designated commander(s) for Commander/Brawl/Standard Brawl decks: empty when none has been
+  // picked yet or the current format doesn't use one; two for a partner pair (CR 702.124), the
+  // first being the deck's `commander` and the second its `secondCommander`. The deckbuilder UI
+  // exposes a crown toggle on each row to set/clear these — see DeckListPanel below.
+  const [commanders, setCommanders] = useState<readonly string[]>([])
+  const commander: string | null = commanders[0] ?? null
+  const secondCommander: string | null = commanders[1] ?? null
 
   // Hydrate from URL deckId once decks are loaded. Also push the saved deck's stamped
   // format into the URL — without it, `activeFormat` stays whatever was in the search
@@ -352,14 +378,14 @@ export function DeckbuilderPage() {
       setDeckName(existing.name)
       setDeckNote(existing.note ?? '')
       setCoverCard(existing.coverCard ?? null)
-      setDeckCards(mergeCommanderIntoCards(existing.cards, existing.commander ?? null))
-      setCommander(existing.commander ?? null)
+      setDeckCards(mergeCommanderIntoCards(existing.cards, ...commandersOf(existing)))
+      setCommanders(commandersOf(existing))
       // Without this a refresh (or a deep link to /deckbuilder/<id>) rehydrates the deck with an
       // empty sideboard, and the next Save writes that emptiness back — `saveDeck` replaces the
       // stored record wholesale rather than merging, so the sideboard is destroyed.
       setSideboardCards(existing.sideboard ? { ...existing.sideboard } : {})
       setActiveDeckId(existing.id)
-      setPinnedPrintings(pinnedPrintingsFromEntries(existing.entries))
+      setPinnedPrintings(pinnedPrintingsFromEntries(existing.entries, existing))
       if (existing.format) {
         setSearchParams(
           (prev) => {
@@ -423,15 +449,13 @@ export function DeckbuilderPage() {
         setDeckName(shared.name || 'Shared deck')
         setDeckNote(shared.note ?? '')
         setCoverCard(shared.coverCard ?? null)
-        setDeckCards(mergeCommanderIntoCards(shared.cards, shared.commander ?? null))
-        setCommander(shared.commander ?? null)
+        setDeckCards(mergeCommanderIntoCards(shared.cards, ...commandersOf(shared)))
+        setCommanders(commandersOf(shared))
         // Reset rather than leave in place: a deck loaded without one has no sideboard, and a
         // stale board from the previously open deck would otherwise follow it.
         setSideboardCards(shared.sideboard ? { ...shared.sideboard } : {})
         setActiveDeckId(null)
-        const pins: Record<string, PrintingRef> = { ...(shared.printings ?? {}) }
-        if (shared.commander && shared.commanderPrinting) pins[shared.commander] = shared.commanderPrinting
-        setPinnedPrintings(pins)
+        setPinnedPrintings({ ...(shared.printings ?? {}), ...commanderPinsOf(shared) })
       })
     })
     // setSearchParams is stable; searchParams churn is filtered by the ref guard. `catalog.length`
@@ -572,12 +596,13 @@ export function DeckbuilderPage() {
   //    by validation but stay visually marked, which is confusing), or
   //  - the designated commander gets removed from the deck list entirely.
   // Both conditions are quiet: we don't surface a toast, the crown just goes away.
+  // A partner pair loses only the commander that left; the remaining one moves up.
   useEffect(() => {
-    if (!isCommanderFormat && commander !== null) setCommander(null)
-  }, [isCommanderFormat, commander])
+    if (!isCommanderFormat && commanders.length > 0) setCommanders([])
+  }, [isCommanderFormat, commanders])
   useEffect(() => {
-    if (commander && !(commander in deckCards)) setCommander(null)
-  }, [commander, deckCards])
+    if (commanders.some((c) => !(c in deckCards))) setCommanders(commanders.filter((c) => c in deckCards))
+  }, [commanders, deckCards])
 
   const parseResult = useMemo(() => parseQuery(query, { withErrors: true }), [query])
   const predicate = parseResult.predicate
@@ -659,15 +684,10 @@ export function DeckbuilderPage() {
       // adds the commander on top of `cards`, so if we include the designated commander in
       // `deckList` it gets counted twice. Strip it out at the boundary; the internal UI
       // model still keeps the commander in `deckCards` so the crown sits on a real row.
+      // A partner pair strips both commanders and sends the second as `secondCommander`.
       const sendCommander = isCommanderFormat && commander
       const deckListForValidation = sendCommander
-        ? Object.fromEntries(
-            Object.entries(deckCards).flatMap(([name, count]) => {
-              if (name !== commander) return [[name, count]]
-              const remaining = count - 1
-              return remaining > 0 ? [[name, remaining]] : []
-            }),
-          )
+        ? stripCommanderFromCards(deckCards, commander, secondCommander)
         : deckCards
       fetch('/api/decks/validate', {
         method: 'POST',
@@ -680,6 +700,7 @@ export function DeckbuilderPage() {
           // Only sent for commander-shape formats — for Standard/Modern/etc. it'd be ignored
           // anyway, but keeping the wire payload minimal avoids stale fields surfacing later.
           ...(sendCommander ? { commander } : {}),
+          ...(sendCommander && secondCommander ? { secondCommander } : {}),
         }),
         signal: ctrl.signal,
       })
@@ -693,7 +714,7 @@ export function DeckbuilderPage() {
       window.clearTimeout(handle)
       ctrl.abort()
     }
-  }, [deckCards, activeFormat, isCommanderFormat, commander])
+  }, [deckCards, activeFormat, isCommanderFormat, commander, secondCommander])
 
   // Map card-name → set of violation codes produced by the latest validation pass. Used to
   // light up specific rows in the deck list (color identity, singleton, format-illegal copies)
@@ -834,7 +855,7 @@ export function DeckbuilderPage() {
     setCoverCard(null)
     setDeckCards({})
     setSideboardCards({})
-    setCommander(null)
+    setCommanders([])
     setActiveDeckId(null)
     setPinnedPrintings({})
     navigate(`/deckbuilder${searchSuffix()}`)
@@ -852,14 +873,15 @@ export function DeckbuilderPage() {
       {
         cards: deckCards,
         commander,
+        secondCommander,
         coverCard,
         coverImageUri: coverCard ? deckArtFor(coverCard) : null,
       },
       catalogIndex,
     )
     return hero ? { ...hero, imageUri: deckArtFor(hero.name) ?? hero.imageUri ?? null } : null
-  }, [deckCards, commander, coverCard, catalogIndex, deckArtFor])
-  const coverChosen = coverCard !== null && (coverCard in deckCards || coverCard === commander)
+  }, [deckCards, commander, secondCommander, coverCard, catalogIndex, deckArtFor])
+  const coverChosen = coverCard !== null && (coverCard in deckCards || commanders.includes(coverCard))
 
   // Note + cover as saved. The cover's art is snapshotted so a picker can paint it without the
   // catalogue; a cover whose card has left the deck isn't saved at all.
@@ -896,11 +918,13 @@ export function DeckbuilderPage() {
   const saveLocal = (overrideName?: string): string => {
     // Per `SavedDeck.commander`: the commander is stored separately from `cards` (the
     // library), matching the server's `Deck.cards` convention. Strip it out on save so
-    // reloading + re-validating doesn't double-count.
+    // reloading + re-validating doesn't double-count. A partner pair strips both.
     const designated = isCommanderFormat ? commander : null
-    const cardsForSave = stripCommanderFromCards(deckCards, designated)
+    const designatedSecond = designated ? secondCommander : null
+    const cardsForSave = stripCommanderFromCards(deckCards, designated, designatedSecond)
     const entries = entriesFromCards(cardsForSave, pinnedPrintings)
     const commanderPrintingForSave = designated ? pinnedPrintings[designated] : undefined
+    const secondPrintingForSave = designatedSecond ? pinnedPrintings[designatedSecond] : undefined
     const isRename = overrideName !== undefined
     const saved = saveDeck({
       // "Save as" always creates a fresh local deck; plain Save updates the active one.
@@ -910,6 +934,8 @@ export function DeckbuilderPage() {
       ...(activeFormat ? { format: activeFormat } : {}),
       ...(designated ? { commander: designated } : {}),
       ...(commanderPrintingForSave ? { commanderPrinting: commanderPrintingForSave } : {}),
+      ...(designatedSecond ? { secondCommander: designatedSecond } : {}),
+      ...(secondPrintingForSave ? { secondCommanderPrinting: secondPrintingForSave } : {}),
       ...(entries ? { entries } : {}),
       ...(Object.keys(sideboardCards).length > 0 ? { sideboard: sideboardCards } : {}),
       ...deckDetailsForSave(),
@@ -955,13 +981,15 @@ export function DeckbuilderPage() {
   // both the share-link path and the account (cloud) save path so they capture identical content.
   const buildSharedDeck = useCallback((): SharedDeck | null => {
     const designated = isCommanderFormat ? commander : null
-    const cardsForShare = stripCommanderFromCards(deckCards, designated)
+    const designatedSecond = designated ? secondCommander : null
+    const cardsForShare = stripCommanderFromCards(deckCards, designated, designatedSecond)
     if (Object.keys(cardsForShare).length === 0) return null
     const printings: Record<string, PrintingRef> = {}
     for (const [name, ref] of Object.entries(pinnedPrintings)) {
       if (name in cardsForShare) printings[name] = ref
     }
     const commanderPrinting = designated ? pinnedPrintings[designated] : undefined
+    const secondCommanderPrinting = designatedSecond ? pinnedPrintings[designatedSecond] : undefined
     return {
       name: deckName.trim() || 'Untitled deck',
       cards: cardsForShare,
@@ -969,11 +997,16 @@ export function DeckbuilderPage() {
       ...(activeFormat ? { format: activeFormat } : {}),
       ...(designated ? { commander: designated } : {}),
       ...(commanderPrinting ? { commanderPrinting } : {}),
+      ...(designatedSecond ? { secondCommander: designatedSecond } : {}),
+      ...(secondCommanderPrinting ? { secondCommanderPrinting } : {}),
       // Carried for the account save; the v2 share code has no field for them and drops them.
       ...(Object.keys(sideboardCards).length > 0 ? { sideboard: sideboardCards } : {}),
       ...deckDetailsForSave(),
     }
-  }, [isCommanderFormat, commander, deckCards, pinnedPrintings, deckName, activeFormat, sideboardCards, deckDetailsForSave])
+  }, [
+    isCommanderFormat, commander, secondCommander, deckCards, pinnedPrintings, deckName, activeFormat, sideboardCards,
+    deckDetailsForSave,
+  ])
 
   // Apply a SharedDeck into the builder (account load / deep link). Mirrors the share-URL decode
   // path: schedules format + commander in one transition so the "clear commander" guard never sees
@@ -994,15 +1027,13 @@ export function DeckbuilderPage() {
         setDeckName(shared.name || 'Saved deck')
         setDeckNote(shared.note ?? '')
         setCoverCard(shared.coverCard ?? null)
-        setDeckCards(mergeCommanderIntoCards(shared.cards, shared.commander ?? null))
-        setCommander(shared.commander ?? null)
+        setDeckCards(mergeCommanderIntoCards(shared.cards, ...commandersOf(shared)))
+        setCommanders(commandersOf(shared))
         // Reset rather than leave in place: a deck loaded without one has no sideboard, and a
         // stale board from the previously open deck would otherwise follow it.
         setSideboardCards(shared.sideboard ? { ...shared.sideboard } : {})
         setActiveDeckId(null)
-        const pins: Record<string, PrintingRef> = { ...(shared.printings ?? {}) }
-        if (shared.commander && shared.commanderPrinting) pins[shared.commander] = shared.commanderPrinting
-        setPinnedPrintings(pins)
+        setPinnedPrintings({ ...(shared.printings ?? {}), ...commanderPinsOf(shared) })
       })
     },
     [setSearchParams],
@@ -1051,11 +1082,11 @@ export function DeckbuilderPage() {
     setDeckName(deck.name)
     setDeckNote(deck.note ?? '')
     setCoverCard(deck.coverCard ?? null)
-    setDeckCards(mergeCommanderIntoCards(deck.cards, deck.commander ?? null))
+    setDeckCards(mergeCommanderIntoCards(deck.cards, ...commandersOf(deck)))
     setSideboardCards(deck.sideboard ? { ...deck.sideboard } : {})
-    setCommander(deck.commander ?? null)
+    setCommanders(commandersOf(deck))
     setActiveDeckId(deck.id)
-    setPinnedPrintings(pinnedPrintingsFromEntries(deck.entries, deck.commander, deck.commanderPrinting))
+    setPinnedPrintings(pinnedPrintingsFromEntries(deck.entries, deck))
     // Restore the deck's stamped format into the URL alongside the existing search
     // params. Without this, `activeFormat` stays whatever was selected before, and
     // the "clear commander when not a commander format" effect would immediately
@@ -1093,15 +1124,16 @@ export function DeckbuilderPage() {
   const handleImport = (
     cards: Record<string, number>,
     suggestedName: string | null,
-    importedCommander: string | null,
+    importedCommanders: readonly string[],
     importedSideboard: Record<string, number> = {},
   ) => {
     setDeckCards(cards)
     // The Arena/MTGO list's "Sideboard"/"SB:" section becomes the wish sideboard (CR 100.4a).
     setSideboardCards(importedSideboard)
     // The commander designation rides along when the source list had a Commander
-    // section; otherwise reset so a stale value from the previous deck doesn't leak.
-    setCommander(importedCommander)
+    // section (both, for a partner pair); otherwise reset so a stale value from the previous
+    // deck doesn't leak.
+    setCommanders(importedCommanders)
     setActiveDeckId(null)
     setPinnedPrintings({})
     setCoverCard(null)
@@ -1117,8 +1149,8 @@ export function DeckbuilderPage() {
     ) {
       return
     }
-    setDeckCards({ ...ex.cards })
-    setCommander(ex.commander ?? null)
+    setDeckCards(mergeCommanderIntoCards({ ...ex.cards }, ...commandersOf(ex)))
+    setCommanders(commandersOf(ex))
     // Examples carry no sideboard; clear rather than leave the previous deck's attached, which
     // would follow the example into a save and into a game.
     setSideboardCards({})
@@ -1126,9 +1158,7 @@ export function DeckbuilderPage() {
     // Pre-fill pinned printings from the example. The commander's pin is keyed by name
     // alongside the rest — same shape `pinnedPrintingsFromEntries` produces on saved-deck
     // load, so the art-cache backfill below picks it up automatically.
-    const initialPins: Record<string, PrintingRef> = { ...(ex.printings ?? {}) }
-    if (ex.commander && ex.commanderPrinting) initialPins[ex.commander] = ex.commanderPrinting
-    setPinnedPrintings(initialPins)
+    setPinnedPrintings({ ...(ex.printings ?? {}), ...commanderPinsOf(ex) })
     setDeckName(ex.name)
     setDeckNote(ex.note ?? '')
     setCoverCard(null)
@@ -1198,9 +1228,18 @@ export function DeckbuilderPage() {
   const deckHover = useHoverStore<DeckHoverEntry>()
   const handleDeckHoverEnter = deckHover.set
   const handleDeckHoverLeave = useCallback(() => deckHover.set(null), [deckHover])
+  // Crown click: un-designate a commander, or designate a card — as the partner of the single
+  // commander when the pair can work (a hint; the server validates the pair), else replacing it.
   const handleToggleCommander = useCallback(
-    (name: string) => setCommander((prev) => (prev === name ? null : name)),
-    [],
+    (name: string) =>
+      setCommanders((prev) =>
+        toggleCommanderDesignation(prev, name, (first, candidate) => {
+          const a = catalogIndex[first]
+          const b = catalogIndex[candidate]
+          return !!a && !!b && canPairAsCommanders(a, b)
+        }),
+      ),
+    [catalogIndex],
   )
   const handleSuggestBasics = () =>
     suggestLandsForDeck(deckCards, catalogIndex, catalog, setCardCount, applySetPinIfAvailable)
@@ -1354,7 +1393,7 @@ export function DeckbuilderPage() {
           <DeckRailPreview
             store={deckHover}
             deckCards={deckCards}
-            commander={commander}
+            commanders={commanders}
             pinnedPrintingArt={pinnedPrintingArt}
           />
         ) : (
@@ -1420,7 +1459,7 @@ export function DeckbuilderPage() {
               activeFormat={activeFormat}
               onAdd={addCard}
               onRemove={removeCard}
-              commander={commander}
+              commanders={commanders}
               showCommanderControls={isCommanderFormat}
               onToggleCommander={handleToggleCommander}
               rowViolations={rowViolations}
@@ -1493,7 +1532,7 @@ export function DeckbuilderPage() {
             activeFormat={activeFormat}
             onAdd={addCard}
             onRemove={removeCard}
-            commander={commander}
+            commanders={commanders}
             showCommanderControls={isCommanderFormat}
             onToggleCommander={handleToggleCommander}
             rowViolations={rowViolations}
@@ -1543,13 +1582,13 @@ export function DeckbuilderPage() {
       {bulkEditOpen && (
         <BulkEditDeckModal
           deckCards={deckCards}
-          commander={commander}
+          commanders={commanders}
           catalog={catalog}
           catalogIndex={catalogIndex}
           onClose={() => setBulkEditOpen(false)}
-          onApply={(cards, nextCommander) => {
+          onApply={(cards, nextCommanders) => {
             setDeckCards(cards)
-            setCommander(nextCommander)
+            setCommanders(nextCommanders)
             setBulkEditOpen(false)
           }}
         />
@@ -1579,7 +1618,7 @@ export function DeckbuilderPage() {
       {coverPickerOpen && (
         <CoverPicker
           deckCards={deckCards}
-          commander={commander}
+          commanders={commanders}
           catalog={catalogIndex}
           artFor={deckArtFor}
           chosen={coverChosen ? coverCard : null}
@@ -1633,17 +1672,17 @@ type DeckHoverEntry = { name: string; card: CardSummary | undefined }
 function DeckRailPreview({
   store,
   deckCards,
-  commander,
+  commanders,
   pinnedPrintingArt,
 }: {
   store: HoverStore<DeckHoverEntry>
   deckCards: Record<string, number>
-  commander: string | null
+  commanders: readonly string[]
   pinnedPrintingArt: Record<string, { imageUri: string | null; backFaceImageUri: string | null }>
 }) {
   const hovered = useHovered(store)
   // A row removed while hovered never fires its mouseleave; drop the preview with it.
-  const gone = !!hovered && !(hovered.name in deckCards) && hovered.name !== commander
+  const gone = !!hovered && !(hovered.name in deckCards) && !commanders.includes(hovered.name)
   useEffect(() => {
     if (gone) store.set(null)
   }, [gone, store])
@@ -1878,7 +1917,7 @@ function ImportDeckModal({
   onImport: (
     cards: Record<string, number>,
     suggestedName: string | null,
-    commander: string | null,
+    commanders: readonly string[],
     sideboard: Record<string, number>,
   ) => void
 }) {
@@ -1913,19 +1952,14 @@ function ImportDeckModal({
     // reflects the full intended list. Unknown cards render as placeholder
     // rows in the deck list and are flagged by the validator.
     const merged = { ...preview.resolved.deckCards, ...preview.resolved.unmatchedCards }
-    // First entry under a `Commander` header becomes the designation. Use the
-    // resolved/canonical card name when we matched it (so casing matches the
-    // catalogue); fall back to the raw name otherwise.
-    const commanderEntry = preview.parsed.commander[0] ?? null
-    const commanderName = commanderEntry
-      ? catalog.find((c) => c.name.toLowerCase() === commanderEntry.name.toLowerCase())?.name
-        ?? commanderEntry.name
-      : null
+    // The first two distinct entries under a `Commander` header become the designation (a
+    // partner pair); any further ones stay ordinary deck cards. Canonical (catalogue) casing.
+    const commanderNames = designatedCommanders(preview.parsed.commander, canonicalNameIn(catalog))
     // Resolve the "Sideboard"/"SB:" section against the catalog the same way as the main deck,
     // so the imported sideboard becomes the wish sideboard (unknown cards survive as placeholders).
     const sideResolved = resolveAgainstCatalog(preview.parsed.sideboard, catalog)
     const sideboard = { ...sideResolved.deckCards, ...sideResolved.unmatchedCards }
-    onImport(merged, preview.parsed.deckName ?? null, commanderName, sideboard)
+    onImport(merged, preview.parsed.deckName ?? null, commanderNames, sideboard)
   }
 
   return (
@@ -2061,24 +2095,24 @@ const EXPORT_FORMATS: Array<{ value: ExportFormat; label: string; hint: string }
 
 function BulkEditDeckModal({
   deckCards,
-  commander,
+  commanders,
   catalog,
   catalogIndex,
   onClose,
   onApply,
 }: {
   deckCards: Record<string, number>
-  commander: string | null
+  commanders: readonly string[]
   catalog: CardSummary[]
   catalogIndex: Record<string, CardSummary>
   onClose: () => void
-  onApply: (cards: Record<string, number>, commander: string | null) => void
+  onApply: (cards: Record<string, number>, commanders: readonly string[]) => void
 }) {
   const [format, setFormat] = useState<ExportFormat>('arena')
 
   const rendered = useMemo(
-    () => formatDeck(deckCards, catalogIndex, format, commander),
-    [deckCards, catalogIndex, format, commander]
+    () => formatDeck(deckCards, catalogIndex, format, commanders),
+    [deckCards, catalogIndex, format, commanders]
   )
   const [text, setText] = useState(rendered.text)
   const [copied, setCopied] = useState(false)
@@ -2109,7 +2143,7 @@ function BulkEditDeckModal({
       return
     }
     setFormat(next)
-    const re = formatDeck(deckCards, catalogIndex, next, commander)
+    const re = formatDeck(deckCards, catalogIndex, next, commanders)
     setText(re.text)
   }
 
@@ -2127,12 +2161,7 @@ function BulkEditDeckModal({
     if (!preview || !canApply) return
     if (!window.confirm('Replace your current deck contents with this list?')) return
     const merged = { ...preview.resolved.deckCards, ...preview.resolved.unmatchedCards }
-    const commanderEntry = preview.parsed.commander[0] ?? null
-    const nextCommander = commanderEntry
-      ? catalog.find((c) => c.name.toLowerCase() === commanderEntry.name.toLowerCase())?.name
-        ?? commanderEntry.name
-      : null
-    onApply(merged, nextCommander)
+    onApply(merged, designatedCommanders(preview.parsed.commander, canonicalNameIn(catalog)))
   }
 
   const formatHint = EXPORT_FORMATS.find((f) => f.value === format)?.hint ?? ''
@@ -2231,12 +2260,12 @@ function formatDeck(
   deck: Record<string, number>,
   catalog: Record<string, CardSummary>,
   format: ExportFormat,
-  commander: string | null = null,
+  commanders: readonly string[] = [],
 ): { text: string; totalCards: number; unknownCards: number } {
   type Entry = { name: string; count: number; card: CardSummary | undefined }
   const spells: Entry[] = []
   const lands: Entry[] = []
-  let commanderEntry: Entry | null = null
+  const commanderEntries: Entry[] = []
   let totalCards = 0
   let unknownCards = 0
   for (const [name, count] of Object.entries(deck)) {
@@ -2245,12 +2274,10 @@ function formatDeck(
     const card = catalog[name]
     if (!card) unknownCards += count
     const entry: Entry = { name, count, card }
-    if (commander && name === commander) {
-      // Lift the commander out of the main block so re-import doesn't double
-      // it. We still keep its full count (typically 1) in the Commander
-      // section — partner pairs are uncommon enough that we render whatever
-      // count is in the deck rather than special-casing.
-      commanderEntry = entry
+    if (commanders.includes(name)) {
+      // Lift the commander(s) out of the main block so re-import doesn't double
+      // them. We keep the full count (typically 1) in the Commander section.
+      commanderEntries.push(entry)
       continue
     }
     if (card?.cardTypes.includes('LAND')) lands.push(entry)
@@ -2270,9 +2297,11 @@ function formatDeck(
   }
 
   const lines: string[] = []
-  if (commanderEntry) {
+  if (commanderEntries.length > 0) {
+    // Designation order (first commander, then its partner) so a re-import keeps it.
+    commanderEntries.sort((a, b) => commanders.indexOf(a.name) - commanders.indexOf(b.name))
     lines.push('Commander')
-    lines.push(renderLine(commanderEntry))
+    for (const e of commanderEntries) lines.push(renderLine(e))
     lines.push('')
   }
   // Plain text often omits headers; include `Deck` only for Arena/Moxfield
@@ -2711,7 +2740,7 @@ function DeckListPanel({
   activeFormat,
   onAdd,
   onRemove,
-  commander,
+  commanders,
   showCommanderControls,
   onToggleCommander,
   rowViolations,
@@ -2729,7 +2758,7 @@ function DeckListPanel({
   activeFormat: string | null
   onAdd: (card: CardSummary) => void
   onRemove: (name: string) => void
-  commander: string | null
+  commanders: readonly string[]
   showCommanderControls: boolean
   onToggleCommander: (name: string) => void
   rowViolations: Map<string, Set<string>>
@@ -2749,9 +2778,10 @@ function DeckListPanel({
   onMoveFromSideboard?: (name: string) => void
 }) {
   const grouped = useMemo(
-    () => groupForDeckList(deckCards, catalog, commander, hideBasicLandHelpers),
-    [deckCards, catalog, commander, hideBasicLandHelpers],
+    () => groupForDeckList(deckCards, catalog, commanders, hideBasicLandHelpers),
+    [deckCards, catalog, commanders, hideBasicLandHelpers],
   )
+  const commanderCards = useCommanderCards(commanders, catalog)
   const [hoverCard, setHoverCard] = useState<CardSummary | null>(null)
   const [hoverName, setHoverName] = useState<string | null>(null)
   // Prefer the pinned printing's art when one exists for the hovered row; fall back to
@@ -2848,7 +2878,8 @@ function DeckListPanel({
               key={entry.name}
               entry={entry}
               activeFormat={activeFormat}
-              commander={commander}
+              commanders={commanders}
+              commanderCards={commanderCards}
               showCommanderControls={showCommanderControls}
               isCommanderFormat={isCommanderFormat}
               rowViolations={rowViolations}
@@ -2891,6 +2922,7 @@ function DeckListPanel({
 const SB_NOOP = () => {}
 const SB_NOOP_NAME = (_name: string) => {}
 const SB_NO_VIOLATIONS: Map<string, Set<string>> = new Map()
+const SB_NO_COMMANDERS: readonly string[] = []
 const SB_NO_PRINTINGS: Record<string, PrintingRef> = {}
 const SB_NO_PRINTING_ART: Record<string, { imageUri: string | null; backFaceImageUri: string | null }> = {}
 
@@ -2945,7 +2977,7 @@ function SideboardPanel({
           activeFormat={activeFormat}
           onAdd={onAdd}
           onRemove={onRemove}
-          commander={null}
+          commanders={SB_NO_COMMANDERS}
           showCommanderControls={false}
           onToggleCommander={SB_NOOP_NAME}
           rowViolations={SB_NO_VIOLATIONS}
@@ -2980,7 +3012,8 @@ function SideboardPanel({
 const DeckRow = memo(function DeckRow({
   entry,
   activeFormat,
-  commander,
+  commanders,
+  commanderCards,
   showCommanderControls,
   isCommanderFormat,
   rowViolations,
@@ -2995,7 +3028,10 @@ const DeckRow = memo(function DeckRow({
 }: {
   entry: { name: string; count: number; card: CardSummary | undefined }
   activeFormat: string | null
-  commander: string | null
+  /** The designated commander(s) — two for a partner pair. */
+  commanders: readonly string[]
+  /** Catalogue entries of [commanders] that the catalogue knows, for the partner crown hint. */
+  commanderCards: readonly CardSummary[]
   showCommanderControls: boolean
   isCommanderFormat: boolean
   rowViolations: Map<string, Set<string>>
@@ -3015,17 +3051,17 @@ const DeckRow = memo(function DeckRow({
     entry.card.legalFormats.length > 0 &&
     !entry.card.legalFormats.includes(activeFormat.toUpperCase())
   const unknown = !entry.card
-  const isCommanderRow = showCommanderControls && commander === entry.name
-  // Eligible commanders: legendary creatures or planeswalkers. The server's
-  // CommanderEligibility is the authoritative gate (it also accepts the rare
-  // "can be your commander" oracle override on non-legendary creatures and oddities
-  // like Faceless One); this UI hint covers the 99% case so users don't crown a card
-  // the validator will immediately reject. The cursed override-clause cards still
-  // round-trip via paste-import or hand-edit if anyone ever needs them.
-  const canBeCommander = !!entry.card && (
-    (entry.card.supertypes.includes('LEGENDARY') && entry.card.cardTypes.includes('CREATURE')) ||
-    entry.card.cardTypes.includes('PLANESWALKER')
-  )
+  const isCommanderRow = showCommanderControls && commanders.includes(entry.name)
+  const commander = commanders[0] ?? null
+  // Crown eligibility is a hint off the server's own `canBeCommander` flag (legendary creatures,
+  // and cards that say they can be your commander — not planeswalkers in general), plus a
+  // legendary Background as the partner of a "Choose a Background" commander. The server's
+  // validation is the authoritative gate, pairs included (INVALID_COMMANDER_PAIR).
+  const canBeCommander = !!entry.card && canCrown(entry.card, isCommanderRow, commanderCards)
+  // Whether a crown click would add this card as the partner of the single commander.
+  const firstCommanderCard = commanderCards.length === 1 && commanders.length === 1 ? commanderCards[0] : undefined
+  const pairsAsPartner =
+    !isCommanderRow && !!entry.card && !!firstCommanderCard && canPairAsCommanders(firstCommanderCard, entry.card)
   // Pull this row's violations out of the validation response. We surface two of
   // them as inline visuals in the deck list (color identity outside the commander's;
   // exceeding the per-format copy cap); the rest are still listed in the right-rail
@@ -3062,7 +3098,11 @@ const DeckRow = memo(function DeckRow({
     .join(' ')
   const violationReasons: string[] = []
   if (offIdentity && commander) {
-    violationReasons.push(`Outside ${commander}'s color identity`)
+    violationReasons.push(
+      commanders.length > 1
+        ? `Outside ${commanders.join(' and ')}'s combined color identity`
+        : `Outside ${commander}'s color identity`,
+    )
   }
   if (tooManyCopies) {
     violationReasons.push(
@@ -3140,15 +3180,21 @@ const DeckRow = memo(function DeckRow({
           aria-label={
             isCommanderRow
               ? `Unset ${entry.name} as commander`
+              : pairsAsPartner
+              ? `Add ${entry.name} as second commander`
               : `Set ${entry.name} as commander`
           }
           title={
             unknown
               ? 'Card not implemented'
               : !canBeCommander
-              ? 'Only legendary creatures or planeswalkers can be commanders'
+              ? 'Only legendary creatures, or cards that say they can be your commander, can be commanders. A Background joins a "Choose a Background" commander.'
               : isCommanderRow
               ? 'Commander — click to unset'
+              : pairsAsPartner
+              ? `Add as second commander alongside ${commander ?? 'your commander'} (partner pair)`
+              : commander
+              ? `Set as commander (replaces ${commanders.join(' and ')})`
               : 'Set as commander'
           }
         >
@@ -3356,7 +3402,7 @@ function DeckCentricView({
   activeFormat,
   onAdd,
   onRemove,
-  commander,
+  commanders,
   showCommanderControls,
   onToggleCommander,
   rowViolations,
@@ -3372,7 +3418,7 @@ function DeckCentricView({
   activeFormat: string | null
   onAdd: (card: CardSummary) => void
   onRemove: (name: string) => void
-  commander: string | null
+  commanders: readonly string[]
   showCommanderControls: boolean
   onToggleCommander: (name: string) => void
   rowViolations: Map<string, Set<string>>
@@ -3387,9 +3433,10 @@ function DeckCentricView({
   onMoveFromSideboard: (name: string) => void
 }) {
   const grouped = useMemo(
-    () => groupByCardType(deckCards, catalog, commander),
-    [deckCards, catalog, commander],
+    () => groupByCardType(deckCards, catalog, commanders),
+    [deckCards, catalog, commanders],
   )
+  const commanderCards = useCommanderCards(commanders, catalog)
 
   const { dragActive, dropHandlers } = useCardDropZone((payload) => {
     if (payload.source === 'deck') return
@@ -3402,7 +3449,7 @@ function DeckCentricView({
   // Use the raw deck size (not the grouped-bucket count) because the Lands group now always
   // synthesizes the 5 basic-land rows even at count 0 — so an empty deck would otherwise still
   // produce one non-empty group and we'd never show the empty state.
-  const isEmpty = Object.keys(deckCards).length === 0 && commander === null
+  const isEmpty = Object.keys(deckCards).length === 0 && commanders.length === 0
   if (isEmpty) {
     return (
       <div
@@ -3430,7 +3477,8 @@ function DeckCentricView({
                 key={entry.name}
                 entry={entry}
                 activeFormat={activeFormat}
-                commander={commander}
+                commanders={commanders}
+                commanderCards={commanderCards}
                 showCommanderControls={showCommanderControls}
                 isCommanderFormat={isCommanderFormat}
                 rowViolations={rowViolations}
@@ -3571,10 +3619,30 @@ interface DeckGroup {
   entries: Array<{ name: string; count: number; card: CardSummary | undefined }>
 }
 
+/** The deck list's leading Commander group — both of a partner pair, in designation order. */
+function commanderGroup(entries: DeckGroup['entries'], commanders: readonly string[]): DeckGroup {
+  const ordered = [...entries].sort((a, b) => commanders.indexOf(a.name) - commanders.indexOf(b.name))
+  return { label: ordered.length > 1 ? 'Commanders' : 'Commander', entries: ordered }
+}
+
+/** The catalogue entries of the designated commanders, memoised so memo'd rows don't re-render. */
+function useCommanderCards(
+  commanders: readonly string[],
+  catalog: Record<string, CardSummary>,
+): readonly CardSummary[] {
+  return useMemo(
+    () => commanders.flatMap((name) => {
+      const card = catalog[name]
+      return card ? [card] : []
+    }),
+    [commanders, catalog],
+  )
+}
+
 function groupForDeckList(
   deck: Record<string, number>,
   catalog: Record<string, CardSummary>,
-  commander: string | null,
+  commanders: readonly string[],
   // When true (sideboard use), don't inject the 0-count basic-land sticky rows — a sideboard
   // shouldn't show an empty mana base. Basics actually present in the sideboard still appear.
   hideEmptyBasics = false,
@@ -3584,7 +3652,7 @@ function groupForDeckList(
   // Commander row (if any). Pulled out of the spell/land buckets and rendered as its own
   // group at the top of the list — even if the commander is technically a creature/planeswalker
   // that would otherwise sort under Spells, it should always lead the deck list visually.
-  let commanderEntry: DeckGroup['entries'][number] | null = null
+  const commanderEntries: DeckGroup['entries'] = []
   for (const [name, count] of Object.entries(deck)) {
     if (count <= 0) continue
     const card = catalog[name]
@@ -3592,8 +3660,8 @@ function groupForDeckList(
     // still appear; skip them here to avoid double-listing the >0 ones.
     if (card?.basicLand) continue
     const entry = { name, count, card }
-    if (commander !== null && name === commander) {
-      commanderEntry = entry
+    if (commanders.includes(name)) {
+      commanderEntries.push(entry)
       continue
     }
     if (card?.cardTypes.includes('LAND')) lands.push(entry)
@@ -3611,7 +3679,7 @@ function groupForDeckList(
   }
   const allLands = [...lands, ...basicEntries]
   const groups: DeckGroup[] = []
-  if (commanderEntry) groups.push({ label: 'Commander', entries: [commanderEntry] })
+  if (commanderEntries.length > 0) groups.push(commanderGroup(commanderEntries, commanders))
   if (spells.length > 0) groups.push({ label: 'Spells', entries: spells })
   if (allLands.length > 0) groups.push({ label: 'Lands', entries: allLands })
   return groups
@@ -3630,7 +3698,7 @@ function groupForDeckList(
 function groupByCardType(
   deck: Record<string, number>,
   catalog: Record<string, CardSummary>,
-  commander: string | null,
+  commanders: readonly string[],
 ): DeckGroup[] {
   type BucketKey =
     | 'Creatures'
@@ -3653,15 +3721,15 @@ function groupByCardType(
     Lands: [],
     Other: [],
   }
-  let commanderEntry: DeckGroup['entries'][number] | null = null
+  const commanderEntries: DeckGroup['entries'] = []
   const seenNames = new Set<string>()
   for (const [name, count] of Object.entries(deck)) {
     if (count <= 0) continue
     const card = catalog[name]
     seenNames.add(name)
     const entry = { name, count, card }
-    if (commander !== null && name === commander) {
-      commanderEntry = entry
+    if (commanders.includes(name)) {
+      commanderEntries.push(entry)
       continue
     }
     if (!card) {
@@ -3711,7 +3779,7 @@ function groupByCardType(
     }
   }
   const groups: DeckGroup[] = []
-  if (commanderEntry) groups.push({ label: 'Commander', entries: [commanderEntry] })
+  if (commanderEntries.length > 0) groups.push(commanderGroup(commanderEntries, commanders))
   for (const key of order) {
     const entries = buckets[key]
     if (entries.length === 0) continue
