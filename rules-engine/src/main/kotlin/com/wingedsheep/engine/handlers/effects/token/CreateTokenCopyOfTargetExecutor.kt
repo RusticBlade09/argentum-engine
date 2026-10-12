@@ -28,11 +28,13 @@ import com.wingedsheep.engine.state.components.combat.AttackingComponent
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.identity.ControllerComponent
 import com.wingedsheep.engine.state.components.identity.TokenComponent
+import com.wingedsheep.engine.state.components.stack.ChosenTarget
 import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.Duration
 import com.wingedsheep.sdk.scripting.conditions.SourceIsRingBearer
 import com.wingedsheep.sdk.scripting.effects.CompositeEffect
+import com.wingedsheep.sdk.scripting.effects.CopyExceptions
 import com.wingedsheep.sdk.scripting.effects.CreateTokenCopyOfTargetEffect
 import com.wingedsheep.sdk.scripting.effects.Gate
 import com.wingedsheep.sdk.scripting.effects.GatedEffect
@@ -107,7 +109,7 @@ class CreateTokenCopyOfTargetExecutor(
         // "If one or more artifact tokens would be created under your control, that many … are
         // created instead" (Draconic Visitor): a token copy of an artifact is an artifact token.
         // The copy's characteristics are the copiable values plus this effect's exceptions.
-        val prospective = CopyExceptionApplier.apply(targetCard, effect.copyExceptions)
+        val prospective = CopyExceptionApplier.apply(targetCard, resolvedExceptions(state, effect, context))
             .copy(ownerId = controllerId, isDoubleFaced = false)
         TokenCreationReplacementHelper.findTokenSubstitution(state, controllerId, prospective, predicateEvaluator = amountEvaluator.predicates)
             ?.let { substitute ->
@@ -173,12 +175,61 @@ class CreateTokenCopyOfTargetExecutor(
         effect: CreateTokenCopyOfTargetEffect,
         context: EffectContext,
     ): ComponentContainer? {
-        context.resolveTarget(effect.target, state)?.let { return state.getEntity(it) }
+        context.resolveTarget(effect.target, state)?.let { id ->
+            val entity = state.getEntity(id) ?: return null
+            return departedPermanentTarget(state, effect, context, id, entity) ?: entity
+        }
         if (effect.target != EffectTarget.TriggeringEntity) return null
         val departed = context.triggeringEntityId?.let { state.getEntity(it) } ?: return null
         val lastKnownCard = departed.get<LastKnownPermanentComponent>()?.snapshot?.copiableCard
             ?: return null
         return departed.with(lastKnownCard)
+    }
+
+    /**
+     * A **permanent** chosen as a target that has since left the battlefield — "Destroy target
+     * creature. If that creature dies this way, … create two tokens that are copies of that
+     * creature" (Saw in Half). "That creature" is the object that was on the battlefield, so the
+     * copy uses its last-known copiable values (CR 608.2h): a dead Clone is copied as what it was
+     * copying, not as the Clone card now in the graveyard. Only a target chosen *as a permanent*
+     * qualifies — a creature **card** targeted in a graveyard is copied as the card it is, even if
+     * an old departure snapshot is still riding on it.
+     */
+    private fun departedPermanentTarget(
+        state: GameState,
+        effect: CreateTokenCopyOfTargetEffect,
+        context: EffectContext,
+        id: EntityId,
+        entity: ComponentContainer,
+    ): ComponentContainer? {
+        val chosen = when (val target = effect.target) {
+            is EffectTarget.ContextTarget -> context.positionalTarget(target.index)
+            is EffectTarget.BoundVariable -> context.pipeline.namedTargets[target.name]
+            else -> return null
+        }
+        if (chosen !is ChosenTarget.Permanent) return null
+        if (id in state.getBattlefield()) return null
+        val lastKnownCard = entity.get<LastKnownPermanentComponent>()?.snapshot?.copiableCard ?: return null
+        return entity.with(lastKnownCard)
+    }
+
+    /**
+     * The effect's copy exceptions with a game-dependent base P/T
+     * ([CreateTokenCopyOfTargetEffect.basePower] / [CreateTokenCopyOfTargetEffect.baseToughness])
+     * evaluated into fixed values. Re-evaluated on a resumed batch, which reads the same snapshotted
+     * pipeline number, so every token of one effect gets the same P/T.
+     */
+    private fun resolvedExceptions(
+        state: GameState,
+        effect: CreateTokenCopyOfTargetEffect,
+        context: EffectContext,
+    ): CopyExceptions {
+        val power = effect.basePower ?: return effect.copyExceptions
+        val toughness = effect.baseToughness ?: return effect.copyExceptions
+        return CopyExceptions(
+            powerOverride = amountEvaluator.evaluate(state, power, context),
+            toughnessOverride = amountEvaluator.evaluate(state, toughness, context),
+        ).over(effect.copyExceptions)
     }
 
     internal fun createTokens(
@@ -203,7 +254,7 @@ class CreateTokenCopyOfTargetExecutor(
         // colors, no-mana-cost — is applied by the shared CopyExceptionApplier, so the token
         // path and the "permanent becomes a copy" path can't drift. Both the exceptions view and
         // the resulting component are loop-invariant, so they are built once rather than per token.
-        val exceptions = effect.copyExceptions
+        val exceptions = resolvedExceptions(state, effect, context)
         // `isDoubleFaced` is cleared rather than inherited: it answers "is this a double-faced
         // *card*", and a token is not a card (CR 111.1) — nor is being double-faced a copiable value
         // (CR 707.2 lists them; layout isn't one). A token copy of a double-faced permanent is a

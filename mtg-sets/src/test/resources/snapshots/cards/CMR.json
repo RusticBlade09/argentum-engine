@@ -208,6 +208,73 @@
     ]
 }
 
+// Body of Knowledge
+{
+    "name": "Body of Knowledge",
+    "manaCost": "{3}{U}{U}",
+    "typeLine": "Creature — Avatar",
+    "oracleText": "Body of Knowledge's power and toughness are each equal to the number of cards in your hand.\nYou have no maximum hand size.\nWhenever this creature is dealt damage, draw that many cards.",
+    "creatureStats": {
+        "power": {
+            "type": "Dynamic",
+            "source": {
+                "type": "Count",
+                "player": "You",
+                "zone": "Hand"
+            }
+        },
+        "toughness": {
+            "type": "Dynamic",
+            "source": {
+                "type": "Count",
+                "player": "You",
+                "zone": "Hand"
+            }
+        }
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Body of Knowledge:1",
+                "trigger": "DamageReceivedEvent",
+                "effect": {
+                    "type": "DrawCards",
+                    "count": {
+                        "type": "ContextProperty",
+                        "key": "TRIGGER_DAMAGE_AMOUNT"
+                    }
+                }
+            }
+        ],
+        "staticAbilities": [
+            "NoMaximumHandSize"
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "59",
+        "rarity": "RARE",
+        "artist": "Clint Cearley",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/8/786ae686-0790-4ba1-927f-523984331549.jpg?1783928867",
+        "rulings": [
+            {
+                "date": "2020-11-10",
+                "text": "The ability that defines Body of Knowledge's power and toughness applies in all zones, not just the battlefield."
+            },
+            {
+                "date": "2020-11-10",
+                "text": "As long as Body of Knowledge is in your hand, its ability will count itself."
+            },
+            {
+                "date": "2020-11-10",
+                "text": "Creatures may be dealt damage greater than their toughness. For example, if Body of Knowledge is a 3/3 creature and a source deals 5 damage to it, you'll draw five cards. Note that if Body of Knowledge is dealt lethal damage, it dies before the cards are drawn, meaning they won't raise Body of Knowledge's toughness in time to save it."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Elvish Doomsayer
 {
     "name": "Elvish Doomsayer",
@@ -605,6 +672,99 @@
         "artist": "Dan Murayama Scott",
         "flavorText": "\"Let their horrors and machines come. We will meet them blow for blow.\"",
         "imageUri": "https://cards.scryfall.io/normal/front/9/9/99988f41-99b4-4423-be5f-9dc4ec7d813b.jpg"
+    },
+    "colorIdentityOverride": [
+        "WHITE",
+        "BLUE"
+    ]
+}
+
+// Kwain, Itinerant Meddler
+{
+    "name": "Kwain, Itinerant Meddler",
+    "manaCost": "{W}{U}",
+    "typeLine": "Legendary Creature — Rabbit Wizard",
+    "oracleText": "{T}: Each player may draw a card, then each player who drew a card this way gains 1 life.",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 3
+    },
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Kwain, Itinerant Meddler:1",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "ForEach",
+                    "space": {
+                        "type": "IterationSpace.Players",
+                        "players": "ActivePlayerFirst"
+                    },
+                    "body": {
+                        "type": "Gated",
+                        "gate": {
+                            "type": "Gate.MayDecide",
+                            "prompt": "Draw a card? (If you do, you gain 1 life.)"
+                        },
+                        "then": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "GatherCards",
+                                    "source": {
+                                        "type": "TopOfLibrary",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "storeAs": "gathered0"
+                                },
+                                {
+                                    "type": "DrawCards",
+                                    "count": {
+                                        "type": "Fixed",
+                                        "amount": 1
+                                    }
+                                },
+                                {
+                                    "type": "FilterCollection",
+                                    "from": "gathered0",
+                                    "filter": {
+                                        "statePredicates": [
+                                            {
+                                                "type": "InZone",
+                                                "zone": "Hand"
+                                            }
+                                        ]
+                                    },
+                                    "storeMatching": "matching2"
+                                },
+                                {
+                                    "type": "ConditionalOnCollection",
+                                    "collection": "matching2",
+                                    "ifNotEmpty": {
+                                        "type": "GainLife",
+                                        "amount": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        "decisionMaker": "Controller"
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "284",
+        "rarity": "RARE",
+        "artist": "Lucas Graciano",
+        "flavorText": "\"Why so slow, why so slow? Hurry up! You never know what you'll find.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/5/f571fef1-1fd2-4355-b803-5edccb6f4b94.jpg?1783928771"
     },
     "colorIdentityOverride": [
         "WHITE",

@@ -2252,6 +2252,8 @@ wrappers: Word of Command composes it inside `WithManaAbilitySources` and
   dies trigger reads the last-known count to come back with one fewer),
   `CounterType.DEVOTION` (Bloodthirsty Ogre — one tap ability adds it, the other shrinks a creature by the count),
   `CounterType.THEFT` (Night Dealings — damage your sources deal to other players adds them, `Costs.RemoveXCounters(THEFT, self = true)` spends them),
+  `CounterType.ACORN` (Chitterspitter — its upkeep "sacrifice a token" trigger adds one, and a Squirrel anthem reads `DynamicAmounts.countersOnSelf(ACORN)`),
+  `CounterType.INGREDIENT` (Communal Brewing — its enters trigger adds one plus one per card the targeted opponents drew, and a creature-cast trigger puts that many +1/+1 counters on the spell),
   `CounterType.TRAINING` (Sensei Golden-Tail — a marker only; removing it undoes nothing),
   `CounterType.OIL` (Phyrexia: All Will Be One — "enters with N oil counters" via `EntersWithCounters(OIL, n, selfOnly = true)`, spent by
   `Costs.RemoveCounterFromSelf(OIL, …)`, counted over `GameObjectFilter.Permanent.withCounter(OIL)`),
@@ -2544,10 +2546,20 @@ wrappers: Word of Command composes it inside `WithManaAbilitySources` and
 - `CreateTokenCopyOfSelf(count?, overridePower?, overrideToughness?, removeLegendary?)` — token copies
   of the source. `removeLegendary = true` applies the "except it's not legendary" copy clause (Ran and
   Shaw), mirroring `CreateTokenCopyOfEquippedCreature`.
-- `CreateTokenCopyOfTarget(target, count?, overridePower?, overrideToughness?, tapped?, attacking?, triggeredAbilities?, addedKeywords?, addedSupertypes?, removedSupertypes?, overrideColors?, addedColors?, overrideSubtypes?, addedSubtypes?, overrideCardTypes?, activatedAbilities?, addedStaticAbilities?, sacrificeAtStep?, sacrificeOnlyOnControllersTurn?, addCardTypes?, exileAtStep?, exileUnlessSourceIsRingBearer?, controller?, noManaCost?, attachedTo?, attackedPlayer?)` —
+- `CreateTokenCopyOfTarget(target, count?, overridePower?, overrideToughness?, tapped?, attacking?, triggeredAbilities?, addedKeywords?, addedSupertypes?, removedSupertypes?, overrideColors?, addedColors?, overrideSubtypes?, addedSubtypes?, overrideCardTypes?, activatedAbilities?, addedStaticAbilities?, sacrificeAtStep?, sacrificeOnlyOnControllersTurn?, addCardTypes?, exileAtStep?, exileUnlessSourceIsRingBearer?, controller?, noManaCost?, attachedTo?, attackedPlayer?, basePower?, baseToughness?)` —
   token copy of another permanent (or a card in any zone — the executor copies the target's `CardComponent`,
   so a graveyard/exile card works; pass `EffectTarget.PipelineTarget("name")` to copy a card a prior pipeline
   step exiled/stored, as Nexus of Becoming and Mardu Siegebreaker do).
+  `basePower`/`baseToughness` (`DynamicAmount`s, set together) are the **game-dependent** form of
+  `overridePower`/`overrideToughness` — an "except its power is …" copy clause whose number is computed at
+  resolution, still a copiable value (CR 707.9b). Snapshot the number into a pipeline slot *before* anything
+  moves the creature, since target reads are live. **Saw in Half**: `storeNumber(targetPower() divRoundedUp 2)`
+  (and toughness) → `gather(ChosenTargets)` → `captureControllers` → `moveTracked(…, Destroy)` →
+  `filter(currentlyIn(GRAVEYARD))` ("dies this way") → `forEachCaptured { CreateTokenCopyOfTarget(creature,
+  count = 2, basePower = half.amount, baseToughness = …) }`. Can't be combined with another P/T exception.
+  **A departed permanent target (CR 608.2h).** When the target was chosen as a *permanent* and has left the
+  battlefield by the time the copy is made, the copy uses its last-known copiable values — a dead Clone yields
+  copies of what it was copying. A creature *card* targeted in a graveyard is still copied as the card.
   `overrideColors`/`overrideSubtypes` replace the copy's colors/subtypes
   outright for "a token that's a copy … except it's a 5/5 black Demon" wording (Ardyn, the Usurper).
   `addedColors` *unions* extra colors onto the copy (vs `overrideColors` which replaces; ignored when
@@ -2793,7 +2805,7 @@ wrappers: Word of Command composes it inside `WithManaAbilitySources` and
   Aetherdrift's "3/2 colorless Vehicle artifact token with crew 1" (Mu Yanling, Wind Rider). A *noncreature*
   artifact carrying printed P/T and the ordinary `crew 1` keyword, defined on the predefined `Vehicle`
   `CardDefinition`, so it can't attack or block until something crews it and it crews through the normal path.
-- `CreatePermanentEmblem(groupFilter?, powerBonus?, toughnessBonus?, grantedKeywords?, grantedActivatedAbilities?, ownedStaticAbilities?, emblemDescription)` — permanent planeswalker emblem whose dynamically evaluated group receives the listed stats, keywords, and activated abilities. Unlike a one-shot group grant, the emblem also affects matching permanents that enter later. The activated-ability form powers Arlinn Kord's emblem.
+- `CreatePermanentEmblem(groupFilter?, powerBonus?, toughnessBonus?, grantedKeywords?, grantedActivatedAbilities?, ownedStaticAbilities?, emblemDescription)` — permanent planeswalker emblem whose dynamically evaluated group receives the listed stats, keywords, and activated abilities. Unlike a one-shot group grant, the emblem also affects matching permanents that enter later. The activated-ability form powers Arlinn Kord's emblem. A granted **mana** ability (`manaAbility = true`) works too — Liliana of the Dark Realms' "Swamps you control have '{T}: Add {B}{B}{B}{B}.'": the mana-ability enumerator offers it on each matching permanent and `ManaStaticsIndex` adds the emblem as a mana-ability grantor, so the auto-payer counts it like a battlefield `GrantActivatedAbility` static.
   - `ownedStaticAbilities` carries wording the emblem has **itself** rather than grants to a group — "You may cast spells from your hand without paying their mana costs" (Tamiyo, Field Researcher's −7) is `MayCastWithoutPayingManaCost(controllerOnly = true)`, the same static Omniscience prints. Such an emblem leaves `groupFilter` and the group modifications at their defaults. The emblem entity lives outside every zone, so a scan that only walks the battlefield won't see it; the free-cast scan (`CostCalculator.hasFreeCastPermission`) consults emblem statics explicitly. `firstSpellOfTurnOnly` / `oncePerTurn` gates are rejected there rather than approximated, since both key off marking a *battlefield* source used.
   - The graveyard permissions read emblems too: `MayPlayLandsFromGraveyard` and `MayCastFromGraveyard` in `ownedStaticAbilities` are honoured by the land-play and graveyard-cast scans (legal actions and handlers alike) exactly as if a permanent the emblem's controller controls printed them — Wrenn and Realmbreaker's −7 is `listOf(MayPlayLandsFromGraveyard, MayCastFromGraveyard(GameObjectFilter.NonlandPermanent))` ("permanent spells" never includes a land). The emblem entity is the grant's source, so `oncePerTurn` on an emblem-held `MayCastFromGraveyard` works. The engine helper is `GameState.emblemStaticAbilitiesOf(playerId)`.
   - A battlefield-scope `GrantWard` in `ownedStaticAbilities` is a ward grant from the emblem — "Knights you control get +1/+0 and have ward {1}" (Teferi Akosa of Zhalfir's −2) is `groupFilter = <Knights you control>, powerBonus = 1, ownedStaticAbilities = listOf(GrantWard(WardCost.Mana("{1}"), <Knights you control>))`. The ward trigger reads it exactly as a grant printed on a permanent the emblem's controller controls (`BattlefieldStaticsIndex` collects it alongside the battlefield walk), and the emblem projects the WARD keyword onto the group itself — don't also list `WARD` in `grantedKeywords`.
@@ -6377,6 +6389,15 @@ work for abilities-on-stack (which carry no `CardComponent`).
   so it matches regardless of who controls the attacker; fails closed without controller context and
   has no last-known fallback, exactly like its mirror. Tomik, Wielder of Law counts the attacking batch
   with it: `Compare(DynamicAmounts.battlefield(Player.Each, GameObjectFilter.Creature.attackingYouOrYourPlaneswalkers()).count(), GTE, Fixed(2))`.
+- `IsAttackingPlayer(player)` (filter builder `attackingPlayer(player)`) — attacking that **player
+  themself**, where `player` is an `EffectTarget` player reference resolved against the asking
+  context (trigger-bound `PlayerRef(Player.TriggeringPlayer)`, a targeted player, …). A planeswalker or
+  battle the player controls is a different defender and never matches — narrower than
+  `attackingDefenderOf(reference)`, which takes the whole defending side. Pairs with
+  `Triggers.you.attacksAPlayer()`: Echoing Assault's "target nontoken creature that's attacking that
+  player" is `TargetFilter(GameObjectFilter.Creature.nontoken().attackingPlayer(EffectTarget.PlayerRef(Player.TriggeringPlayer)))`.
+  Fails closed when the reference resolves to nothing, and during projection (no trigger context);
+  no last-known fallback.
 - `IsAttackingEnchantedPlayer` (filter builder `attackingEnchantedPlayer()`) — attacking the player the
   filtering ability's **source Aura is attached to** (CR 303 enchant player). The attachment-scoped third
   of the trio above: `IsAttackingAnOpponent` and `IsAttackingYouOrYourPlaneswalkers` both scope the
@@ -7114,6 +7135,14 @@ The shapes in this family, with their engine notes.
 
 - `Triggers.you.attacks()` — when you declare attackers (player-level, ANY binding).
 - `Triggers.you.attacks(with)` — when you attack with ≥1 matching attacker.
+- `Triggers.you.attacksAPlayer(with?, minAttackers?)` — "whenever you attack **a player**" /
+  "whenever one or more [with] you control attack a player" / "two or more creatures you control
+  attack a player" (CR 508.3e). `YouAttackEvent(perAttackedPlayer = true)`: fires **once per player
+  attacked** (Echoing Assault, Meriadoc Brandybuck, Bitter Work, Dollmaker's Shop rulings), binding that
+  player as `Player.TriggeringPlayer` ("that player"). Attackers aimed at a planeswalker or battle count
+  toward no player, and `with` / `minAttackers` are counted per attacked player — two creatures split
+  across two players don't satisfy "two or more … attack a player". Expanded only on the battlefield
+  trigger path; a delayed or emblem trigger with the flag would fire once, unbound.
 - `Triggers.anyPlayer.attacks(minAttackers = 2)` — "whenever two or more creatures attack": any
   player's declaration, once per declaration (Argent Dais). `Triggers.anOpponent.attacks(...)` is
   "whenever an opponent attacks with …". All three read `YouAttackEvent.player` against the active
@@ -7129,6 +7158,16 @@ The shapes in this family, with their engine notes.
   you control**" reading that CR 509.1b denies by default. Tomik, Wielder of Law uses both. Note the
   widened flag changes only which attackers *count*; the trigger still belongs to the defending player,
   and battles are never included.
+- `Triggers.you.isAttacked(unblocked = true)` — "whenever one or more creatures [an opponent controls]
+  attack you **and aren't blocked**" (Coveted Jewel). `CreaturesAttackYouEvent.unblocked` moves the
+  trigger to the `BlockersDeclaredEvent` and counts the attackers aimed at you that have unblocked
+  status then (CR 509.1h; `minAttackers` / `includePlaneswalkersYouControl` still apply). Each
+  defending player declares in turn in multiplayer, so it fires once — on the declaration
+  (`BlockersDeclaredEvent.blockingPlayerId`) that completes your team's — and the unblocked
+  attackers' controller is the triggering player (one firing per attacking player when teammates attack
+  together in 2HG): "that player draws three cards" is
+  `Effects.DrawCards(3, EffectTarget.PlayerRef(Player.TriggeringPlayer))`. Creatures attacking you
+  are always an opponent's, so the trigger carries no controller filter.
 - `Triggers.anOpponent.isAttacked()` — the "your opponents are attacked" counterpart of
   `Triggers.you.isAttacked()`; fires once per `AttackersDeclaredEvent` when one or more declared
   attackers have one of the controller's opponents (a player, via `state.getOpponents`) as
@@ -8852,6 +8891,14 @@ staticAbility {
   and `SelectFromCollectionExecutor` — so a granted type drives type-matters checks everywhere ("target Zombie spell",
   "return target Zombie card from your graveyard", search filters). Leave both flags `false` for battlefield-only effects
   like Xenograft. (Leyline of Transformation)
+- `IsAllCreatureTypes(filter = GroupFilter.attachedCreature(), includeControlledSpells = false,
+  includeOwnedCardsOutsideBattlefield = false)` — Layer 4 static that gives the group **every creature type** in addition
+  to its other types, without granting Changeling (no badge, and "loses all abilities" can't strip it) — Stalactite
+  Dagger's "equipped creature is all creature types", Undercover Skrull. The cross-zone flags work exactly as on
+  `GrantChosenSubtype`, through the same `ProjectedState.crossZoneGrantedSubtypes` overlay: `IsAllCreatureTypes(
+  GroupFilter.AllCreaturesYouControl, includeControlledSpells = true, includeOwnedCardsOutsideBattlefield = true)` is
+  Maskwood Nexus's "Creatures you control are every creature type. The same is true for creature spells you control and
+  creature cards you own that aren't on the battlefield." (Maskwood Nexus)
 - `TransformPermanent(setCardTypes, setSubtypes, setColors?, setName?, clearSubtypes, filter)` — Layer 3/4/5 "becomes a
   whole new identity" (Sugar Coat, Darksteel Mutation, Witness Protection, Imprisoned in the Moon). A non-empty `setSubtypes` replaces all
   subtypes; an empty `setSubtypes` leaves subtypes alone **unless** `clearSubtypes = true`, which replaces them with
@@ -9477,7 +9524,7 @@ in the declare-blockers step, even before the turn-based block action has comple
   Copied token instances and later grants survive independently; removing abilities clears existing
   enlist instances, while a subsequent grant restores its own instance in layer order.
   First canonical user: Benalish Faithbonder. No new effect or dynamic-amount type is needed.
-- `ExertAsItAttacks` — "You may exert this creature as it attacks" (CR 701.43d): an **optional**
+- `ExertAsItAttacks(onlyIfNotExertedThisTurn = false)` — "You may exert this creature as it attacks" (CR 701.43d): an **optional**
   cost to attack (CR 508.1g). After any mandatory attack cost (tax, sacrifice) is settled,
   `AttackPhaseManager.commitAttackDeclaration` pauses with one `SelectCardsDecision` (battlefield
   selection, min 0) over the declared attackers carrying it; the chosen ones get `ExertedComponent`
@@ -9486,6 +9533,10 @@ in the declare-blockers step, even before the turn-based block action has comple
   (CR 701.43b). Face-down creatures and ones that lost all abilities aren't. Pair the "When you do, …"
   paragraph with `Triggers.self.exertedAsItAttacks()` — the trigger linked to it (CR 607.2h), which an
   exert paid through `Costs.Exert` never fires. Hydra Trainer (MH3).
+  `onlyIfNotExertedThisTurn = true` is "If this creature hasn't been exerted this turn, you may exert
+  it as it attacks": the offer is withheld once the creature carries `ExertedThisTurnComponent` — set
+  by every exert (attack or `Costs.Exert`), cleared at cleanup and on leaving the battlefield. Combat
+  Celebrant (AKH).
 - `CantAttackUnlessCoAttacker(coAttackerFilter, filter = source)` — "This creature can't attack
   unless [a creature matching coAttackerFilter] also attacks" (Scarred Puma). Unlike
   `CantAttackUnless` (which is defender-relative), this depends on the whole proposed attacker
@@ -14204,6 +14255,17 @@ read is available to other snapshot-backed entity references once their captured
   mana spent to cast that spell was less than its mana value" gates (Unravel).
   Desugars to `EntityProperty(EffectTarget.ContextTarget(index), EntityNumericProperty.ManaSpent)`.
   Returns 0 if the target isn't a spell on the stack.
+- `DynamicAmounts.permanentsSacrificedToCast(entity)` — how many permanents were sacrificed to pay
+  the costs of casting `entity` (a spell on the stack), read off its `SpellOnStackComponent`.
+  Desugars to `EntityProperty(entity, EntityNumericProperty.PermanentsSacrificedToCast)`. Unlike
+  `permanentsSacrificedThisWay()` — which reads the *resolving* object's own cost, so it is the
+  spell's count only inside the spell's own effect — this one reaches the spell from a trigger:
+  **Plumb the Forbidden**'s "you may sacrifice one or more creatures. When you do, copy this spell
+  for each creature sacrificed this way" is `Triggers.self.isCast()` with
+  `Effects.Repeat(DynamicAmounts.permanentsSacrificedToCast(TriggeringEntity),
+  Effects.CopyTargetSpell(TriggeringEntity))`, gated on `≥ 1` so a no-sacrifice cast puts no
+  trigger on the stack. 0 for anything that isn't a spell on the stack; a copy inherits the original's
+  count (CR 707.10), but since it isn't cast it never fires the cast trigger again.
 - `DynamicAmounts.targetColorCount(index)` / `DynamicAmounts.colorCountOf(entity)` — number of
   distinct colors of the indexed cast-time target / any `EffectTarget.SingleEntity`. Desugars to
   `EntityProperty(entity, EntityNumericProperty.ColorCount)`. Read from projected state for

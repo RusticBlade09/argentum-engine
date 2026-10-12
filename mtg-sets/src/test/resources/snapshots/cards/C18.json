@@ -79,6 +79,94 @@
     ]
 }
 
+// Coveted Jewel
+{
+    "name": "Coveted Jewel",
+    "manaCost": "{6}",
+    "typeLine": "Artifact",
+    "oracleText": "When this artifact enters, draw three cards.\n{T}: Add three mana of any one color.\nWhenever one or more creatures an opponent controls attack you and aren't blocked, that player draws three cards and gains control of this artifact. Untap it.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Coveted Jewel:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "DrawCards",
+                    "count": {
+                        "type": "Fixed",
+                        "amount": 3
+                    }
+                },
+                "descriptionOverride": "When this artifact enters, draw three cards."
+            },
+            {
+                "id": "Coveted Jewel:3",
+                "trigger": {
+                    "type": "CreaturesAttackYouEvent",
+                    "unblocked": true
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 3
+                            },
+                            "target": {
+                                "type": "PlayerRef",
+                                "player": "TriggeringPlayer"
+                            }
+                        },
+                        {
+                            "type": "GiveControlToTargetPlayer",
+                            "permanent": "Self",
+                            "newController": {
+                                "type": "PlayerRef",
+                                "player": "TriggeringPlayer"
+                            }
+                        },
+                        {
+                            "type": "TapUntap",
+                            "target": "Self",
+                            "tap": false
+                        }
+                    ]
+                },
+                "descriptionOverride": "Whenever one or more creatures an opponent controls attack you and aren't blocked, that player draws three cards and gains control of this artifact. Untap it."
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Coveted Jewel:2",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "AddManaOfChoice",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 3
+                    }
+                },
+                "timing": "ManaAbility",
+                "isManaAbility": true,
+                "descriptionOverride": "{T}: Add three mana of any one color."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "54",
+        "rarity": "RARE",
+        "artist": "Jason A. Engle",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/8/f83ed433-fae3-4fa5-acad-bb8a5b535ce3.jpg?1783934324"
+    },
+    "colorIdentityOverride": []
+}
+
 // Estrid's Invocation
 {
     "name": "Estrid's Invocation",
@@ -173,5 +261,47 @@
                 "text": "If Estrid's Invocation somehow enters the battlefield at the same time as another enchantment, it can't become a copy of that enchantment. You may choose only an enchantment that's already on the battlefield."
             }
         ]
+    }
+}
+
+// Windgrace's Judgment
+{
+    "name": "Windgrace's Judgment",
+    "manaCost": "{3}{B}{G}",
+    "typeLine": "Instant",
+    "oracleText": "For any number of opponents, destroy target nonland permanent that player controls.",
+    "script": {
+        "spellEffect": {
+            "type": "ForEach",
+            "space": "IterationSpace.Targets",
+            "body": {
+                "type": "MoveToZone",
+                "target": {
+                    "type": "ContextTarget",
+                    "index": 0
+                },
+                "destination": "Graveyard",
+                "byDestruction": true
+            }
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetObject",
+                "optional": true,
+                "filter": {
+                    "baseFilter": "nonland permanent ctrl:opponent"
+                },
+                "id": "t0",
+                "dynamicMaxCount": "PlayerCount",
+                "differentControllers": true
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "49",
+        "rarity": "RARE",
+        "artist": "Grzegorz Rutkowski",
+        "flavorText": "Not all who remember Urza do so with fondness.",
+        "imageUri": "https://cards.scryfall.io/normal/front/d/8/d8b8f56c-091f-4932-9216-af58f7ea4bd7.jpg?1783934329"
     }
 }

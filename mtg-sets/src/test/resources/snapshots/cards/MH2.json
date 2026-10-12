@@ -753,6 +753,110 @@
     ]
 }
 
+// Chitterspitter
+{
+    "name": "Chitterspitter",
+    "manaCost": "{2}{G}",
+    "typeLine": "Artifact",
+    "oracleText": "At the beginning of your upkeep, you may sacrifice a token. If you do, put an acorn counter on this artifact.\nSquirrels you control get +1/+1 for each acorn counter on this artifact.\n{G}, {T}: Create a 1/1 green Squirrel creature token.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Chitterspitter:1",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "UPKEEP"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Gated",
+                    "gate": "Gate.MayDecide",
+                    "then": {
+                        "type": "Gated",
+                        "gate": {
+                            "type": "Gate.DoAction",
+                            "action": {
+                                "type": "Sacrifice",
+                                "filter": "permanent token"
+                            },
+                            "successCriterion": "SuccessCriterion.PermanentsSacrificed"
+                        },
+                        "then": {
+                            "type": "AddCounters",
+                            "counterType": "ACORN",
+                            "count": 1,
+                            "target": "Self"
+                        }
+                    }
+                },
+                "descriptionOverride": "At the beginning of your upkeep, you may sacrifice a token. If you do, put an acorn counter on this artifact."
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Chitterspitter:2",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{G}"
+                            }
+                        },
+                        "CostTap"
+                    ]
+                },
+                "effect": {
+                    "type": "CreateToken",
+                    "power": 1,
+                    "toughness": 1,
+                    "colors": [
+                        "GREEN"
+                    ],
+                    "creatureTypes": [
+                        "Squirrel"
+                    ]
+                }
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "GrantDynamicStats",
+                "filter": {
+                    "baseFilter": "permanent Squirrel ctrl:you"
+                },
+                "powerBonus": {
+                    "type": "EntityProperty",
+                    "entity": "Self",
+                    "numericProperty": {
+                        "type": "CounterCount",
+                        "counterType": "ACORN"
+                    }
+                },
+                "toughnessBonus": {
+                    "type": "EntityProperty",
+                    "entity": "Self",
+                    "numericProperty": {
+                        "type": "CounterCount",
+                        "counterType": "ACORN"
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "153",
+        "rarity": "RARE",
+        "artist": "Jason Felix",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/e/7ee33ff3-d3d6-4519-9d9f-72e342d8b215.jpg?1783926833"
+    },
+    "colorIdentityOverride": [
+        "GREEN"
+    ]
+}
+
 // Crack Open
 {
     "name": "Crack Open",
@@ -1967,6 +2071,82 @@
     ]
 }
 
+// Junk Winder
+{
+    "name": "Junk Winder",
+    "manaCost": "{5}{U}{U}",
+    "typeLine": "Creature — Serpent",
+    "oracleText": "Affinity for tokens (This spell costs {1} less to cast for each token you control.)\nWhenever a token you control enters, tap target nonland permanent an opponent controls. It doesn't untap during its controller's next untap step.",
+    "creatureStats": {
+        "power": 5,
+        "toughness": 6
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Junk Winder:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "filter": "token ctrl:you",
+                    "to": "Battlefield"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "TapUntap",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        },
+                        {
+                            "type": "GrantKeyword",
+                            "keyword": "DOESNT_UNTAP",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            },
+                            "duration": "UntilAfterAffectedControllersNextUntap"
+                        }
+                    ]
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": "nonland permanent ctrl:opponent"
+                    },
+                    "id": "t0"
+                },
+                "descriptionOverride": "Whenever a token you control enters, tap target nonland permanent an opponent controls. It doesn't untap during its controller's next untap step."
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "ModifySpellCost",
+                "target": "SelfCast",
+                "modification": {
+                    "type": "ReduceGenericBy",
+                    "source": {
+                        "type": "PermanentsYouControlMatching",
+                        "filter": "token"
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "48",
+        "rarity": "UNCOMMON",
+        "artist": "Campbell White",
+        "imageUri": "https://cards.scryfall.io/normal/front/6/6/66b7833a-a6b6-4aca-b574-66a6aea471ea.jpg?1783926877"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Kitchen Imp
 {
     "name": "Kitchen Imp",
@@ -2455,6 +2635,63 @@
         "imageUri": "https://cards.scryfall.io/normal/front/5/b/5b9072a5-bd7f-4007-a34a-ebe251c95356.jpg?1783926803"
     },
     "colorIdentityOverride": []
+}
+
+// Nested Shambler
+{
+    "name": "Nested Shambler",
+    "manaCost": "{B}",
+    "typeLine": "Creature — Zombie",
+    "oracleText": "When this creature dies, create X tapped 1/1 green Squirrel creature tokens, where X is this creature's power.",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 1
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Nested Shambler:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "from": "Battlefield",
+                    "to": "Graveyard"
+                },
+                "effect": {
+                    "type": "CreateToken",
+                    "count": {
+                        "type": "EntityProperty",
+                        "entity": "Self",
+                        "numericProperty": "Power"
+                    },
+                    "power": 1,
+                    "toughness": 1,
+                    "colors": [
+                        "GREEN"
+                    ],
+                    "creatureTypes": [
+                        "Squirrel"
+                    ],
+                    "imageUri": "https://cards.scryfall.io/normal/front/9/7/977ddd05-1aae-46fc-95ce-866710d1c5c6.jpg?1783926589",
+                    "tapped": true
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "95",
+        "artist": "Nicholas Gregory",
+        "flavorText": "Home is where the heart was.",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/8/9851f290-f502-49f8-9b48-67f7966d4e34.jpg?1783926858",
+        "rulings": [
+            {
+                "date": "2021-06-18",
+                "text": "X is Nested Shambler's power the last time it was on the battlefield, not its power in the graveyard. If its power was 0 or less when it died, you won't create any tokens."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
 }
 
 // Orchard Strider

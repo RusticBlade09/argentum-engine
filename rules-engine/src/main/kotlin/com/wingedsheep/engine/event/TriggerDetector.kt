@@ -1650,6 +1650,48 @@ class TriggerDetector(
                             )
                         }
                     }
+                    // "Whenever one or more creatures an opponent controls attack you and aren't
+                    // blocked, that player …" (Coveted Jewel). The block event names no attacking
+                    // player, so bind the unblocked attackers' controller as the triggering player —
+                    // once per such player when several attack together (2HG; the card's ruling).
+                    else if (ability.trigger is EventPattern.CreaturesAttackYouEvent &&
+                        (ability.trigger as EventPattern.CreaturesAttackYouEvent).unblocked) {
+                        val attackers = matcher.unblockedAttackersAgainstYou(
+                            ability.trigger as EventPattern.CreaturesAttackYouEvent, event, controllerId, state
+                        )
+                        for (attackingPlayer in attackers.mapNotNull { projected.getController(it) }.distinct()) {
+                            triggers.add(
+                                PendingTrigger(
+                                    ability = ability,
+                                    sourceId = entityId,
+                                    sourceName = cardComponent.name,
+                                    controllerId = controllerId,
+                                    triggerContext = TriggerContext(triggeringPlayerId = attackingPlayer)
+                                )
+                            )
+                        }
+                    }
+                    // "Whenever you attack a player" (CR 508.3e) fires once for each player
+                    // attacked, binding that player as "that player" (Echoing Assault, Meriadoc
+                    // Brandybuck — the cards' rulings).
+                    else if (ability.trigger is EventPattern.YouAttackEvent &&
+                        (ability.trigger as EventPattern.YouAttackEvent).perAttackedPlayer &&
+                        event is AttackersDeclaredEvent) {
+                        val attacked = matcher.attackedPlayersFor(
+                            ability.trigger as EventPattern.YouAttackEvent, event, entityId, controllerId, state
+                        )
+                        for (attackedPlayer in attacked) {
+                            triggers.add(
+                                PendingTrigger(
+                                    ability = ability,
+                                    sourceId = entityId,
+                                    sourceName = cardComponent.name,
+                                    controllerId = controllerId,
+                                    triggerContext = TriggerContext.fromEvent(event).copy(triggeringPlayerId = attackedPlayer)
+                                )
+                            )
+                        }
+                    }
                     // For "whenever [a player] draws a card" (DrawEvent), drawing N cards via a
                     // single effect creates N separate trigger firings — one per card drawn
                     // (CR 121.2 + 603.2). The engine emits a single aggregate CardsDrawnEvent, so

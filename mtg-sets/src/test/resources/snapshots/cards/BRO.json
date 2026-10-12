@@ -3090,6 +3090,97 @@
     ]
 }
 
+// Haywire Mite
+{
+    "name": "Haywire Mite",
+    "manaCost": "{1}",
+    "typeLine": "Artifact Creature — Insect",
+    "oracleText": "When this creature dies, you gain 2 life.\n{G}, Sacrifice this creature: Exile target noncreature artifact or noncreature enchantment.",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 1
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Haywire Mite:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "from": "Battlefield",
+                    "to": "Graveyard"
+                },
+                "effect": {
+                    "type": "GainLife",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 2
+                    }
+                }
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Haywire Mite:2",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{G}"
+                            }
+                        },
+                        "CostSacrificeSelf"
+                    ]
+                },
+                "effect": {
+                    "type": "MoveToZone",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "destination": "Exile"
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": {
+                                "cardPredicates": [
+                                    {
+                                        "type": "Or",
+                                        "predicates": [
+                                            "IsArtifact",
+                                            "IsEnchantment"
+                                        ]
+                                    },
+                                    {
+                                        "type": "Not",
+                                        "predicate": "IsCreature"
+                                    }
+                                ]
+                            }
+                        },
+                        "id": "t0"
+                    }
+                ],
+                "descriptionOverride": "{G}, Sacrifice this creature: Exile target noncreature artifact or noncreature enchantment."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "199",
+        "rarity": "UNCOMMON",
+        "artist": "Izzy",
+        "flavorText": "\"They're easy enough to squish, but they're a pain to wash out of a workbench.\"\n—Tergel, goblin explosioneer",
+        "imageUri": "https://cards.scryfall.io/normal/front/8/4/847a175e-ead1-4596-baf3-5f7f57859e0b.jpg?1783920034"
+    },
+    "colorIdentityOverride": [
+        "GREEN"
+    ]
+}
+
 // Hero of the Dunes
 {
     "name": "Hero of the Dunes",
@@ -3388,6 +3479,96 @@
         "imageUri": "https://cards.scryfall.io/normal/front/9/c/9c0a17e2-e019-4686-9795-651da2d2955c.jpg?1783920017"
     },
     "colorIdentityOverride": []
+}
+
+// Loran of the Third Path
+{
+    "name": "Loran of the Third Path",
+    "manaCost": "{2}{W}",
+    "typeLine": "Legendary Creature — Human Artificer",
+    "oracleText": "Vigilance\nWhen Loran enters, destroy up to one target artifact or enchantment.\n{T}: You and target opponent each draw a card.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 1
+    },
+    "keywords": [
+        "VIGILANCE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Loran of the Third Path:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "MoveToZone",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "destination": "Graveyard",
+                    "byDestruction": true
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "optional": true,
+                    "filter": {
+                        "baseFilter": "artifact|enchantment"
+                    },
+                    "id": "t0"
+                },
+                "descriptionOverride": "When Loran enters, destroy up to one target artifact or enchantment."
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Loran of the Third Path:2",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            }
+                        },
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            },
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t1"
+                            }
+                        }
+                    ]
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetOpponent",
+                        "id": "t1"
+                    }
+                ],
+                "descriptionOverride": "{T}: You and target opponent each draw a card."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "12",
+        "rarity": "RARE",
+        "artist": "Steven Belledin",
+        "flavorText": "As a scholar, she saw the sylex not as a weapon, but as a key to the past.",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/9/59faa45d-868b-4bc7-934c-0e077642e129.jpg?1783920128"
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
 }
 
 // Loran's Escape
@@ -4676,6 +4857,154 @@
     },
     "colorIdentityOverride": [
         "WHITE"
+    ]
+}
+
+// Skyfisher Spider
+{
+    "name": "Skyfisher Spider",
+    "manaCost": "{2}{B}{G}",
+    "typeLine": "Creature — Spider",
+    "oracleText": "Reach\nWhen this creature enters, you may sacrifice another creature. When you do, destroy target nonland permanent.\nWhen this creature dies, you may gain 1 life for each creature card in your graveyard. If you do, exile this card from your graveyard.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 3
+    },
+    "keywords": [
+        "REACH"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Skyfisher Spider:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "ReflexiveTrigger",
+                    "action": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "SelectTarget",
+                                "requirement": {
+                                    "type": "TargetObject",
+                                    "filter": {
+                                        "baseFilter": "creature ctrl:you",
+                                        "excludeSelf": true
+                                    }
+                                },
+                                "storeAs": "target0",
+                                "nonTargeting": true,
+                                "prompt": "Choose another creature to sacrifice"
+                            },
+                            {
+                                "type": "SacrificeTarget",
+                                "target": {
+                                    "type": "PipelineTarget",
+                                    "collectionName": "target0"
+                                }
+                            }
+                        ]
+                    },
+                    "reflexiveEffect": {
+                        "type": "MoveToZone",
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t0"
+                        },
+                        "destination": "Graveyard",
+                        "byDestruction": true
+                    },
+                    "reflexiveTargetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "nonland permanent"
+                            },
+                            "id": "t0"
+                        }
+                    ],
+                    "descriptionOverride": "You may sacrifice another creature. When you do, destroy target nonland permanent."
+                },
+                "descriptionOverride": "When this creature enters, you may sacrifice another creature. When you do, destroy target nonland permanent."
+            },
+            {
+                "id": "Skyfisher Spider:2",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "from": "Battlefield",
+                    "to": "Graveyard"
+                },
+                "effect": {
+                    "type": "Gated",
+                    "gate": "Gate.MayDecide",
+                    "then": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "GainLife",
+                                "amount": {
+                                    "type": "Count",
+                                    "player": "You",
+                                    "zone": "Graveyard",
+                                    "filter": "creature"
+                                }
+                            },
+                            {
+                                "type": "Composite",
+                                "effects": [
+                                    {
+                                        "type": "GatherCards",
+                                        "source": {
+                                            "type": "FromZone",
+                                            "zone": "Graveyard",
+                                            "filter": {
+                                                "statePredicates": [
+                                                    "IsSource"
+                                                ]
+                                            }
+                                        },
+                                        "storeAs": "gathered0"
+                                    },
+                                    {
+                                        "type": "MoveCollection",
+                                        "from": "gathered0",
+                                        "destination": {
+                                            "type": "ToZone",
+                                            "zone": "Exile"
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "descriptionOverride": "You may gain 1 life for each creature card in your graveyard. If you do, exile this card from your graveyard."
+                },
+                "descriptionOverride": "When this creature dies, you may gain 1 life for each creature card in your graveyard. If you do, exile this card from your graveyard."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "221",
+        "rarity": "UNCOMMON",
+        "artist": "Henry Peters",
+        "imageUri": "https://cards.scryfall.io/normal/front/8/7/87300ac8-8b6f-4c37-8058-beb59eaa66be.jpg?1783920025",
+        "rulings": [
+            {
+                "date": "2022-10-14",
+                "text": "Skyfisher Spider's first triggered ability doesn't have any targets. If you choose to sacrifice another creature, a second triggered ability (called a \"reflexive\" triggered ability) goes on the stack and you choose a target nonland permanent at that time. Players may respond to that second ability as normal."
+            },
+            {
+                "date": "2022-10-14",
+                "text": "Notably, this means that players won't get to know what nonland permanent you plan to target before you choose whether to sacrifice a creature."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK",
+        "GREEN"
     ]
 }
 

@@ -367,13 +367,13 @@ internal class BlockPhaseManager(
 
         val blockerNameMap = expandedBlockers.keys.associateWith { nameVisibleToAll(state, it, state.getEntity(it)?.get<CardComponent>()?.name ?: "Creature") }
         val attackerNameMap = expandedBlockers.values.flatten().distinct().associateWith { nameVisibleToAll(state, it, state.getEntity(it)?.get<CardComponent>()?.name ?: "Creature") }
-        val blockersEvent = BlockersDeclaredEvent(expandedBlockers, blockerNameMap, attackerNameMap)
+        val blockersEvent = BlockersDeclaredEvent(expandedBlockers, blockerNameMap, attackerNameMap, blockingPlayer)
         val blockTaxEvents = taxEvents
 
-        // Damage-assignment order (CR 510.1c/d) is no longer collected in a standalone
-        // OrderObjectsDecision pre-step. The combat resolution board owns ordering: it reads the
-        // declaration order (BlockedComponent.blockerIds / BlockingComponent.blockedAttackerIds)
-        // as the default and lets the chooser reorder via the response. No pause here.
+        // There is no damage-assignment order to collect (CR 510.1c/d divide damage freely). The
+        // combat resolution board fills its defaults in declaration order
+        // (BlockedComponent.blockerIds / BlockingComponent.blockedAttackerIds) and the chooser
+        // re-divides from there. No pause here.
         return ExecutionResult.success(
             newState,
             blockTaxEvents + blockersEvent

@@ -776,7 +776,7 @@ Families:
 - `CreateTokenCopyOfChosenPermanentEffect(filter: GameObjectFilter)` — Choose a permanent you control matching filter, then create a token that's a copy of it.
 - `CreateTokenCopyOfEquippedCreatureEffect(removeLegendary: Boolean, grantHaste: Boolean)` — Create a token that's a copy of an equipped/attached creature.
 - `CreateTokenCopyOfSourceEffect(count: Int, overridePower: Int?, overrideToughness: Int?, exileAtStep: Step?, addCardTypes: Set<String>, removeLegendary: Boolean, exceptions: CopyExceptions)` — Create a token that's a copy of the source permanent.
-- `CreateTokenCopyOfTargetEffect(target: EffectTarget, count: DynamicAmount, overridePower: Int?, overrideToughness: Int?, tapped: Boolean, attacking: Boolean, triggeredAbilities: List<TriggeredAbility>, addedKeywords: Set<Keyword>, addedSupertypes: Set<Supertype>, removedSupertypes: Set<Supertype>, overrideColors: Set<Color>?, addedColors: Set<Color>, overrideSubtypes: Set<Subtype>?, addedSubtypes: Set<Subtype>, overrideCardTypes: Set<CardType>?, activatedAbilities: List<ActivatedAbility>, addedStaticAbilities: List<StaticAbility>, sacrificeAtStep: Step?, sacrificeOnlyOnControllersTurn: Boolean, addCardTypes: Set<String>, exileAtStep: Step?, exileUnlessSourceIsRingBearer: Boolean, controller: EffectTarget?, noManaCost: Boolean, exceptions: CopyExceptions, stampCreator: Boolean, attachedTo: EffectTarget?, attackedPlayer: EffectTarget?)` — Create token copies of a targeted permanent.
+- `CreateTokenCopyOfTargetEffect(target: EffectTarget, count: DynamicAmount, overridePower: Int?, overrideToughness: Int?, tapped: Boolean, attacking: Boolean, triggeredAbilities: List<TriggeredAbility>, addedKeywords: Set<Keyword>, addedSupertypes: Set<Supertype>, removedSupertypes: Set<Supertype>, overrideColors: Set<Color>?, addedColors: Set<Color>, overrideSubtypes: Set<Subtype>?, addedSubtypes: Set<Subtype>, overrideCardTypes: Set<CardType>?, activatedAbilities: List<ActivatedAbility>, addedStaticAbilities: List<StaticAbility>, sacrificeAtStep: Step?, sacrificeOnlyOnControllersTurn: Boolean, addCardTypes: Set<String>, exileAtStep: Step?, exileUnlessSourceIsRingBearer: Boolean, controller: EffectTarget?, noManaCost: Boolean, exceptions: CopyExceptions, stampCreator: Boolean, attachedTo: EffectTarget?, attackedPlayer: EffectTarget?, basePower: DynamicAmount?, baseToughness: DynamicAmount?)` — Create token copies of a targeted permanent.
 - `CreateTokenEffect(count: DynamicAmount, power: Int, toughness: Int, colors: Set<Color>, creatureTypes: Set<String>, keywords: Set<Keyword>, name: String?, imageUri: String?, controller: EffectTarget?, dynamicPower: DynamicAmount?, dynamicToughness: DynamicAmount?, tapped: Boolean, attacking: Boolean, legendary: Boolean, artifactToken: Boolean, enchantmentToken: Boolean, staticAbilities: List<StaticAbility>, triggeredAbilities: List<TriggeredAbility>, activatedAbilities: List<ActivatedAbility>, exileAtStep: Step?, sacrificeAtStep: Step?, initialCounters: Map<CounterType, Int>, colorsFromChoice: ChoiceSlot?, creatureTypesFromChoice: ChoiceSlot?, stampCreator: Boolean, numericKeywords: List<KeywordAbility.Numeric>)` — Create token effect.
 - `DamageCantBePreventedThisTurnEffect` — Turn-scoped "Damage can't be prevented this turn" (CR 615.6 — a prevention effect can't apply to damage that can't be prevented).
 - `DamageToTargetCantBePreventedThisTurnEffect(target: EffectTarget)` — "Damage that would be dealt to target this turn can't be prevented or dealt instead to another permanent or player." — the *per-recipient* form of DamageCantBePreventedThisTurnEffect (Whippoorwill).
@@ -1096,6 +1096,7 @@ Families:
 - `EntityNumericProperty.KeywordValue(keyword: Keyword)` — The total N across this entity's instances of a numeric keyword ("bushido N", "toxic N") — Takeno, Samurai General's "for each point of bushido it has".
 - `EntityNumericProperty.ManaSpent` — Total mana actually paid from the pool to cast a spell on the stack.
 - `EntityNumericProperty.ManaValue`
+- `EntityNumericProperty.PermanentsSacrificedToCast` — The number of permanents sacrificed to pay the costs of casting a spell on the stack — the snapshots recorded on its `SpellOnStackComponent` as the cost was paid.
 - `EntityNumericProperty.Power`
 - `EntityNumericProperty.SubtypeCount` — The number of distinct subtypes this entity has, read from projected state when available (so layer-4 type-changing effects, including Changeling, are honored).
 - `EntityNumericProperty.Toughness`
@@ -1138,7 +1139,7 @@ Families:
 - `EventPattern.CountersRemovedEvent(counterType: CounterType?, filter: GameObjectFilter, lastRemoved: Boolean, byDamagePrevention: Boolean)` — When one or more counters of a specific type are **removed** from a permanent — the mirror of CountersPlacedEvent.
 - `EventPattern.CreatureDealtDamageBySourceDiesEvent(sourceFilter: GameObjectFilter?, dyingFilter: GameObjectFilter?)` — Whenever a creature dealt damage this turn by a matching source dies.
 - `EventPattern.CreatureTurnedFaceUpEvent(player: Player, filter: GameObjectFilter)` — When a creature is turned face up.
-- `EventPattern.CreaturesAttackYouEvent(minAttackers: Int, includePlaneswalkersYouControl: Boolean)` — When one or more creatures attack the trigger's controller (the player).
+- `EventPattern.CreaturesAttackYouEvent(minAttackers: Int, includePlaneswalkersYouControl: Boolean, unblocked: Boolean)` — When one or more creatures attack the trigger's controller (the player).
 - `EventPattern.CreaturesAttackYourOpponentEvent(minAttackers: Int)` — When one or more creatures attack a player who is an opponent of the trigger's controller.
 - `EventPattern.CreaturesYouControlDiedEvent(filter: GameObjectFilter, excludeSelf: Boolean)` — Whenever one or more creatures you control die.
 - `EventPattern.CrewsEvent` — Whenever this creature crews a Vehicle.
@@ -1204,7 +1205,7 @@ Families:
 - `EventPattern.TurnBeginEvent(player: Player)` — Replacement-only interception before a turn begins; separate from beginning a step.
 - `EventPattern.TurnFaceUpEvent` — When a permanent is turned face up.
 - `EventPattern.UntapEvent(filter: GameObjectFilter?, batch: Boolean)` — When a permanent becomes untapped.
-- `EventPattern.YouAttackEvent(minAttackers: Int, attackerFilter: GameObjectFilter?, player: Player)` — When you attack with at least minAttackers creatures.
+- `EventPattern.YouAttackEvent(minAttackers: Int, attackerFilter: GameObjectFilter?, player: Player, perAttackedPlayer: Boolean)` — When you attack with at least minAttackers creatures.
 - `EventPattern.ZoneChangeEvent(filter: GameObjectFilter, from: Zone?, to: Zone?, excludeTo: Zone?, excludeSacrifice: Boolean, requireCraftMaterial: Boolean)` — When an object changes zones.
 
 ## FeasibilityCheck
@@ -1611,6 +1612,7 @@ Families:
 - `StatePredicate.IsAttackingAnOpponent` — Attacking one of *your* opponents — the player, not their planeswalkers or battles (Oviya, Automech Artisan: "Each creature that's attacking one of your opponents has trample").
 - `StatePredicate.IsAttackingDefenderOf(reference: EffectTarget.SingleEntity)` — Attacking the player, planeswalker, or battle defended by the reference's controller/team.
 - `StatePredicate.IsAttackingEnchantedPlayer` — Attacking the player the asking ability's *source* is attached to — "creatures attacking enchanted player" (Curse of Hospitality).
+- `StatePredicate.IsAttackingPlayer(player: EffectTarget)` — Attacking player themself — "target nontoken creature that's attacking **that player**" (Echoing Assault, with `PlayerRef(Player.TriggeringPlayer)` bound by a per-attacked-player `YouAttackEvent`).
 - `StatePredicate.IsAttackingYouOrYourPlaneswalkers`
 - `StatePredicate.IsBlocked` — Attacker with blocked status, even after all its blockers leave combat
 - `StatePredicate.IsBlocking`
@@ -1723,7 +1725,7 @@ Families:
 - `Enlist` — Enlist (CR 702.154): each instance offers its own optional attack-declaration tap cost and creates its own linked power-boost trigger.
 - `EquipAbilitiesAtInstantSpeed` — The controller may activate equip abilities any time they could cast an instant (instant-speed equip).
 - `EquipmentAttachRestriction(filter: GameObjectFilter)` — "This Equipment can be attached only to filter." — a printed restriction on what the Equipment carrying it may equip (Konda's Banner: "can be attached only to a legendary creature"; Gate Smasher, O…
-- `ExertAsItAttacks` — "You may exert this creature as it attacks." (CR 701.43d) — an *optional* cost to attack (CR 508.1g): as attackers are declared, the controller chooses whether to exert each declared attacker carry…
+- `ExertAsItAttacks(onlyIfNotExertedThisTurn: Boolean)` — "You may exert this creature as it attacks." (CR 701.43d) — an *optional* cost to attack (CR 508.1g): as attackers are declared, the controller chooses whether to exert each declared attacker carry…
 - `ExtraLoyaltyActivation(filter: GameObjectFilter, times: Int)` — Sets the maximum loyalty activations each turn for permanents matching filter.
 - `ExtraOnceOnlyActivations(kind: OnceOnlyAbilityKind, extraActivations: Int?, condition: Condition?)` — The controller may activate kind abilities more times than the keyword's "Activate this ability only once" allows — i.e. the com.wingedsheep.sdk.scripting.ActivationRestriction.Once memory that `is…
 - `FlipAdditionalCoins(coinsPerFlip: Int)` — Each coin the controller would flip is replaced by coinsPerFlip coins, all but one of which the controller ignores — Krark's Thumb's "If you would flip a coin, instead flip two coins and ignore one…
@@ -1780,7 +1782,7 @@ Families:
 - `HasAllActivatedAbilitiesOfCards(donors: DonorCards, cardFilter: GameObjectFilter, receivedBy: GroupFilter, oncePerTurnEach: Boolean)` — Grants the permanents matching receivedBy **all activated abilities of the cards in the donors pool that match cardFilter** — the single primitive behind "exiled with this" (linked-exile) grants, "…
 - `HasCreatureTypesOf(source: EffectTarget.SingleEntity, retainedTypes: Set<String>, filter: GroupFilter)` — The permanents matching filter **have the creature types of the object source names**, replacing their own (CR 205.1b) while keeping every non-creature subtype.
 - `IncreaseActivatedAbilityCost(filter: GroupFilter, amount: DynamicAmount, excludeManaAbilities: Boolean)` — The activated abilities of sources matching filter cost amount generic mana **more** to activate — the taxing mirror of ReduceActivatedAbilityCost, summed against it into a single net delta so a re…
-- `IsAllCreatureTypes(filter: GroupFilter)` — Grants every creature type to the target, in addition to its existing types, without granting the Changeling keyword.
+- `IsAllCreatureTypes(filter: GroupFilter, includeControlledSpells: Boolean, includeOwnedCardsOutsideBattlefield: Boolean)` — Grants every creature type to the target, in addition to its existing types, without granting the Changeling keyword.
 - `LegendRuleDoesNotApplyTo(filter: GameObjectFilter)` — The "legend rule" (CR 704.5j) doesn't apply to permanents matching filter that the controller of this permanent controls (Spider-Verse: "The 'legend rule' doesn't apply to Spiders you control").
 - `LookAtFaceDownCreatures` — You may look at face-down creatures you don't control any time.
 - `LookAtTopOfLibrary` — You may look at the top card of your library any time.

@@ -300,6 +300,93 @@
     ]
 }
 
+// Bident of Thassa
+{
+    "name": "Bident of Thassa",
+    "manaCost": "{2}{U}{U}",
+    "typeLine": "Legendary Enchantment Artifact",
+    "oracleText": "Whenever a creature you control deals combat damage to a player, you may draw a card.\n{1}{U}, {T}: Creatures your opponents control attack this turn if able.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Bident of Thassa:1",
+                "trigger": {
+                    "type": "DealsDamageEvent",
+                    "damageType": "DamageCombat",
+                    "recipient": {
+                        "type": "RecipientPlayer",
+                        "player": "Any"
+                    },
+                    "sourceFilter": "creature ctrl:you"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Gated",
+                    "gate": "Gate.MayDecide",
+                    "then": {
+                        "type": "DrawCards",
+                        "count": {
+                            "type": "Fixed",
+                            "amount": 1
+                        }
+                    }
+                }
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Bident of Thassa:2",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{1}{U}"
+                            }
+                        },
+                        "CostTap"
+                    ]
+                },
+                "effect": {
+                    "type": "ForEach",
+                    "space": {
+                        "type": "IterationSpace.Group",
+                        "filter": {
+                            "baseFilter": "creature ctrl:opponent"
+                        }
+                    },
+                    "body": {
+                        "type": "MarkMustAttackThisTurn",
+                        "target": "IterationEntity"
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "42",
+        "rarity": "RARE",
+        "artist": "Yeong-Hao Han",
+        "flavorText": "The wills of mortals shift as the tide ebbs and flows.",
+        "imageUri": "https://cards.scryfall.io/normal/front/8/5/85e45d14-a501-40b9-af0a-720ecd20dad7.jpg?1783939802",
+        "rulings": [
+            {
+                "date": "2018-03-16",
+                "text": "The controller of each attacking creature still chooses which player or planeswalker that creature attacks."
+            },
+            {
+                "date": "2018-03-16",
+                "text": "If a creature can't attack for any reason (such as being tapped or having come under that player's control that turn), then it doesn't attack. If there's a cost associated with having a creature attack, the player isn't forced to pay that cost, so it doesn't have to attack in that case either."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Borderland Minotaur
 {
     "name": "Borderland Minotaur",
@@ -822,6 +909,104 @@
     },
     "colorIdentityOverride": [
         "BLUE"
+    ]
+}
+
+// Elspeth, Sun's Champion
+{
+    "name": "Elspeth, Sun's Champion",
+    "manaCost": "{4}{W}{W}",
+    "typeLine": "Legendary Planeswalker — Elspeth",
+    "oracleText": "+1: Create three 1/1 white Soldier creature tokens.\n−3: Destroy all creatures with power 4 or greater.\n−7: You get an emblem with \"Creatures you control get +2/+2 and have flying.\"",
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Elspeth, Sun's Champion:1",
+                "cost": {
+                    "type": "CostLoyalty",
+                    "change": 1
+                },
+                "effect": {
+                    "type": "CreateToken",
+                    "count": {
+                        "type": "Fixed",
+                        "amount": 3
+                    },
+                    "power": 1,
+                    "toughness": 1,
+                    "colors": [
+                        "WHITE"
+                    ],
+                    "creatureTypes": [
+                        "Soldier"
+                    ]
+                },
+                "timing": "SorcerySpeed",
+                "isPlaneswalkerAbility": true
+            },
+            {
+                "id": "Elspeth, Sun's Champion:2",
+                "cost": {
+                    "type": "CostLoyalty",
+                    "change": -3
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "BattlefieldMatching",
+                                "filter": "creature pow>=4"
+                            },
+                            "storeAs": "destroyAll_gathered"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "destroyAll_gathered",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Graveyard"
+                            },
+                            "moveType": "Destroy"
+                        }
+                    ]
+                },
+                "timing": "SorcerySpeed",
+                "isPlaneswalkerAbility": true
+            },
+            {
+                "id": "Elspeth, Sun's Champion:3",
+                "cost": {
+                    "type": "CostLoyalty",
+                    "change": -7
+                },
+                "effect": {
+                    "type": "CreatePermanentEmblem",
+                    "groupFilter": {
+                        "baseFilter": "creature ctrl:you"
+                    },
+                    "powerBonus": 2,
+                    "toughnessBonus": 2,
+                    "grantedKeywords": [
+                        "FLYING"
+                    ],
+                    "emblemDescription": "Creatures you control get +2/+2 and have flying."
+                },
+                "timing": "SorcerySpeed",
+                "isPlaneswalkerAbility": true
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "9",
+        "rarity": "MYTHIC",
+        "artist": "Eric Deschamps",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/d/fd5b1633-c41d-42b1-af1b-4a872077ffbd.jpg?1783939818"
+    },
+    "startingLoyalty": 4,
+    "colorIdentityOverride": [
+        "WHITE"
     ]
 }
 

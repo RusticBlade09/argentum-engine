@@ -3,6 +3,7 @@ package com.wingedsheep.ai.engine.knowledge
 import com.wingedsheep.ai.puzzles.advanceToDeclaration
 import com.wingedsheep.ai.puzzles.advanceToPriority
 import com.wingedsheep.engine.core.ActivateAbility
+import com.wingedsheep.engine.core.CastSpell
 import com.wingedsheep.engine.core.PassPriority
 import com.wingedsheep.engine.state.components.stack.ChosenTarget
 import com.wingedsheep.engine.support.ScenarioTestBase
@@ -221,6 +222,81 @@ class UnspendableGrantTest : ScenarioTestBase() {
                 .advanceToPriority(1, Step.DECLARE_BLOCKERS)
 
             game.verdict(noop, "Vanguard of the Rose") shouldBe TimingVerdict.Neutral
+        }
+
+        // ── Deserter's Disciple: `{T}: Another target creature you control with power 2 or less
+        //    can't be blocked this turn` ──
+
+        test("our own spell aimed at our own creature is not a threat that releases the floor") {
+            // TLA self-play: our Rocky Rebuke on the stack, aimed at our own attacker, read as a
+            // threat; the Disciple then made a creature that was not attacking unblockable.
+            val game = scenario().withPlayers()
+                .withCardOnBattlefield(1, "Deserter's Disciple")
+                .withCardOnBattlefield(1, "Grizzly Bears")
+                .withCardOnBattlefield(1, "Hill Giant")
+                .withLandsOnBattlefield(1, "Forest", 2)
+                .withCardInHand(1, "Rocky Rebuke")
+                .withCardOnBattlefield(2, "Regal Unicorn")
+                .build()
+                .advanceToDeclaration(1, Step.DECLARE_ATTACKERS)
+                .also { it.declareAttackers(mapOf("Hill Giant" to 2)) }
+                .advanceToPriority(1, Step.DECLARE_ATTACKERS)
+
+            val rebuke = CastSpell(
+                game.player1Id,
+                game.findCardsInHand(1, "Rocky Rebuke").single(),
+                listOf(
+                    ChosenTarget.Permanent(game.findPermanent("Hill Giant")!!),
+                    ChosenTarget.Permanent(game.findPermanent("Regal Unicorn")!!),
+                ),
+            )
+            game.execute(rebuke).error shouldBe null
+            game.state.stack.size shouldBe 1
+
+            game.verdict(noop, "Deserter's Disciple", "Grizzly Bears") shouldBe TimingVerdict.NoWindow
+        }
+
+        // ── Leonardo, Leader in Blue: `{1}{W}: gains first strike until end of turn` ──
+
+        test("attacking with every opposing creature tapped: first strike has no blocker to beat") {
+            // TMT self-play: {1}{W} paid for first strike in the declare-attackers step with the
+            // defender's creatures all tapped — the mana for a removal spell.
+            val game = scenario().withPlayers()
+                .withCardOnBattlefield(1, "Leonardo, Leader in Blue")
+                .withLandsOnBattlefield(1, "Plains", 2)
+                .withCardOnBattlefield(2, "Hill Giant", tapped = true)
+                .build()
+                .advanceToDeclaration(1, Step.DECLARE_ATTACKERS)
+                .also { it.declareAttackers(mapOf("Leonardo, Leader in Blue" to 2)) }
+                .advanceToPriority(1, Step.DECLARE_ATTACKERS)
+
+            game.verdict(noop, "Leonardo, Leader in Blue") shouldBe TimingVerdict.NoWindow
+        }
+
+        test("attacking into an untapped blocker: first strike can still win the fight") {
+            val game = scenario().withPlayers()
+                .withCardOnBattlefield(1, "Leonardo, Leader in Blue")
+                .withLandsOnBattlefield(1, "Plains", 2)
+                .withCardOnBattlefield(2, "Hill Giant")
+                .build()
+                .advanceToDeclaration(1, Step.DECLARE_ATTACKERS)
+                .also { it.declareAttackers(mapOf("Leonardo, Leader in Blue" to 2)) }
+                .advanceToPriority(1, Step.DECLARE_ATTACKERS)
+
+            game.verdict(noop, "Leonardo, Leader in Blue") shouldBe TimingVerdict.Neutral
+        }
+
+        test("blockers declared and the attacker unblocked: first strike changes nothing") {
+            val game = scenario().withPlayers()
+                .withCardOnBattlefield(1, "Leonardo, Leader in Blue")
+                .withLandsOnBattlefield(1, "Plains", 2)
+                .withCardOnBattlefield(2, "Hill Giant")
+                .build()
+                .advanceToDeclaration(1, Step.DECLARE_ATTACKERS)
+                .also { it.declareAttackers(mapOf("Leonardo, Leader in Blue" to 2)) }
+                .advanceToPriority(1, Step.DECLARE_BLOCKERS)
+
+            game.verdict(noop, "Leonardo, Leader in Blue") shouldBe TimingVerdict.NoWindow
         }
     }
 }
