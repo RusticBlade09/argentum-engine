@@ -284,6 +284,7 @@ class StatsQueryService(
     private val cardRegistry: CardRegistry,
     private val printingRegistry: PrintingRegistry,
     private val geoIp: GeoIpService,
+    private val engineAiHistory: EngineAiHistory,
 ) {
     private companion object {
         /** Table names safe to splice into `count(*)` SQL — see [databaseStats]. */
@@ -1045,7 +1046,7 @@ class StatsQueryService(
             },
             since,
         )
-        return AiVsHumanAggregator.aggregate(games, humanSeats, days, bucket, now)
+        return AiVsHumanAggregator.aggregate(games, humanSeats, days, bucket, now, engineAiHistory.timeline)
     }
 
     /**

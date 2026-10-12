@@ -103,6 +103,75 @@ class AiVsHumanAggregatorTest : FunSpec({
         )
     }
 
+    // Newest first, as the build writes it: builds A and B are plain commits on main; AI changes
+    // "first" and "second" land between them, "third" after B with no build running it yet.
+    val history = """
+        # engine-ai-history v1
+        ccc000000003
+        aaa222222222	2026-10-12T10:00:00+02:00	12	AI: third
+        bbb000000002
+        aaa111111111	2026-10-10T10:00:00Z	11	AI: second
+        aaa000000000	2026-10-09T10:00:00Z	-	AI: first
+        bbb000000001
+    """.trimIndent()
+
+    test("a commit with several changelog entries keeps one place on main") {
+        val timeline = EngineAiTimeline.parse(
+            """
+            # engine-ai-history v2
+            bbb000000002
+            aaa000000000	2026-10-09T10:00:00Z	7	AI: blocks better
+            aaa000000000	2026-10-09T10:00:00Z	7	AI: attacks better
+            bbb000000001
+            """.trimIndent(),
+        )
+        timeline.changes.map { it.ordinal } shouldContainExactly listOf(1, 1)
+        timeline.ordinalOf("bbb000000002") shouldBe 2
+    }
+    val buildA = "bbb000000001" + "f".repeat(28)
+    val buildB = "bbb000000002" + "f".repeat(28)
+
+    test("the history file parses into ordered changes and placeable builds") {
+        val timeline = EngineAiTimeline.parse(history)
+        timeline.available shouldBe true
+        timeline.changes.map { it.subject } shouldContainExactly listOf("AI: first", "AI: second", "AI: third")
+        timeline.changes.map { it.pr } shouldContainExactly listOf(null, 11, 12)
+        timeline.ordinalOf(buildA) shouldBe 0
+        timeline.ordinalOf(buildB.uppercase()) shouldBe 3
+        timeline.ordinalOf("dev").shouldBeNull()
+        EngineAiTimeline.parse("# unavailable\n").available shouldBe false
+    }
+
+    test("AI changes are counted per bucket, credited to the first build carrying them, and counted per build") {
+        val timeline = EngineAiTimeline.parse(history)
+        val games = listOf(
+            game(1, daysAgo(6), AiMatchOutcome.HUMAN, version = buildA),
+            game(2, daysAgo(3), AiMatchOutcome.AI, version = buildB),
+            game(3, daysAgo(2), AiMatchOutcome.AI, version = "dev"),
+        )
+        val report = AiVsHumanAggregator.aggregate(games, emptyList(), 7, AiBucket.DAY, now, timeline)
+
+        report.series.filter { it.aiChanges > 0 }.map { it.start to it.aiChanges } shouldContainExactly
+            listOf("2026-10-09" to 1, "2026-10-10" to 1, "2026-10-12" to 1)
+
+        report.aiChanges.available shouldBe true
+        report.aiChanges.changes.map { it.subject to it.shippedIn } shouldContainExactly listOf(
+            "AI: third" to null,
+            "AI: second" to buildB,
+            "AI: first" to buildB,
+        )
+        report.aiChanges.changes.last().shippedAt shouldBe daysAgo(3).toString()
+
+        report.byBuild.associate { it.version to it.newAiChanges } shouldBe
+            mapOf(buildB to 2, buildA to null, "dev" to null)
+    }
+
+    test("without a history there are no change markers") {
+        val report = AiVsHumanAggregator.aggregate(listOf(game(1, daysAgo(1), AiMatchOutcome.AI)), emptyList(), 7, AiBucket.DAY, now)
+        report.aiChanges.available shouldBe false
+        report.series.sumOf { it.aiChanges } shouldBe 0
+    }
+
     test("recent games keep only the latest, oldest first") {
         val games = (1L..50L).map { game(it, daysAgo(51 - it).plusSeconds(0), AiMatchOutcome.AI) }
         val report = AiVsHumanAggregator.aggregate(games, emptyList(), days = null, bucket = AiBucket.MONTH, now = now)

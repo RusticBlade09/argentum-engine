@@ -82,13 +82,49 @@ data class AiRecord(val games: Long, val aiWins: Long, val humanWins: Long, val 
     }
 }
 
-/** One time bucket of the series; [start] is the bucket's first UTC day (`YYYY-MM-DD`). */
-data class AiPeriodRecord(val start: String, val record: AiRecord)
+/**
+ * One time bucket of the series; [start] is the bucket's first UTC day (`YYYY-MM-DD`). [aiChanges]
+ * counts the engine AI changes merged to main in the bucket.
+ */
+data class AiPeriodRecord(val start: String, val record: AiRecord, val aiChanges: Int = 0)
 
 data class AiModeRecord(val gameMode: String?, val format: String?, val record: AiRecord)
 
-/** A deployed build's record. [firstSeen] / [lastSeen] bound the games it played in the range. */
-data class AiBuildRecord(val version: String, val firstSeen: String, val lastSeen: String, val record: AiRecord)
+/**
+ * A deployed build's record. [firstSeen] / [lastSeen] bound the games it played in the range.
+ * [newAiChanges] counts the engine AI changes it carried that the build before it did not — null when
+ * the build can't be placed on main's history (a `dev` build) or no earlier build is known to compare.
+ */
+data class AiBuildRecord(
+    val version: String,
+    val firstSeen: String,
+    val lastSeen: String,
+    val record: AiRecord,
+    val newAiChanges: Int? = null,
+)
+
+/**
+ * An engine AI change merged to main. [shippedIn] is the first deployed build that carried it and
+ * [shippedAt] when that build played its first AI-vs-human game; both null when no recorded game has
+ * run a build with it yet.
+ */
+data class AiChangeEntry(
+    val sha: String,
+    val committedAt: String,
+    val pr: Int?,
+    val subject: String,
+    val shippedIn: String?,
+    val shippedAt: String?,
+    /** The series bucket ([AiPeriodRecord.start]) the change was merged in. */
+    val bucketStart: String,
+)
+
+/** The engine AI changes within the report's time axis, newest first. */
+data class AiChangeLog(
+    /** False when the running build had no git history to read, so changes can't be shown at all. */
+    val available: Boolean,
+    val changes: List<AiChangeEntry>,
+)
 
 data class AiRecentGame(val endedAt: String, val gameMode: String?, val format: String?, val outcome: AiMatchOutcome)
 
@@ -120,6 +156,7 @@ data class AiVsHumanReport(
     val recent: List<AiRecentGame>,
     /** The humans who have played the AI most, at most [AiVsHumanAggregator.MAX_HUMANS]. */
     val topHumans: List<AiHumanRecord>,
+    val aiChanges: AiChangeLog,
 )
 
 enum class AiBucket {
@@ -149,6 +186,7 @@ object AiVsHumanAggregator {
      * @param games every AI-vs-human game since `now - 2 × days` (the range plus the window before
      *   it, for [AiVsHumanReport.previous]), or all of them when [days] is null.
      * @param humanSeats the human seats of those games.
+     * @param timeline the engine AI's change history, to mark changes on the series and builds.
      */
     fun aggregate(
         games: List<AiMatchGame>,
@@ -156,6 +194,7 @@ object AiVsHumanAggregator {
         days: Int?,
         bucket: AiBucket,
         now: Instant,
+        timeline: EngineAiTimeline = EngineAiTimeline.UNAVAILABLE,
     ): AiVsHumanReport {
         val rangeStart = days?.let { now.minusSeconds(it * 86_400L) }
         val inRange = games.filter { rangeStart == null || !it.endedAt.isBefore(rangeStart) }.sortedBy { it.endedAt }
@@ -165,13 +204,23 @@ object AiVsHumanAggregator {
         }
         val inRangeIds = inRange.mapTo(HashSet()) { it.matchId }
         val outcomeById = inRange.associate { it.matchId to it.outcome }
+        val series = series(inRange, bucket, rangeStart, now)
+        val axisStart = series.firstOrNull()?.let { LocalDate.parse(it.start).atStartOfDay(ZoneOffset.UTC).toInstant() }
+        val changesOnAxis = if (axisStart == null) emptyList() else timeline.changes.filter { !it.committedAt.isBefore(axisStart) }
+        val changesPerBucket = changesOnAxis.groupingBy { bucket.startOf(it.committedAt.utcDay()).toString() }.eachCount()
+        // Every build the fetched games ran — the window before the range too — placed on main's
+        // history, oldest first: the baseline that says which AI changes each build added.
+        val placedBuilds = games.filter { !it.engineVersion.isNullOrBlank() }
+            .groupBy { it.engineVersion!! }
+            .mapNotNull { (version, g) -> timeline.ordinalOf(version)?.let { PlacedBuild(version, it, g.minOf { x -> x.endedAt }) } }
+            .sortedBy { it.ordinal }
 
         return AiVsHumanReport(
             days = days,
             bucket = bucket,
             overall = AiRecord.of(inRange.map { it.outcome }),
             previous = previous,
-            series = series(inRange, bucket, rangeStart, now),
+            series = series.map { it.copy(aiChanges = changesPerBucket[it.start] ?: 0) },
             byMode = inRange.groupBy { it.gameMode to it.format }
                 .map { (key, g) -> AiModeRecord(key.first, key.second, AiRecord.of(g.map { it.outcome })) }
                 .sortedWith(compareByDescending<AiModeRecord> { it.record.games }.thenBy { it.gameMode }),
@@ -183,6 +232,7 @@ object AiVsHumanAggregator {
                         firstSeen = g.first().endedAt.toString(),
                         lastSeen = g.last().endedAt.toString(),
                         record = AiRecord.of(g.map { it.outcome }),
+                        newAiChanges = newChangesIn(version, placedBuilds, timeline),
                     )
                 }
                 .sortedByDescending { it.firstSeen }
@@ -208,7 +258,32 @@ object AiVsHumanAggregator {
                 }
                 .sortedWith(compareByDescending<AiHumanRecord> { it.games }.thenBy { it.name.lowercase() })
                 .take(MAX_HUMANS),
+            aiChanges = AiChangeLog(
+                available = timeline.available,
+                changes = changesOnAxis.sortedByDescending { it.ordinal }.map { change ->
+                    // The first build on main at or after the change is the first to carry it.
+                    val shipped = placedBuilds.firstOrNull { it.ordinal >= change.ordinal }
+                    AiChangeEntry(
+                        sha = change.sha,
+                        committedAt = change.committedAt.toString(),
+                        pr = change.pr,
+                        subject = change.subject,
+                        shippedIn = shipped?.version,
+                        shippedAt = shipped?.firstSeen?.toString(),
+                        bucketStart = bucket.startOf(change.committedAt.utcDay()).toString(),
+                    )
+                },
+            ),
         )
+    }
+
+    private data class PlacedBuild(val version: String, val ordinal: Int, val firstSeen: Instant)
+
+    /** The AI changes [version] carried past the newest known build before it on main. */
+    private fun newChangesIn(version: String, placed: List<PlacedBuild>, timeline: EngineAiTimeline): Int? {
+        val ordinal = timeline.ordinalOf(version) ?: return null
+        val before = placed.lastOrNull { it.ordinal < ordinal } ?: return null
+        return timeline.changes.count { it.ordinal > before.ordinal && it.ordinal <= ordinal }
     }
 
     private fun series(games: List<AiMatchGame>, bucket: AiBucket, rangeStart: Instant?, now: Instant): List<AiPeriodRecord> {

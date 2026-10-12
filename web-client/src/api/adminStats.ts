@@ -167,6 +167,18 @@ export interface AiRecord {
 
 export type AiBucket = 'DAY' | 'WEEK' | 'MONTH'
 
+/** A change to the engine AI merged to main, and the first deployed build that carried it (null = none yet). */
+export interface AiChange {
+  readonly sha: string
+  readonly committedAt: string
+  readonly pr: number | null
+  readonly subject: string
+  readonly shippedIn: string | null
+  readonly shippedAt: string | null
+  /** The series bucket it was merged in. */
+  readonly bucketStart: string
+}
+
 export interface AiVsHumanReport {
   /** Range length in days; null for all time. */
   readonly days: number | null
@@ -174,11 +186,23 @@ export interface AiVsHumanReport {
   readonly overall: AiRecord
   /** The equally long window before the range; null for all time. */
   readonly previous: AiRecord | null
-  /** Oldest first, gap-filled. `start` is the bucket's first UTC day. */
-  readonly series: { readonly start: string; readonly record: AiRecord }[]
+  /** Oldest first, gap-filled. `start` is the bucket's first UTC day; `aiChanges` counts engine AI changes merged in it. */
+  readonly series: { readonly start: string; readonly record: AiRecord; readonly aiChanges: number }[]
   readonly byMode: { readonly gameMode: string | null; readonly format: string | null; readonly record: AiRecord }[]
-  /** Newest deployed build first. */
-  readonly byBuild: { readonly version: string; readonly firstSeen: string; readonly lastSeen: string; readonly record: AiRecord }[]
+  /** Newest deployed build first. `newAiChanges`: AI changes it added over the build before it (null = unknown). */
+  readonly byBuild: {
+    readonly version: string
+    readonly firstSeen: string
+    readonly lastSeen: string
+    readonly record: AiRecord
+    readonly newAiChanges: number | null
+  }[]
+  /** Engine AI changes merged within the time axis, newest first. */
+  readonly aiChanges: {
+    /** False when the server build had no git history, so changes can't be shown. */
+    readonly available: boolean
+    readonly changes: AiChange[]
+  }
   /** Latest games, oldest first. */
   readonly recent: { readonly endedAt: string; readonly gameMode: string | null; readonly format: string | null; readonly outcome: AiMatchOutcome }[]
   /** Humans who played the AI most, from the human's side. */

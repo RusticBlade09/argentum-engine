@@ -5,6 +5,7 @@
   --ai: #e66767;
   --human: #3987e5;
   --draw: #6b7080;
+  --change: #199e70;
   --track: rgba(255, 255, 255, 0.06);
   --gap: rgba(10, 12, 20, 0.95);
   display: flex;
@@ -115,6 +116,21 @@
 .legendLine { width: 16px; height: 2px; border-radius: 1px; background: var(--ai); }
 .legendBand { width: 16px; height: 10px; border-radius: 3px; background: rgba(230, 103, 103, 0.22); }
 .legendDot { width: 7px; height: 7px; margin: 0 4px; border-radius: 50%; background: rgba(230, 103, 103, 0.55); }
+.legendChange {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 3px;
+  border: 1.5px solid var(--change);
+  color: #7fe3bf;
+  font-size: 9px;
+  font-weight: 700;
+  font-style: italic;
+}
+
+.trendCharts { cursor: pointer; }
 .legendEven { width: 16px; height: 0; border-top: 2px dashed #8f98ac; }
 
 .subchartLabel {
@@ -143,6 +159,82 @@
 .tooltipMuted { color: #8f98ac; }
 .tooltipKey { display: inline-flex; align-items: center; gap: 6px; }
 .tooltipDivider { height: 1px; margin: 7px 0; background: rgba(255, 255, 255, 0.1); }
+.tooltipChangesHead { color: #7fe3bf; font-weight: 600; }
+.tooltipChanges {
+  max-width: 280px;
+  margin: 3px 0 2px;
+  padding-left: 14px;
+  color: #d5dae6;
+}
+.tooltipChanges li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Engine AI changes ─────────────────────────────────────────────────── */
+
+.changes { list-style: none; margin: 0; padding: 0; }
+.change {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.change:last-child { border-bottom: none; }
+.changeDate { color: #8f98ac; font-size: 12px; font-variant-numeric: tabular-nums; }
+.changeMain { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.changeSubject { min-width: 0; color: #f1f3f9; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.changeMeta { flex: none; font-size: 12px; }
+.changeLink { color: #7fe3bf; text-decoration: none; }
+.changeLink:hover { text-decoration: underline; }
+.changeShipped { display: flex; align-items: center; justify-content: flex-end; gap: 8px; white-space: nowrap; }
+.changeShippedWhen { color: #8f98ac; font-size: 12px; }
+.buildChip {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d5dae6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+@media (max-width: 560px) {
+  .change { grid-template-columns: 1fr auto; grid-template-areas: 'main main' 'date shipped'; gap: 4px 12px; }
+  .changeMain { grid-area: main; }
+  .changeDate { grid-area: date; }
+  .changeShipped { grid-area: shipped; }
+}
+
+.buildBadge {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 3px;
+  border: 1.5px solid var(--change);
+  color: #7fe3bf;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+  cursor: help;
+}
+
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(25, 158, 112, 0.5);
+  background: rgba(25, 158, 112, 0.14);
+  color: #7fe3bf;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.filterChip:hover { background: rgba(25, 158, 112, 0.24); }
+.linkButton { background: none; border: none; padding: 0; color: #f2c97a; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ── Forest rows (per build / per mode) ────────────────────────────────── */
 

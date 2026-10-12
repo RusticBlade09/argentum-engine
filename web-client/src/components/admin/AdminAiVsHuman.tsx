@@ -19,13 +19,15 @@ import {
   Line,
   ReferenceLine,
   ResponsiveContainer,
+  Scatter,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
-import { type AiMatchOutcome, type AiRecord, type AiVsHumanReport, fetchAiVsHuman } from '@/api/adminStats'
+import { type AiChange, type AiMatchOutcome, type AiRecord, type AiVsHumanReport, fetchAiVsHuman } from '@/api/adminStats'
 import type { AdminAuth } from '@/api/adminAuth'
 import { pageStyles } from '@/components/ui/PageShell'
+import { GITHUB_REPOSITORY_URL } from '@/utils/links'
 import { gameModeLabel } from './statFormat'
 import { AdminScreen, Panel, StatCard, Table, cellStyle } from './adminUi'
 import css from './aiVsHuman.module.css'
@@ -33,6 +35,8 @@ import css from './aiVsHuman.module.css'
 const AI = '#e66767'
 const HUMAN = '#3987e5'
 const DRAW = '#6b7080'
+/** Engine AI changes — validated against the AI/human pair; markers also carry a shape and a count. */
+const CHANGE = '#199e70'
 const AXIS = '#8f98ac'
 
 interface Range {
@@ -139,6 +143,19 @@ export function AdminAiVsHuman({ auth, onBack }: { auth: AdminAuth; onBack: () =
 
 function ReportView({ report, range }: { report: AiVsHumanReport; range: Range }) {
   const { overall } = report
+  /** A bucket picked on the trend chart narrows the AI-changes list to it. */
+  const [selectedBucket, setSelectedBucket] = useState<string | null>(null)
+  useEffect(() => setSelectedBucket(null), [report])
+  const changesByBucket = useMemo(() => {
+    const map = new Map<string, AiChange[]>()
+    for (const c of report.aiChanges.changes) map.set(c.bucketStart, [...(map.get(c.bucketStart) ?? []), c])
+    return map
+  }, [report.aiChanges.changes])
+  const changesByBuild = useMemo(() => {
+    const map = new Map<string, AiChange[]>()
+    for (const c of report.aiChanges.changes) if (c.shippedIn) map.set(c.shippedIn, [...(map.get(c.shippedIn) ?? []), c])
+    return map
+  }, [report.aiChanges.changes])
   return (
     <>
       <Panel>
@@ -155,11 +172,22 @@ function ReportView({ report, range }: { report: AiVsHumanReport; range: Range }
 
       <Panel
         title="AI win rate over time"
-        subtitle={`Trailing ${TREND_WINDOW[report.bucket].label} rate over decisive games · hover for each ${report.bucket.toLowerCase()}`}
-        action={<TrendLegend bucket={report.bucket} />}
+        subtitle={`Trailing ${TREND_WINDOW[report.bucket].label} rate over decisive games · click a ${report.bucket.toLowerCase()} to list its AI changes`}
+        action={<TrendLegend bucket={report.bucket} showChanges={report.aiChanges.available} />}
       >
-        <TrendCharts report={report} />
+        <TrendCharts
+          report={report}
+          changesByBucket={changesByBucket}
+          selectedBucket={selectedBucket}
+          onSelectBucket={(b) => setSelectedBucket((cur) => (cur === b ? null : b))}
+        />
       </Panel>
+
+      <AiChangesPanel
+        report={report}
+        selectedBucket={selectedBucket}
+        onClearBucket={() => setSelectedBucket(null)}
+      />
 
       <div className={css.twoCol}>
         <Panel title="By build" subtitle="Each deployed build's record, newest first — is the latest one stronger?">
@@ -173,6 +201,7 @@ function ReportView({ report, range }: { report: AiVsHumanReport; range: Range }
                   <>
                     <span className={css.mono}>{shortVersion(b.version)}</span>
                     {i === 0 && <span className={css.latest}>Latest</span>}
+                    <BuildChangesBadge count={b.newAiChanges} changes={changesByBuild.get(b.version) ?? []} />
                   </>
                 ),
                 titleText: b.version,
@@ -212,7 +241,9 @@ function ReportView({ report, range }: { report: AiVsHumanReport; range: Range }
       <p className={css.footnote}>
         Counts every recorded game with at least one AI seat and one human seat. Win rates are over decisive games — a
         draw (or an AI and a human winning together on a Two-Headed Giant team) counts for neither side. Bands and
-        whiskers are 95% Wilson intervals. A game's build comes from its stored replay.
+        whiskers are 95% Wilson intervals. A game's build comes from its stored replay. AI changes are the entries of{' '}
+        <span className={css.mono}>ai/CHANGELOG.md</span>, placed on the day their PR merged; a build's{' '}
+        <span className={css.buildBadge}>+n</span> counts the ones it carried that the build before it did not.
       </p>
     </>
   )
@@ -344,13 +375,26 @@ interface TrendPoint {
   humanWins: number
   draws: number
   games: number
+  aiChanges: number
+  /** Pins the bucket's AI-change marker to the top of the plot; null when nothing merged. */
+  changeMarker: number | null
 }
 
-function TrendCharts({ report }: { report: AiVsHumanReport }) {
+function TrendCharts({
+  report,
+  changesByBucket,
+  selectedBucket,
+  onSelectBucket,
+}: {
+  report: AiVsHumanReport
+  changesByBucket: Map<string, AiChange[]>
+  selectedBucket: string | null
+  onSelectBucket: (bucket: string) => void
+}) {
   const trendWindow = TREND_WINDOW[report.bucket]
   const data: TrendPoint[] = useMemo(() => {
     const series = report.series
-    return series.map(({ start, record: r }, i) => {
+    return series.map(({ start, record: r, aiChanges }, i) => {
       let ai = 0
       let human = 0
       for (const { record: w } of series.slice(Math.max(0, i - trendWindow.size + 1), i + 1)) {
@@ -368,15 +412,23 @@ function TrendCharts({ report }: { report: AiVsHumanReport }) {
         humanWins: r.humanWins,
         draws: r.draws,
         games: r.games,
+        aiChanges,
+        changeMarker: aiChanges > 0 ? 100 : null,
       }
     })
   }, [report.series, trendWindow.size])
   const tick = (d: string) => tickLabel(d, report.bucket)
+  const select = (state: { activeLabel?: string | number } | null) => {
+    if (state?.activeLabel != null) onSelectBucket(String(state.activeLabel))
+  }
+  const selectedLine = selectedBucket && (
+    <ReferenceLine x={selectedBucket} stroke={CHANGE} strokeWidth={1.5} strokeDasharray="4 3" ifOverflow="hidden" />
+  )
 
   return (
-    <>
-      <ResponsiveContainer width="100%" height={260}>
-        <ComposedChart data={data} syncId="ai-vs-human" margin={{ top: 8, right: 12, bottom: 0, left: -12 }}>
+    <div className={css.trendCharts}>
+      <ResponsiveContainer width="100%" height={280}>
+        <ComposedChart data={data} syncId="ai-vs-human" margin={{ top: 26, right: 12, bottom: 0, left: -12 }} onClick={select}>
           <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
           <XAxis dataKey="start" stroke={AXIS} fontSize={11} tickFormatter={tick} minTickGap={24} tickLine={false} />
           <YAxis
@@ -389,10 +441,11 @@ function TrendCharts({ report }: { report: AiVsHumanReport }) {
             axisLine={false}
           />
           <Tooltip
-            content={<TrendTooltip bucket={report.bucket} windowLabel={trendWindow.label} />}
+            content={<TrendTooltip bucket={report.bucket} windowLabel={trendWindow.label} changesByBucket={changesByBucket} />}
             cursor={{ stroke: 'rgba(255,255,255,0.25)' }}
           />
           <ReferenceLine y={50} stroke={AXIS} strokeDasharray="5 4" strokeWidth={1.5} />
+          {selectedLine}
           <Area dataKey="band" stroke="none" fill={AI} fillOpacity={0.16} isAnimationActive={false} activeDot={false} />
           {/* Each bucket on its own: dots only, so a thin week reads as one noisy sample, not a swing. */}
           <Line
@@ -410,11 +463,18 @@ function TrendCharts({ report }: { report: AiVsHumanReport }) {
             activeDot={{ r: 5, fill: AI, stroke: 'rgba(10,12,20,0.95)', strokeWidth: 2 }}
             isAnimationActive={false}
           />
+          {report.aiChanges.available && (
+            <Scatter
+              dataKey="changeMarker"
+              isAnimationActive={false}
+              shape={(props: unknown) => <ChangeMarker {...(props as ChangeMarkerProps)} selectedBucket={selectedBucket} />}
+            />
+          )}
         </ComposedChart>
       </ResponsiveContainer>
       <p className={css.subchartLabel}>Games played</p>
       <ResponsiveContainer width="100%" height={92}>
-        <BarChart data={data} syncId="ai-vs-human" margin={{ top: 0, right: 12, bottom: 0, left: -12 }} barCategoryGap="18%">
+        <BarChart data={data} syncId="ai-vs-human" margin={{ top: 0, right: 12, bottom: 0, left: -12 }} barCategoryGap="18%" onClick={select}>
           <XAxis dataKey="start" hide />
           <YAxis stroke={AXIS} fontSize={10} allowDecimals={false} tickLine={false} axisLine={false} width={48} />
           {/* Synced with the rate chart, whose tooltip already tells the record — just highlight the column. */}
@@ -432,7 +492,47 @@ function TrendCharts({ report }: { report: AiVsHumanReport }) {
           />
         </BarChart>
       </ResponsiveContainer>
-    </>
+    </div>
+  )
+}
+
+interface ChangeMarkerProps {
+  cx?: number
+  cy?: number
+  payload?: TrendPoint
+}
+
+/**
+ * An AI-change marker above the plot: a downward tab with the bucket's merge count, so its shape and
+ * number carry it as well as its colour. The picked bucket's marker is filled.
+ */
+function ChangeMarker({ cx, cy, payload, selectedBucket }: ChangeMarkerProps & { selectedBucket: string | null }) {
+  if (cx == null || cy == null || !payload || payload.aiChanges === 0) return null
+  const label = payload.aiChanges > 99 ? '99+' : String(payload.aiChanges)
+  const w = Math.max(16, 6 + label.length * 6)
+  const top = cy - 22
+  const selected = payload.start === selectedBucket
+  return (
+    <g style={{ cursor: 'pointer' }}>
+      <title>{`${payload.aiChanges} AI change${payload.aiChanges === 1 ? '' : 's'} merged`}</title>
+      <path
+        d={`M${cx - w / 2},${top + 3} q0,-3 3,-3 h${w - 6} q3,0 3,3 v9 q0,3 -3,3 h-${w / 2 - 7} l-4,4 l-4,-4 h-${w / 2 - 7} q-3,0 -3,-3 z`}
+        fill={selected ? CHANGE : 'rgba(10,12,20,0.95)'}
+        stroke={CHANGE}
+        strokeWidth={1.5}
+      />
+      <text
+        x={cx}
+        y={top + 10.5}
+        textAnchor="middle"
+        fontSize={9.5}
+        fontWeight={700}
+        fill={selected ? '#06140f' : '#7fe3bf'}
+        style={{ fontVariantNumeric: 'tabular-nums' }}
+      >
+        {label}
+      </text>
+    </g>
   )
 }
 
@@ -459,20 +559,26 @@ function SwatchRow({ swatch, label, value }: { swatch: string; label: string; va
   )
 }
 
+/** How many change titles a tooltip lists before "and N more". */
+const TOOLTIP_CHANGES = 3
+
 function TrendTooltip({
   active,
   payload,
   bucket,
   windowLabel,
+  changesByBucket,
 }: {
   active?: boolean
   payload?: { payload?: TrendPoint }[]
   bucket: AiVsHumanReport['bucket']
   windowLabel: string
+  changesByBucket: Map<string, AiChange[]>
 }) {
   const p = active ? payload?.[0]?.payload : undefined
   if (!p) return null
   const unit = bucket.toLowerCase()
+  const changes = changesByBucket.get(p.start) ?? []
   return (
     <div className={css.tooltip}>
       <div className={css.tooltipTitle}>{tooltipTitle(p.start, bucket)}</div>
@@ -502,11 +608,27 @@ function TrendTooltip({
           {p.draws > 0 && <SwatchRow swatch={css.swatchDraw ?? ''} label="Draws" value={p.draws} />}
         </>
       )}
+      {changes.length > 0 && (
+        <>
+          <div className={css.tooltipDivider} />
+          <div className={css.tooltipChangesHead}>
+            {changes.length} AI change{changes.length === 1 ? '' : 's'} merged
+          </div>
+          <ul className={css.tooltipChanges}>
+            {changes.slice(0, TOOLTIP_CHANGES).map((c) => (
+              <li key={c.sha}>{c.subject}</li>
+            ))}
+          </ul>
+          <div className={css.tooltipMuted}>
+            {changes.length > TOOLTIP_CHANGES ? `and ${changes.length - TOOLTIP_CHANGES} more · ` : ''}click to list
+          </div>
+        </>
+      )}
     </div>
   )
 }
 
-function TrendLegend({ bucket }: { bucket: AiVsHumanReport['bucket'] }) {
+function TrendLegend({ bucket, showChanges }: { bucket: AiVsHumanReport['bucket']; showChanges: boolean }) {
   return (
     <div className={css.legend}>
       <span className={css.legendItem}>
@@ -525,7 +647,111 @@ function TrendLegend({ bucket }: { bucket: AiVsHumanReport['bucket'] }) {
         <span className={css.legendEven} />
         Even
       </span>
+      {showChanges && (
+        <span className={css.legendItem}>
+          <span className={css.legendChange}>n</span>
+          AI changes merged
+        </span>
+      )}
     </div>
+  )
+}
+
+// ============================================================================
+// Engine AI changes: what merged, and the build that first carried it
+// ============================================================================
+
+/** Rows shown before "Show all". */
+const CHANGES_PREVIEW = 8
+
+function AiChangesPanel({
+  report,
+  selectedBucket,
+  onClearBucket,
+}: {
+  report: AiVsHumanReport
+  selectedBucket: string | null
+  onClearBucket: () => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const { available, changes } = report.aiChanges
+  const shown = selectedBucket ? changes.filter((c) => c.bucketStart === selectedBucket) : changes
+  const visible = expanded || selectedBucket ? shown : shown.slice(0, CHANGES_PREVIEW)
+  const subtitle = selectedBucket
+    ? `${shown.length} merged in the ${tooltipTitle(selectedBucket, report.bucket).replace(/^Week of/, 'week of')}`
+    : `${changes.length} merged in this range, from ai/CHANGELOG.md — each with the first deployed build that carried it`
+
+  const action = selectedBucket ? (
+    <button type="button" className={css.filterChip} onClick={onClearBucket}>
+      {tooltipTitle(selectedBucket, report.bucket)}
+      <span aria-hidden>✕</span>
+      <span className={css.srOnly}>Show every change</span>
+    </button>
+  ) : shown.length > CHANGES_PREVIEW ? (
+    <button type="button" className={css.linkButton} onClick={() => setExpanded((v) => !v)}>
+      {expanded ? `Show latest ${CHANGES_PREVIEW}` : `Show all ${shown.length}`}
+    </button>
+  ) : undefined
+
+  return (
+    <Panel title="Engine AI changes" {...(available ? { subtitle } : {})} action={action}>
+      {!available ? (
+        <p style={cellStyle.muted}>
+          This server build was made without git history, so it can't tell when the AI changed. Deploys build with
+          full history; a local build from a full clone has it too.
+        </p>
+      ) : shown.length === 0 ? (
+        <p style={cellStyle.muted}>
+          {selectedBucket ? 'No AI changes merged then.' : 'No AI changes logged in ai/CHANGELOG.md for this range.'}
+        </p>
+      ) : (
+        <ol className={css.changes}>
+          {visible.map((c) => (
+            <li key={c.sha} className={css.change}>
+              <span className={css.changeDate} title={new Date(c.committedAt).toLocaleString()}>
+                {shortDate(c.committedAt)}
+              </span>
+              <span className={css.changeMain}>
+                <span className={css.changeSubject}>{c.subject}</span>
+                <span className={css.changeMeta}>
+                  {c.pr != null ? (
+                    <a href={`${GITHUB_REPOSITORY_URL}/pull/${c.pr}`} target="_blank" rel="noreferrer" className={css.changeLink}>
+                      #{c.pr}
+                    </a>
+                  ) : (
+                    <a href={`${GITHUB_REPOSITORY_URL}/commit/${c.sha}`} target="_blank" rel="noreferrer" className={css.changeLink}>
+                      <span className={css.mono}>{c.sha.slice(0, 7)}</span>
+                    </a>
+                  )}
+                </span>
+              </span>
+              <span className={css.changeShipped}>
+                {c.shippedIn ? (
+                  <>
+                    <span className={css.buildChip}>{shortVersion(c.shippedIn)}</span>
+                    <span className={css.changeShippedWhen}>live {shortDate(c.shippedAt ?? c.committedAt)}</span>
+                  </>
+                ) : (
+                  <span className={css.changeShippedWhen}>No games on it yet</span>
+                )}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </Panel>
+  )
+}
+
+/** A "+3" chip — the timeline marker's look — on a build that added AI changes; titles on hover. */
+function BuildChangesBadge({ count, changes }: { count: number | null; changes: AiChange[] }) {
+  if (count == null || count === 0) return null
+  const head = `${count} AI change${count === 1 ? '' : 's'} since the build before`
+  const titles = [head, ...changes.map((c) => `• ${c.subject}`)].join('\n')
+  return (
+    <span className={css.buildBadge} title={titles} aria-label={head}>
+      +{count}
+    </span>
   )
 }
 
@@ -556,7 +782,7 @@ interface ForestRow {
   key: string
   title: React.ReactNode
   titleText: string
-  sub: string
+  sub: React.ReactNode
   record: AiRecord
 }
 
