@@ -1,6 +1,7 @@
 package com.wingedsheep.gameserver.lobby
 
-import com.wingedsheep.gameserver.deck.SideboardDerivation
+import com.wingedsheep.ai.engine.deck.Wishboard
+import com.wingedsheep.engine.limited.SideboardDerivation
 import com.wingedsheep.gameserver.cube.CubeSetConfig
 import com.wingedsheep.gameserver.cube.ResolvedCube
 import com.wingedsheep.gameserver.protocol.ServerMessage
@@ -1815,10 +1816,11 @@ class TournamentLobby(
         // *derived* as pool − maindeck (CR 100.4b) and any client-sent value is ignored. In
         // PREMADE_DECKS (constructed) there is no pool, so the explicit client sideboard is kept.
         // Pool Play's "pool" is the whole cube, so deriving would seed a 300+ card SIDEBOARD zone
-        // (and hand wish effects the entire cube) — it gets no sideboard at all.
+        // (and hand wish effects the entire cube) — it gets a fifteen-card wishboard of cube cards
+        // the deck doesn't play instead, the constructed-sized sideboard of CR 100.4a.
         val effectiveSideboard = when {
             isPremade -> sideboard
-            isCubePoolPlay -> emptyMap()
+            isCubePoolPlay -> Wishboard.build(playerState.cardPool, exclude = deckList.keys)
             else -> SideboardDerivation.fromPool(playerState.cardPool, deckList)
         }
 

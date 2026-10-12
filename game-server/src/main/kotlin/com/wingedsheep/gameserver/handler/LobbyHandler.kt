@@ -1728,7 +1728,7 @@ class LobbyHandler(
             // Submitted in wire form — commander counted in, as `LobbyPlayerState.commander` documents
             // and as the match handlers' strip-at-start expects.
             val submitted = if (commander != null) generated.submissionList else generated.deckList
-            when (val result = lobby.submitDeck(aiPlayerId, submitted, commander = commander)) {
+            when (val result = lobby.submitDeck(aiPlayerId, submitted, commander = commander, sideboard = generated.sideboard)) {
                 is TournamentLobby.DeckSubmissionResult.Success -> {
                     logger.info(
                         "AI {} brought a generated {} deck ({} cards{}) to premade lobby {}",

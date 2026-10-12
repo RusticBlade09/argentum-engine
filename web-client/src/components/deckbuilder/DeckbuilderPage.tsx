@@ -36,6 +36,12 @@ import {
   isAdvancedQuery,
   type CardSummary,
 } from './cardFilter'
+import {
+  CONSTRUCTED_SIDEBOARD_MAX,
+  namesPhrase,
+  summarizeOutsideTheGame,
+  type OutsideTheGameSummary,
+} from './outsideTheGame'
 import { extractSetFilter } from './query'
 import {
   CardGrid,
@@ -1473,6 +1479,7 @@ export function DeckbuilderPage() {
             />
 
             <SideboardPanel
+              deckCards={deckCards}
               sideboardCards={sideboardCards}
               catalogIndex={catalogIndex}
               activeFormat={activeFormat}
@@ -1545,6 +1552,7 @@ export function DeckbuilderPage() {
           />
 
           <SideboardPanel
+            deckCards={deckCards}
             sideboardCards={sideboardCards}
             catalogIndex={catalogIndex}
             activeFormat={activeFormat}
@@ -2928,6 +2936,7 @@ const SB_NO_PRINTING_ART: Record<string, { imageUri: string | null; backFaceImag
 
 
 function SideboardPanel({
+  deckCards,
   sideboardCards,
   catalogIndex,
   activeFormat,
@@ -2936,6 +2945,7 @@ function SideboardPanel({
   onRemove,
   onMoveFromDeck,
 }: {
+  deckCards: Record<string, number>
   sideboardCards: Record<string, number>
   catalogIndex: Record<string, CardSummary>
   activeFormat: string | null
@@ -2946,6 +2956,10 @@ function SideboardPanel({
   onMoveFromDeck: (name: string) => void
 }) {
   const total = Object.values(sideboardCards).reduce((a, b) => a + b, 0)
+  const outside = useMemo(
+    () => summarizeOutsideTheGame(deckCards, sideboardCards, catalogIndex),
+    [deckCards, sideboardCards, catalogIndex],
+  )
 
   const { dragActive, dropHandlers } = useCardDropZone((payload) => {
     // A sideboard card dropped back onto the sideboard is a no-op.
@@ -2965,11 +2979,19 @@ function SideboardPanel({
       {...dropHandlers}
     >
       <div className={styles.sideboardHeader}>
-        <h3 className={styles.sideboardTitle}>Sideboard{total > 0 ? ` (${total})` : ''}</h3>
+        <h3 className={styles.sideboardTitle}>
+          Sideboard
+          {total > 0 && (
+            <span className={total > CONSTRUCTED_SIDEBOARD_MAX ? styles.sideboardOverCap : undefined}>
+              {` (${total}/${CONSTRUCTED_SIDEBOARD_MAX})`}
+            </span>
+          )}
+        </h3>
         <span className={styles.sideboardHint}>
-          Cards kept alongside your deck. Drag cards here from the grid or your deck list.
+          Cards you own outside the game. Drag cards here from the grid or your deck list.
         </span>
       </div>
+      <OutsideTheGameNote summary={outside} />
       {total > 0 ? (
         <DeckListPanel
           deckCards={sideboardCards}
@@ -2991,10 +3013,50 @@ function SideboardPanel({
         />
       ) : (
         <p className={styles.sideboardEmpty}>
-          Drag cards here to set them aside. Optional — most decks leave this empty.
+          {outside.reachers.length > 0
+            ? 'Drag cards here from the grid or your deck list.'
+            : 'Drag cards here to set them aside. Optional — most decks leave this empty.'}
         </p>
       )}
     </section>
+  )
+}
+
+/**
+ * The sideboard's one job in a game is feeding the cards that reach outside the game — Learn, the
+ * wishes, Karn. Say so when the deck has any: an empty sideboard turns every one of them into a
+ * blank, and a Learn deck with no Lessons only ever rummages. Silent for a deck with none, where
+ * the sideboard really is optional.
+ */
+function OutsideTheGameNote({ summary }: { summary: OutsideTheGameSummary }) {
+  if (summary.reachers.length === 0) {
+    if (summary.size <= CONSTRUCTED_SIDEBOARD_MAX) return null
+    return (
+      <p className={`${styles.sideboardReach} ${styles.sideboardReachWarn}`} role="status">
+        A constructed sideboard holds at most {CONSTRUCTED_SIDEBOARD_MAX} cards.
+      </p>
+    )
+  }
+  const who = namesPhrase(summary.reachers)
+  const verb = summary.reachers.length === 1 ? 'reaches' : 'reach'
+  let message: string
+  let warn = true
+  if (summary.size === 0) {
+    message = `${who} ${verb} outside the game, but your sideboard is empty — add up to ${CONSTRUCTED_SIDEBOARD_MAX} cards for ${summary.reachers.length === 1 ? 'it' : 'them'} to fetch.`
+  } else if (summary.learns && summary.lessons === 0) {
+    message = `${who} ${verb} outside the game. Learn only finds Lessons, and none are here yet.`
+  } else if (summary.size > CONSTRUCTED_SIDEBOARD_MAX) {
+    message = `${who} ${verb} outside the game. A constructed sideboard holds at most ${CONSTRUCTED_SIDEBOARD_MAX} cards — trim it to the ones worth fetching.`
+  } else {
+    warn = false
+    const lessons = summary.learns ? ` ${summary.lessons} Lesson${summary.lessons === 1 ? '' : 's'} for Learn.` : ''
+    message = `${who} can fetch from these ${summary.size} card${summary.size === 1 ? '' : 's'}.${lessons}`
+  }
+  return (
+    <p className={`${styles.sideboardReach} ${warn ? styles.sideboardReachWarn : ''}`} role="status">
+      <span aria-hidden="true">✦ </span>
+      {message}
+    </p>
   )
 }
 
