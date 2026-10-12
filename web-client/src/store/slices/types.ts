@@ -1042,6 +1042,8 @@ export type GameStore = {
     sideboard?: Record<string, number>,
     /** The second commander of a partner pair; ignored without `commander`. */
     secondCommander?: string | null,
+    /** The deck's companion (CR 702.139), a sideboard card; null for none. */
+    companion?: string | null,
   ) => void
   unsubmitLobbyDeck: () => void
 
@@ -1058,6 +1060,8 @@ export type GameStore = {
     sideboard?: Record<string, number>,
     /** The second commander of a partner pair; ignored without `commander`. */
     secondCommander?: string | null,
+    /** The deck's companion (CR 702.139), a sideboard card; null for none. */
+    companion?: string | null,
   ) => void
   setQuickGameLobbyReady: (ready: boolean) => void
   setQuickGameLobbySetCode: (setCodes: readonly string[]) => void
