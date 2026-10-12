@@ -101,6 +101,7 @@ class ScenarioBuilderService(
             checkZone("$label exile", config.exile)
             checkZone("$label sideboard", config.sideboard)
             checkZone("$label commanders", config.commanders)
+            checkZone("$label companion", listOfNotNull(config.companion))
             val battlefield = config.battlefield ?: emptyList()
             total += battlefield.size
             if (enforceLimits && battlefield.size > MAX_CARDS_PER_ZONE) {
@@ -190,6 +191,7 @@ class ScenarioBuilderService(
         config.library?.forEach { builder.withCardInLibrary(n, it) }
         config.exile?.forEach { builder.withCardInExile(n, it) }
         config.sideboard?.forEach { builder.withCardInSideboard(n, it) }
+        config.companion?.let { builder.withCompanion(n, it) }
     }
 
     private fun phaseToDefaultStep(phase: Phase): Step = when (phase) {
@@ -395,6 +397,17 @@ class ScenarioBuilderService(
             val playerId = playerFor(playerNumber)
             val cardId = createCard(cardName, playerId)
             state = state.addToZone(ZoneKey(playerId, Zone.SIDEBOARD), cardId)
+            return this
+        }
+
+        /** Put [cardName] in the player's sideboard as their revealed companion (CR 702.139). */
+        fun withCompanion(playerNumber: Int, cardName: String): ScenarioBuilder {
+            val playerId = playerFor(playerNumber)
+            val cardId = createCard(cardName, playerId)
+            state = state.addToZone(ZoneKey(playerId, Zone.SIDEBOARD), cardId)
+            state = state.updateEntity(playerId) {
+                it.with(com.wingedsheep.engine.state.components.player.CompanionComponent(cardId))
+            }
             return this
         }
 

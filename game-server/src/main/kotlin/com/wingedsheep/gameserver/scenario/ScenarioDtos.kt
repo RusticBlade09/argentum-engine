@@ -132,7 +132,12 @@ data class PlayerConfig(
      * [CommanderComponent] attached and registered in [CommanderRegistryComponent].
      * Provide one name for a standard commander, two for Partner / Background.
      */
-    val commanders: List<String>? = null
+    val commanders: List<String>? = null,
+    /**
+     * A revealed companion (CR 702.139): a card placed in the sideboard and marked as the player's
+     * companion, waiting outside the game for the {3} special action.
+     */
+    val companion: String? = null
 )
 
 /**
