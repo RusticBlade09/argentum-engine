@@ -307,7 +307,13 @@ class TriggerDetector(
                         val definitionId = source.get<CardComponent>()?.cardDefinitionId ?: return@let ctx
                         val chosen = source.get<CastChoicesComponent>()?.chosen.orEmpty()
                         val choices = optionalCostChoices(definitionId) { it in chosen }
-                        if (choices.isEmpty()) ctx else ctx.copy(selfCastCostChoices = choices)
+                        if (choices.isEmpty()) ctx else ctx.copy(
+                            selfCastCostChoices = choices,
+                            selfCastAdditionalCostChoices = chosen.filterKeys { it in choices }.mapNotNull { (slot, value) ->
+                                (value as? com.wingedsheep.engine.state.components.battlefield.ChoiceValue.NumberChoice)
+                                    ?.let { slot to it.amount }
+                            }.toMap(),
+                        )
                     }
                 val sourceEventContext = (event as? ZoneChangeEvent)?.takeIf { selfZoneEvent }?.let(TriggerContext::fromEvent)
                 val sourceAtEvent = events.subList(eventIndex + 1, events.size)
@@ -2767,6 +2773,8 @@ class TriggerDetector(
                     com.wingedsheep.sdk.core.CardType.PLANESWALKER in cardComponent.typeLine.cardTypes
                 is com.wingedsheep.sdk.scripting.predicates.CardPredicate.IsBattle ->
                     cardComponent.typeLine.isBattle
+                is com.wingedsheep.sdk.scripting.predicates.CardPredicate.IsKindred ->
+                    cardComponent.typeLine.isKindred
                 is com.wingedsheep.sdk.scripting.predicates.CardPredicate.IsPermanent ->
                     cardComponent.typeLine.isPermanent
                 is com.wingedsheep.sdk.scripting.predicates.CardPredicate.IsNonland ->

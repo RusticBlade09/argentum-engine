@@ -63,6 +63,12 @@ data class ScenarioRequest(
      * Null keeps the engine default (`MULTIPLE`), so existing scenarios are unchanged.
      */
     val attackMode: com.wingedsheep.sdk.core.AttackMode? = null,
+    /**
+     * Run the scenario as a Commander game (`Format.Commander`): 40 starting life for every seat
+     * that sets no [PlayerConfig.lifeTotal], and commander damage tallied against the 21 threshold.
+     * Pair it with [PlayerConfig.commanders]. Nullable like [teamVsTeam]: an absent field is null.
+     */
+    val commanderFormat: Boolean? = false,
     val phase: Phase? = null,
     val step: Step? = null,
     val activePlayer: Int? = null,
@@ -137,6 +143,11 @@ data class PlayerConfig(
      * Provide one name for a standard commander, two for Partner / Background.
      */
     val commanders: List<String>? = null,
+    /**
+     * A revealed companion (CR 702.139): a card placed in the sideboard and marked as the player's
+     * companion, waiting outside the game for the {3} special action.
+     */
+    val companion: String? = null,
     /**
      * Start this player in a dungeon (CR 309): the dungeon card in their command zone with the
      * venture marker on [DungeonConfig.room]. Nothing triggers — the board is staged as if the

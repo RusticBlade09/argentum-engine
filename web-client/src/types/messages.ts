@@ -971,6 +971,13 @@ export interface LegalActionInfo {
   readonly mandatoryAttackers?: readonly EntityId[]
   /** Valid attack targets: opponent planeswalker IDs that can be attacked */
   readonly validAttackTargets?: readonly EntityId[]
+  /**
+   * Sparse per-attacker narrowing of `validAttackTargets`: an attacker listed here may attack only
+   * the targets given (a per-defender restriction rules the rest out — "can't attack unless
+   * defending player controls a Mountain", "creatures can't attack you"). An absent attacker may
+   * attack any of `validAttackTargets`.
+   */
+  readonly attackTargetsByAttacker?: Readonly<Record<EntityId, readonly EntityId[]>>
   /** Valid blocker IDs for DeclareBlockers action */
   readonly validBlockers?: readonly EntityId[]
   /** Whether this spell has X in its mana cost */
@@ -2387,6 +2394,11 @@ export interface SubmitSealedDeckMessage {
    * pool − maindeck server-side (CR 100.4b).
    */
   readonly sideboard?: Record<string, number>
+  /**
+   * The deck's companion (CR 702.139) — a sideboard card the server adds to `sideboard` if it isn't
+   * listed there, checks against the deck, and reveals outside the game at game start.
+   */
+  readonly companion?: string
 }
 
 // ============================================================================
@@ -2553,6 +2565,7 @@ export function createSubmitSealedDeckMessage(
   sideboard?: Record<string, number>,
   secondCommander?: string | null,
   secondCommanderPrinting?: PrintingRef,
+  companion?: string | null,
 ): SubmitSealedDeckMessage {
   return {
     type: 'submitSealedDeck',
@@ -2563,6 +2576,7 @@ export function createSubmitSealedDeckMessage(
     ...(commander && secondCommander ? { secondCommander } : {}),
     ...(commander && secondCommander && secondCommanderPrinting ? { secondCommanderPrinting } : {}),
     ...(sideboard && Object.keys(sideboard).length > 0 ? { sideboard } : {}),
+    ...(companion ? { companion } : {}),
   }
 }
 
@@ -3425,6 +3439,11 @@ export interface SubmitQuickGameLobbyDeckMessage {
    * random pool, whose sideboard the server derives from the pool instead.
    */
   readonly sideboard?: Record<string, number>
+  /**
+   * The deck's companion (CR 702.139) — a sideboard card the server adds to `sideboard` if it isn't
+   * listed there, checks against the deck, and reveals outside the game at game start.
+   */
+  readonly companion?: string
 }
 
 export interface SetQuickGameLobbyReadyMessage {
@@ -3504,6 +3523,7 @@ export function createSubmitQuickGameLobbyDeckMessage(
   sideboard?: Record<string, number>,
   secondCommander?: string | null,
   secondCommanderPrinting?: PrintingRef,
+  companion?: string | null,
 ): SubmitQuickGameLobbyDeckMessage {
   return {
     type: 'submitQuickGameLobbyDeck',
@@ -3514,6 +3534,7 @@ export function createSubmitQuickGameLobbyDeckMessage(
     ...(commander && secondCommander ? { secondCommander } : {}),
     ...(commander && secondCommander && secondCommanderPrinting ? { secondCommanderPrinting } : {}),
     ...(sideboard && Object.keys(sideboard).length > 0 ? { sideboard } : {}),
+    ...(companion ? { companion } : {}),
   }
 }
 export function createSetQuickGameLobbyReadyMessage(ready: boolean): SetQuickGameLobbyReadyMessage {

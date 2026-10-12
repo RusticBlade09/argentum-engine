@@ -110,6 +110,7 @@ class ScenarioBuilderService(
             }
             config.completedDungeons?.filter { com.wingedsheep.sdk.dungeons.Dungeons.byName(it) == null }
                 ?.forEach { errors += "Unknown dungeon: $it" }
+            checkZone("$label companion", listOfNotNull(config.companion))
             val battlefield = config.battlefield ?: emptyList()
             total += battlefield.size
             if (enforceLimits && battlefield.size > MAX_CARDS_PER_ZONE) {
@@ -160,6 +161,7 @@ class ScenarioBuilderService(
         val seats = request.seats()
         val builder = ScenarioBuilder(registry)
         builder.withPlayers(seats.map { it.first })
+        if (request.commanderFormat == true) builder.withCommanderFormat()
 
         seats.forEachIndexed { i, (_, config) -> applyPlayer(builder, i + 1, config) }
 
@@ -203,6 +205,7 @@ class ScenarioBuilderService(
         config.sideboard?.forEach { builder.withCardInSideboard(n, it) }
         config.dungeon?.let { builder.withDungeon(n, it.name, it.room) }
         config.completedDungeons?.takeIf { it.isNotEmpty() }?.let { builder.withCompletedDungeons(n, it) }
+        config.companion?.let { builder.withCompanion(n, it) }
     }
 
     private fun phaseToDefaultStep(phase: Phase): Step = when (phase) {
@@ -411,6 +414,17 @@ class ScenarioBuilderService(
             return this
         }
 
+        /** Put [cardName] in the player's sideboard as their revealed companion (CR 702.139). */
+        fun withCompanion(playerNumber: Int, cardName: String): ScenarioBuilder {
+            val playerId = playerFor(playerNumber)
+            val cardId = createCard(cardName, playerId)
+            state = state.addToZone(ZoneKey(playerId, Zone.SIDEBOARD), cardId)
+            state = state.updateEntity(playerId) {
+                it.with(com.wingedsheep.engine.state.components.player.CompanionComponent(cardId))
+            }
+            return this
+        }
+
         /**
          * Designate a card as the player's commander, placing it in the command zone with a
          * [CommanderComponent] and appending it to the player's [CommanderRegistryComponent].
@@ -426,6 +440,14 @@ class ScenarioBuilderService(
                 val ids = (existing?.commanderIds ?: emptyList()) + cardId
                 container.with(CommanderRegistryComponent(ids))
             }
+            return this
+        }
+
+        /** Switch to Commander rules (`Format.Commander`) and give every seat its starting life. */
+        fun withCommanderFormat(): ScenarioBuilder {
+            val format = com.wingedsheep.sdk.core.Format.Commander()
+            state = state.copy(format = format)
+            playerIds.forEach { state = state.withLifeTotal(it, format.startingLife) }
             return this
         }
 

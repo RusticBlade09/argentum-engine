@@ -938,6 +938,14 @@ data class ClientPlayer(
     val teamSharedTurns: Boolean = false,
 
     /**
+     * This player's revealed companion while it waits outside the game (CR 103.2b, 702.139a), or
+     * `null` when they have none or have already put it into their hand. Public: every viewer
+     * gets the card itself in [ClientGameState.cards], from its owner's sideboard zone, which is
+     * otherwise private. The client shows it beside the command zone.
+     */
+    val companionId: EntityId? = null,
+
+    /**
      * The dungeon this player owns in the command zone and where their venture marker is
      * (CR 309.4), or `null` when they aren't in a dungeon. Public information — dungeons and the
      * marker are on the table for everyone.

@@ -235,6 +235,15 @@ class SelectFromCollectionExecutor(
                     }
                     return EffectResult.success(state).copy(updatedCollections = collections)
                 }
+                if (count <= 0 && !effect.showAllCards) {
+                    // "Up to zero" is no choice at all — a dynamic count that came out 0 (Hurkyl,
+                    // Master Wizard's per-type pick for a type you didn't cast) selects nothing.
+                    val collections = mutableMapOf(effect.storeSelected to emptyList<EntityId>())
+                    if (remainderName != null) {
+                        collections[remainderName] = cards
+                    }
+                    return EffectResult.success(state).copy(updatedCollections = collections)
+                }
                 val nonSelectable = if (effect.showAllCards) cards.filter { it !in eligibleCards } else emptyList()
                 createDecision(state, context, effect, eligibleCards, 0, minOf(count, eligibleCards.size), decidingPlayerId, allCards = cards, nonSelectableCards = nonSelectable, controllerPermanentColors = controllerPermanentColors)
             }
@@ -506,10 +515,16 @@ class SelectFromCollectionExecutor(
             )
         }
 
+        // A choice among cards outside the game (a wish, Learn) says so: the cards on offer come
+        // from a zone the player never otherwise sees, and "Choose up to 1 card" alone reads as if
+        // they were drawn from nowhere.
+        val fromOutside = cards.isNotEmpty() &&
+            cards.all { state.logicalZone(it)?.zoneType == com.wingedsheep.sdk.core.Zone.SIDEBOARD }
+        val where = if (fromOutside) " from outside the game" else ""
         val prompt = effect.prompt ?: when {
-            minSelections == maxSelections -> "Choose $minSelections card${if (minSelections != 1) "s" else ""}"
-            minSelections == 0 -> "Choose up to $maxSelections card${if (maxSelections != 1) "s" else ""}"
-            else -> "Choose $minSelections to $maxSelections cards"
+            minSelections == maxSelections -> "Choose $minSelections card${if (minSelections != 1) "s" else ""}$where"
+            minSelections == 0 -> "Choose up to $maxSelections card${if (maxSelections != 1) "s" else ""}$where"
+            else -> "Choose $minSelections to $maxSelections cards$where"
         }
 
         val librarySearch = context.pipeline.storedCollections[PipelineState.searchedKey(effect.from)]

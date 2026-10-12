@@ -1,5 +1,7 @@
 package com.wingedsheep.engine.mechanics.cost.spell
 
+import com.wingedsheep.engine.state.LifePaymentPurpose
+
 import com.wingedsheep.engine.mechanics.cost.SharedCreatureTypeTapCost
 import com.wingedsheep.engine.mechanics.cost.PlayerCounterPayment
 import com.wingedsheep.engine.core.CardsRevealedEvent
@@ -200,7 +202,8 @@ internal object DiscardCostKind : SpellCostKind<CostAtom.Discard> {
     override fun validate(check: SpellCostCheck, cost: CostAtom.Discard): String? {
         val state = check.state
         val discarded = check.payment?.discardedCards ?: emptyList()
-        if (discarded.size < cost.count) {
+        if (discarded.distinct().size != discarded.size) return "Cannot discard the same card more than once"
+        if (discarded.size != cost.count) {
             return "You must discard ${cost.count} card(s) to cast this spell"
         }
         val handCards = state.getZone(ZoneKey(check.playerId, Zone.HAND))
@@ -307,7 +310,8 @@ internal object ExileFromCostKind : SpellCostKind<CostAtom.ExileFrom> {
         val state = check.state
         val exiled = check.payment?.exiledCards ?: emptyList()
         val zoneDesc = cost.zone.name.lowercase()
-        if (exiled.distinct().size < cost.count) {
+        if (exiled.distinct().size != exiled.size) return "Cannot exile the same card more than once"
+        if (exiled.size != cost.count) {
             return "You must exile ${cost.count} ${cost.filter.description}(s) from your $zoneDesc"
         }
         val zoneCards = state.getZone(ZoneKey(check.playerId, cost.zone))
@@ -986,19 +990,19 @@ internal object PayLifeCostKind : SpellCostKind<CostAtom.PayLife> {
     // CR 810.9a — affordability uses the team's shared total in Two-Headed Giant.
     // CR 119.4 — a player may pay life only if their life total is >= the payment.
     override fun canPay(state: GameState, payerId: EntityId, cost: CostAtom.PayLife, costHandler: CostHandler) =
-        state.canPayLife(payerId, cost.amount)
+        state.canPayLife(payerId, cost.amount, LifePaymentPurpose.CAST_SPELL)
 
     // Mode-level and cast-level affordability gate, so "discard a card or pay 3 life" doesn't
     // surface a Pay-3-Life action to a caster with fewer than 3 life (Bitter Triumph). Validation
     // still backstops it.
     override fun enumerate(env: SpellCostEnumeration, cost: CostAtom.PayLife, offer: SpellCostOffer): Boolean {
         offer.lifeRequired += cost.amount
-        return env.state.canPayLife(env.playerId, env.reservedLife + offer.lifeRequired)
+        return env.state.canPayLife(env.playerId, env.reservedLife + offer.lifeRequired, LifePaymentPurpose.CAST_SPELL)
     }
 
     override fun validate(check: SpellCostCheck, cost: CostAtom.PayLife): String? {
         // CR 119.4 — you can't pay life unless you have at least that much (CR 810.9a — team total)
-        if (!check.state.canPayLife(check.playerId, cost.amount)) {
+        if (!check.state.canPayLife(check.playerId, cost.amount, LifePaymentPurpose.CAST_SPELL)) {
             return "Not enough life to pay ${cost.amount} life"
         }
         return null

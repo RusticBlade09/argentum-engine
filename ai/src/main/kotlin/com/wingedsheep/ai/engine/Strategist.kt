@@ -28,6 +28,7 @@ import com.wingedsheep.engine.core.DeclareAttackers
 import com.wingedsheep.engine.core.DeclareBlockers
 import com.wingedsheep.engine.core.GameAction
 import com.wingedsheep.engine.core.PaymentStrategy
+import com.wingedsheep.engine.core.PlayLand
 import com.wingedsheep.engine.handlers.costs.GraveyardTotalExileResolver
 import com.wingedsheep.engine.legalactions.LegalAction
 import com.wingedsheep.engine.legalactions.MeaningfulActionFilter
@@ -159,6 +160,11 @@ class Strategist(
      * planeswalker spends on a loyalty ability. See [fuelLoyaltyCredit].
      */
     private val fuelLoyaltyIsNotBoardValue: Boolean = false,
+    /**
+     * [AiProfile.landDropUnlocksSpells] — a land drop scores as the best spell it makes castable.
+     * See [landDropFollowUps].
+     */
+    private val landDropUnlocksSpells: Boolean = false,
     /**
      * The profile's `EvaluationWeights.boardPresence`. Only [HoldPolicy] reads it, to quote a
      * patience discount in the same units the leaf score prices board value in.
@@ -342,8 +348,19 @@ class Strategist(
             }
         }
 
+        // ── Pass 1b: what each land drop makes castable ──
+        // Scored in the same batch as the leaves, from the same root, so the follow-ups compete
+        // with the other candidates on one scale. See [landDropFollowUps].
+        val followUps = if (landDropUnlocksSpells && !forcedPlay) {
+            landDropFollowUps(evaluationState, legalActions, leaves, leafStates, playerId, budget)
+        } else emptyList()
+
         // ── Pass 2: score every leaf at once ──
-        val leafScores = candidateEvaluator.scoreAll(evaluationState, leafStates, playerId, budget)
+        val allScores = candidateEvaluator.scoreAll(
+            evaluationState, leafStates + followUps.map { it.leaf }, playerId, budget,
+        )
+        val leafScores = allScores.subList(0, leafStates.size)
+        val followUpScores = allScores.subList(leafStates.size, allScores.size)
         val passScore = if (pass != null) {
             leafScores.first()
         } else {
@@ -354,8 +371,25 @@ class Strategist(
         // ── Pass 3: per-card timing and advisor adjustments, in raw evaluator units ──
         val firstCandidate = if (pass != null) 1 else 0
         val adjusted = (firstCandidate until leaves.size).map { i ->
-            val adjustment = if (forcedPlay) AdjustedScore(leafScores[i])
+            val own = if (forcedPlay) AdjustedScore(leafScores[i])
                 else adjustScore(evaluationState, leaves[i], playerId, leafScores[i], passScore, leafStates[i])
+            // A land drop is worth at least the best spell it unlocks, judged as that spell's own
+            // decision would judge it — from the position right after the land.
+            val unlocked = followUps.indices.filter { followUps[it].landIndex == i }.map { f ->
+                val followUp = followUps[f]
+                followUp to adjustScore(
+                    leafStates[i], followUp.action, playerId, followUpScores[f], passScore, followUp.leaf,
+                )
+            }.maxByOrNull { it.second.score }
+            val adjustment = if (unlocked != null && unlocked.second.score > own.score) {
+                val name = resolveCardName(leafStates[i], unlocked.first.action) ?: "a spell"
+                AdjustedScore(
+                    unlocked.second.score,
+                    listOfNotNull(own.note, "land first: unlocks $name %.2f".format(unlocked.second.score))
+                        .joinToString("; "),
+                    unlocked.second.idleBonus,
+                )
+            } else own
             Triple(leaves[i], leafScores[i], adjustment)
         }
 
@@ -867,6 +901,54 @@ class Strategist(
         )
     }
 
+    /** A spell a land drop made castable, and the quiet state casting it from the land's leaf reaches. */
+    private class LandFollowUp(val landIndex: Int, val action: LegalAction, val leaf: GameState)
+
+    /**
+     * For each land-drop leaf, the spells castable after the land that were not castable before it
+     * — [AiProfile.landDropUnlocksSpells].
+     *
+     * The search is one action deep, so a land drop is scored as a land and the spell it pays for
+     * is invisible until the next decision — by which time a cheaper spell may have spent the mana
+     * that spell needed. Only our own main phase with an empty stack, where the next decision is
+     * ours and the land's mana is still there for it. "Not castable before" is the raw enumerated
+     * action, so an evoke cast that was already affordable does not count, and the hard cast of the
+     * same card does. Stops when the budget does.
+     */
+    private fun landDropFollowUps(
+        root: GameState,
+        legalActions: List<LegalAction>,
+        leaves: List<LegalAction>,
+        leafStates: List<GameState>,
+        playerId: EntityId,
+        budget: DecisionBudget,
+    ): List<LandFollowUp> {
+        if (!root.isActiveTurnFor(playerId) || root.stack.isNotEmpty()) return emptyList()
+        if (root.step != Step.PRECOMBAT_MAIN && root.step != Step.POSTCOMBAT_MAIN) return emptyList()
+        val castableNow = legalActions.filter { it.affordable }.map { it.action }.toSet()
+        val followUps = mutableListOf<LandFollowUp>()
+        for (i in leaves.indices) {
+            if (leaves[i].action !is PlayLand) continue
+            val afterLand = leafStates[i]
+            if (afterLand.pendingDecision != null || afterLand.stack.isNotEmpty() ||
+                afterLand.step != root.step || afterLand.priorityPlayerId != playerId
+            ) continue
+            val unlocked = candidatesFrom(simulator.getLegalActions(afterLand, playerId)).filter {
+                it.action is CastSpell && it.action !in castableNow && !it.hasUnfillableTargetRequirement &&
+                    !(targetPolarityFromEffect && TargetSelection.aimsOnlyAtTheWrongSide(afterLand, it, playerId, intents))
+            }
+            if (unlocked.isEmpty()) continue
+            val here = StateProgress.digest(afterLand)
+            for (action in unlocked) {
+                if (budget.expired()) return followUps
+                val (materialized, simulation) = materialize(afterLand, action, playerId, budget, here)
+                if (simulation is SimulationResult.Illegal || simulation is SimulationResult.StoppedAtLimit) continue
+                followUps += LandFollowUp(i, action.copy(action = materialized), simulation.state)
+            }
+        }
+        return followUps
+    }
+
     /**
      * What the evaluator charged for taking [action]'s card out of our hand, refunded when the cast
      * merely *deployed* it — [AiProfile.permanentCastIsNotCardLoss].
@@ -1097,7 +1179,13 @@ class Strategist(
             is ActivateAbility -> gameAction.costPayment
             else -> null
         } ?: AdditionalCostPayment()
-        val primary = deterministicPayment(info, existing) ?: when (info.costType) {
+        val payerId = when (gameAction) {
+            is CastSpell -> gameAction.playerId
+            is ActivateAbility -> gameAction.playerId
+            else -> null
+        }
+        val cheapestFirst = CostCandidateOrder(state, payerId)
+        val primary = deterministicPayment(info, existing, cheapestFirst) ?: when (info.costType) {
             // Teamwork N (CR 702.194a): tap as *few* creatures as will clear the total-power
             // threshold, and among equally-few selections the *smallest* bodies — a board with a
             // 5/5 and a 1/1 paying teamwork 1 should turn the 1/1 sideways and keep the better
@@ -1134,7 +1222,7 @@ class Strategist(
             else -> return gameAction
         }
         // "Discard a card and sacrifice a creature": every further selection cost is paid too.
-        val payment = info.alsoRequired.fold(primary) { acc, extra -> deterministicPayment(extra, acc) ?: acc }
+        val payment = info.alsoRequired.fold(primary) { acc, extra -> deterministicPayment(extra, acc, cheapestFirst) ?: acc }
         return when (gameAction) {
             is CastSpell -> gameAction.copy(additionalCostPayment = payment)
             is ActivateAbility -> gameAction.copy(costPayment = payment)
@@ -1176,29 +1264,70 @@ class Strategist(
     }
 
     /**
-     * The first-candidates payment for a plain selection cost, merged into [existing]; null for a
-     * cost kind that needs more than "take the first N".
+     * The payment for a plain selection cost, merged into [existing]; null for a cost kind that
+     * needs more than "take the N cheapest".
+     *
+     * Costs that give something up — sacrifice, discard, bounce, tap — are paid with the candidates
+     * worth least to the payer, via [CostCandidateOrder]. They used to take the first N legal
+     * candidates in enumeration order, so Tar Pitcher ("{T}, Sacrifice a Goblin") sacrificed a 2/3
+     * flyer to ping a recursive 1/1 when it could have sacrificed itself (2026-10-12 logs, 2p game
+     * 1 T18). The source is ranked like any other candidate when the enumerator lists it. Because
+     * this runs before the action is simulated, the activation's own worth is then judged against
+     * the cheapest price rather than an arbitrary one.
      */
     private fun deterministicPayment(
         info: com.wingedsheep.engine.legalactions.AdditionalCostData,
         existing: AdditionalCostPayment,
+        cheapestFirst: CostCandidateOrder,
     ): AdditionalCostPayment? = when (info.costType) {
         "Blight" -> existing.copy(blightTargets = info.validBlightTargets.take(1))
         "Behold" -> existing.copy(beheldCards = info.validBeholdTargets.take(info.beholdCount))
         // "Reveal an Elemental card from your hand" (Flamekin Bladewhirl): the cards stay in hand.
         "RevealCard" -> existing.copy(revealedCards = info.validRevealTargets.take(info.revealCount))
-        "TapPermanents" -> existing.copy(tappedPermanents = info.validTapTargets.take(info.tapCount))
-        "DiscardCard" -> existing.copy(discardedCards = info.validDiscardTargets.take(info.discardCount))
-        "SacrificePermanent" -> existing.copy(
-            sacrificedPermanents = info.validSacrificeTargets.take(info.sacrificeCount)
+        "TapPermanents" -> existing.copy(
+            tappedPermanents = cheapestFirst.permanents(info.validTapTargets).take(info.tapCount)
         )
-        "BouncePermanent" -> existing.copy(bouncedPermanents = info.validBounceTargets.take(info.bounceCount))
+        "DiscardCard" -> existing.copy(
+            discardedCards = cheapestFirst.cardsInHand(info.validDiscardTargets).take(info.discardCount)
+        )
+        "SacrificePermanent" -> existing.copy(
+            sacrificedPermanents = cheapestFirst.permanents(info.validSacrificeTargets).take(info.sacrificeCount)
+        )
+        "BouncePermanent" -> existing.copy(
+            bouncedPermanents = cheapestFirst.permanents(info.validBounceTargets).take(info.bounceCount)
+        )
         "ExileFromGraveyard" -> existing.copy(exiledCards = info.validExileTargets.take(info.exileMinCount))
         // "Sacrifice any number of …": only the floor, so a zero-floor cost sacrifices nothing.
         "SacrificeVariable" -> existing.copy(
-            variableCostPermanents = info.validSacrificeTargets.take(info.sacrificeCount)
+            variableCostPermanents = cheapestFirst.permanents(info.validSacrificeTargets).take(info.sacrificeCount)
         )
         else -> null
+    }
+
+    /**
+     * Orders cost candidates least valuable first: permanents by [BoardPresence.permanentValue]
+     * (the same price [craftMaterials] and the sacrifice decision in [DecisionResponder] use),
+     * cards in hand by [CardSelectionValue] (the discard decision's price). Stable, so equal
+     * candidates keep the enumerator's order. The hand pricer is built lazily — most actions carry
+     * no discard cost.
+     */
+    private inner class CostCandidateOrder(private val state: GameState, private val payerId: EntityId?) {
+        private val handValue by lazy { payerId?.let { CardSelectionValue.of(state, it, intents) } }
+
+        fun permanents(candidates: List<EntityId>): List<EntityId> {
+            if (candidates.size < 2) return candidates
+            val projected = state.projectedState
+            return candidates.sortedBy { id ->
+                val card = state.getEntity(id)?.get<CardComponent>() ?: return@sortedBy 0.0
+                BoardPresence.permanentValue(state, projected, id, card, intents)
+            }
+        }
+
+        fun cardsInHand(candidates: List<EntityId>): List<EntityId> {
+            if (candidates.size < 2) return candidates
+            val value = handValue ?: return candidates
+            return candidates.sortedBy { value.score(it) }
+        }
     }
 
     /** The entity a chosen target points at, whichever arm of the union it is. */

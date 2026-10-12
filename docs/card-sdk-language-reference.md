@@ -5550,6 +5550,10 @@ This is the player-arm prerequisite for the planned composable mixed `TargetUnio
 - `Filters.PlainsCard` / `IslandCard` / `SwampCard` / `MountainCard` / `ForestCard` — specific basics.
 - `Filters.Instant` — instant card.
 - `Filters.Sorcery` — sorcery card.
+- `GameObjectFilter.Nonpermanent` — a card that isn't a permanent card (instant, sorcery, …;
+  `Not(IsPermanent)`). The "free" branch of companion conditions that speak only about permanent cards
+  (Lurrus, Zirda): `EachCard(Nonpermanent or …)`.
+- `Filters.Kindred` — kindred card (`CardPredicate.IsKindred`, see **Kindred** below).
 - `Filters.HasAdventure` — card that has an Adventure (adventurer card), regardless of which face it
   currently shows (`CardPredicate.HasAdventure`, backed by `CardComponent.hasAdventure`). A static,
   whole-card characteristic evaluated the same way in every zone.
@@ -5585,6 +5589,12 @@ This is the player-arm prerequisite for the planned composable mixed `TargetUnio
   graveyard" is `GameObjectFilter.Creature or GameObjectFilter.Battle`). The March of the Machine burn
   wording has its own union: `GameObjectFilter.CreaturePlaneswalkerOrBattle` /
   `TargetFilter.CreaturePlaneswalkerOrBattle` — "target creature, planeswalker, or battle".
+- **Kindred** — `CardPredicate.IsKindred` / `GameObjectFilter.Kindred` / `Filters.Kindred` (FQL key
+  `kindred`): the kindred card type (CR 308, formerly tribal). Subtype tests already see a kindred
+  card's creature types, so this is only needed where *card type* itself is counted or matched —
+  "for each card type among noncreature spells you've cast this turn" (Hurkyl, Master Wizard: one
+  `chooseUpToSplit` per type, sized `min(1, spellsCastThisTurn(You, Noncreature and type))`). A
+  `ChooseUpTo` whose dynamic count comes out 0 selects nothing without prompting.
 - `Filters.WithSubtype(subtype)` — card of a given subtype.
 - `GameObjectFilter.Multicolored` — multicolored card (two or more colors; `CardPredicate.IsMulticolored`).
 - `CardPredicate.IsColored` — one or more colors (the complement of `IsColorless`). Used for "a
@@ -10449,6 +10459,16 @@ riders, matching how the engine already treats e.g. City of Brass's damage durin
   (basic-land-type) and granted mana abilities alike and stops when the land loses its abilities. The manual
   activation sees it as a `PayLife` cost atom (unpayable below `amount` life, CR 119.4); auto-pay prices the source
   as a pain source (preferring untaxed sources) and charges the life when it taps it.
+- `PlayersCantPayLifeForCosts(excludeManaAbilities = false)` — no player can pay life **as a cost** of
+  casting a spell or activating an ability: life additional/alternative costs, "pay N life" / "pay X life"
+  activation costs (X capped at 0 — paying 0 is always allowed, CR 119.4b), and Phyrexian pips paid with life
+  (CR 107.4f; mana still pays them) all become unpayable, offered and submitted alike. Life paid while something
+  *resolves* (ward, `PayOrSuffer`, `Effects.PayLife`) and special actions are untouched. `excludeManaAbilities = true`
+  keeps a mana ability's life cost payable — even while it pays for a spell. Karn's Sylex: "Players can't pay life
+  to cast spells or to activate abilities that aren't mana abilities" →
+  `PlayersCantPayLifeForCosts(excludeManaAbilities = true)`. Stamped as a battlefield marker and read by
+  `GameState.canPayLife(player, amount, LifePaymentPurpose)` — every payment site names its purpose; stops when the
+  source loses its abilities. Unconditional only (not read behind a `ConditionalStaticAbility`).
 - `MayCastFromGraveyard(filter, lifeCost = 0, duringYourTurnOnly = false, entersWithCounter = null, addedSubtypeOnEntry = null, oncePerTurn = false, exileInsteadOfGraveyard = false, fromAnyGraveyard = false, additionalCost = null)`
   — cast spells matching `filter` from your graveyard following normal timing, optionally paying
   `lifeCost` life. Free for Yawgmoth's Agenda (`MayCastFromGraveyard(Nonland)`); `lifeCost = 1,
@@ -10840,7 +10860,7 @@ riders, matching how the engine already treats e.g. City of Brass's damage durin
   `GrantAlternativeCastingCost("{0}", listOf(Costs.additional.PayPlayerCounters(CounterType.ENERGY, 1)),
   spellFilter = GameObjectFilter.Creature.manaValueAtMost(3), asThoughFlash = true)`. Like every
   granted alternative cost it is offered for casts from hand only.
-- `MayCastWithoutPayingManaCost(controllerOnly = false, firstSpellOfTurnOnly = false, spellFilter = Any, oncePerTurn = false, fromExileOnly = false, fromHandOnly = false)` — a
+- `MayCastWithoutPayingManaCost(controllerOnly = false, firstSpellOfTurnOnly = false, spellFilter = Any, oncePerTurn = false, fromZones = null)` — a
   battlefield permission to cast a spell without paying its mana cost (CR 118.9). Composable
   gates: `controllerOnly = true` restricts the benefit to the source's controller ("you" wording);
   `firstSpellOfTurnOnly = true` requires the caster to be the active player and to have cast
@@ -10849,19 +10869,21 @@ riders, matching how the engine already treats e.g. City of Brass's damage durin
   `firstSpellOfTurnOnly`, the caster may cast other spells before using it; each source tracks its
   own use via `MayCastWithoutPayingCostUsedThisTurnComponent`, cleared at end of turn; `spellFilter`
   restricts *which* spells may be cast for free (card predicates, matched in any zone — default
-  `GameObjectFilter.Any` = every spell). `fromExileOnly = true` restricts the permission to spells
-  cast **from exile** (offered on the cast-from-exile path, withheld from hand/graveyard casts) —
-  Warped Space (Charred Foyer // Warped Space): "Once each turn, you may pay {0} rather than pay the
-  mana cost for a spell you cast from exile" → `MayCastWithoutPayingManaCost(controllerOnly = true,
-  oncePerTurn = true, fromExileOnly = true)`. `fromHandOnly = true` is the mirror for the "**from your
-  hand**" wording: it withholds the permission from every cast whose source zone isn't the hand —
-  including a client-supplied exile/graveyard cast on the validation path (mutually exclusive with
-  `fromExileOnly`). **Omnipresence** ("You may cast spells with mana value less than or equal to the
-  number of creatures you control from your hand without paying their mana costs") is
-  `MayCastWithoutPayingManaCost(controllerOnly = true, fromHandOnly = true, spellFilter =
-  GameObjectFilter.Any.manaValueAtMostDynamic(DynamicAmounts.creaturesYouControl()))`. The free-cast
-  permission is offered for cards in hand (default) and, when `fromExileOnly = true`, for cards being
-  cast from exile. Whatever the source, a free cast of an {X} spell has X = 0 (CR 107.3b): the
+  `GameObjectFilter.Any` = every spell). `fromZones` restricts the permission to spells cast **from** the listed zones (the zone the
+  spell left, CR 601.2a; `null` = any zone): the free cast is offered on each listed zone's cast path
+  and withheld from the rest, including a client-supplied cast on the validation path. Warped Space
+  (Charred Foyer // Warped Space): "Once each turn, you may pay {0} rather than pay the mana cost for
+  a spell you cast from exile" → `MayCastWithoutPayingManaCost(controllerOnly = true, oncePerTurn =
+  true, fromZones = setOf(Zone.EXILE))`. **Omnipresence** ("You may cast spells with mana value less
+  than or equal to the number of creatures you control from your hand without paying their mana
+  costs") is `MayCastWithoutPayingManaCost(controllerOnly = true, fromZones = setOf(Zone.HAND),
+  spellFilter = GameObjectFilter.Any.manaValueAtMostDynamic(DynamicAmounts.creaturesYouControl()))`.
+  **One with the Multiverse** ("Once during each of your turns, you may cast a spell from your hand or
+  the top of your library without paying its mana cost") is `MayCastWithoutPayingManaCost(
+  controllerOnly = true, oncePerTurn = true, fromZones = setOf(Zone.HAND, Zone.LIBRARY))`; the library
+  variant is offered on the top-of-library cast path, so it needs a play-from-top permission beside it
+  (`PlayLandsAndCastFilteredFromTopOfLibrary(spellFilter = GameObjectFilter.Any)`), and one use
+  covers both zones. The free variant is offered on the hand, exile and top-of-library cast paths. Whatever the source, a free cast of an {X} spell has X = 0 (CR 107.3b): the
   enumerator never asks for X on the free variant, and `CastValidator` rejects a free cast announcing
   X > 0. Weftwalking is
   `MayCastWithoutPayingManaCost(firstSpellOfTurnOnly = true)`; Zaffai and the
@@ -11862,6 +11884,36 @@ composite abilities).
   identity (702.124c). In play the pair needs nothing new: each commander is its own
   `CommanderComponent` (own tax, own commander-damage tally, 702.124d) and `ManaColorSet.CommanderIdentity`
   already unions every registered commander.
+- **Companion** (`KeywordAbility.companion(condition: CompanionCondition)` →
+  `KeywordAbility.CompanionAbility`, serialized `"Companion"`) — CR 702.139: "Companion—[Condition]", a
+  keyword that functions *outside the game*. Declaring it is the whole implementation:
+  - **Deck construction.** `CompanionEligibility.conditionError(companion, startingDeck, minimumDeckSize)`
+    (SDK, `sdk.model`) reads the condition against the printed cards of the *starting deck* — after the
+    sideboard is set aside and, in Commander, with the commanders still in it (702.139b). The server's
+    `DeckValidator` asks it for `Deck.companion` (a sideboard card's name): codes `INVALID_COMPANION`,
+    `COMPANION_NOT_IN_SIDEBOARD`, `COMPANION_CONDITION_NOT_MET`, and in Commander `COMPANION_COLOR_IDENTITY`
+    / `COMPANION_DUPLICATE_NAME` (CR 903.11a); elsewhere the companion counts toward the copy limit with
+    the deck's copies (100.4a). `CompanionEligibility.matchesPrinted(card, filter)` is the printed-card
+    reading of a `GameObjectFilter` it uses (state predicates fail closed; X counts as 0;
+    `HasActivatedAbility` counts cycling and a basic land type's intrinsic mana ability).
+  - **`CompanionCondition`** — four shapes, each fed a filter so a new companion composes:
+    - `EachCard(filter)` — every card of the starting deck matches it. Gyruda `Any.manaValueIsEven()`,
+      Obosh `Land or Any.manaValueIsOdd()`, Keruga `Land or Any.manaValueAtLeast(3)`, Lurrus
+      `Nonpermanent or Permanent.manaValueAtMost(2)`, Kaheera `Noncreature or Any.withAnyOfSubtypes(…)`,
+      Zirda `Nonpermanent or Any.withCardPredicate(CardPredicate.HasActivatedAbility)`.
+    - `DeckSizeAboveMinimum(extra)` — Yorion's 20 over the format minimum (never in 100-card Commander).
+    - `ShareACardType(among)` — Umori, `among = Nonland`: one card type common to all of them.
+    - `DistinctNames(among)` — Lutri, `among = Nonland`: no repeated name.
+
+    Jegantha ("more than one of the same mana symbol") reads a mana-cost symbol multiset no filter
+    expresses and is not modelled.
+  - **Game setup and play.** `GameInitializer` marks the named sideboard copy as the player's
+    `CompanionComponent` (on the player). It stays in `Zone.SIDEBOARD` — outside the game — but
+    `Visibility` shows it to every player and spectator (103.2b), and `ClientPlayer.companionId` points at
+    it. The special action `PutCompanionIntoHand` (enumerated by `CompanionEnumerator`, handled by
+    `PutCompanionIntoHandHandler`) pays {3} and moves it to hand — main phase, empty stack, own turn, once
+    per game (116.2g); the player keeps priority (117.3c). It emits a `ZoneChangeEvent` and a
+    `CompanionPutIntoHandEvent` (the log line).
 - **Replicate** (`KeywordAbility.replicate(cost)` / `KeywordAbility.replicate(additionalCost)`) —
   Replicate [cost] (CR 702.56a): "As an additional cost to cast this spell, you may pay [cost] any
   number of times" and "When you cast this spell, if a replicate cost was paid for it, copy it for
@@ -12384,6 +12436,8 @@ composite abilities).
   - `Keyword.IMPROVISE` — **Improvise** (CR 702.126). *"For each generic mana in this spell's total cost, you may tap an untapped artifact you control rather than pay that mana."* A plain `keywords(Keyword.IMPROVISE)` on the card; no other wiring. Artifacts only, spells only, and it is neither an additional nor an alternative cost (CR 702.126b) — it applies *after* the total cost is determined, so it never changes mana value and has no cap beyond the generic in that cost. Multiple instances are redundant (CR 702.126c). Grantable to other spells with `GrantKeywordToOwnSpells(Keyword.IMPROVISE, filter)` — **Ironheart, Clever Champion** (`GameObjectFilter.Noncreature`) — resolved through the same `GrantedKeywordResolver` every cost keyword uses, so granted improvise behaves exactly like printed. Cards: Ironheart, Clever Champion; Arc Reactor. It also composes with another alternative payment on the same spell: because the grant is by card type, improvise routinely lands on delve and convoke spells (which are noncreature almost to a card), and `CastSpellHandler` applies delve/convoke first and improvise second. `canAffordWithDelve` / `canAffordWithConvoke` take an optional `tapForGenericPermanents` pool so enumeration agrees with that — an unaffordable cast is *dropped* from the legal actions, not greyed out, so a missed combination makes a legal play unreachable. **Two scope limits to know before picking up an improvise card.** (a) *Spells cast from hand or a cast-from-zone permission are covered; the `{X}` generic is not yet.* Per CR 601.2b/601.2f the value of X is locked in before the total cost is determined, so CR 702.126a's "generic mana in this spell's total cost" **includes** the X-derived generic — the Whir of Invention ruling: choose X=3 on `{X}{U}{U}{U}` and two taps leave you paying `{1}{U}{U}{U}`. The engine currently credits taps only against the *printed* generic, and the enumerator's `maxAffordableX` deliberately ignores improvise to stay on the under-offering side; see the TODO in `CastSpellEnumerator`'s `maxAffordableX` block. Four printed cards need it — Whir of Invention, Universal Surveillance, Saheeli's Directive, Battle at the Bridge — and none is implemented yet, so implement that fix with the first of them. (b) *`CastFromZoneEnumerator` doesn't offer improvise* (graveyard/exile casts): no implemented card needs it, and closing it is the same metadata post-pass `CastSpellEnumerator.applyImproviseMetadata` already runs. (Convoke *is* offered there for may-play exile/graveyard casts — Hoarding Broodlord.)
   - **Waterbend** (Avatar: The Last Airbender) — *not a keyword ability*; a cost flag on an activated ability. Set `hasWaterbend = true` in the `activatedAbility { }` block (alongside a `cost = Costs.Mana("{N}")`). It means "Waterbend {N}: pay {N}, but for each generic mana in that cost you may tap an untapped **artifact or creature** you control instead." Improvise widened to creatures (or Convoke widened to artifacts and restricted to generic-only). You can tap a permanent that just came under your control — no summoning-sickness gate. The activated-ability handler applies it via `AlternativePaymentHandler.applyWaterbendForAbility`. The ability's `description` auto-prefixes "Waterbend " before the cost.
 - **Spell-level waterbend additional cost** (Avatar: The Last Airbender) — *"As an additional cost to cast this spell, [you may] waterbend {N}."* Declared in the card builder with `waterbendCost(amount, optional = false, isX = false)`, which sets `CardScript.spellWaterbend: SpellWaterbendCost`. It adds {N} generic to the spell's cost; the same `AlternativePaymentChoice.tapForGenericPermanents` taps pay it, **bounded by N** so taps never cover the spell's own generic. `optional = true` models "you may waterbend {N}" — the enumerator offers a second, *paid* cast variant, and paying it sets `ChoiceSlot.WATERBEND_PAID` so the effect branches via `Conditions.WaterbendWasPaid` (the waterbend analogue of `BlightWasPaid`, e.g. `Effects.If(Conditions.WaterbendWasPaid, paidEffect, elseEffect = baseEffect)`); a mandatory cost always adds {N}. Wiring: `CastSpellHandler` adds {N} and applies `AlternativePaymentHandler.applyWaterbendForSpell` (capped at N); `CastSpellEnumerator` surfaces `hasTapForGeneric`/`tapForGenericPermanents`/`tapForGenericAmount = N` on the cast action, reusing the same client `tapForGeneric` pipeline phase + `TapForGenericSelector`. Cards: Benevolent River Spirit (mandatory {5}), Ruinous Waterbending (optional {4}), Spirit Water Revival (optional {6}). The **`isX` "waterbend {X}" shape** (`waterbendCost(isX = true)`) is fully wired: the enumerator folds a literal `{X}` into the cost so the spell reads as X-carrying (`maxAffordableX` bounded by available mana **plus** tappable permanents), the client prompts for X then runs the waterbend tap step (capped at the chosen X), and the resolver charges X as the waterbend generic — so X also feeds the effect via `DynamicAmount.XValue`. *(The two `isX` cards Crashing Wave and Foggy Swamp Visions each still need a card-specific effect beyond the cost — "distribute N counters among a filtered group chosen at resolution", and "token copy of each exiled card" + delayed sacrifice — before they can ship.)* The **in-resolution "unless you waterbend {N}" shape** (Waterbending Lesson) is wired separately as `Effects.UnlessYouWaterbend(amount, otherwise)` — a `Gate.MayPay` over a waterbend-flagged `PayManaCostEffect`, resolved during the spell's resolution rather than as a cast-time cost (see the gated-effects section).
+- `squad(manaCost?, additionalCost?)` — imports `sdk.dsl.mechanics.squad`. Squad's two linked abilities compose an `OptionalAdditionalCost(multi = true, declaredSlot = SQUAD)` with an enters trigger gated on `CastChoiceMade(SQUAD)`, creating token copies with `DynamicAmount.CastChoice(SQUAD)`. The cast menu offers each affordable payment count, including mana plus discard and graveyard-exile costs. Squad is distinct from kicker; token copies inherit the ability but no paid-cost record, so they do not recurse. Copies enter together in one token-creation batch. If the triggering object leaves or blinks before resolution, its departure snapshot retains numeric keywords and both transforming faces.
+- Repeatable optional-cost declarations now retain the numeric payment count under their own slot on the stack and permanent. `DynamicAmount.CastChoice(KICKED)` reads a multikicker count, and `CastChoice(SQUAD)` reads squad payments. Presence still means the cost was paid. Self-cast and self-entry triggers freeze the count so source removal does not erase it. `additionalCostPaid(n)` scales life, fixed player-counter payments, discard counts, exile counts, and composites using distinct selection channels, including nested composites; repeated single-graveyard constraints and unsupported non-amount shapes remain rejected at construction.
 - `OptionalAdditionalCost(manaCost?, additionalCost?, multi, displayPrefix, branchesEffect, grantsFlashTiming, declaredSlot)` — generalised "pay an optional extra cost while casting" primitive. `declaredSlot` (default `ChoiceSlot.KICKED`) is the durable slot the declaration stamps — i.e. *which mechanic* is riding the rail, so `ChoiceSlot.BARGAINED` makes the same machinery Bargain (CR 702.166) and `ChoiceSlot.TEAMWORK` makes it Teamwork N (CR 702.194), without either reading as kicked. Backs printed Kicker / Multikicker / Offspring / Bargain **and** the pre-kicker "pay {N} more to cast as though it had flash" pattern (Ghitu Fire). When `branchesEffect = true` (default) paying the cost marks the spell so `WasKicked` fires for the card's own effect/triggers; when `false` the payment is invisible to `WasKicked` (used by `flashKicker`). When `grantsFlashTiming = true` paying the cost unlocks instant-speed casting in addition to whatever else it does — the optional cost may be mana (Ghitu Fire: `KeywordAbility.flashKicker("{2}")`) **or** a non-mana `additionalCost` such as Behold (Molten Exhale: "you may cast this as though it had flash if you behold a Dragon", `KeywordAbility.flashKicker(Costs.additional.Behold(filter = Filters.WithSubtype("Dragon")))`). Prefer the factories: `KeywordAbility.kicker(cost)`, `KeywordAbility.kicker(additionalCost)`, `KeywordAbility.multikicker(cost)`, `KeywordAbility.replicate(cost)` (see Replicate), `KeywordAbility.offspring(cost)`, `KeywordAbility.flashKicker(cost)`, `KeywordAbility.flashKicker(additionalCost)`. Serial name is `Kicker` for wire compatibility. **Kicker {X}** (variable kicker, e.g. `KeywordAbility.kicker("{X}")` on Verdeloth the Ancient): the kicked cast surfaces `hasXCost`/`maxAffordableX` so the client prompts for X exactly like a base-cost X spell; the chosen X is paid as part of the kicker and stamped onto `SpellOnStackComponent.xValue`, so the card's ETB trigger reads it via `DynamicAmount.XValue` ("create X tokens"). **Kicker [A] and/or [B]** (two kicker costs, CR 702.33b — Wastescape Battlemage, the Invasion battlemages): declare two `KeywordAbility.kicker(...)` entries in printed order. Each may be paid independently (CR 702.33d — paying either kicks the spell, so `WasKicked` / `SpellCastPredicate.WasKicked` read true for any of them): the enumerators offer one `CastWithKicker` variant per non-empty combination ("Kicked {G}", "Kicked {1}{U}", "Kicked {G} + {1}{U}"), carried on `CastSpell.declaredCostIndices` (printed positions; empty = every cost under the slot), and the handler charges every declared cost. The linked "if it was kicked with its [A]/[B] kicker" abilities (CR 702.33f) read `Conditions.WasKickedWithFirstKicker` / `Conditions.WasKickedWithSecondKicker` — facades over `CastChoiceMade(ChoiceSlot.FIRST_KICKER / SECOND_KICKER)`, which the cast stamps beside its other cast-choice slots, so they answer from a "when you cast this spell" trigger, from the spell's own resolving effect, and from an enters trigger on the permanent it became.
 - `Impending(time, cost)` — `card { impending(n, cost) }` builder helper (CR 702.176, Duskmourn). A self-alternative
   cost: pay [cost] instead of the mana cost and the permanent enters with N **time counters**, isn't a creature until

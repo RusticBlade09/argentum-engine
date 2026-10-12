@@ -740,6 +740,12 @@ export interface ClientPlayer {
    */
   readonly teamSharedTurns?: boolean
   /**
+   * This player's revealed companion while it waits outside the game (CR 103.2b, 702.139a); absent
+   * once it is put into hand, or when there is none. Public: the card itself is in `cards` for
+   * every viewer. Shown beside the command zone.
+   */
+  readonly companionId?: EntityId | null
+  /**
    * The dungeon this player owns in the command zone and where their venture marker is (CR 309),
    * or absent when they aren't in a dungeon. Public — everyone sees every player's dungeon.
    */

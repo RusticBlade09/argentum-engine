@@ -92,7 +92,9 @@ internal class PlayerProjector(
             teamSharedTurns = state.format.sharesTeamTurns,
             // CR 309 — the dungeon card and its venture marker are public.
             dungeon = dungeon(container?.get<DungeonProgressComponent>()?.current),
-            completedDungeons = container?.get<DungeonProgressComponent>()?.completed.orEmpty()
+            completedDungeons = container?.get<DungeonProgressComponent>()?.completed.orEmpty(),
+            // CR 103.2b — a revealed companion is public while it waits outside the game.
+            companionId = state.companionOutsideGame(playerId)
         )
     }
 
