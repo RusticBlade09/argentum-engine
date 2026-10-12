@@ -677,6 +677,26 @@ data class AiProfile(
      */
     val fuelLoyaltyIsNotBoardValue: Boolean = false,
     /**
+     * Score a land drop by the best spell it makes castable, not only by the land.
+     *
+     * The search is one action deep, so "play the land, then cast the five-drop it pays for" is two
+     * decisions, and the first is taken without seeing the second: the land leaf scores as a land,
+     * a cheaper spell castable *now* scores as a creature, and the cheap spell goes first. Once it
+     * has, the five-drop is out of reach for the turn. 2026-10-12 AI-vs-AI logs under [LIVE], game 1
+     * turn 10: on four lands with a Mountain in hand, the AI cast Boggart Sprite-Chaser, then played
+     * the Mountain, then *evoked* Shriekmaw for the kill — where land first, then the hard cast,
+     * makes the same kill and keeps a 3/2 fear body. Rollouts broke the close call either way
+     * (land first in four of five reconstructions).
+     *
+     * With this on, `Strategist` simulates, from each land-drop leaf in our own main phase, every
+     * spell that becomes affordable only after the land, and the land drop scores as the best of
+     * itself and those follow-ups (each adjusted as its own decision would adjust it). Spells that
+     * were already castable are not looked through: the land adds nothing to them, and counting
+     * them would argue land-first even where the order is a real choice (a landfall creature cast
+     * before the land). Bounded by the decision budget; positions with no land drop pay nothing.
+     */
+    val landDropUnlocksSpells: Boolean = false,
+    /**
      * Refuse an activated ability whose whole payoff provably lands on nothing — [refuseDeadSearches]
      * generalised past library searches.
      *
@@ -1691,6 +1711,7 @@ data class AiProfile(
             drawWithIdleMana = true,
             surplusAwareLands = true,
             holdFlashPermanentsForAmbush = true,
+            landDropUnlocksSpells = true,
         )
 
         /**
@@ -1736,6 +1757,16 @@ data class AiProfile(
          * [fuelLoyaltyIsNotBoardValue] alone on top of [PRODUCTION], so a puzzle or an arena point
          * that moves is attributable to it.
          */
+        /**
+         * [landDropUnlocksSpells] on top of [PRODUCTION_CANDIDATE_EXPIRING] — the last pinned
+         * candidate [LIVE] builds on — so `just arena production-candidate-expiring
+         * production-candidate-landunlock` measures this flag and nothing else. [LIVE] ships it.
+         */
+        val PRODUCTION_CANDIDATE_LANDUNLOCK = PRODUCTION_CANDIDATE_EXPIRING.copy(
+            id = "production-candidate-landunlock",
+            landDropUnlocksSpells = true,
+        )
+
         val PRODUCTION_FUELLOYALTY = PRODUCTION.copy(
             id = "production-fuelloyalty",
             fuelLoyaltyIsNotBoardValue = true,

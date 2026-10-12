@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- AI plays its land before a cheaper spell when the land makes a bigger spell castable — hard-casting Shriekmaw instead of casting a 2-drop and then evoking it
 - #3129 AI pays sacrifice, discard, bounce and tap costs with its least valuable candidates (the source included) instead of the first legal ones
 - #3128 In multiplayer the AI sends each attacker at a defender it may legally attack (skipping a seat behind Blazing Archon, routing Goblin Rock Sled to a seat with a Mountain) instead of aiming everything at the lowest-life opponent and getting the whole attack rejected
 - #3120 AI holds flash creatures for the opponent's turn and no longer releases them for its own triggers on the stack

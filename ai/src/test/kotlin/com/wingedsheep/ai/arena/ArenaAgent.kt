@@ -206,6 +206,7 @@ object ArenaAgents {
         ArenaAgent("production-candidate-deadsearch", AiProfile.PRODUCTION_CANDIDATE_DEADSEARCH),
         ArenaAgent("production-fuelloyalty", AiProfile.PRODUCTION_FUELLOYALTY),
         ArenaAgent("production-candidate-fuelloyalty", AiProfile.PRODUCTION_CANDIDATE_FUELLOYALTY),
+        ArenaAgent("production-candidate-landunlock", AiProfile.PRODUCTION_CANDIDATE_LANDUNLOCK),
         // An activation whose payoff lands on nothing — an empty group, the current host, a
         // second Equipment move after combat — is refused rather than paid for.
         ArenaAgent("production-emptypayoff", AiProfile.PRODUCTION_EMPTYPAYOFF),
