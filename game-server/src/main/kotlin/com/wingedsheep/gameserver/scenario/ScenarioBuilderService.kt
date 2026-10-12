@@ -152,6 +152,7 @@ class ScenarioBuilderService(
         val seats = request.seats()
         val builder = ScenarioBuilder(registry)
         builder.withPlayers(seats.map { it.first })
+        if (request.commanderFormat == true) builder.withCommanderFormat()
 
         seats.forEachIndexed { i, (_, config) -> applyPlayer(builder, i + 1, config) }
 
@@ -426,6 +427,14 @@ class ScenarioBuilderService(
                 val ids = (existing?.commanderIds ?: emptyList()) + cardId
                 container.with(CommanderRegistryComponent(ids))
             }
+            return this
+        }
+
+        /** Switch to Commander rules (`Format.Commander`) and give every seat its starting life. */
+        fun withCommanderFormat(): ScenarioBuilder {
+            val format = com.wingedsheep.sdk.core.Format.Commander()
+            state = state.copy(format = format)
+            playerIds.forEach { state = state.withLifeTotal(it, format.startingLife) }
             return this
         }
 

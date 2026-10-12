@@ -63,6 +63,12 @@ data class ScenarioRequest(
      * Null keeps the engine default (`MULTIPLE`), so existing scenarios are unchanged.
      */
     val attackMode: com.wingedsheep.sdk.core.AttackMode? = null,
+    /**
+     * Run the scenario as a Commander game (`Format.Commander`): 40 starting life for every seat
+     * that sets no [PlayerConfig.lifeTotal], and commander damage tallied against the 21 threshold.
+     * Pair it with [PlayerConfig.commanders]. Nullable like [teamVsTeam]: an absent field is null.
+     */
+    val commanderFormat: Boolean? = false,
     val phase: Phase? = null,
     val step: Step? = null,
     val activePlayer: Int? = null,
