@@ -867,6 +867,32 @@ sealed interface KeywordAbility {
     }
 
     // =========================================================================
+    // Companion
+    // =========================================================================
+
+    /**
+     * Companion—[condition] (CR 702.139) — a keyword ability that functions **outside the game**.
+     * Before the game, a player may reveal one card they own from outside the game whose companion
+     * condition their starting deck fulfils (CR 103.2b); once during the game, any time they have
+     * priority during a main phase of their turn with the stack empty, they may pay {3} to put it
+     * into their hand — a special action (CR 116.2g, 702.139a).
+     *
+     * Declaring this keyword is the whole implementation: the server's deck validator checks
+     * [condition] against the starting deck through
+     * [com.wingedsheep.sdk.model.CompanionEligibility], game setup reveals the designated card in
+     * its owner's sideboard, and the engine offers the {3} special action. The ability does
+     * nothing in any other zone — a companion card in the starting deck is just a card (ruling).
+     *
+     * Named `CompanionAbility` because a nested `Companion` would collide with this interface's
+     * companion object; it serializes as `"Companion"`.
+     */
+    @SerialName("Companion")
+    @Serializable
+    data class CompanionAbility(val condition: CompanionCondition) : KeywordAbility {
+        override val description: String = "Companion — ${condition.description}"
+    }
+
+    // =========================================================================
     // Casualty
     // =========================================================================
 
@@ -1632,6 +1658,9 @@ sealed interface KeywordAbility {
 
         /** "Doctor's companion" (CR 702.124m) — pairs with a legendary Time Lord Doctor creature. */
         fun doctorsCompanion(): KeywordAbility = Partner(PartnerKind.DoctorsCompanion)
+
+        /** "Companion—[condition]" (CR 702.139) — see [CompanionAbility] and [CompanionCondition]. */
+        fun companion(condition: CompanionCondition): KeywordAbility = CompanionAbility(condition)
 
         /**
          * Create Casualty N keyword ability.

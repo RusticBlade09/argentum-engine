@@ -59,6 +59,15 @@ class GamePlayHandler(
      * would throw on the first one and fail the whole game start. See [SideboardSanitizer] for
      * why unknown names are dropped rather than the submission rejected.
      */
+    /**
+     * These quick games aren't deck-validated, so a named companion is kept only when the engine
+     * can actually reveal it — a known card with a companion ability (CR 702.139) — rather than
+     * failing the game at setup.
+     */
+    private fun sanitizeCompanion(companion: String?): String? =
+        companion?.let { cardRegistry.getCard(it) }
+            ?.takeIf { com.wingedsheep.sdk.model.CompanionEligibility.hasCompanion(it) }?.name
+
     private fun sanitizeSideboard(sideboard: Map<String, Int>?, playerName: String): Map<String, Int> =
         SideboardSanitizer.sanitize(sideboard.orEmpty(), cardRegistry).also { result ->
             if (result.hasDrops) {
@@ -163,7 +172,8 @@ class GamePlayHandler(
         // GameInitializer and fail the game creation outright (see SideboardSanitizer).
         val sideboard = randomDeck?.sideboard
             ?: sanitizeSideboard(message.sideboard, playerSession.playerName)
-        gameSession.addPlayer(playerSession, deckList, sideboard = sideboard)
+        val companion = if (randomDeck != null) null else sanitizeCompanion(message.companion)
+        gameSession.addPlayer(playerSession, deckList, sideboard = sideboard, companion = companion)
 
         // Store player info for persistence
         val token = sessionRegistry.getTokenByWsId(session.id)
@@ -306,7 +316,8 @@ class GamePlayHandler(
         // A generated random deck (empty submission) brings the rest of its sealed pool.
         val sideboard = randomDeck?.sideboard
             ?: sanitizeSideboard(message.sideboard, playerSession.playerName)
-        gameSession.addPlayer(playerSession, deckList, sideboard = sideboard)
+        val companion = if (randomDeck != null) null else sanitizeCompanion(message.companion)
+        gameSession.addPlayer(playerSession, deckList, sideboard = sideboard, companion = companion)
 
         // Store player info for persistence
         val token = sessionRegistry.getTokenByWsId(session.id)

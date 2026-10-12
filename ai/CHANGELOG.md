@@ -29,6 +29,7 @@ Format — newest first, one bullet each:
 ## Changes
 
 - #3135 AI seats on a random deck now own the rest of their sealed pool (or a fifteen-card wishboard) outside the game, so their Learn and wish cards fetch a card instead of whiffing
+- #3132 AI puts helpful Role tokens and Auras like Strands of Undeath on its own creatures, and no longer pays to regenerate an opponent's creature
 - #3129 AI pays sacrifice, discard, bounce and tap costs with its least valuable candidates (the source included) instead of the first legal ones
 - #3128 In multiplayer the AI sends each attacker at a defender it may legally attack (skipping a seat behind Blazing Archon, routing Goblin Rock Sled to a seat with a Mountain) instead of aiming everything at the lowest-life opponent and getting the whole attack rejected
 - #3120 AI holds flash creatures for the opponent's turn and no longer releases them for its own triggers on the stack

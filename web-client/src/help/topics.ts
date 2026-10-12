@@ -1348,7 +1348,26 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       { kind: 'p', text: 'Once a commander is crowned in a Commander, Brawl or Standard Brawl deck, the card search shows only cards inside the commander’s colour identity (both commanders’ combined for a pair). The ♛ Identity chip beside the search box turns that off when you want to browse everything; crowning a different commander turns it back on.' },
       { kind: 'p', text: 'Imported lists get their commander set automatically — from a `Commander` section, an Archidekt `Commander` category or a `*CMDR*` marker, and both of them when two are listed. MTGO and Moxfield exports that put the commander on the sideboard (or in a last block after a blank line) work too: in a 100-card list, a one- or two-card sideboard of cards that can lead the deck together is read as the commanders, and the import preview says so. Importing a deck with a commander switches the deckbuilder to the Commander format. A Commander deck shows up in the Commander mode’s deck picker and can be handed to an AI seat.' },
     ],
-    related: ['rules-commander', 'deck-legality', 'deckbuilder', 'deck-import-export'],
+    related: ['rules-commander', 'deck-legality', 'deckbuilder', 'deck-import-export', 'companions'],
+  },
+  {
+    id: 'companions',
+    section: 'decks',
+    title: 'Companions',
+    summary:
+      'A card with Companion — Lurrus, Kaheera, Zirda and the rest — can wait outside your deck as its companion. Put it on your sideboard and click “☆ Make companion” beside it; in the game it sits face up next to your command zone, and once per game you can pay {3} to put it into your hand.',
+    body: [
+      { kind: 'p', text: 'Each companion has a condition your deck has to meet, printed after “Companion —”. The deckbuilder checks it as you build and lists what breaks it — a deck with an even-cost card can’t take an odd-only companion, for example. The companion itself doesn’t count toward the condition; only the deck does.' },
+      { kind: 'ul', items: [
+        'Any format: a constructed deck keeps the companion on its sideboard, and it counts toward the four-copy limit with the copies in your deck.',
+        'Commander: the companion isn’t one of your 100 cards. Your commander counts toward the condition, the companion has to fit the commander’s colour identity, and it can’t share a name with a card in your deck.',
+        'Only one card can be your companion.',
+      ] },
+      { kind: 'h', text: 'In the game' },
+      { kind: 'p', text: 'Both players see each other’s companion, labelled “Companion” beside the command zone. On your turn, in a main phase with nothing on the stack, click it to pay {3} and put it into your hand. That doesn’t use the stack, so you can cast it straight away if you have the mana. You can only do this once per game; after that the card is an ordinary card — if it dies, it goes to your graveyard.' },
+      { kind: 'p', text: 'An imported list with a `Companion` section sets the deck’s companion for you, and the lobby’s paste box reads it the same way.' },
+    ],
+    related: ['commander-decks', 'deck-import-export', 'deck-legality', 'deckbuilder'],
   },
   {
     id: 'search-syntax',
@@ -1390,11 +1409,11 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         '`SB: 2 Counterspell` — the MTGO sideboard prefix.',
       ] },
       { kind: 'p', text: 'Section headers are case-insensitive and may end in `:` or a card count, or sit behind `//`: `Deck` / `Mainboard` / `Main Deck` / `Maindeck`, `Sideboard` / `Side` / `SB`, `Commander` / `Commanders` / `EDH`, `Companion`, `Maybeboard` / `Considering`, and `About`. The main deck, the sideboard and the commander are all imported; the maybeboard is listed in the preview but left out. Blank lines and other lines starting with `//` or `#` are ignored.' },
-      { kind: 'p', text: 'A `Companion` is kept on your sideboard and the preview points it out — companion rules themselves (the deck-building condition, paying to put it into your hand) are not supported yet, so it plays as an ordinary sideboard card.' },
+      { kind: 'p', text: 'A `Companion` section makes its card the deck’s companion: it is kept on your sideboard, and the deckbuilder checks the companion’s condition against the deck. See Companions.' },
       { kind: 'p', text: 'MTGO and Moxfield’s MTGO or plain-text exports do not label the commander: it sits on the sideboard or in a last block after a blank line. When the deck has no commander marked, and that block is one or two cards that can lead the deck together, they become the commander(s) — but only in the Commander format or a 100-card list, so a 60-card deck with a real sideboard is never touched. The preview says when it did this.' },
       { kind: 'p', text: 'A line the parser cannot read is listed in the preview as skipped, and a card it reads but cannot match is reported and imported as a placeholder, so an import never silently loses cards. Export writes the plain `4 Lightning Bolt` shape, which every one of the above tools reads.' },
     ],
-    related: ['deckbuilder', 'deck-sharing', 'commander-decks'],
+    related: ['deckbuilder', 'deck-sharing', 'commander-decks', 'companions'],
   },
   {
     id: 'deck-sharing',

@@ -22,6 +22,7 @@ Families:
 - [CastRestriction](#castrestriction)
 - [CharacteristicValue](#characteristicvalue)
 - [CollectionFilter](#collectionfilter)
+- [CompanionCondition](#companioncondition)
 - [Condition](#condition)
 - [ControllerPredicate](#controllerpredicate)
 - [CostAtom](#costatom)
@@ -325,6 +326,13 @@ Families:
 - `CollectionFilter.GreatestPower` — Keep only creatures with the greatest power in the collection.
 - `CollectionFilter.LeastToughness` — Keep only creatures with the least toughness in the collection.
 - `CollectionFilter.SharesSubtypeWithSacrificed` — Keep only entities that share at least one subtype with the sacrificed creature.
+
+## CompanionCondition
+
+- `CompanionCondition.DeckSizeAboveMinimum(extra: Int)` — The starting deck contains at least extra cards more than the format's minimum deck size (Yorion, Sky Nomad).
+- `CompanionCondition.DistinctNames(among: GameObjectFilter)` — No two cards in the starting deck matching among have the same name (Lutri, the Spellchaser: `among = Nonland`).
+- `CompanionCondition.EachCard(filter: GameObjectFilter)` — Every card in the starting deck matches filter — "Each permanent card in your starting deck has mana value 2 or less" is `EachCard(nonpermanent or permanent-with-MV≤2)`.
+- `CompanionCondition.ShareACardType(among: GameObjectFilter)` — Some single card type is shared by every card in the starting deck matching among (Umori, the Collector: `among = Nonland`).
 
 ## Condition
 
@@ -1249,6 +1257,7 @@ Families:
 - `KeywordAbility.Bestow(cost: ManaCost, additionalCost: AdditionalCost?)`
 - `KeywordAbility.Casualty(threshold: Int)` — Casualty N (CR 702.153).
 - `KeywordAbility.Cleave(cost: ManaCost)` — Cleave cost (CR 702.148, Innistrad: Crimson Vow).
+- `KeywordAbility.CompanionAbility(condition: CompanionCondition)` — Companion—condition (CR 702.139) — a keyword ability that functions **outside the game**.
 - `KeywordAbility.Conspire` — Conspire.
 - `KeywordAbility.Cycling(cost: ManaCost, searchFilter: GameObjectFilter?, displayPrefix: String)` — Cycling and its typed variants.
 - `KeywordAbility.Dash(cost: ManaCost)` — Dash with a mana cost (CR 702.109, Khans of Tarkir).

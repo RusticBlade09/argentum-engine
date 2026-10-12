@@ -341,6 +341,15 @@ export function DeckbuilderPage() {
   // Limited (sealed/draft) decks don't use this: their sideboard is the pool − maindeck complement,
   // derived server-side (CR 100.4b).
   const [sideboardCards, setSideboardCards] = useState<Record<string, number>>({})
+  // The deck's companion (CR 702.139): one sideboard card with a companion ability, revealed before
+  // the game and fetchable for {3} once. Marked from the sideboard panel; the server validates the
+  // condition (and, in Commander, the colour identity) on the same /validate round trip.
+  const [companion, setCompanion] = useState<string | null>(null)
+  // Only a companion still on the sideboard counts — removing the card un-marks it.
+  const companionForSave: string | null = companion && (sideboardCards[companion] ?? 0) > 0 ? companion : null
+  const toggleCompanion = useCallback((name: string) => {
+    setCompanion((prev) => (prev === name ? null : name))
+  }, [])
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null)
   // When signed in, the unified Save targets the account (cloud); otherwise it writes to the local
   // browser library. `saveFlash` briefly overrides the Save button label to confirm the result.
@@ -399,6 +408,7 @@ export function DeckbuilderPage() {
       // empty sideboard, and the next Save writes that emptiness back — `saveDeck` replaces the
       // stored record wholesale rather than merging, so the sideboard is destroyed.
       setSideboardCards(existing.sideboard ? { ...existing.sideboard } : {})
+      setCompanion(existing.companion ?? null)
       setActiveDeckId(existing.id)
       setPinnedPrintings(pinnedPrintingsFromEntries(existing.entries, existing))
       if (existing.format) {
@@ -469,6 +479,7 @@ export function DeckbuilderPage() {
         // Reset rather than leave in place: a deck loaded without one has no sideboard, and a
         // stale board from the previously open deck would otherwise follow it.
         setSideboardCards(shared.sideboard ? { ...shared.sideboard } : {})
+        setCompanion(shared.companion ?? null)
         setActiveDeckId(null)
         setPinnedPrintings({ ...(shared.printings ?? {}), ...commanderPinsOf(shared) })
       })
@@ -720,6 +731,7 @@ export function DeckbuilderPage() {
       // model still keeps the commander in `deckCards` so the crown sits on a real row.
       // A partner pair strips both commanders and sends the second as `secondCommander`.
       const sendCommander = isCommanderFormat && commander
+      const sendCompanion = companionForSave
       const deckListForValidation = sendCommander
         ? stripCommanderFromCards(deckCards, commander, secondCommander)
         : deckCards
@@ -735,6 +747,9 @@ export function DeckbuilderPage() {
           // anyway, but keeping the wire payload minimal avoids stale fields surfacing later.
           ...(sendCommander ? { commander } : {}),
           ...(sendCommander && secondCommander ? { secondCommander } : {}),
+          // A companion (CR 702.139) routes validation through the structured path, which checks
+          // its condition against the deck — and, in Commander, its colour identity.
+          ...(sendCompanion ? { companion: sendCompanion, sideboard: sideboardCards } : {}),
         }),
         signal: ctrl.signal,
       })
@@ -748,7 +763,7 @@ export function DeckbuilderPage() {
       window.clearTimeout(handle)
       ctrl.abort()
     }
-  }, [deckCards, activeFormat, isCommanderFormat, commander, secondCommander])
+  }, [deckCards, activeFormat, isCommanderFormat, commander, secondCommander, companionForSave, sideboardCards])
 
   // Map card-name → set of violation codes produced by the latest validation pass. Used to
   // light up specific rows in the deck list (color identity, singleton, format-illegal copies)
@@ -764,6 +779,16 @@ export function DeckbuilderPage() {
     }
     return map
   }, [validation])
+
+  // The validator's companion findings (condition, identity, copies), shown on the sideboard panel
+  // beside the companion they are about rather than on a deck row.
+  const companionIssues = useMemo(
+    () =>
+      (validation?.errors ?? [])
+        .filter((e) => e.code.includes('COMPANION') || (companionForSave !== null && e.cardName === companionForSave))
+        .map((e) => e.message),
+    [validation, companionForSave],
+  )
 
   // ----- Mutations -----
 
@@ -889,6 +914,7 @@ export function DeckbuilderPage() {
     setCoverCard(null)
     setDeckCards({})
     setSideboardCards({})
+    setCompanion(null)
     setCommanders([])
     setActiveDeckId(null)
     setPinnedPrintings({})
@@ -972,6 +998,7 @@ export function DeckbuilderPage() {
       ...(secondPrintingForSave ? { secondCommanderPrinting: secondPrintingForSave } : {}),
       ...(entries ? { entries } : {}),
       ...(Object.keys(sideboardCards).length > 0 ? { sideboard: sideboardCards } : {}),
+      ...(companionForSave ? { companion: companionForSave } : {}),
       ...deckDetailsForSave(),
     })
     setDeckName(saved.name)
@@ -1035,11 +1062,13 @@ export function DeckbuilderPage() {
       ...(secondCommanderPrinting ? { secondCommanderPrinting } : {}),
       // Carried for the account save; the v2 share code has no field for them and drops them.
       ...(Object.keys(sideboardCards).length > 0 ? { sideboard: sideboardCards } : {}),
+      // The share code carries the companion (not the rest of the sideboard); the account save both.
+      ...(companionForSave ? { companion: companionForSave } : {}),
       ...deckDetailsForSave(),
     }
   }, [
     isCommanderFormat, commander, secondCommander, deckCards, pinnedPrintings, deckName, activeFormat, sideboardCards,
-    deckDetailsForSave,
+    deckDetailsForSave, companionForSave,
   ])
 
   // Apply a SharedDeck into the builder (account load / deep link). Mirrors the share-URL decode
@@ -1066,6 +1095,7 @@ export function DeckbuilderPage() {
         // Reset rather than leave in place: a deck loaded without one has no sideboard, and a
         // stale board from the previously open deck would otherwise follow it.
         setSideboardCards(shared.sideboard ? { ...shared.sideboard } : {})
+        setCompanion(shared.companion ?? null)
         setActiveDeckId(null)
         setPinnedPrintings({ ...(shared.printings ?? {}), ...commanderPinsOf(shared) })
       })
@@ -1118,6 +1148,7 @@ export function DeckbuilderPage() {
     setCoverCard(deck.coverCard ?? null)
     setDeckCards(mergeCommanderIntoCards(deck.cards, ...commandersOf(deck)))
     setSideboardCards(deck.sideboard ? { ...deck.sideboard } : {})
+    setCompanion(deck.companion ?? null)
     setCommanders(commandersOf(deck))
     setActiveDeckId(deck.id)
     setPinnedPrintings(pinnedPrintingsFromEntries(deck.entries, deck))
@@ -1160,6 +1191,7 @@ export function DeckbuilderPage() {
     suggestedName: string | null,
     importedCommanders: readonly string[],
     importedSideboard: Record<string, number> = {},
+    importedCompanion: string | null = null,
   ) => {
     // A list that designates a commander is a Commander deck: switch the format when the current
     // one has no commander, or the "clear the commander outside commander formats" guard would
@@ -1172,6 +1204,8 @@ export function DeckbuilderPage() {
       setDeckCards(cards)
       // The Arena/MTGO list's "Sideboard"/"SB:" section becomes the wish sideboard (CR 100.4a).
       setSideboardCards(importedSideboard)
+      // A `Companion` section names the deck's companion (CR 702.139); it rides on the sideboard.
+      setCompanion(importedCompanion)
       // The commander designation rides along when the source list had a Commander
       // section (both, for a partner pair); otherwise reset so a stale value from the previous
       // deck doesn't leak.
@@ -1197,6 +1231,7 @@ export function DeckbuilderPage() {
     // Examples carry no sideboard; clear rather than leave the previous deck's attached, which
     // would follow the example into a save and into a game.
     setSideboardCards({})
+    setCompanion(null)
     setActiveDeckId(null)
     // Pre-fill pinned printings from the example. The commander's pin is keyed by name
     // alongside the rest — same shape `pinnedPrintingsFromEntries` produces on saved-deck
@@ -1540,6 +1575,9 @@ export function DeckbuilderPage() {
               isCommanderFormat={isCommanderFormat}
               onAdd={addToSideboard}
               onRemove={removeFromSideboard}
+              companion={companionForSave}
+              onToggleCompanion={toggleCompanion}
+              companionIssues={companionIssues}
               onMoveFromDeck={removeCard}
             />
 
@@ -1613,6 +1651,9 @@ export function DeckbuilderPage() {
             isCommanderFormat={isCommanderFormat}
             onAdd={addToSideboard}
             onRemove={removeFromSideboard}
+            companion={companionForSave}
+            onToggleCompanion={toggleCompanion}
+            companionIssues={companionIssues}
             onMoveFromDeck={removeCard}
           />
 
@@ -2016,6 +2057,7 @@ function ImportDeckModal({
     suggestedName: string | null,
     commanders: readonly string[],
     sideboard: Record<string, number>,
+    companion: string | null,
   ) => void
 }) {
   const [text, setText] = useState('')
@@ -2043,8 +2085,8 @@ function ImportDeckModal({
     const merged = { ...preview.resolved.deckCards, ...preview.resolved.unmatchedCards }
     // Resolve the "Sideboard"/"SB:" section against the catalog the same way as the main deck,
     // so the imported sideboard becomes the wish sideboard (unknown cards survive as placeholders).
-    // A companion starts the game outside it (CR 702.139a), so it rides on the sideboard too;
-    // the companion rules themselves aren't enforced yet (the preview says so).
+    // A companion starts the game outside it (CR 702.139a), so it rides on the sideboard too, and
+    // the first `Companion` entry becomes the deck's companion.
     const sideResolved = resolveAgainstCatalog(
       [...preview.parsed.sideboard, ...preview.parsed.companion],
       catalog,
@@ -2052,7 +2094,9 @@ function ImportDeckModal({
     const sideboard = { ...sideResolved.deckCards, ...sideResolved.unmatchedCards }
     // The first two distinct commander entries become the designation (a partner pair); any
     // further ones stay ordinary deck cards. Canonical (catalogue) casing.
-    onImport(merged, preview.parsed.deckName ?? null, preview.commanders, sideboard)
+    const companionEntry = preview.parsed.companion[0]
+    const companion = companionEntry ? (canonicalNameIn(catalog)(companionEntry.name)) : null
+    onImport(merged, preview.parsed.deckName ?? null, preview.commanders, sideboard, companion)
   }
 
   return (
@@ -2142,9 +2186,11 @@ function ImportPreview({ preview }: { preview: ImportPreviewModel }) {
 
       {parsed.companion.length > 0 && (
         <p className={styles.importNote}>
-          Companion {parsed.companion.map((e) => e.name).join(', ')} is kept on the sideboard.
-          Companion rules (the deck-building condition and putting it into your hand) aren&rsquo;t
-          supported yet.
+          {parsed.companion[0]?.name} becomes the deck&rsquo;s companion: it waits on the sideboard,
+          revealed, and you can pay {'{3}'} once a game to put it into your hand. The deck builder
+          checks its condition against your deck.
+          {parsed.companion.length > 1 &&
+            ` Only one companion is allowed — ${parsed.companion.slice(1).map((e) => e.name).join(', ')} stays an ordinary sideboard card.`}
         </p>
       )}
 
@@ -3056,6 +3102,9 @@ function SideboardPanel({
   onAdd,
   onRemove,
   onMoveFromDeck,
+  companion,
+  onToggleCompanion,
+  companionIssues,
 }: {
   deckCards: Record<string, number>
   sideboardCards: Record<string, number>
@@ -3066,12 +3115,21 @@ function SideboardPanel({
   onRemove: (name: string) => void
   // Move one copy out of the main deck (used when a deck row is dragged into the sideboard).
   onMoveFromDeck: (name: string) => void
+  /** The sideboard card marked as the deck's companion (CR 702.139), or null. */
+  companion: string | null
+  onToggleCompanion: (name: string) => void
+  /** The server validator's messages about the companion — its condition, identity, copies. */
+  companionIssues: readonly string[]
 }) {
   const total = Object.values(sideboardCards).reduce((a, b) => a + b, 0)
   const outside = useMemo(
     () => summarizeOutsideTheGame(deckCards, sideboardCards, catalogIndex),
     [deckCards, sideboardCards, catalogIndex],
   )
+  // Sideboard cards with a companion ability, which the deck may reveal as its companion.
+  const companionCandidates = Object.keys(sideboardCards)
+    .map((name) => catalogIndex[name])
+    .filter((card): card is CardSummary => !!card?.companionCondition)
 
   const { dragActive, dropHandlers } = useCardDropZone((payload) => {
     // A sideboard card dropped back onto the sideboard is a no-op.
@@ -3104,6 +3162,37 @@ function SideboardPanel({
         </span>
       </div>
       <OutsideTheGameNote summary={outside} />
+      {companionCandidates.length > 0 && (
+        <div className={styles.companionStrip} aria-label="Companion">
+          {companionCandidates.map((card) => {
+            const chosen = companion === card.name
+            return (
+              <button
+                key={card.name}
+                type="button"
+                className={`${styles.companionToggle} ${chosen ? styles.companionToggleOn : ''}`}
+                aria-pressed={chosen}
+                title={`Companion — ${card.companionCondition}`}
+                onClick={() => onToggleCompanion(card.name)}
+              >
+                {chosen ? '★ Companion: ' : '☆ Make companion: '}
+                {card.name}
+              </button>
+            )
+          })}
+          {companion && (
+            <span className={styles.sideboardHint}>
+              Revealed before the game; pay {'{3}'} once, any time you could cast a sorcery, to put it into your
+              hand. Condition: {catalogIndex[companion]?.companionCondition}
+            </span>
+          )}
+          {companionIssues.map((message) => (
+            <span key={message} className={styles.companionIssue}>
+              {message}
+            </span>
+          ))}
+        </div>
+      )}
       {total > 0 ? (
         <DeckListPanel
           deckCards={sideboardCards}
