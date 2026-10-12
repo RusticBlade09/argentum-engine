@@ -5550,6 +5550,9 @@ This is the player-arm prerequisite for the planned composable mixed `TargetUnio
 - `Filters.PlainsCard` / `IslandCard` / `SwampCard` / `MountainCard` / `ForestCard` — specific basics.
 - `Filters.Instant` — instant card.
 - `Filters.Sorcery` — sorcery card.
+- `GameObjectFilter.Nonpermanent` — a card that isn't a permanent card (instant, sorcery, …;
+  `Not(IsPermanent)`). The "free" branch of companion conditions that speak only about permanent cards
+  (Lurrus, Zirda): `EachCard(Nonpermanent or …)`.
 - `Filters.HasAdventure` — card that has an Adventure (adventurer card), regardless of which face it
   currently shows (`CardPredicate.HasAdventure`, backed by `CardComponent.hasAdventure`). A static,
   whole-card characteristic evaluated the same way in every zone.
@@ -11850,6 +11853,36 @@ composite abilities).
   identity (702.124c). In play the pair needs nothing new: each commander is its own
   `CommanderComponent` (own tax, own commander-damage tally, 702.124d) and `ManaColorSet.CommanderIdentity`
   already unions every registered commander.
+- **Companion** (`KeywordAbility.companion(condition: CompanionCondition)` →
+  `KeywordAbility.CompanionAbility`, serialized `"Companion"`) — CR 702.139: "Companion—[Condition]", a
+  keyword that functions *outside the game*. Declaring it is the whole implementation:
+  - **Deck construction.** `CompanionEligibility.conditionError(companion, startingDeck, minimumDeckSize)`
+    (SDK, `sdk.model`) reads the condition against the printed cards of the *starting deck* — after the
+    sideboard is set aside and, in Commander, with the commanders still in it (702.139b). The server's
+    `DeckValidator` asks it for `Deck.companion` (a sideboard card's name): codes `INVALID_COMPANION`,
+    `COMPANION_NOT_IN_SIDEBOARD`, `COMPANION_CONDITION_NOT_MET`, and in Commander `COMPANION_COLOR_IDENTITY`
+    / `COMPANION_DUPLICATE_NAME` (CR 903.11a); elsewhere the companion counts toward the copy limit with
+    the deck's copies (100.4a). `CompanionEligibility.matchesPrinted(card, filter)` is the printed-card
+    reading of a `GameObjectFilter` it uses (state predicates fail closed; X counts as 0;
+    `HasActivatedAbility` counts cycling and a basic land type's intrinsic mana ability).
+  - **`CompanionCondition`** — four shapes, each fed a filter so a new companion composes:
+    - `EachCard(filter)` — every card of the starting deck matches it. Gyruda `Any.manaValueIsEven()`,
+      Obosh `Land or Any.manaValueIsOdd()`, Keruga `Land or Any.manaValueAtLeast(3)`, Lurrus
+      `Nonpermanent or Permanent.manaValueAtMost(2)`, Kaheera `Noncreature or Any.withAnyOfSubtypes(…)`,
+      Zirda `Nonpermanent or Any.withCardPredicate(CardPredicate.HasActivatedAbility)`.
+    - `DeckSizeAboveMinimum(extra)` — Yorion's 20 over the format minimum (never in 100-card Commander).
+    - `ShareACardType(among)` — Umori, `among = Nonland`: one card type common to all of them.
+    - `DistinctNames(among)` — Lutri, `among = Nonland`: no repeated name.
+
+    Jegantha ("more than one of the same mana symbol") reads a mana-cost symbol multiset no filter
+    expresses and is not modelled.
+  - **Game setup and play.** `GameInitializer` marks the named sideboard copy as the player's
+    `CompanionComponent` (on the player). It stays in `Zone.SIDEBOARD` — outside the game — but
+    `Visibility` shows it to every player and spectator (103.2b), and `ClientPlayer.companionId` points at
+    it. The special action `PutCompanionIntoHand` (enumerated by `CompanionEnumerator`, handled by
+    `PutCompanionIntoHandHandler`) pays {3} and moves it to hand — main phase, empty stack, own turn, once
+    per game (116.2g); the player keeps priority (117.3c). It emits a `ZoneChangeEvent` and a
+    `CompanionPutIntoHandEvent` (the log line).
 - **Replicate** (`KeywordAbility.replicate(cost)` / `KeywordAbility.replicate(additionalCost)`) —
   Replicate [cost] (CR 702.56a): "As an additional cost to cast this spell, you may pay [cost] any
   number of times" and "When you cast this spell, if a replicate cost was paid for it, copy it for

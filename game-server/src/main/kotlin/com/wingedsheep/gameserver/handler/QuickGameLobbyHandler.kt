@@ -574,6 +574,7 @@ class QuickGameLobbyHandler(
         }
         // Empty deck = "random pool" — skip validation. The commander field, if any, is meaningless
         // without an accompanying deck list and gets dropped at the lobby layer below.
+        val companion = message.companion?.takeIf { it.isNotBlank() && message.deckList.isNotEmpty() }
         if (message.deckList.isNotEmpty()) {
             // Commander-aware path: the wire format `deckList` represents the *full* deck (matches
             // the saved-deck "merged" view the picker emits), but `Deck.cards` follows the server
@@ -588,8 +589,19 @@ class QuickGameLobbyHandler(
                     commanderPrinting = message.commanderPrinting,
                     secondCommander = message.secondCommander,
                     secondCommanderPrinting = message.secondCommanderPrinting,
+                    sideboard = message.sideboard.orEmpty(),
+                    companion = companion,
                 )
                 deckValidator.validate(deck, lobby.format)
+            } else if (companion != null) {
+                // The structured path is the one that reads a companion and its sideboard.
+                deckValidator.validate(
+                    DeckRequestConverter.toDeck(
+                        message.deckList, message.cardEntries,
+                        sideboard = message.sideboard.orEmpty(), companion = companion,
+                    ),
+                    lobby.format,
+                )
             } else {
                 deckValidator.validate(
                     deckList = message.deckList,
@@ -634,7 +646,8 @@ class QuickGameLobbyHandler(
             if (player.deckList == message.deckList &&
                 player.commander == message.commander &&
                 player.secondCommander == secondCommander &&
-                player.sideboard == sanitizedSideboard
+                player.sideboard == sanitizedSideboard &&
+                player.companion == companion
             ) {
                 return@withLock
             }
@@ -644,6 +657,7 @@ class QuickGameLobbyHandler(
             // commander from a prior submission doesn't leak into the game start.
             player.commander = if (message.deckList.isNotEmpty()) message.commander else null
             player.secondCommander = if (message.deckList.isNotEmpty()) secondCommander else null
+            player.companion = companion
             // Submitting a *new* deck un-readies the player so they have to confirm again.
             player.ready = false
             broadcastState(current)
@@ -846,6 +860,8 @@ class QuickGameLobbyHandler(
                 engineDeckList,
                 commanderCardNames = commanders,
                 sideboard = sideboard,
+                // A companion comes only with a submitted deck — and Momir Basic plays a fixed one.
+                companion = if (lobby.momirBasic) null else lobbyPlayer.companion?.takeIf { lobbyPlayer.deckList?.isNotEmpty() == true },
             )
             // Persistence info so a mid-game reconnect can find the player by token.
             val token = sessionRegistry.getTokenByWsId(playerSession.webSocketSession.id)

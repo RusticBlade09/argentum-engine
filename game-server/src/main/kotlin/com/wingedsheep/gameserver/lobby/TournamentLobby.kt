@@ -228,6 +228,11 @@ data class LobbyPlayerState(
      */
     var secondCommander: String? = null,
     /**
+     * The revealed companion (CR 702.139), or null — a card outside the game, carried on
+     * [submittedSideboard] (the game session adds it there when the derived sideboard lacks it).
+     */
+    var companion: String? = null,
+    /**
      * For an AI seat: what the host chose for it to play — the same [AiDeckSpec] vocabulary the
      * quick lobby's single AI seat uses, held per seat because a pod has several and there is no
      * reason they should all bring the same thing.
@@ -1769,6 +1774,7 @@ class TournamentLobby(
         commander: String? = null,
         sideboard: Map<String, Int> = emptyMap(),
         secondCommander: String? = null,
+        companion: String? = null,
     ): DeckSubmissionResult {
         val isPremade = format == TournamentFormat.PREMADE_DECKS
         // PREMADE_DECKS: players pick their deck while WAITING_FOR_PLAYERS, before the host starts.
@@ -1829,6 +1835,7 @@ class TournamentLobby(
             // (LobbyHandler is responsible for clearing it for non-commander submissions).
             commander = commander,
             secondCommander = secondCommander.takeIf { commander != null },
+            companion = companion,
         )
 
         return DeckSubmissionResult.Success(allReady = allDecksSubmitted())
@@ -1872,6 +1879,7 @@ class TournamentLobby(
             submittedSideboard = emptyMap(),
             commander = null,
             secondCommander = null,
+            companion = null,
         )
         playersReadyForNextRound.remove(playerId)
     }
@@ -1943,6 +1951,9 @@ class TournamentLobby(
      * pool − maindeck in Limited, or the explicit constructed sideboard in PREMADE_DECKS. Empty
      * when the player has no sideboard.
      */
+    /** The companion [playerId] revealed with their submitted deck, if any (CR 702.139). */
+    fun getSubmittedCompanion(playerId: EntityId): String? = players[playerId]?.companion
+
     fun getSubmittedSideboard(playerId: EntityId): Map<String, Int> {
         return players[playerId]?.submittedSideboard ?: emptyMap()
     }
