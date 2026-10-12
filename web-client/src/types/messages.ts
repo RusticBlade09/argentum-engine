@@ -573,6 +573,8 @@ export interface OptionMetadata {
   readonly id?: string | null
   readonly description?: string | null
   readonly iconKey?: string | null
+  /** A picture of the option — a card image for an object outside the game, such as a dungeon card. */
+  readonly imageUri?: string | null
 }
 
 export interface ChooseOptionDecision extends PendingDecisionBase {

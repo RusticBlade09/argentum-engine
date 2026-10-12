@@ -76,6 +76,9 @@ enum class TriggerCategory {
     CHOOSE_TARGETS,
     DISCARD,
     RING_TEMPTED,
+    VENTURED,
+    DUNGEON_COMPLETED,
+    DESIGNATION_TAKEN,
     CLASHED,
     SCRIED,
     SURVEILED,
@@ -301,6 +304,9 @@ class TriggerIndex(
                 is SdkGameEvent.TargetsChosenEvent -> listOf(TriggerCategory.CHOOSE_TARGETS)
                 is SdkGameEvent.DiscardEvent -> listOf(TriggerCategory.DISCARD)
                 is SdkGameEvent.RingTemptedEvent -> RING_TEMPTED_LIST
+                is SdkGameEvent.VenturedIntoDungeonEvent -> VENTURED_LIST
+                is SdkGameEvent.DungeonCompletedEvent -> DUNGEON_COMPLETED_LIST
+                is SdkGameEvent.DesignationTakenEvent -> DESIGNATION_TAKEN_LIST
                 is SdkGameEvent.ClashedEvent -> CLASHED_LIST
                 is SdkGameEvent.ScriedEvent -> SCRIED_LIST
                 is SdkGameEvent.SurveiledEvent -> SURVEILED_LIST
@@ -404,6 +410,10 @@ class TriggerIndex(
             is com.wingedsheep.engine.core.TargetsChosenEvent -> CHOOSE_TARGETS_LIST
             is CardsDiscardedEvent -> DISCARD_LIST
             is com.wingedsheep.engine.core.RingTemptedEvent -> RING_TEMPTED_LIST
+            is com.wingedsheep.engine.core.VenturedIntoDungeonEvent -> VENTURED_LIST
+            is com.wingedsheep.engine.core.DungeonCompletedEvent -> DUNGEON_COMPLETED_LIST
+            is com.wingedsheep.engine.core.InitiativeTakenEvent -> DESIGNATION_TAKEN_LIST
+            is com.wingedsheep.engine.core.MonarchChangedEvent -> DESIGNATION_TAKEN_LIST
             is com.wingedsheep.engine.core.ClashedEvent -> CLASHED_LIST
             is com.wingedsheep.engine.core.ScriedEvent -> SCRIED_LIST
             is com.wingedsheep.engine.core.SurveiledEvent -> SURVEILED_LIST
@@ -463,7 +473,6 @@ class TriggerIndex(
             is com.wingedsheep.engine.core.CardExiledWithMadnessEvent,
             is com.wingedsheep.engine.core.CardsRevealedEvent,
             is com.wingedsheep.engine.core.CitysBlessingGainedEvent,
-            is com.wingedsheep.engine.core.MonarchChangedEvent,
             is com.wingedsheep.engine.core.ClassLevelChangedEvent,
             is com.wingedsheep.engine.core.CoinFlipEvent,
             is com.wingedsheep.engine.core.CreatureDestroyedEvent,
@@ -551,6 +560,9 @@ class TriggerIndex(
         private val CHOOSE_TARGETS_LIST = listOf(TriggerCategory.CHOOSE_TARGETS)
         private val DISCARD_LIST = listOf(TriggerCategory.DISCARD)
         private val RING_TEMPTED_LIST = listOf(TriggerCategory.RING_TEMPTED)
+        private val VENTURED_LIST = listOf(TriggerCategory.VENTURED)
+        private val DUNGEON_COMPLETED_LIST = listOf(TriggerCategory.DUNGEON_COMPLETED)
+        private val DESIGNATION_TAKEN_LIST = listOf(TriggerCategory.DESIGNATION_TAKEN)
         private val CLASHED_LIST = listOf(TriggerCategory.CLASHED)
         private val SCRIED_LIST = listOf(TriggerCategory.SCRIED)
         private val SURVEILED_LIST = listOf(TriggerCategory.SURVEILED)

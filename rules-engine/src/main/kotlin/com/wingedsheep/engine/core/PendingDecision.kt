@@ -548,7 +548,13 @@ data class SplitPilesDecision(
 data class OptionMetadata(
     val id: String? = null,
     val description: String? = null,
-    val iconKey: String? = null
+    val iconKey: String? = null,
+    /**
+     * Optional picture of the option — a card image the frontend shows as the option's tile when
+     * the option is an object outside the game, with no entity to preview (a dungeon card,
+     * CR 309.2a).
+     */
+    val imageUri: String? = null
 )
 
 /**

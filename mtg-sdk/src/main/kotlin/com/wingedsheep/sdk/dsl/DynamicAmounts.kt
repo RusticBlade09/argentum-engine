@@ -970,6 +970,13 @@ object DynamicAmounts {
     fun speed(player: Player = Player.You): DynamicAmount = DynamicAmount.Speed(player)
 
     /**
+     * How many dungeons [player] has completed this game (CR 309.7) — of the dungeon named [dungeon]
+     * only, when it's given. "If you've completed a dungeon" is `Conditions.YouCompletedADungeon`.
+     */
+    fun dungeonsCompleted(player: Player = Player.You, dungeon: String? = null): DynamicAmount =
+        DynamicAmount.DungeonsCompleted(player, dungeon)
+
+    /**
      * How many counters of [counterType] a player currently has (CR 122.1 — counters placed on a
      * player rather than a permanent). Poison, energy, and rad counters all live here.
      */

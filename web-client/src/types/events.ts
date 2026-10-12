@@ -15,6 +15,9 @@ export type ClientEvent =
   | SpeedChangedEvent
   | DayNightChangedEvent
   | MonarchChangedEvent
+  | InitiativeTakenEvent
+  | VenturedIntoDungeonEvent
+  | DungeonCompletedEvent
   | DamageDealtEvent
   | StatsModifiedEvent
   | CardDrawnEvent
@@ -102,6 +105,44 @@ export interface MonarchChangedEvent {
   readonly previousMonarchId: EntityId | null
   readonly newMonarchId: EntityId | null
   readonly sourceName: string
+  readonly isYours?: boolean
+  readonly description: string
+}
+
+/**
+ * A player took the initiative (CR 726) — from an effect, by combat damage, or by inheritance when
+ * the holder left. `previousHolderId === newHolderId` when they took it again (CR 726.5).
+ */
+export interface InitiativeTakenEvent {
+  readonly type: 'initiativeTaken'
+  readonly previousHolderId: EntityId | null
+  readonly newHolderId: EntityId
+  readonly sourceName: string
+  readonly playerName?: string | null
+  readonly previousHolderName?: string | null
+  readonly isYours?: boolean
+  readonly description: string
+}
+
+/** A player ventured into the dungeon and moved their marker into `roomName` (CR 701.49). */
+export interface VenturedIntoDungeonEvent {
+  readonly type: 'venturedIntoDungeon'
+  readonly playerId: EntityId
+  readonly dungeonName: string
+  readonly roomName: string
+  readonly enteredDungeon: boolean
+  readonly playerName?: string | null
+  readonly isYours?: boolean
+  readonly description: string
+}
+
+/** A player completed a dungeon (CR 309.7). */
+export interface DungeonCompletedEvent {
+  readonly type: 'dungeonCompleted'
+  readonly playerId: EntityId
+  readonly dungeonName: string
+  readonly completedCount: number
+  readonly playerName?: string | null
   readonly isYours?: boolean
   readonly description: string
 }

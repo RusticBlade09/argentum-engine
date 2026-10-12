@@ -156,7 +156,7 @@ import com.wingedsheep.sdk.scripting.conditions.PermanentTypeEnteredBattlefieldT
 import com.wingedsheep.sdk.scripting.conditions.PlayerCastSpellsThisTurn
 import com.wingedsheep.sdk.scripting.conditions.PlayerCommittedCrimeThisTurn
 import com.wingedsheep.sdk.scripting.conditions.PlayerHasCitysBlessing
-import com.wingedsheep.sdk.scripting.conditions.PlayerIsMonarch
+import com.wingedsheep.sdk.scripting.conditions.PlayerHasDesignation
 import com.wingedsheep.sdk.scripting.conditions.PlayerHasEnduringStory
 import com.wingedsheep.sdk.scripting.conditions.PlayerControlsMostPermanents
 import com.wingedsheep.sdk.scripting.conditions.PlayerHasMostLife
@@ -336,7 +336,7 @@ class ConditionEvaluator(
             is PlayerControlsMostPermanents,
             is PlayerDrewCardsThisTurn,
             is PlayerHasCitysBlessing,
-            is PlayerIsMonarch,
+            is PlayerHasDesignation,
             is PlayerHasEnduringStory,
             is PlayerHasMostLife,
             is PlayerPlayedLandThisTurn,
@@ -709,15 +709,18 @@ class ConditionEvaluator(
                 count > 0
             }
             is PlayerHasCitysBlessing -> evaluateHasCitysBlessingCtx(state, condition, ctx)
-            // CR 725 — one monarch at most; "an opponent" is existential over every opponent.
-            is PlayerIsMonarch -> {
-                val monarch = state.monarch
-                if (monarch == null) false else when (condition.player) {
+            // CR 725.3 / 726.3 — one holder at most; "an opponent" is existential over every opponent.
+            is PlayerHasDesignation -> {
+                val holder = when (condition.designation) {
+                    com.wingedsheep.sdk.core.PlayerDesignation.MONARCH -> state.monarch
+                    com.wingedsheep.sdk.core.PlayerDesignation.INITIATIVE -> state.initiative
+                }
+                if (holder == null) false else when (condition.player) {
                     Player.AnOpponent, Player.EachOpponent -> {
                         val controller = ctx.controllerId
-                        controller != null && monarch in state.getOpponents(controller)
+                        controller != null && holder in state.getOpponents(controller)
                     }
-                    else -> resolvePlayer(state, condition.player, ctx) == monarch
+                    else -> resolvePlayer(state, condition.player, ctx) == holder
                 }
             }
             is PlayerHasEnduringStory -> evaluateHasEnduringStoryCtx(state, condition, ctx)

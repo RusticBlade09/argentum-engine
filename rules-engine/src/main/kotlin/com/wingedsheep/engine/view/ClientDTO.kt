@@ -935,7 +935,37 @@ data class ClientPlayer(
      * (CR 808.4), so it leaves this false — which is exactly why it can't be folded into
      * [teamSharedLife] or into "has a team".
      */
-    val teamSharedTurns: Boolean = false
+    val teamSharedTurns: Boolean = false,
+
+    /**
+     * The dungeon this player owns in the command zone and where their venture marker is
+     * (CR 309.4), or `null` when they aren't in a dungeon. Public information — dungeons and the
+     * marker are on the table for everyone.
+     */
+    val dungeon: ClientDungeon? = null,
+
+    /** Names of the dungeons this player has completed, in order (CR 309.7). Empty in most games. */
+    val completedDungeons: List<String> = emptyList()
+)
+
+/**
+ * A player's dungeon in the command zone (CR 309): the whole room graph, so the client can draw the
+ * map, and the room the venture marker is on.
+ */
+@Serializable
+data class ClientDungeon(
+    val name: String,
+    val imageUri: String? = null,
+    val currentRoom: Int,
+    val rooms: List<ClientDungeonRoom>
+)
+
+/** One room of a [ClientDungeon]: its name, its printed effect, and the rooms its arrows lead to. */
+@Serializable
+data class ClientDungeonRoom(
+    val name: String,
+    val text: String,
+    val leadsTo: List<Int>
 )
 
 /**

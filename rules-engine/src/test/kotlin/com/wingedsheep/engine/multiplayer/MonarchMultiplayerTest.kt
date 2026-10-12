@@ -16,7 +16,8 @@ import com.wingedsheep.sdk.model.Deck
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.conditions.Condition
 import com.wingedsheep.sdk.scripting.conditions.NotCondition
-import com.wingedsheep.sdk.scripting.conditions.PlayerIsMonarch
+import com.wingedsheep.sdk.scripting.conditions.PlayerHasDesignation
+import com.wingedsheep.sdk.core.PlayerDesignation
 import com.wingedsheep.sdk.scripting.references.Player
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -49,7 +50,7 @@ class MonarchMultiplayerTest : FunSpec({
         val state = initial.copy(monarch = p[3])
 
         state.holds(Conditions.AnOpponentIsTheMonarch, p[0]) shouldBe true
-        state.holds(PlayerIsMonarch(Player.EachOpponent), p[0]) shouldBe true
+        state.holds(PlayerHasDesignation(Player.EachOpponent, PlayerDesignation.MONARCH), p[0]) shouldBe true
         state.holds(Conditions.YouAreTheMonarch, p[0]) shouldBe false
         state.holds(Conditions.YouAreTheMonarch, p[3]) shouldBe true
         state.holds(Conditions.AnOpponentIsTheMonarch, p[3]) shouldBe false

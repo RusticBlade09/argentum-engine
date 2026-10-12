@@ -59,6 +59,7 @@ class ContinuationHandler(
         registerModule(ModalTriggerContinuationResumer(services))
         registerModule(TokenContinuationResumer(services))
         registerModule(RingTemptContinuationResumer(services))
+        registerModule(DungeonContinuationResumer(services))
         registerModule(AmassContinuationResumer(services))
         val leylineResumer = LeylineContinuationResumer(services)
         registerModule(leylineResumer)

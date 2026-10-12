@@ -385,10 +385,10 @@ Families:
 - `PlayerControlsMostPermanents(player: Player, filter: GameObjectFilter)` — True when player controls the most permanents matching filter, or is tied for the most, among all players (their count ≥ every player's).
 - `PlayerDrewCardsThisTurn(player: Player, atLeast: Int)` — Condition: "as long as player has drawn atLeast or more cards this turn".
 - `PlayerHasCitysBlessing(player: Player)` — Intervening-if / static condition: "if player has the city's blessing".
+- `PlayerHasDesignation(player: Player, designation: PlayerDesignation)` — Intervening-if / static condition: "if player has designation" — "if you're the monarch", "if you have the initiative".
 - `PlayerHasEnduringStory(player: Player)` — Intervening-if / static condition: "if player has an enduring story".
 - `PlayerHasMostLife(player: Player)` — True when player has the most life, or is tied for the most life, among all players (their life total ≥ every player's).
 - `PlayerIs(subject: Player, player: Player)` — Condition: "subject is player" — two resolved player references name the same player.
-- `PlayerIsMonarch(player: Player)` — Intervening-if / static condition: "if player is the monarch".
 - `PlayerPlayedLandThisTurn(player: Player, fromZone: Zone?, fromZoneOtherThan: Zone?)` — Condition: "if player has played a land this turn" (CR 305.1 special land-play action), reading the per-player `LandsPlayedThisTurnComponent` provenance recorded by `PlayLandHandler`.
 - `PlayerTurnedPermanentFaceUpThisTurn(player: Player)` — Resolution condition: "if player turned a permanent face up this turn".
 - `PutCounterKindOnCreatureThisTurn(counterType: CounterType?, player: Player)` — Condition: "as long as player has put one or more counterType counters on a creature this turn" — Sigardian Paladin's trample-and-lifelink gate.
@@ -624,6 +624,7 @@ Families:
 - `DynamicAmount.DistinctColorsManaSpent` — The number of distinct *colors* of mana spent to cast the source spell (0–5).
 - `DynamicAmount.DistinctEntitiesInCollections(collections: List<String>)` — Number of *distinct* entities across several named pipeline collections.
 - `DynamicAmount.Divide(numerator: DynamicAmount, denominator: DynamicAmount, roundUp: Boolean)` — Divide one dynamic amount by another, with configurable rounding.
+- `DynamicAmount.DungeonsCompleted(player: Player, dungeon: String?)` — How many dungeons player has completed this game (CR 309.7 — a player completes a dungeon as it is removed from the game).
 - `DynamicAmount.EntityProperty(entity: EffectTarget.SingleEntity, numericProperty: EntityNumericProperty)` — Read a numeric property from a referenced entity.
 - `DynamicAmount.Fixed(amount: Int)` — Fixed amount (for consistency in the type system).
 - `DynamicAmount.GraveyardRelativeCount(entity: EffectTarget.SingleEntity, above: Boolean, filter: GameObjectFilter)` — Count matching cards above or below a current object in its graveyard.
@@ -703,7 +704,6 @@ Families:
 - `BecomeCopyOfLinkedExileEffect(affected: EffectTarget)` — The affected permanent becomes a copy of a creature card exiled with the effect's source (read from the source's linked exile — see `CardSource.FromLinkedExile`), for as long as the source remains…
 - `BecomeCreatureEffect(target: EffectTarget, power: DynamicAmount, toughness: DynamicAmount, keywords: Set<Keyword>, creatureTypes: Set<String>, removeTypes: Set<String>, addTypes: Set<String>, colors: Set<String>?, imageUri: String?, duration: Duration, dynamicPower: DynamicAmount?, dynamicToughness: DynamicAmount?)` — Target permanent becomes a creature with specified characteristics until end of turn.
 - `BecomeCreatureTypeEffect(target: EffectTarget, duration: Duration, excludedTypes: List<String>)` — Target creature becomes the creature type of your choice until end of turn.
-- `BecomeMonarchEffect(target: EffectTarget)` — "target becomes the monarch" (Conspiracy: Take the Crown, CR 725).
 - `BecomeMonstrousEffect(target: EffectTarget)` — Target permanent becomes monstrous (CR 701.37b) — the designation half of the monstrosity keyword action.
 - `BecomePreparedEffect(target: EffectTarget)` — Make target become prepared (Secrets of Strixhaven).
 - `BecomeRenownedEffect(target: EffectTarget)` — Target permanent becomes renowned (CR 702.112b) — the designation half of the renown trigger the engine derives from com.wingedsheep.sdk.core.Keyword.RENOWN.
@@ -1030,6 +1030,7 @@ Families:
 - `SuspectEffect(target: EffectTarget, duration: Duration)` — Suspect the target (CR 701.60) — the whole mechanic in one effect: the named "suspected" designation, plus the menace and "this creature can't block" it carries for as long as it stays suspected.
 - `SwapBlockingAssignmentsEffect` — Swap what two blocking creatures are blocking — Sorrow's Path's "if each of those creatures could block all creatures that the other is blocking, remove both of them from combat.
 - `SwitchPowerToughnessEffect(target: EffectTarget, duration: Duration)` — Switch power and toughness after all other stat changes, for the chosen duration.
+- `TakeDesignationEffect(designation: PlayerDesignation, target: EffectTarget)` — "target becomes the monarch" (Conspiracy: Take the Crown, CR 725) / "target takes the initiative" (CR 726) — hand a single-holder PlayerDesignation to a player.
 - `TakeExtraTurnEffect(loseAtEndStep: Boolean, target: EffectTarget, powerUpAbilitiesCantBeActivated: Boolean)` — Take an extra turn after this one, optionally with a rider that applies **during that turn**.
 - `TapForManaPermanentsYouDontControlEffect(target: EffectTarget, permanentFilter: GameObjectFilter, restriction: ManaRestriction?, duration: Duration)` — target may tap permanents they don't control that match permanentFilter for mana, for duration; mana made that way carries restriction.
 - `TapUntapCollectionEffect(collectionName: String, tap: Boolean)` — Tap or untap all entities in a named collection.
@@ -1042,6 +1043,7 @@ Families:
 - `UnattachEquipmentEffect(target: EffectTarget)` — Unattach an Aura/Equipment from its host without moving it to another zone (CR 701.3d).
 - `UnlockDoorEffect(target: EffectTarget)` — Resolution-time "unlock a door" effect (CR 709.5f).
 - `UnprepareEffect(target: EffectTarget)` — Make target become unprepared (Secrets of Strixhaven) — the inverse of BecomePreparedEffect.
+- `VentureIntoTheDungeonEffect(target: EffectTarget, into: String?)` — "Venture into the dungeon" (CR 701.49) — and its "venture into quality" variant (CR 701.49d), of which "venture into Undercity" is the only one printed.
 - `WardCounterEffect(cost: WardCost)` — Counter the spell or ability that targeted this permanent unless its controller pays the ward cost.
 - `WarpExileEffect(target: EffectTarget, enteredBattlefieldTimestamp: Long?)` — Exile a warped permanent and mark it as re-castable via warp from exile.
 - `WinGameEffect(target: EffectTarget, message: String?)` — Target player wins the game.
@@ -1149,11 +1151,13 @@ Families:
 - `EventPattern.DamagePreventedEvent` — When a "prevent the next damage from a chosen source" shield prevents damage this way (Deflecting Palm, New Way Forward).
 - `EventPattern.DamageReceivedEvent(source: GameObjectFilter?, recipient: GameObjectFilter?)` — When a permanent is dealt damage.
 - `EventPattern.DealsDamageEvent(damageType: DamageType, recipient: Recipient, sourceFilter: GameObjectFilter?, requires: Set<DamagePredicate>, requireExcess: Boolean, batch: Boolean)` — When a source deals damage.
+- `EventPattern.DesignationTakenEvent(designation: PlayerDesignation, player: Player)` — Whenever a player takes a single-holder designation — "when you take the initiative", "whenever you become the monarch".
 - `EventPattern.DiscardEvent(player: Player, cardFilter: GameObjectFilter?, batch: Boolean)` — When a player would discard a card.
 - `EventPattern.DiscoveredEvent(player: Player)` — Whenever player discovers (CR 701.57).
 - `EventPattern.DoorUnlockedEvent(player: Player)` — A door of a Room becomes unlocked (CR 709.5h).
 - `EventPattern.DrawCardsEvent(player: Player, amount: Int)` — When a player would draw one or more cards.
 - `EventPattern.DrawEvent(player: Player, exceptFirstInDrawStep: Boolean)` — When a player draws a card.
+- `EventPattern.DungeonCompletedEvent(player: Player)` — Whenever a player completes a dungeon (CR 309.7) — as the dungeon card is removed from the game, by the state-based action (CR 704.5t) or by venturing from its bottommost room (CR 701.49c).
 - `EventPattern.EnlistedEvent` — This creature enlists another creature.
 - `EventPattern.EvidenceCollectedEvent(player: Player)` — Whenever player collects evidence (CR 701.59).
 - `EventPattern.ExertedAsItAttacksEvent` — "When you do" after "you may exert this creature as it attacks" (CR 701.43d) — the triggered ability linked to com.wingedsheep.sdk.scripting.ExertAsItAttacks (CR 607.2h).
@@ -1206,6 +1210,7 @@ Families:
 - `EventPattern.TurnBeginEvent(player: Player)` — Replacement-only interception before a turn begins; separate from beginning a step.
 - `EventPattern.TurnFaceUpEvent` — When a permanent is turned face up.
 - `EventPattern.UntapEvent(filter: GameObjectFilter?, batch: Boolean)` — When a permanent becomes untapped.
+- `EventPattern.VenturedIntoDungeonEvent(player: Player)` — Whenever a player ventures into the dungeon (CR 701.49) — once per venture, whether it entered a dungeon's first room or moved the marker on, and for "venture into Undercity" too.
 - `EventPattern.YouAttackEvent(minAttackers: Int, attackerFilter: GameObjectFilter?, player: Player, perAttackedPlayer: Boolean)` — When you attack with at least minAttackers creatures.
 - `EventPattern.ZoneChangeEvent(filter: GameObjectFilter, from: Zone?, to: Zone?, excludeTo: Zone?, excludeSacrifice: Boolean, requireCraftMaterial: Boolean)` — When an object changes zones.
 

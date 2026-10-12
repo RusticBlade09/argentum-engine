@@ -82,7 +82,7 @@ internal enum class AmountSign {
             is DynamicAmount.VariableReference, is DynamicAmount.ContextProperty -> UNKNOWN
 
             // Counts, mana values, mana spent, X: none of them can go below zero.
-            is DynamicAmount.Speed, is DynamicAmount.PlayerCounterCount, is DynamicAmount.CardsCycledThisGame,
+            is DynamicAmount.Speed, is DynamicAmount.DungeonsCompleted, is DynamicAmount.PlayerCounterCount, is DynamicAmount.CardsCycledThisGame,
             is DynamicAmount.StartingLifeTotal, is DynamicAmount.UnspentMana, is DynamicAmount.XValue,
             is DynamicAmount.LastKnownSourceCounters, is DynamicAmount.LastKnownDamageDealtToSource,
             is DynamicAmount.CastX, is DynamicAmount.CastChoice, is DynamicAmount.TotalManaSpent,

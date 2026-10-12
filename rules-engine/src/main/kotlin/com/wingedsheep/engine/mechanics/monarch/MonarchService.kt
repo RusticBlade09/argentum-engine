@@ -11,7 +11,7 @@ import com.wingedsheep.sdk.model.EntityId
  * Three callers move the title, and they all come through [become] so the CR 725.3 hand-off — the
  * old monarch stops being it as the new one starts — can't be done half-way:
  *
- * - [com.wingedsheep.engine.handlers.effects.player.BecomeMonarchExecutor], for "you become the
+ * - [com.wingedsheep.engine.handlers.effects.player.TakeDesignationExecutor], for "you become the
  *   monarch" and the inherent combat-damage steal (CR 725.2), which is that same effect;
  * - [onPlayerLeft], the CR 725.4 hand-off when the monarch leaves the game.
  *
@@ -44,22 +44,8 @@ object MonarchService {
      */
     fun onPlayerLeft(state: GameState, leaver: EntityId): Pair<GameState, List<GameEvent>> {
         if (state.monarch != leaver) return state to emptyList()
-        val remaining = state.activePlayers
-        val successor = successorFor(state, remaining)
+        val successor = DesignationSuccession.successor(state)
         return state.copy(monarch = successor) to
             listOf(MonarchChangedEvent(previousMonarchId = leaver, newMonarchId = successor, sourceName = SOURCE_NAME))
-    }
-
-    /** The active player if still in the game, else the first still-in player after them in turn order. */
-    private fun successorFor(state: GameState, remaining: List<EntityId>): EntityId? {
-        if (remaining.isEmpty()) return null
-        val active = state.activePlayerId ?: return remaining.first()
-        if (active in remaining) return active
-        val order = state.turnOrder
-        val start = order.indexOf(active)
-        if (start < 0) return remaining.first()
-        return (1..order.size).asSequence()
-            .map { order[(start + it) % order.size] }
-            .firstOrNull { it in remaining }
     }
 }

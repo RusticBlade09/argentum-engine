@@ -30,6 +30,14 @@ export interface Announcement {
 
 export const ANNOUNCEMENTS: readonly Announcement[] = [
   {
+    id: 'feature-dungeons-initiative',
+    date: '2026-10-12',
+    kind: 'feature',
+    title: 'Dungeons and the initiative',
+    body:
+      'Venture into the dungeon: pick Lost Mine of Phandelver, Dungeon of the Mad Mage or Tomb of Annihilation, then choose your path room by room on the dungeon map. The initiative is here too — take it and you venture into Undercity every upkeep, until someone hits you in combat and steals it. Each player’s dungeon shows in their command zone, and 🗝️ marks who has the initiative. White Plume Adventurer, Seasoned Dungeoneer, Nadaar and friends are ready for your Commander decks.',
+  },
+  {
     id: 'feature-partner-commanders',
     date: '2026-10-12',
     kind: 'feature',

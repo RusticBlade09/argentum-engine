@@ -1079,6 +1079,20 @@ class PlayerTriggerSubject internal constructor(private val player: Player) {
     fun isTemptedByTheRing(bearerChosen: Boolean = false): TriggerSpec =
         spec(RingTemptedEvent(player, requireBearerChosen = bearerChosen))
 
+    /** "ventures into the dungeon" (CR 701.49) — once per venture, "venture into Undercity" included. */
+    fun venturesIntoTheDungeon(): TriggerSpec = spec(VenturedIntoDungeonEvent(player))
+
+    /** "completes a dungeon" (CR 309.7) — as the dungeon card is removed from the game. */
+    fun completesADungeon(): TriggerSpec = spec(DungeonCompletedEvent(player))
+
+    /** "takes the initiative" (CR 726) — fires again for a player who already had it (CR 726.5). */
+    fun takesTheInitiative(): TriggerSpec =
+        spec(DesignationTakenEvent(com.wingedsheep.sdk.core.PlayerDesignation.INITIATIVE, player))
+
+    /** "becomes the monarch" (CR 725) — only when the title actually moves to the player. */
+    fun becomesTheMonarch(): TriggerSpec =
+        spec(DesignationTakenEvent(com.wingedsheep.sdk.core.PlayerDesignation.MONARCH, player))
+
     /** "waterbends, earthbends, firebends, or airbends" — once per bend whose type is in [types]. */
     fun bends(types: Set<BendType> = BendType.ALL): TriggerSpec = spec(BendPerformedEvent(player = player, types = types))
 

@@ -6831,6 +6831,7 @@ put on the player by anyone: "whenever you get one or more {E}", `CountersPlaced
 `exploits(nontoken?)`, `commitsCrime()`, `givesAGift()`, `scries()`, `surveils()`, `scriesOrSurveils()`, `proliferates()`,
 `discovers()`, `collectsEvidence()`, `forages()`, `investigates(firstTimeEachTurn?)`, `solvesACase()`, `clashes(andWins?)`,
 `isTemptedByTheRing(bearerChosen?)`, `bends(types)`, `manifestsDread()`, `expends(n)`,
+`venturesIntoTheDungeon()`, `completesADungeon()`, `takesTheInitiative()`, `becomesTheMonarch()`,
 `fullyUnlocksARoom()`, `sagaChapterResolves(finalOnly?)`.
 
 A verb whose event has no room for the subject's filter (`crews`, …) rejects a
@@ -8048,6 +8049,17 @@ Triggers.you.casts(GameObjectFilter.Noncreature or
   A `RingTemptedEvent` pattern with `requireBearerChosen = true`, so it fires only when the temptation
   actually designates a creature (the event's `bearerId` is non-null) — not when you control none to
   choose. Used by Call of the Ring.
+
+### Dungeons and the initiative
+
+- `Triggers.you.venturesIntoTheDungeon()` — whenever you venture into the dungeon (CR 701.49), once per
+  venture, "venture into Undercity" included. Backed by `EventPattern.VenturedIntoDungeonEvent(player)`.
+- `Triggers.you.completesADungeon()` — whenever you complete a dungeon (CR 309.7), as the dungeon card is
+  removed. Backed by `EventPattern.DungeonCompletedEvent(player)`. Dungeon Crawler pairs it with
+  `triggerZone = Zone.GRAVEYARD`.
+- `Triggers.you.takesTheInitiative()` — "when you take the initiative" (CR 726). Fires again for a player
+  who already had it (CR 726.5). `Triggers.you.becomesTheMonarch()` is the monarch twin, firing only when
+  the crown actually moves (CR 725.3). Both are `EventPattern.DesignationTakenEvent(designation, player)`.
 
 ### Clash
 
@@ -13071,7 +13083,12 @@ answer it and would silently return `false`.
   Color.GREEN)`).
 - `YouHaveCitysBlessing` — you have City's Blessing (10+ permanents).
 - `YouAreTheMonarch` / `AnOpponentIsTheMonarch` — the monarch designation (CR 725). Backed by
-  `PlayerIsMonarch(player)`; the opponent form is existential over every opponent. False while there is no monarch.
+  `PlayerHasDesignation(player, PlayerDesignation.MONARCH)`; the opponent form is existential over every
+  opponent. False while there is no monarch.
+- `YouHaveTheInitiative` — the initiative (CR 726), `PlayerHasDesignation(Player.You, PlayerDesignation.INITIATIVE)`.
+- `YouCompletedADungeon` / `CompletedDungeon(player, dungeon?)` — "if you've completed a dungeon" (CR 309.7),
+  a `Compare` over `DynamicAmount.DungeonsCompleted(player, dungeon) >= 1`; name a `dungeon` for "if you've
+  completed Tomb of Annihilation".
 - `YouHaveEnduringStory` — you have an enduring story (storied: 3+ artifacts/Sagas/legendaries).
 - `SourceIsRingBearer` — the source permanent is your Ring-bearer (CR 701.54e).
 - `YouChoseOtherCreatureAsRingBearer` — intervening-if for `Triggers.you.isTemptedByTheRing()` payoffs that fire
@@ -13536,8 +13553,13 @@ default to "you" so card authors don't need to pass it explicitly.
   (stamped in the turn-face-up handler), both cleared at the turn boundary. Compose with `Conditions.Not` /
   `Conditions.Any` for the "unless A or B" rider.
 - `YouHaveCitysBlessing` — Ascend gate. Backed by `PlayerHasCitysBlessing(Player.You)`.
-- `YouAreTheMonarch` / `AnOpponentIsTheMonarch` — monarch gates (CR 725), backed by `PlayerIsMonarch(Player.You)` /
-  `PlayerIsMonarch(Player.AnOpponent)`. "If you're not the monarch" is `Conditions.Not(Conditions.YouAreTheMonarch)`.
+- `YouAreTheMonarch` / `AnOpponentIsTheMonarch` — monarch gates (CR 725), backed by
+  `PlayerHasDesignation(Player.You / Player.AnOpponent, PlayerDesignation.MONARCH)`. "If you're not the monarch"
+  is `Conditions.Not(Conditions.YouAreTheMonarch)`.
+- `YouHaveTheInitiative` — initiative gate (CR 726), the same condition over `PlayerDesignation.INITIATIVE`
+  (Feywild Caretaker, Passageway Seer).
+- `YouCompletedADungeon` — "as long as / if you've completed a dungeon" (CR 309.7); works in statics
+  (Gloom Stalker, Nadaar) and intervening-ifs alike.
 - `YouHaveEnduringStory` — storied gate (CR 702.195). Backed by `PlayerHasEnduringStory(Player.You)`.
 - `YouHaveMaxSpeed` / `HasMaxSpeed(player)` — "your speed is 4" (CR 702.179e), the gate the
   `maxSpeed { }` block applies. `SpeedBelowMax(player)` is the complement used by the inherent speed
@@ -14108,6 +14130,9 @@ both spellings, and the ability its bare-noun line grants says "Regenerate this 
   Samut, the Driving Force) and, via `Compare`, the whole max-speed gate. A player with no speed reads
   as 0 (CR 702.179f), so it never needs a has-speed guard. Not pooled in team games, unlike life and
   poison.
+- `DungeonsCompleted(player, dungeon?)` — dungeons that player has completed this game (CR 309.7; facade
+  `DynamicAmounts.dungeonsCompleted(player, dungeon)`). The same dungeon completed twice counts twice;
+  `dungeon` narrows it to one dungeon by name.
 - `TurnCount(player)` — turn number for that player.
 - `TurnTracking(player, TurnTracker)` — value of a per-turn counter (see below).
 - `SpellsCastThisTurn(player, filter?, excludeSelf?, fromZone?, countDistinctCardTypes?, beforeTriggeringSpell?)` — count of spells `player` has cast
@@ -16753,7 +16778,31 @@ Card authors rarely reference these directly; they are created/updated by the ma
   (`MonarchAbilities`, sourceless, controlled by the monarch), so a card never re-states them. The title lives
   in `GameState.monarch` (one holder, CR 725.3) and is written only by `MonarchService`, which also hands it on
   when the monarch leaves the game (CR 725.4). Becoming the monarch while already it changes nothing. First
-  user: Queen Marchesa.
+  user: Queen Marchesa. The effect is `TakeDesignationEffect(PlayerDesignation.MONARCH, target)` — one type
+  over a designation axis shared with the initiative.
+- **The initiative** (CR 726) — `Effects.TakeTheInitiative(target = EffectTarget.Controller)` is "you take the
+  initiative"; read it with `Conditions.YouHaveTheInitiative`, trigger on it with
+  `Triggers.you.takesTheInitiative()`. Like the monarch, the three inherent abilities (CR 726.2 — venture into
+  Undercity on taking it and at the holder's upkeep; one or more creatures a player controls dealing combat
+  damage to the holder hands it to that player, one trigger per attacking player) are the engine's
+  (`InitiativeAbilities`), never re-stated on a card. The designation lives in `GameState.initiative`, written
+  only by `InitiativeService`, which hands it to the active player when the holder leaves (CR 726.4) — that
+  successor *takes* it, so they venture. Unlike the monarch, taking it again while holding it still triggers the
+  venture (CR 726.5). The initiative and the monarch are independent. First users: the CLB initiative cycle
+  (White Plume Adventurer, Seasoned Dungeoneer, Avenging Hunter, …).
+- **Venture into the dungeon** (CR 701.49, CR 309) — `Effects.VentureIntoTheDungeon(target = Controller,
+  into = null)`. With no dungeon in the command zone the player picks one (Lost Mine of Phandelver, Dungeon of
+  the Mad Mage, Tomb of Annihilation — a `ChooseOptionDecision` whose option ids are `dungeon:<name>`); in a
+  dungeon the marker moves along an arrow, and a fork asks which room (`dungeon-room:<index>`). On the
+  bottommost room a venture completes the dungeon first (CR 701.49c). `into = "Undercity"` is "venture into
+  Undercity" (CR 701.49d) — the only way into Undercity, used by the initiative. The dungeon cards themselves
+  are pure data in `com.wingedsheep.sdk.dungeons.Dungeons`, built with the `dungeon("…") { room(name, text,
+  leadsTo) { target(…); effect = … } }` DSL (`DungeonDefinition` / `DungeonRoom`); each room's effect is
+  composed from ordinary facades, and the engine turns it into the room ability "When you move your venture
+  marker into this room, …" (CR 309.4c) sourced from the dungeon card. The dungeon is removed — completed —
+  by a state-based action once its last room's ability has left the stack (CR 704.5t). Count completions with
+  `DynamicAmount.DungeonsCompleted`; "whenever you venture" / "whenever you complete a dungeon" are
+  `Triggers.you.venturesIntoTheDungeon()` / `Triggers.you.completesADungeon()`.
 - **Storied / Enduring Story** (The Hobbit, CR 702.195) — the same shape as ascend-on-a-permanent, with a
   different threshold, and authored the same way: `storied()` adds `Keyword.STORIED` and nothing else,
   because 702.195a is a *static* ability ("**any time** you control three or more permanents that are

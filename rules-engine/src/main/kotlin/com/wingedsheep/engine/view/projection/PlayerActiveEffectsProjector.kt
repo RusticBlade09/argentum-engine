@@ -567,6 +567,22 @@ internal class PlayerActiveEffectsProjector(
             )
         }
 
+        // The initiative (CR 726). Independent of the monarch — one player can hold both. The badge
+        // image is the back face of the Undercity // The Initiative card (tclb #20).
+        if (state.initiative == playerId) {
+            effects.add(
+                ClientPlayerEffect(
+                    effectId = "initiative",
+                    name = "The Initiative",
+                    description = "Venture into Undercity when you take the initiative and at the " +
+                        "beginning of your upkeep. Creatures that deal combat damage to you take the " +
+                        "initiative for their controller.",
+                    icon = "initiative",
+                    imageUri = "https://cards.scryfall.io/normal/back/2/c/2c65185b-6cf0-451d-985e-56aa45d9a57d.jpg?1788840929"
+                )
+            )
+        }
+
         // Storied / enduring story (CR 702.195). Read through EnduringStoryService rather than the
         // component for the same reason as the city's blessing above: storied on a permanent is
         // continuous, so a player who has just crossed three qualifying permanents already has the

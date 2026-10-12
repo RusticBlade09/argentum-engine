@@ -114,6 +114,71 @@ sealed interface ClientEvent {
         }
     ) : ClientEvent
 
+    /**
+     * A player took the initiative (CR 726) — from an effect, by dealing combat damage to the holder,
+     * or by inheriting it from a player who left (CR 726.4). [previousHolderId] equals [newHolderId]
+     * when the holder took it again (CR 726.5). The badge is the player's active-effect chip; this is
+     * the log line. [playerName] / [previousHolderName] name the players for multiplayer logs.
+     */
+    @Serializable
+    @SerialName("initiativeTaken")
+    data class InitiativeTaken(
+        val previousHolderId: EntityId?,
+        val newHolderId: EntityId,
+        val sourceName: String,
+        val playerName: String? = null,
+        val previousHolderName: String? = null,
+        val isYours: Boolean? = null,
+        override val description: String = buildString {
+            append(
+                when (isYours) {
+                    true -> "You take the initiative"
+                    else -> "${playerName ?: "Opponent"} takes the initiative"
+                }
+            )
+            if (previousHolderId != null && previousHolderId != newHolderId) {
+                append(" from ${previousHolderName ?: "an opponent"}")
+            }
+            if (sourceName != "The Initiative") append(" ($sourceName)")
+        }
+    ) : ClientEvent
+
+    /**
+     * A player ventured into the dungeon (CR 701.49) and moved their marker into [roomName] of
+     * [dungeonName] — its first room when [enteredDungeon]. The log line; the dungeon panel itself is
+     * drawn from [ClientPlayer.dungeon].
+     */
+    @Serializable
+    @SerialName("venturedIntoDungeon")
+    data class VenturedIntoDungeon(
+        val playerId: EntityId,
+        val dungeonName: String,
+        val roomName: String,
+        val enteredDungeon: Boolean,
+        val playerName: String? = null,
+        val isYours: Boolean? = null,
+        override val description: String = run {
+            val who = if (isYours == true) "You" else (playerName ?: "Opponent")
+            val verb = if (isYours == true) "venture" else "ventures"
+            if (enteredDungeon) "$who $verb into $dungeonName — $roomName"
+            else "$who $verb deeper into $dungeonName — $roomName"
+        }
+    ) : ClientEvent
+
+    /** A player completed a dungeon (CR 309.7); [completedCount] is their total so far. */
+    @Serializable
+    @SerialName("dungeonCompleted")
+    data class DungeonCompleted(
+        val playerId: EntityId,
+        val dungeonName: String,
+        val completedCount: Int,
+        val playerName: String? = null,
+        val isYours: Boolean? = null,
+        override val description: String =
+            if (isYours == true) "You completed $dungeonName"
+            else "${playerName ?: "Opponent"} completed $dungeonName"
+    ) : ClientEvent
+
     @Serializable
     @SerialName("damageDealt")
     data class DamageDealt(
@@ -962,6 +1027,10 @@ object ClientEventTransformer {
         }
     }
 
+    /** A player's display name, for log lines that name players in a multiplayer game. */
+    private fun playerName(state: GameState?, playerId: EntityId): String? =
+        state?.getEntity(playerId)?.get<com.wingedsheep.engine.state.components.identity.PlayerComponent>()?.name
+
     private fun transformEvent(
         event: GameEvent,
         viewingPlayerId: EntityId,
@@ -985,6 +1054,32 @@ object ClientEventTransformer {
                 newMonarchId = event.newMonarchId,
                 sourceName = event.sourceName,
                 isYours = event.newMonarchId?.let { it == viewingPlayerId }
+            )
+
+            is InitiativeTakenEvent -> ClientEvent.InitiativeTaken(
+                previousHolderId = event.previousHolderId,
+                newHolderId = event.newHolderId,
+                sourceName = event.sourceName,
+                playerName = playerName(state, event.newHolderId),
+                previousHolderName = event.previousHolderId?.let { playerName(state, it) },
+                isYours = event.newHolderId == viewingPlayerId
+            )
+
+            is VenturedIntoDungeonEvent -> ClientEvent.VenturedIntoDungeon(
+                playerId = event.playerId,
+                dungeonName = event.dungeonName,
+                roomName = event.roomName,
+                enteredDungeon = event.enteredDungeon,
+                playerName = playerName(state, event.playerId),
+                isYours = event.playerId == viewingPlayerId
+            )
+
+            is DungeonCompletedEvent -> ClientEvent.DungeonCompleted(
+                playerId = event.playerId,
+                dungeonName = event.dungeonName,
+                completedCount = event.completedCount,
+                playerName = playerName(state, event.playerId),
+                isYours = event.playerId == viewingPlayerId
             )
 
             is DayNightChangedEvent -> ClientEvent.DayNightChanged(

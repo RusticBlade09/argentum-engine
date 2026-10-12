@@ -5,6 +5,8 @@ import com.wingedsheep.engine.core.GameEndReason
 import com.wingedsheep.engine.core.PlayerLeftGameEvent
 import com.wingedsheep.engine.handlers.effects.ZoneTransitionService
 import com.wingedsheep.engine.mechanics.layers.SerializableModification
+import com.wingedsheep.engine.mechanics.dungeon.DungeonService
+import com.wingedsheep.engine.mechanics.initiative.InitiativeService
 import com.wingedsheep.engine.mechanics.monarch.MonarchService
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.isResolving
@@ -41,6 +43,8 @@ import com.wingedsheep.sdk.scripting.Duration
  *
  * - **CR 725.4 (the monarch)** — a monarch who leaves hands the title to the active player (or
  *   the next player in turn order) at the same time; see [MonarchService.onPlayerLeft].
+ * - **CR 726.4 (the initiative)** — likewise for the initiative, except the successor *takes* it
+ *   and so ventures into Undercity; see [InitiativeService.onPlayerLeft].
  * - **CR 800.4f–h (a choice the leaver was mid-way through making)** — a pending decision
  *   addressed to the leaver is abandoned: the decision is cleared, the continuation frames
  *   waiting on it are dropped, and priority goes to the active player (CR 117.3b, redirected
@@ -149,6 +153,12 @@ object PlayerLeavesGameProcessor {
         val (afterMonarch, monarchEvents) = MonarchService.onPlayerLeft(s, leaver)
         s = afterMonarch
 
+        // 10. CR 726.4 — so does the player who has the initiative; the successor *takes* it, so
+        // they venture into Undercity. The leaver's dungeon card leaves the game with them
+        // (CR 800.4a) without counting as completed.
+        val (afterInitiative, initiativeEvents) = InitiativeService.onPlayerLeft(s, leaver)
+        s = DungeonService.onPlayerLeft(afterInitiative, leaver)
+
         // Player control ends when its controller leaves, or when an abandoned resolution loses
         // its bottom frame. Retain only grants for living seats and still-existing stack visits.
         val expiredControl = s.resolutionControls.filter {
@@ -165,7 +175,7 @@ object PlayerLeavesGameProcessor {
         val returns = com.wingedsheep.engine.handlers.effects.ZoneReturnService.returnDepartedSources(zones, s)
         return ExecutionResult.success(
             returns.state,
-            listOf(PlayerLeftGameEvent(leaver, reason, toRemove.size)) + monarchEvents + controlEvents + returns.events
+            listOf(PlayerLeftGameEvent(leaver, reason, toRemove.size)) + monarchEvents + initiativeEvents + controlEvents + returns.events
         )
     }
 

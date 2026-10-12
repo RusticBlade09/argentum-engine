@@ -101,6 +101,15 @@ class ScenarioBuilderService(
             checkZone("$label exile", config.exile)
             checkZone("$label sideboard", config.sideboard)
             checkZone("$label commanders", config.commanders)
+            config.dungeon?.let { staged ->
+                val dungeon = com.wingedsheep.sdk.dungeons.Dungeons.byName(staged.name)
+                if (dungeon == null) errors += "Unknown dungeon: ${staged.name}"
+                else if (staged.room != null && dungeon.rooms.none { it.name == staged.room }) {
+                    errors += "${staged.name} has no room named ${staged.room}"
+                }
+            }
+            config.completedDungeons?.filter { com.wingedsheep.sdk.dungeons.Dungeons.byName(it) == null }
+                ?.forEach { errors += "Unknown dungeon: $it" }
             val battlefield = config.battlefield ?: emptyList()
             total += battlefield.size
             if (enforceLimits && battlefield.size > MAX_CARDS_PER_ZONE) {
@@ -162,6 +171,8 @@ class ScenarioBuilderService(
         request.priorityPlayer?.let { builder.withPriorityPlayer(it) }
         request.teams?.let { builder.withTeams(it, teamVsTeam = request.teamVsTeam == true) }
         request.attackMode?.let { builder.withAttackMode(it) }
+        request.monarch?.let { builder.withDesignation(it, com.wingedsheep.sdk.core.PlayerDesignation.MONARCH) }
+        request.initiative?.let { builder.withDesignation(it, com.wingedsheep.sdk.core.PlayerDesignation.INITIATIVE) }
 
         val (state, playerIds) = builder.build()
         return ScenarioBuildResult(state, playerIds, registry)
@@ -190,6 +201,8 @@ class ScenarioBuilderService(
         config.library?.forEach { builder.withCardInLibrary(n, it) }
         config.exile?.forEach { builder.withCardInExile(n, it) }
         config.sideboard?.forEach { builder.withCardInSideboard(n, it) }
+        config.dungeon?.let { builder.withDungeon(n, it.name, it.room) }
+        config.completedDungeons?.takeIf { it.isNotEmpty() }?.let { builder.withCompletedDungeons(n, it) }
     }
 
     private fun phaseToDefaultStep(phase: Phase): Step = when (phase) {
@@ -461,6 +474,39 @@ class ScenarioBuilderService(
                 format = if (teamVsTeam) com.wingedsheep.sdk.core.Format.TeamVsTeam()
                 else com.wingedsheep.sdk.core.Format.TwoHeadedGiant()
             )
+            return this
+        }
+
+        /** Stage a single-holder designation (CR 725 / 726) on a seat, without triggering anything. */
+        fun withDesignation(playerNumber: Int, designation: com.wingedsheep.sdk.core.PlayerDesignation): ScenarioBuilder {
+            val playerId = playerFor(playerNumber)
+            state = when (designation) {
+                com.wingedsheep.sdk.core.PlayerDesignation.MONARCH -> state.copy(monarch = playerId)
+                com.wingedsheep.sdk.core.PlayerDesignation.INITIATIVE -> state.copy(initiative = playerId)
+            }
+            return this
+        }
+
+        /** Put [dungeonName] into the player's command zone with the marker on [roomName] (CR 309.4). */
+        fun withDungeon(playerNumber: Int, dungeonName: String, roomName: String?): ScenarioBuilder {
+            val playerId = playerFor(playerNumber)
+            val dungeon = com.wingedsheep.sdk.dungeons.Dungeons.byName(dungeonName)
+                ?: error("Unknown dungeon: $dungeonName")
+            val room = roomName?.let { name -> dungeon.rooms.indexOfFirst { it.name == name } }
+                ?.takeIf { it >= 0 } ?: dungeon.topmostRoom
+            state = com.wingedsheep.engine.mechanics.dungeon.DungeonService.enter(state, playerId, dungeon, "scenario").first
+            state = com.wingedsheep.engine.mechanics.dungeon.DungeonService.moveTo(state, playerId, room, "scenario").first
+            return this
+        }
+
+        /** Record dungeons the player has already completed (CR 309.7). */
+        fun withCompletedDungeons(playerNumber: Int, names: List<String>): ScenarioBuilder {
+            val playerId = playerFor(playerNumber)
+            state = state.updateEntity(playerId) { container ->
+                val progress = container.get<com.wingedsheep.engine.state.components.player.DungeonProgressComponent>()
+                    ?: com.wingedsheep.engine.state.components.player.DungeonProgressComponent()
+                container.with(progress.copy(completed = progress.completed + names))
+            }
             return this
         }
 

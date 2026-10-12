@@ -658,6 +658,23 @@ sealed interface DynamicAmount : TextReplaceable<DynamicAmount> {
     }
 
     /**
+     * How many dungeons [player] has completed this game (CR 309.7 — a player completes a dungeon
+     * as it is removed from the game). Completing the same dungeon twice counts twice.
+     *
+     * [dungeon] narrows the count to completions of one dungeon, by name ("if you've completed
+     * Tomb of Annihilation"); `null` counts them all. "You've completed a dungeon" is
+     * `Compare(DungeonsCompleted(You), GTE, Fixed(1))`, exposed as
+     * [com.wingedsheep.sdk.dsl.Conditions.YouCompletedADungeon].
+     */
+    @SerialName("DungeonsCompleted")
+    @Serializable
+    data class DungeonsCompleted(val player: Player = Player.You, val dungeon: String? = null) : DynamicAmount {
+        override val description: String =
+            if (dungeon == null) "the number of dungeons ${player.description} ${if (player == Player.You) "have" else "has"} completed"
+            else "the number of times ${player.description} ${if (player == Player.You) "have" else "has"} completed $dungeon"
+    }
+
+    /**
      * How many counters of [counterType] a player currently has — the player-scoped sibling of
      * [EntityProperty]'s [com.wingedsheep.sdk.scripting.values.EntityNumericProperty.CounterCount]
      * (which reads one object named by an `EffectTarget.SingleEntity`; player roles are not

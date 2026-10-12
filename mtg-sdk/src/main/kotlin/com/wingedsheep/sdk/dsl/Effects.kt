@@ -1352,7 +1352,29 @@ object Effects {
      * (CR 725.3). Queen Marchesa, Palace Jailer and the rest of the monarch cycle.
      */
     fun BecomeMonarch(target: EffectTarget = EffectTarget.Controller): Effect =
-        com.wingedsheep.sdk.scripting.effects.BecomeMonarchEffect(target)
+        com.wingedsheep.sdk.scripting.effects.TakeDesignationEffect(
+            com.wingedsheep.sdk.core.PlayerDesignation.MONARCH, target
+        )
+
+    /**
+     * "[target] takes the initiative" (CR 726). The designation moves (CR 726.3), and taking it —
+     * even while already having it (CR 726.5) — triggers the inherent "that player ventures into
+     * Undercity". White Plume Adventurer and the rest of the CLB initiative cards.
+     */
+    fun TakeTheInitiative(target: EffectTarget = EffectTarget.Controller): Effect =
+        com.wingedsheep.sdk.scripting.effects.TakeDesignationEffect(
+            com.wingedsheep.sdk.core.PlayerDesignation.INITIATIVE, target
+        )
+
+    /**
+     * "Venture into the dungeon" (CR 701.49): enter the first room of a dungeon of your choice, or
+     * advance to the next room of the one you're in. Pass [into] for the "venture into [quality]"
+     * variant (CR 701.49d) — only `"Undercity"` is printed, and only the initiative does it.
+     */
+    fun VentureIntoTheDungeon(
+        target: EffectTarget = EffectTarget.Controller,
+        into: String? = null
+    ): Effect = com.wingedsheep.sdk.scripting.effects.VentureIntoTheDungeonEffect(target, into)
 
     /**
      * "[target]'s speed increases by [amount]" (Aetherdrift, CR 702.179).

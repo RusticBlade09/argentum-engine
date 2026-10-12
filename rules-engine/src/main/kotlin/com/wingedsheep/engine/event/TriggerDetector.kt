@@ -435,6 +435,14 @@ class TriggerDetector(
         // Detect Saga chapter triggers from lore counter additions
         detectSagaChapterTriggers(state, events, triggers)
 
+        // Room abilities (CR 309.4c): "When you move your venture marker into this room, …".
+        DungeonRoomAbilities.detect(events, triggers)
+
+        // The initiative's inherent triggers that fire off events (CR 726.2) — the venture on
+        // taking it, and the batched combat-damage steal.
+        InitiativeAbilities.detectTakeVentures(events, triggers)
+        InitiativeAbilities.detectCombatDamageSteals(state, events, triggers)
+
         // Duplicate triggers for "additional time" static abilities (e.g., Naban, Panharmonicon,
         // Gandalf the White). When a permanent matching the filter enters or leaves the
         // battlefield (per the static's directions), triggered abilities on the controller's
@@ -770,6 +778,22 @@ class TriggerDetector(
                         sourceId = monarch,
                         sourceName = MonarchService.SOURCE_NAME,
                         controllerId = monarch,
+                        triggerContext = TriggerContext(step = step, triggeringEntityId = activePlayerId)
+                    )
+                )
+            }
+        }
+
+        // The initiative's inherent upkeep venture (CR 726.2) — sourceless, controlled by the holder.
+        state.initiative?.let { holder ->
+            val ability = InitiativeAbilities.upkeepVenture
+            if (matcher.matchesStepTrigger(ability.trigger, step, holder, state, holder)) {
+                triggers.add(
+                    PendingTrigger(
+                        ability = ability,
+                        sourceId = holder,
+                        sourceName = com.wingedsheep.engine.mechanics.initiative.InitiativeService.SOURCE_NAME,
+                        controllerId = holder,
                         triggerContext = TriggerContext(step = step, triggeringEntityId = activePlayerId)
                     )
                 )

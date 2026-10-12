@@ -109,7 +109,10 @@
                     "type": "ZoneChangeEvent",
                     "to": "Battlefield"
                 },
-                "effect": "BecomeMonarch"
+                "effect": {
+                    "type": "TakeDesignation",
+                    "designation": "MONARCH"
+                }
             },
             {
                 "id": "Queen Marchesa:2",
@@ -134,8 +137,9 @@
                     ]
                 },
                 "interveningIf": {
-                    "type": "PlayerIsMonarch",
-                    "player": "AnOpponent"
+                    "type": "PlayerHasDesignation",
+                    "player": "AnOpponent",
+                    "designation": "MONARCH"
                 }
             }
         ]

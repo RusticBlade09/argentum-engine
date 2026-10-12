@@ -3,6 +3,7 @@ package com.wingedsheep.sdk.scripting.conditions
 import com.wingedsheep.sdk.core.CounterType
 import com.wingedsheep.sdk.core.CardType
 import com.wingedsheep.sdk.core.Phase
+import com.wingedsheep.sdk.core.PlayerDesignation
 import com.wingedsheep.sdk.core.Step
 import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.scripting.GameObjectFilter
@@ -782,29 +783,43 @@ data class PlayerHasCitysBlessing(val player: Player = Player.You) : Condition {
 }
 
 // =============================================================================
-// The monarch (Conspiracy: Take the Crown, CR 725)
+// Single-holder designations — the monarch (CR 725) and the initiative (CR 726)
 // =============================================================================
 
 /**
- * Intervening-if / static condition: "if [player] is the monarch".
+ * Intervening-if / static condition: "if [player] has [designation]" — "if you're the monarch",
+ * "if you have the initiative".
  *
- * [Player.You] reads "if you're the monarch" (Palace Jailer's "Monarch" payoffs); [Player.AnOpponent]
- * and [Player.EachOpponent] read "if an opponent is the monarch" (Queen Marchesa) and are
- * *existential* — true when the monarch is any opponent of the controller, which is what matters in
- * multiplayer, where the first opponent is not necessarily the one wearing the crown. Any other
- * [Player] resolves to one player and asks whether that player is the monarch.
+ * [Player.You] reads "if you're the monarch" (Palace Jailer's "Monarch" payoffs) / "if you have the
+ * initiative" (Feywild Caretaker); [Player.AnOpponent] and [Player.EachOpponent] read "if an opponent
+ * is the monarch" (Queen Marchesa) and are *existential* — true when the holder is any opponent of
+ * the controller, which is what matters in multiplayer, where the first opponent is not necessarily
+ * the one holding it. Any other [Player] resolves to one player and asks whether that player holds it.
  *
- * False while the game has no monarch (CR 725.1 — there is none until an effect makes one, and
- * CR 725.4 can leave the game without one), so "if you're not the monarch" is
+ * False while nobody holds [designation] (CR 725.1 / 726.1 — there is none until an effect hands it
+ * out, and CR 725.4 can leave the game without a monarch), so "if you're not the monarch" is
  * `Conditions.Not(Conditions.YouAreTheMonarch)` and is true then.
+ *
+ * One type over a [PlayerDesignation] axis rather than one per title: the two designations are read
+ * the same way, and only the engine's inherent abilities tell them apart.
  */
-@SerialName("PlayerIsMonarch")
+@SerialName("PlayerHasDesignation")
 @Serializable
-data class PlayerIsMonarch(val player: Player = Player.You) : Condition {
-    override val description: String = when (player) {
-        Player.You -> "if you're the monarch"
-        Player.AnOpponent, Player.EachOpponent -> "if an opponent is the monarch"
-        else -> "if ${player.description} is the monarch"
+data class PlayerHasDesignation(
+    val player: Player = Player.You,
+    val designation: PlayerDesignation,
+) : Condition {
+    override val description: String = when (designation) {
+        PlayerDesignation.MONARCH -> when (player) {
+            Player.You -> "if you're the monarch"
+            Player.AnOpponent, Player.EachOpponent -> "if an opponent is the monarch"
+            else -> "if ${player.description} is the monarch"
+        }
+        PlayerDesignation.INITIATIVE -> when (player) {
+            Player.You -> "if you have the initiative"
+            Player.AnOpponent, Player.EachOpponent -> "if an opponent has the initiative"
+            else -> "if ${player.description} has the initiative"
+        }
     }
 }
 

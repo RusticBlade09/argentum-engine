@@ -1,6 +1,7 @@
 package com.wingedsheep.sdk.scripting.effects
 
 import com.wingedsheep.sdk.core.Keyword
+import com.wingedsheep.sdk.core.PlayerDesignation
 import com.wingedsheep.sdk.core.TurnPart
 import com.wingedsheep.sdk.scripting.Duration
 import com.wingedsheep.sdk.scripting.TriggeredAbility
@@ -1046,25 +1047,69 @@ data class GainCitysBlessingEffect(
 }
 
 /**
- * "[target] becomes the monarch" (Conspiracy: Take the Crown, CR 725).
+ * "[target] becomes the monarch" (Conspiracy: Take the Crown, CR 725) / "[target] takes the
+ * initiative" (CR 726) — hand a single-holder [PlayerDesignation] to a player.
  *
- * The monarch is a single-holder player designation: as a player becomes the monarch, the current
- * monarch ceases to be (CR 725.3), so this effect *moves* the title rather than granting a copy.
- * Making the current monarch the monarch again is a no-op. The two inherent monarch triggers — the
- * end-step draw and the combat-damage steal (CR 725.2) — belong to the engine, not to the card that
- * crowned anyone, so they keep working after that card is gone.
+ * Both are titles exactly one player can hold: as a player takes one, its current holder ceases to
+ * have it (CR 725.3, CR 726.3), so this effect *moves* the title rather than granting a copy. The
+ * inherent abilities of holding it — the monarch's end-step draw and combat-damage steal (CR 725.2),
+ * the initiative's upkeep venture, combat-damage steal and on-taking venture (CR 726.2) — belong to
+ * the engine, not to the card that handed it out, so they keep working after that card is gone.
  *
- * @param target The player who becomes the monarch. Defaults to the ability's controller, matching
- *   the printed "you become the monarch".
+ * The two differ on a holder taking it again: becoming the monarch while already the monarch is a
+ * no-op, but taking the initiative while already having it still counts as taking it, so "whenever a
+ * player takes the initiative" triggers again (CR 726.5) — no second designation is created.
+ *
+ * One effect over a [designation] axis rather than one per title: hand-off, legality and the
+ * leave-the-game succession are the same for both, and only the engine's inherent abilities differ.
+ *
+ * @param target The player who takes it. Defaults to the ability's controller, matching the printed
+ *   "you become the monarch" / "you take the initiative".
  */
-@SerialName("BecomeMonarch")
+@SerialName("TakeDesignation")
 @Serializable
-data class BecomeMonarchEffect(
+data class TakeDesignationEffect(
+    val designation: PlayerDesignation,
     val target: EffectTarget = EffectTarget.Controller
 ) : Effect {
-    override val description: String =
-        if (target == EffectTarget.Controller) "You become the monarch"
-        else "${target.description.replaceFirstChar { it.uppercase() }} becomes the monarch"
+    override val description: String = when (designation) {
+        PlayerDesignation.MONARCH ->
+            if (target == EffectTarget.Controller) "You become the monarch"
+            else "${target.description.replaceFirstChar { it.uppercase() }} becomes the monarch"
+        PlayerDesignation.INITIATIVE ->
+            if (target == EffectTarget.Controller) "You take the initiative"
+            else "${target.description.replaceFirstChar { it.uppercase() }} takes the initiative"
+    }
+}
+
+/**
+ * "Venture into the dungeon" (CR 701.49) — and its "venture into [quality]" variant (CR 701.49d),
+ * of which "venture into Undercity" is the only one printed.
+ *
+ * If [target] isn't in a dungeon, they choose a dungeon card from outside the game, put it into the
+ * command zone and put their venture marker on its topmost room (CR 701.49a). Otherwise they move the
+ * marker to the next room, choosing which arrow to follow where there are several (CR 701.49b). On the
+ * bottommost room they complete the dungeon and start a new one (CR 701.49c). Each room's ability
+ * triggers as the marker moves into it (CR 309.4c).
+ *
+ * @param target The venturing player. Defaults to the ability's controller.
+ * @param into The name of the dungeon a "venture into [quality]" restricts the *choice* to (CR
+ *   701.49d) — `"Undercity"` for the initiative. Only consulted when the player chooses a new dungeon;
+ *   a player already in a dungeon advances there as usual. `null` is the ordinary venture, which can
+ *   choose any dungeon except one that may only be entered by name (Undercity's "You can't enter this
+ *   dungeon unless you 'venture into Undercity.'").
+ */
+@SerialName("VentureIntoTheDungeon")
+@Serializable
+data class VentureIntoTheDungeonEffect(
+    val target: EffectTarget = EffectTarget.Controller,
+    val into: String? = null
+) : Effect {
+    override val description: String = run {
+        val destination = into ?: "the dungeon"
+        if (target == EffectTarget.Controller) "Venture into $destination"
+        else "${target.description.replaceFirstChar { it.uppercase() }} ventures into $destination"
+    }
 }
 
 /**

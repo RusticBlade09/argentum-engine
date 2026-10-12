@@ -157,6 +157,165 @@
     ]
 }
 
+// Dungeon Crawler
+{
+    "name": "Dungeon Crawler",
+    "manaCost": "{B}",
+    "typeLine": "Creature — Zombie",
+    "oracleText": "This creature enters tapped.\nWhenever you complete a dungeon, you may return this card from your graveyard to your hand.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 1
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Dungeon Crawler:1",
+                "trigger": "DungeonCompletedEvent",
+                "binding": "ANY",
+                "effect": {
+                    "type": "Gated",
+                    "gate": "Gate.MayDecide",
+                    "then": {
+                        "type": "MoveToZone",
+                        "target": "Self",
+                        "destination": "Hand"
+                    }
+                },
+                "activeZones": [
+                    "Graveyard"
+                ]
+            }
+        ],
+        "replacementEffects": [
+            "EntersTapped"
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "99",
+        "rarity": "UNCOMMON",
+        "artist": "Svetlin Velinov",
+        "flavorText": "\"I think of it as giving them another chance to achieve their potential.\"\n—Nestus Wrasse, necromancer",
+        "imageUri": "https://cards.scryfall.io/normal/front/4/1/4138b66d-cf18-42a5-8522-241bd3969624.jpg?1783926498",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "Once you resolve the last room ability of a dungeon, that dungeon is now completed and is removed from the game."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
+// Dungeon Map
+{
+    "name": "Dungeon Map",
+    "manaCost": "{3}",
+    "typeLine": "Artifact",
+    "oracleText": "{T}: Add {C}.\n{3}, {T}: Venture into the dungeon. Activate only as a sorcery. (Enter the first room or advance to the next room.)",
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Dungeon Map:1",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "AddColorlessMana",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                },
+                "timing": "ManaAbility",
+                "isManaAbility": true
+            },
+            {
+                "id": "Dungeon Map:2",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{3}"
+                            }
+                        },
+                        "CostTap"
+                    ]
+                },
+                "effect": "VentureIntoTheDungeon",
+                "timing": "SorcerySpeed"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "242",
+        "rarity": "UNCOMMON",
+        "artist": "Aaron Miller",
+        "flavorText": "\"Wait, is that a secret door? I can't tell for sure . . . there's some blood in the way.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/0/2/028506ad-ad36-44e5-b488-d038e2d2445f.jpg?1783926440",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "Choosing the dungeon or room to venture into is part of resolving the venture into the dungeon keyword action. Once that choice is made, players may not respond until after the appropriate room ability has triggered."
+            }
+        ]
+    }
+}
+
+// Gloom Stalker
+{
+    "name": "Gloom Stalker",
+    "manaCost": "{2}{W}",
+    "typeLine": "Creature — Dwarf Ranger",
+    "oracleText": "As long as you've completed a dungeon, this creature has double strike.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 3
+    },
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "ConditionalStaticAbility",
+                "ability": {
+                    "type": "GrantKeyword",
+                    "keyword": "DOUBLE_STRIKE",
+                    "filter": {
+                        "baseFilter": "permanent",
+                        "scope": "Self"
+                    }
+                },
+                "condition": {
+                    "type": "Compare",
+                    "left": "DungeonsCompleted",
+                    "operator": "GTE",
+                    "right": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "16",
+        "artist": "Tomas Duchek",
+        "flavorText": "\"I'll make sure you never mistake a roper for a stalagmite again.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/3/8/388722ad-dcc6-41b9-afd8-a93be91b30e0.jpg?1783926532",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "Gloom Stalker will have double strike even if it wasn't on the battlefield as you completed a dungeon."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
 // Improvised Weaponry
 {
     "name": "Improvised Weaponry",
@@ -287,6 +446,84 @@
         "artist": "Dmitry Burmak",
         "flavorText": "A paladin's steed is a celestial spirit in animal form.",
         "imageUri": "https://cards.scryfall.io/normal/front/f/4/f408c5e4-e18d-4e4d-959a-f41df4c3019c.jpg?1783926530"
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
+// Nadaar, Selfless Paladin
+{
+    "name": "Nadaar, Selfless Paladin",
+    "manaCost": "{2}{W}",
+    "typeLine": "Legendary Creature — Dragon Knight",
+    "oracleText": "Vigilance\nWhenever Nadaar enters or attacks, venture into the dungeon. (Enter the first room or advance to the next room.)\nOther creatures you control get +1/+1 as long as you've completed a dungeon.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 3
+    },
+    "keywords": [
+        "VIGILANCE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Nadaar, Selfless Paladin:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": "VentureIntoTheDungeon"
+            },
+            {
+                "id": "Nadaar, Selfless Paladin:2",
+                "trigger": "AttackEvent",
+                "effect": "VentureIntoTheDungeon"
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "ConditionalStaticAbility",
+                "ability": {
+                    "type": "ModifyStats",
+                    "powerBonus": 1,
+                    "toughnessBonus": 1,
+                    "filter": {
+                        "baseFilter": "creature ctrl:you",
+                        "excludeSelf": true
+                    }
+                },
+                "condition": {
+                    "type": "Compare",
+                    "left": "DungeonsCompleted",
+                    "operator": "GTE",
+                    "right": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "27",
+        "rarity": "RARE",
+        "artist": "Aaron Miller",
+        "imageUri": "https://cards.scryfall.io/normal/front/8/7/878a0d8c-11c1-4c65-9051-78e036ac496f.jpg?1783926528",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "Nadaar doesn't need to have been on the battlefield when you completed a dungeon for its last ability to function."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "The player venturing into the dungeon chooses which dungeon they will venture into. They may choose a dungeon that they have already completed this game."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "If you somehow venture into the dungeon while a room's ability is on the stack, you will continue on in the dungeon. If you're already in the last room, complete that dungeon and start a new one."
+            }
+        ]
     },
     "colorIdentityOverride": [
         "WHITE"

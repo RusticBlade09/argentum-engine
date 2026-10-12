@@ -491,6 +491,51 @@ sealed interface EventPattern : TextReplaceable<EventPattern> {
     }
 
     /**
+     * Whenever a player ventures into the dungeon (CR 701.49) — once per venture, whether it entered
+     * a dungeon's first room or moved the marker on, and for "venture into Undercity" too. "Whenever
+     * you venture into the dungeon" (Acererak's kin) and the trigger half of "whenever you venture
+     * into the dungeon or take the initiative".
+     */
+    @SerialName("VenturedIntoDungeonEvent")
+    @Serializable
+    data class VenturedIntoDungeonEvent(
+        val player: Player = Player.You
+    ) : EventPattern {
+        override val description: String = "${player.description} venture into the dungeon"
+    }
+
+    /**
+     * Whenever a player completes a dungeon (CR 309.7) — as the dungeon card is removed from the
+     * game, by the state-based action (CR 704.5t) or by venturing from its bottommost room
+     * (CR 701.49c). Dungeon Crawler's "Whenever you complete a dungeon".
+     */
+    @SerialName("DungeonCompletedEvent")
+    @Serializable
+    data class DungeonCompletedEvent(
+        val player: Player = Player.You
+    ) : EventPattern {
+        override val description: String = "${player.description} complete a dungeon"
+    }
+
+    /**
+     * Whenever a player takes a single-holder [designation] — "when you take the initiative",
+     * "whenever you become the monarch". For the initiative this fires even when the player already
+     * had it (CR 726.5); for the monarch it fires only when the title actually moves, since becoming
+     * the monarch again changes nothing (CR 725.3).
+     */
+    @SerialName("DesignationTakenEvent")
+    @Serializable
+    data class DesignationTakenEvent(
+        val designation: com.wingedsheep.sdk.core.PlayerDesignation,
+        val player: Player = Player.You
+    ) : EventPattern {
+        override val description: String = when (designation) {
+            com.wingedsheep.sdk.core.PlayerDesignation.MONARCH -> "${player.description} become the monarch"
+            com.wingedsheep.sdk.core.PlayerDesignation.INITIATIVE -> "${player.description} take the initiative"
+        }
+    }
+
+    /**
      * Whenever a player scries (CR 701.22). Fires once per scry, after every card chosen
      * for the bottom/top has been moved. Carries the number of cards actually looked at,
      * which equals the scry N parameter unless the library had fewer cards available.

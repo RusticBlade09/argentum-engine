@@ -603,6 +603,10 @@ shape + builder via `ScenarioBuilderService` / `ScenarioSessionFactory`).
 - `sideboard` is the "outside the game" zone (CR 400.11). Without it a card that reaches outside
   the game has nothing to find, so the wish cycle and Strixhaven's **Learn** (CR 701.48) can only
   ever take their other branch — seed a Lesson here to exercise Learn's Lesson half.
+- `dungeon` (`{ "name": "Undercity", "room": "Forge" }`) and `completedDungeons` (`["Tomb of
+  Annihilation"]`) on a seat stage its dungeon state (CR 309); `monarch` / `initiative` (1-based
+  seat) at the top level stage who holds those designations. Staged state triggers nothing — the
+  board starts as if it had already happened.
 - Validation rejects unknown card names and (production) enforces per-zone + total card caps,
   returning `400` with `{ "errors": ["Unknown card: …", …] }`.
 - `customCards` (optional) is a list of **Scryfall(-style) card objects, as JSON strings**. Argentum

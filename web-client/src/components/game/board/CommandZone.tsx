@@ -3,6 +3,7 @@ import { command } from '@/types'
 import type { ClientPlayer } from '@/types'
 import { useResponsiveContext } from './shared'
 import { GameCard } from '../card'
+import { DungeonPanel } from '../dungeon/DungeonPanel'
 
 /**
  * Command zone widget for Commander-format games.
@@ -33,8 +34,10 @@ export function CommandZone({
 }) {
   const cards = useZoneCards(command(player.playerId))
   const responsive = useResponsiveContext()
+  // A dungeon lives in the command zone too (CR 309.2b), so the zone shows whenever either is there.
+  const hasDungeon = !!player.dungeon || (player.completedDungeons?.length ?? 0) > 0
 
-  if (cards.length === 0) return null
+  if (cards.length === 0 && !hasDungeon) return null
 
   // Render at battlefield-card size — bigger than the deck/graveyard pile column on the right
   // so the commander reads as a real, interactive card rather than a shrunken pile thumbnail.
@@ -69,6 +72,7 @@ export function CommandZone({
           enableDragToCast={!isOpponent}
         />
       ))}
+      <DungeonPanel player={player} compact={compact || responsive.isMobile} />
       <span
         style={{
           color: '#d4af37',

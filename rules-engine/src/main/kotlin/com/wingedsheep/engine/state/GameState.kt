@@ -202,6 +202,14 @@ data class GameState(
     val monarch: EntityId? = null,
 
     /**
+     * The player who has **the initiative** (CR 726), or `null` while nobody has taken it yet (CR
+     * 726.1). Like [monarch], a single field because only one player can have it at a time (CR
+     * 726.3); the two designations are independent and can sit with different players or the same
+     * one. All writes go through [com.wingedsheep.engine.mechanics.initiative.InitiativeService].
+     */
+    val initiative: EntityId? = null,
+
+    /**
      * Entity id of the **previous turn's active player**, snapshotted by
      * [com.wingedsheep.engine.core.TurnManager.startTurn] the instant a new turn begins — before the
      * per-turn spell counters are zeroed. `null` on the game's first turn (there is no previous turn).

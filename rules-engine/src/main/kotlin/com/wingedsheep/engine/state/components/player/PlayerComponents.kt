@@ -955,6 +955,35 @@ data class TheRingComponent(
 ) : Component
 
 /**
+ * A player's progress through the dungeons (CR 309): the dungeon card they own in the command zone
+ * with its venture marker, and every dungeon they have completed this game.
+ *
+ * Absent until the player first ventures. All writes go through
+ * [com.wingedsheep.engine.mechanics.dungeon.DungeonService].
+ *
+ * @property current The dungeon in the command zone and the room the marker is on, or `null` when
+ *   the player owns no dungeon in the command zone (none yet, or the last one was completed).
+ * @property completed Names of the dungeons completed, in order (CR 309.7). The same dungeon can
+ *   appear more than once.
+ */
+@Serializable
+data class DungeonProgressComponent(
+    val current: DungeonMarker? = null,
+    val completed: List<String> = emptyList()
+) : Component
+
+/**
+ * Where a player's venture marker is (CR 309.4): on room [room] of the dungeon named [dungeon], whose
+ * card in the command zone is the entity [dungeonEntityId] — the source of its room abilities.
+ */
+@Serializable
+data class DungeonMarker(
+    val dungeonEntityId: EntityId,
+    val dungeon: String,
+    val room: Int
+)
+
+/**
  * Tracks a player's **speed** (Aetherdrift, CR 702.179).
  *
  * *Presence* of this component means the player has speed at all; its absence is CR 702.179b's "no

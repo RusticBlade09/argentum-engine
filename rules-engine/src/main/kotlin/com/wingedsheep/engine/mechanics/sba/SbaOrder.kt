@@ -28,6 +28,7 @@ object SbaOrder {
     const val UNATTACHED_AURAS = 800        // 704.5m/n/p
     const val SOULBOND_UNPAIRING = 850      // 702.95e (a soulbond pair whose halves no longer qualify)
     const val SAGA_SACRIFICE = 900          // 714.4
+    const val DUNGEON_COMPLETION = 920      // 704.5t / 309.6 (a dungeon whose last room has resolved)
     const val COMMANDER_ZONE_CHOICE = 950   // 903.9a (Commander format)
     const val TOKENS_IN_WRONG_ZONES = 1000  // 704.5s
     const val PHANTOM_CARD_COPIES = 1050    // 707.10a

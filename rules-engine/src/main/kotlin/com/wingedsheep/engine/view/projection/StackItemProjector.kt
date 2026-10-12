@@ -104,6 +104,12 @@ internal class StackItemProjector(
         )
     }
 
+    /** A room ability's source is a dungeon card (CR 309.4c), which has no [CardComponent]. */
+    private fun dungeonImage(state: GameState, sourceId: EntityId): String? =
+        state.getEntity(sourceId)
+            ?.get<com.wingedsheep.engine.state.components.identity.DungeonCardComponent>()
+            ?.let { com.wingedsheep.sdk.dungeons.Dungeons.byName(it.dungeon)?.imageUri }
+
     private fun projectTriggered(
         state: GameState,
         entityId: EntityId,
@@ -182,7 +188,8 @@ internal class StackItemProjector(
             isFaceDown = false,
             targets = StackTextRenderer.toClientTargets(targetsComponent),
             triggeringEntityId = triggeringId,
-            imageUri = sourceCard?.imageUri ?: cardDef?.metadata?.imageUri,
+            imageUri = sourceCard?.imageUri ?: cardDef?.metadata?.imageUri
+                ?: dungeonImage(state, triggeredAbility.sourceId),
             sourceZone = sourceZone,
             chosenX = triggeredAbility.xValue,
             abilityIdentity = triggeredAbility.abilityIdentity?.takeIf { identityVisible }?.let {

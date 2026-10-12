@@ -1,3 +1,81 @@
+// Aarakocra Sneak
+{
+    "name": "Aarakocra Sneak",
+    "manaCost": "{3}{U}",
+    "typeLine": "Creature — Bird Rogue",
+    "oracleText": "Flying\nWhen this creature enters, you take the initiative.",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 4
+    },
+    "keywords": [
+        "FLYING"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Aarakocra Sneak:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "TakeDesignation",
+                    "designation": "INITIATIVE"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "54",
+        "artist": "Andrea Radeck",
+        "flavorText": "\"Shhh! I think I hear goblins. And I definitely smell them.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/2/a/2a83882c-3e03-4e85-aaac-97fa1d08a772.jpg?1783922797"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
+// Avenging Hunter
+{
+    "name": "Avenging Hunter",
+    "manaCost": "{4}{G}",
+    "typeLine": "Creature — Dragon Ranger",
+    "oracleText": "Trample\nWhen this creature enters, you take the initiative.",
+    "creatureStats": {
+        "power": 5,
+        "toughness": 4
+    },
+    "keywords": [
+        "TRAMPLE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Avenging Hunter:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "TakeDesignation",
+                    "designation": "INITIATIVE"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "215",
+        "artist": "Borja Pindado",
+        "flavorText": "\"I will remember my friends. But you? You won't be remembered at all.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/4/f4072640-0f9b-4f0a-84cc-eda415cc92e7.jpg?1783922721"
+    },
+    "colorIdentityOverride": [
+        "GREEN"
+    ]
+}
+
 // Bonecaller Cleric
 {
     "name": "Bonecaller Cleric",
@@ -743,6 +821,70 @@
     ]
 }
 
+// Feywild Caretaker
+{
+    "name": "Feywild Caretaker",
+    "manaCost": "{4}{U}",
+    "typeLine": "Creature — Orc Wizard",
+    "oracleText": "When this creature enters, you take the initiative.\nAt the beginning of your end step, if you have the initiative, create a 1/1 blue Faerie Dragon creature token with flying.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 4
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Feywild Caretaker:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "TakeDesignation",
+                    "designation": "INITIATIVE"
+                }
+            },
+            {
+                "id": "Feywild Caretaker:2",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "END"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "CreateToken",
+                    "power": 1,
+                    "toughness": 1,
+                    "colors": [
+                        "BLUE"
+                    ],
+                    "creatureTypes": [
+                        "Faerie",
+                        "Dragon"
+                    ],
+                    "keywords": [
+                        "FLYING"
+                    ]
+                },
+                "interveningIf": {
+                    "type": "PlayerHasDesignation",
+                    "designation": "INITIATIVE"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "69",
+        "rarity": "UNCOMMON",
+        "artist": "Borja Pindado",
+        "flavorText": "\"Hello, my fluttering friends! Isn't it a beautiful day?\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/c/9/c959ab97-0727-4589-bfd9-d78dd8ebd86b.jpg?1783922789"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Gluntch, the Bestower
 {
     "name": "Gluntch, the Bestower",
@@ -905,6 +1047,64 @@
     ]
 }
 
+// Passageway Seer
+{
+    "name": "Passageway Seer",
+    "manaCost": "{3}{B}",
+    "typeLine": "Creature — Tiefling Warlock",
+    "oracleText": "Lifelink\nWhen this creature enters, you take the initiative.\nAt the beginning of your end step, if you have the initiative, put a +1/+1 counter on this creature.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 2
+    },
+    "keywords": [
+        "LIFELINK"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Passageway Seer:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "TakeDesignation",
+                    "designation": "INITIATIVE"
+                }
+            },
+            {
+                "id": "Passageway Seer:2",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "END"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "AddCounters",
+                    "counterType": "PLUS_ONE_PLUS_ONE",
+                    "count": 1,
+                    "target": "Self"
+                },
+                "interveningIf": {
+                    "type": "PlayerHasDesignation",
+                    "designation": "INITIATIVE"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "141",
+        "rarity": "UNCOMMON",
+        "artist": "Konstantin Porubov",
+        "flavorText": "\"I'm certain there's a shortcut here . . .\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/8/a/8aeee54a-5e16-4519-b04a-49eaaf896b9a.jpg?1783922757"
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
 // Pseudodragon Familiar
 {
     "name": "Pseudodragon Familiar",
@@ -1040,6 +1240,84 @@
     ]
 }
 
+// Seasoned Dungeoneer
+{
+    "name": "Seasoned Dungeoneer",
+    "manaCost": "{3}{W}",
+    "typeLine": "Creature — Human Warrior",
+    "oracleText": "When this creature enters, you take the initiative.\nWhenever you attack, target attacking Cleric, Rogue, Warrior, or Wizard gains protection from creatures until end of turn. It explores. (Reveal the top card of your library. Put that card into your hand if it's a land. Otherwise, put a +1/+1 counter on the creature, then put the card back or put it into your graveyard.)",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 4
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Seasoned Dungeoneer:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "TakeDesignation",
+                    "designation": "INITIATIVE"
+                }
+            },
+            {
+                "id": "Seasoned Dungeoneer:2",
+                "trigger": "YouAttackEvent",
+                "binding": "ANY",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GrantKeyword",
+                            "keyword": "PROTECTION_FROM_CARDTYPE_CREATURE",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        },
+                        {
+                            "type": "Explore",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        }
+                    ]
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": "creature Cleric|Rogue|Warrior|Wizard attacking"
+                    },
+                    "id": "t0"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "660",
+        "rarity": "RARE",
+        "artist": "John Stanko",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/f/7fee3f76-20a8-4621-84fb-ddf79c955532.jpg?1783922514",
+        "rulings": [
+            {
+                "date": "2022-06-10",
+                "text": "A player who currently has the initiative may take the initiative again. This causes that player to venture into Undercity again, but does not cause them to have multiple initiative designations."
+            },
+            {
+                "date": "2022-06-10",
+                "text": "If the player with the initiative leaves the game, the active player takes the initiative at the same time that player leaves the game. If the active player is leaving the game or if there is no active player, the next player in turn order takes the initiative."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
 // Steadfast Unicorn
 {
     "name": "Steadfast Unicorn",
@@ -1140,6 +1418,127 @@
         "artist": "Jake Murray",
         "flavorText": "\"Ooh, nice shot! I almost felt that one.\"",
         "imageUri": "https://cards.scryfall.io/normal/front/1/6/16b9fdaa-9da9-48ff-b271-e6a41aabf073.jpg?1783922802"
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
+// White Plume Adventurer
+{
+    "name": "White Plume Adventurer",
+    "manaCost": "{2}{W}",
+    "typeLine": "Creature — Orc Cleric",
+    "oracleText": "When this creature enters, you take the initiative.\nAt the beginning of each opponent's upkeep, untap a creature you control. If you've completed a dungeon, untap all creatures you control instead.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 3
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "White Plume Adventurer:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "TakeDesignation",
+                    "designation": "INITIATIVE"
+                }
+            },
+            {
+                "id": "White Plume Adventurer:2",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "UPKEEP",
+                    "player": "EachOpponent"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.WhenCondition",
+                        "condition": {
+                            "type": "Compare",
+                            "left": "DungeonsCompleted",
+                            "operator": "GTE",
+                            "right": {
+                                "type": "Fixed",
+                                "amount": 1
+                            }
+                        }
+                    },
+                    "then": {
+                        "type": "ForEach",
+                        "space": {
+                            "type": "IterationSpace.Group",
+                            "filter": {
+                                "baseFilter": "creature ctrl:you"
+                            }
+                        },
+                        "body": {
+                            "type": "TapUntap",
+                            "target": "IterationEntity",
+                            "tap": false
+                        }
+                    },
+                    "otherwise": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "GatherCards",
+                                "source": {
+                                    "type": "BattlefieldMatching",
+                                    "filter": "creature",
+                                    "player": "You"
+                                },
+                                "storeAs": "gathered0"
+                            },
+                            {
+                                "type": "SelectFromCollection",
+                                "from": "gathered0",
+                                "selection": {
+                                    "type": "ChooseExactly",
+                                    "count": {
+                                        "type": "Fixed",
+                                        "amount": 1
+                                    }
+                                },
+                                "storeSelected": "selected1",
+                                "prompt": "Untap a creature you control"
+                            },
+                            {
+                                "type": "TapUntapCollection",
+                                "collectionName": "selected1",
+                                "tap": false
+                            }
+                        ]
+                    }
+                },
+                "descriptionOverride": "At the beginning of each opponent's upkeep, untap a creature you control. If you've completed a dungeon, untap all creatures you control instead."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "49",
+        "rarity": "RARE",
+        "artist": "Joseph Weston",
+        "imageUri": "https://cards.scryfall.io/normal/front/b/2/b256ddc8-8b12-434c-a610-1a872e948f2f.jpg?1783922800",
+        "rulings": [
+            {
+                "date": "2022-06-10",
+                "text": "A player who currently has the initiative may take the initiative again. This causes that player to venture into Undercity again, but does not cause them to have multiple initiative designations."
+            },
+            {
+                "date": "2022-06-10",
+                "text": "You cannot venture into Undercity unless instructed to do so, either because you have the initiative at the beginning of your upkeep or because you take the initiative."
+            },
+            {
+                "date": "2022-06-10",
+                "text": "If you're already in a dungeon when instructed to venture into Undercity, you move to the next room of that dungeon. If you are already in the last room, you will complete that dungeon and start Undercity."
+            }
+        ]
     },
     "colorIdentityOverride": [
         "WHITE"

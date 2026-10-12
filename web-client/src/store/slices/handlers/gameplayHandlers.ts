@@ -27,7 +27,7 @@ import type {
 /**
  * Extract the relevant player ID from an event for log coloring.
  */
-function getEventPlayerId(event: { type: string; playerId?: string; casterId?: string; controllerId?: string; attackingPlayerId?: string; viewingPlayerId?: string; revealingPlayerId?: string; activePlayerId?: string; newControllerId?: string; startingPlayerId?: string }): EntityId | null {
+function getEventPlayerId(event: { type: string; playerId?: string; casterId?: string; controllerId?: string; attackingPlayerId?: string; viewingPlayerId?: string; revealingPlayerId?: string; activePlayerId?: string; newControllerId?: string; startingPlayerId?: string; newHolderId?: string }): EntityId | null {
   switch (event.type) {
     case 'lifeChanged': return event.playerId as EntityId
     case 'cardDrawn': return event.playerId as EntityId
@@ -48,6 +48,9 @@ function getEventPlayerId(event: { type: string; playerId?: string; casterId?: s
     case 'permanentsSacrificed': return event.playerId as EntityId
     case 'cardCycled': return event.playerId as EntityId
     case 'libraryShuffled': return event.playerId as EntityId
+    case 'initiativeTaken': return event.newHolderId as EntityId
+    case 'venturedIntoDungeon': return event.playerId as EntityId
+    case 'dungeonCompleted': return event.playerId as EntityId
     case 'controlChanged': return event.newControllerId as EntityId
     case 'decisionMade': return event.playerId as EntityId
     default: return null
@@ -85,7 +88,7 @@ function appendGameLogTail(
   const entries: LogEntry[] = reusable > 0 ? existing.slice(0, reusable) : []
   const now = Date.now()
   for (let i = reusable; i < log.length; i++) {
-    const e = log[i] as { type: string; description: string; playerId?: string; casterId?: string; controllerId?: string; attackingPlayerId?: string; viewingPlayerId?: string; revealingPlayerId?: string; activePlayerId?: string; newControllerId?: string; startingPlayerId?: string }
+    const e = log[i] as { type: string; description: string; playerId?: string; casterId?: string; controllerId?: string; attackingPlayerId?: string; viewingPlayerId?: string; revealingPlayerId?: string; activePlayerId?: string; newControllerId?: string; startingPlayerId?: string; newHolderId?: string }
     entries.push({
       description: e.description,
       playerId: getEventPlayerId(e),

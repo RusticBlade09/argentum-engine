@@ -627,6 +627,8 @@ function BottomSeatRailChip({ seat, isViewerSeat }: { seat: ClientPlayer; isView
           <SpeedGauge speed={seat.speed ?? 0} compact />
         )}
 
+        {!tomb && <DesignationGlyphs player={seat} compact={compact} />}
+
         {/* Poison */}
         {!tomb && seat.poisonCounters > 0 && (
           <span
@@ -699,6 +701,53 @@ const DEFAULT_MAX_HAND_SIZE = 7
  * the default 7: "/∞" for no maximum (Reliquary Tower) or "/N" for a finite cap (Cursed Rack). An
  * empty string when the limit is the normal 7 (or absent), so the chip stays uncluttered.
  */
+/**
+ * The rail's markers for a player's single-holder designations and dungeon: 👑 the monarch
+ * (CR 725), 🗝️ the initiative (CR 726), and 🧭 the room their venture marker is on (CR 309). All
+ * read straight off the server's player state — the badges are the same `activeEffects` the HUD shows.
+ */
+function DesignationGlyphs({ player, compact }: { player: ClientPlayer; compact: boolean }) {
+  const effects = player.activeEffects ?? []
+  const monarch = effects.some((e) => e.effectId === 'monarch')
+  const initiative = effects.some((e) => e.effectId === 'initiative')
+  const dungeon = player.dungeon
+  if (!monarch && !initiative && !dungeon) return null
+  const size = compact ? 11 : 13
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+      {monarch && (
+        <span title={`${player.name} is the monarch`} data-testid="rail-monarch" style={{ fontSize: size }}>👑</span>
+      )}
+      {initiative && (
+        <span
+          title={`${player.name} has the initiative`}
+          data-testid="rail-initiative"
+          style={{
+            fontSize: size,
+            padding: '0 3px',
+            borderRadius: 6,
+            background: 'rgba(212, 175, 55, 0.22)',
+            border: '1px solid rgba(212, 175, 55, 0.6)',
+          }}
+        >
+          🗝️
+        </span>
+      )}
+      {dungeon && (
+        // Just the marker: the chip's width belongs to the player's name. The room is in the tooltip
+        // and on the player's command-zone Dungeon tile.
+        <span
+          title={`${dungeon.name} — ${dungeon.rooms[dungeon.currentRoom]?.name ?? ''}`}
+          data-testid="rail-dungeon"
+          style={{ fontSize: size }}
+        >
+          🧭
+        </span>
+      )}
+    </span>
+  )
+}
+
 function handLimitSuffix(maxHandSize?: number | null): string {
   if (maxHandSize === undefined || maxHandSize === DEFAULT_MAX_HAND_SIZE) return ''
   return maxHandSize === null ? '/∞' : `/${maxHandSize}`
@@ -1152,6 +1201,9 @@ function RailChip({
         {!tomb && (opponent.speed ?? 0) > 0 && (
           <SpeedGauge speed={opponent.speed ?? 0} compact />
         )}
+
+        {/* Single-holder designations — the monarch (CR 725) and the initiative (CR 726) */}
+        {!tomb && <DesignationGlyphs player={opponent} compact={compact} />}
 
         {/* Poison */}
         {!tomb && opponent.poisonCounters > 0 && (

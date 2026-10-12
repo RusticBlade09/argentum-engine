@@ -4,6 +4,7 @@ import com.wingedsheep.sdk.core.CardType
 import com.wingedsheep.sdk.core.Color
 import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.core.Phase
+import com.wingedsheep.sdk.core.PlayerDesignation
 import com.wingedsheep.sdk.core.Speed
 import com.wingedsheep.sdk.core.Subtype
 import com.wingedsheep.sdk.core.Zone
@@ -47,7 +48,7 @@ import com.wingedsheep.sdk.scripting.conditions.PlayerAttackedWithCreaturesThisT
 import com.wingedsheep.sdk.scripting.conditions.PlayerCastSpellsThisTurn
 import com.wingedsheep.sdk.scripting.conditions.PlayerCommittedCrimeThisTurn
 import com.wingedsheep.sdk.scripting.conditions.PlayerHasCitysBlessing
-import com.wingedsheep.sdk.scripting.conditions.PlayerIsMonarch
+import com.wingedsheep.sdk.scripting.conditions.PlayerHasDesignation
 import com.wingedsheep.sdk.scripting.conditions.PlayerHasEnduringStory
 import com.wingedsheep.sdk.scripting.conditions.RingHasTemptedPlayerAtLeast
 import com.wingedsheep.sdk.scripting.references.Player
@@ -2405,14 +2406,35 @@ object Conditions {
 
     /** If you're the monarch (CR 725). False while the game has no monarch. */
     val YouAreTheMonarch: ConditionInterface =
-        PlayerIsMonarch(Player.You)
+        PlayerHasDesignation(Player.You, PlayerDesignation.MONARCH)
 
     /**
      * If an opponent is the monarch (CR 725) — any opponent, not just the first (Queen Marchesa's
      * upkeep Assassin). False while the game has no monarch.
      */
     val AnOpponentIsTheMonarch: ConditionInterface =
-        PlayerIsMonarch(Player.AnOpponent)
+        PlayerHasDesignation(Player.AnOpponent, PlayerDesignation.MONARCH)
+
+    /**
+     * If you have the initiative (CR 726) — Feywild Caretaker's and Passageway Seer's end-step
+     * payoffs. False while nobody has taken the initiative yet.
+     */
+    val YouHaveTheInitiative: ConditionInterface =
+        PlayerHasDesignation(Player.You, PlayerDesignation.INITIATIVE)
+
+    /**
+     * If you've completed a dungeon (CR 309.7) — "as long as you've completed a dungeon" on Gloom
+     * Stalker, Nadaar and the AFR/CLB "Adventurer" cycle. Counts every dungeon completed this game,
+     * Undercity included.
+     */
+    val YouCompletedADungeon: ConditionInterface = CompletedDungeon(Player.You)
+
+    /**
+     * "if [player] has completed [dungeon]" — any dungeon when [dungeon] is null; a specific one by
+     * name otherwise ("if you haven't completed Tomb of Annihilation" is this, wrapped in [Not]).
+     */
+    fun CompletedDungeon(player: Player, dungeon: String? = null): ConditionInterface =
+        Compare(DynamicAmount.DungeonsCompleted(player, dungeon), ComparisonOperator.GTE, DynamicAmount.Fixed(1))
 
     /**
      * If you have an enduring story (The Hobbit, CR 702.195).

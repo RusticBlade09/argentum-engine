@@ -656,6 +656,25 @@ class TriggerMatcher(
                     matchesPlayer(state, trigger.player, event.playerId, controllerId) &&
                     (!trigger.requireBearerChosen || event.bearerId != null)
             }
+            is EventPattern.VenturedIntoDungeonEvent -> {
+                event is com.wingedsheep.engine.core.VenturedIntoDungeonEvent &&
+                    matchesPlayer(state, trigger.player, event.playerId, controllerId)
+            }
+            is EventPattern.DungeonCompletedEvent -> {
+                event is com.wingedsheep.engine.core.DungeonCompletedEvent &&
+                    matchesPlayer(state, trigger.player, event.playerId, controllerId)
+            }
+            // Retaking the initiative still triggers (CR 726.5); becoming the monarch again emits
+            // no event at all, so a monarch match is always a real hand-off (CR 725.3).
+            is EventPattern.DesignationTakenEvent -> when (trigger.designation) {
+                com.wingedsheep.sdk.core.PlayerDesignation.INITIATIVE ->
+                    event is com.wingedsheep.engine.core.InitiativeTakenEvent &&
+                        matchesPlayer(state, trigger.player, event.newHolderId, controllerId)
+                com.wingedsheep.sdk.core.PlayerDesignation.MONARCH ->
+                    event is com.wingedsheep.engine.core.MonarchChangedEvent &&
+                        event.newMonarchId != null &&
+                        matchesPlayer(state, trigger.player, event.newMonarchId, controllerId)
+            }
             is EventPattern.ClashedEvent -> {
                 // Both participants clash, so the event names the player it is *about* rather
                 // than the clash's initiator (Entangling Trap's ruling). `requireWin` is the

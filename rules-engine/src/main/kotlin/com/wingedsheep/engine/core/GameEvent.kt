@@ -322,6 +322,55 @@ data class MonarchChangedEvent(
 ) : GameEvent
 
 /**
+ * A player took the initiative (CR 726). Unlike [MonarchChangedEvent] this fires even when
+ * [newHolderId] already had it — taking the initiative again still triggers "whenever a player takes
+ * the initiative" (CR 726.5) — so [previousHolderId] can equal [newHolderId]. [previousHolderId] is
+ * `null` when nobody had it yet (CR 726.1). [sourceName] attributes it: the card whose effect handed
+ * it out, the inherent combat-damage steal, or the leave-the-game hand-off (CR 726.4).
+ */
+@Serializable
+@SerialName("InitiativeTakenEvent")
+data class InitiativeTakenEvent(
+    val previousHolderId: EntityId?,
+    val newHolderId: EntityId,
+    val sourceName: String
+) : GameEvent
+
+/**
+ * A player ventured into the dungeon (CR 701.49) and moved their venture marker into room
+ * [roomIndex] of [dungeonName] — its topmost room when [enteredDungeon] (a new dungeon card was just
+ * put into the command zone, CR 701.49a). The room's ability triggers off this event (CR 309.4c), and
+ * so does "whenever you venture into the dungeon".
+ *
+ * @property dungeonEntityId The dungeon card in the command zone — the room ability's source.
+ * @property sourceName The card or ability that made the player venture.
+ */
+@Serializable
+@SerialName("VenturedIntoDungeonEvent")
+data class VenturedIntoDungeonEvent(
+    val playerId: EntityId,
+    val dungeonEntityId: EntityId,
+    val dungeonName: String,
+    val roomIndex: Int,
+    val roomName: String,
+    val enteredDungeon: Boolean,
+    val sourceName: String
+) : GameEvent
+
+/**
+ * A player completed a dungeon (CR 309.7) — its card was removed from the game, by the state-based
+ * action once the bottommost room's ability left the stack (CR 704.5t), or by venturing from the
+ * bottommost room (CR 701.49c). [completedCount] is how many dungeons the player has completed now.
+ */
+@Serializable
+@SerialName("DungeonCompletedEvent")
+data class DungeonCompletedEvent(
+    val playerId: EntityId,
+    val dungeonName: String,
+    val completedCount: Int
+) : GameEvent
+
+/**
  * A player gained an enduring story (The Hobbit, CR 702.195).
  *
  * Fired by the storied state-based action the first time its controller controls three or more
