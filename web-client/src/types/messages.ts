@@ -969,6 +969,13 @@ export interface LegalActionInfo {
   readonly mandatoryAttackers?: readonly EntityId[]
   /** Valid attack targets: opponent planeswalker IDs that can be attacked */
   readonly validAttackTargets?: readonly EntityId[]
+  /**
+   * Sparse per-attacker narrowing of `validAttackTargets`: an attacker listed here may attack only
+   * the targets given (a per-defender restriction rules the rest out — "can't attack unless
+   * defending player controls a Mountain", "creatures can't attack you"). An absent attacker may
+   * attack any of `validAttackTargets`.
+   */
+  readonly attackTargetsByAttacker?: Readonly<Record<EntityId, readonly EntityId[]>>
   /** Valid blocker IDs for DeclareBlockers action */
   readonly validBlockers?: readonly EntityId[]
   /** Whether this spell has X in its mana cost */
