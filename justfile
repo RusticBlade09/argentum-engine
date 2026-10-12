@@ -265,8 +265,8 @@ loops *ARGS:
 # Waits out subscription usage limits; stop with `touch .claude/loop-runs/<code>.stop`.
 # Implement a set: set-loop ecl sonnet|opus|astra|codex:<model-id>|pick; no args shows help
 [group: 'ai']
-set-loop CODE="" MODEL="":
-    scripts/set-loop "{{CODE}}" "{{MODEL}}"
+set-loop CODE="" MODEL="" PRIORITY="":
+    scripts/set-loop "{{CODE}}" "{{MODEL}}" "{{PRIORITY}}"
 
 # Waits out subscription usage limits; stop with `touch .claude/loop-runs/commander.stop`.
 # Make EDHREC's top Commander decks playable, one deck at a time: commander-loop [model] [top]
