@@ -2,10 +2,10 @@
 
 **Set Size:** 336 cards
 **Release Date:** March 8, 2024
-**Implemented:** 156 / 336
+**Implemented:** 161 / 336
 | Section    | Total | Done |
 |------------|-------|------|
-| Extras     | 336   | 129  |
+| Extras     | 336   | 161  |
 
 > Verify status anytime with `scripts/card-status --set PIP` (and `--list`). That command's count is authoritative — keep this file's `Implemented:` line in sync (`just fix-backlog`) as boxes are checked. The set's mechanics are catalogued in [`mechanics.md`](mechanics.md).
 
@@ -57,7 +57,7 @@
 - [x] Buried Ruin
 - [ ] Butch DeLoria, Tunnel Snake
 - [ ] C.A.M.P.
-- [ ] Caesar, Legion's Emperor
+- [x] Caesar, Legion's Emperor
 - [ ] Cait, Cage Brawler
 - [x] Canopy Vista
 - [x] Canyon Slough
@@ -71,7 +71,7 @@
 - [x] Cinder Glade
 - [x] Clifftop Retreat
 - [ ] Codsworth, Handy Helper
-- [ ] Colonel Autumn
+- [x] Colonel Autumn
 - [x] Command Tower
 - [ ] Commander Sofia Daguerre
 - [ ] Contagion Clasp
@@ -202,7 +202,7 @@
 - [x] Opulent Palace
 - [ ] Overencumbered
 - [x] Overflowing Basin
-- [ ] Overseer of Vault 76
+- [x] Overseer of Vault 76
 - [ ] Paladin Danse, Steel Maverick
 - [ ] Paladin Elizabeth Taggerdy
 - [x] Panharmonicon
@@ -243,7 +243,7 @@
 - [ ] Scavenger Grounds
 - [ ] Screeching Scorchbeast
 - [x] Secure the Wastes
-- [ ] Securitron Squadron
+- [x] Securitron Squadron
 - [ ] Sentinel Sarah Lyons
 - [ ] Sentry Bot
 - [x] Shadowblood Ridge
@@ -349,5 +349,5 @@
 - [x] Windbrisk Heights
 - [ ] Winding Constrictor
 - [x] Woodland Cemetery
-- [ ] Yes Man, Personal Securitron
+- [x] Yes Man, Personal Securitron
 - [ ] Young Deathclaws

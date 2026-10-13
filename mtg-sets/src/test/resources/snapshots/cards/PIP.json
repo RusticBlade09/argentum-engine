@@ -293,6 +293,128 @@
     }
 }
 
+// Caesar, Legion's Emperor
+{
+    "name": "Caesar, Legion's Emperor",
+    "manaCost": "{1}{R}{W}{B}",
+    "typeLine": "Legendary Creature — Human Soldier",
+    "oracleText": "Whenever you attack, you may sacrifice another creature. When you do, choose two —\n• Create two 1/1 red and white Soldier creature tokens with haste that are tapped and attacking.\n• You draw a card and you lose 1 life.\n• Caesar deals damage equal to the number of creature tokens you control to target opponent.",
+    "creatureStats": {
+        "power": 4,
+        "toughness": 4
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Caesar, Legion's Emperor:1",
+                "trigger": "YouAttackEvent",
+                "binding": "ANY",
+                "effect": {
+                    "type": "ReflexiveTrigger",
+                    "action": {
+                        "type": "Sacrifice",
+                        "filter": "creature",
+                        "excludeSource": true
+                    },
+                    "reflexiveEffect": {
+                        "type": "Modal",
+                        "modes": [
+                            {
+                                "effect": {
+                                    "type": "CreateToken",
+                                    "count": {
+                                        "type": "Fixed",
+                                        "amount": 2
+                                    },
+                                    "power": 1,
+                                    "toughness": 1,
+                                    "colors": [
+                                        "RED",
+                                        "WHITE"
+                                    ],
+                                    "creatureTypes": [
+                                        "Soldier"
+                                    ],
+                                    "keywords": [
+                                        "HASTE"
+                                    ],
+                                    "imageUri": "https://cards.scryfall.io/normal/front/a/a/aae7bdfe-fe14-4a18-b2b0-16e9175a0441.jpg?1783912044",
+                                    "tapped": true,
+                                    "attacking": true
+                                },
+                                "description": "Create two 1/1 red and white Soldier creature tokens with haste that are tapped and attacking."
+                            },
+                            {
+                                "effect": {
+                                    "type": "Composite",
+                                    "effects": [
+                                        {
+                                            "type": "DrawCards",
+                                            "count": {
+                                                "type": "Fixed",
+                                                "amount": 1
+                                            }
+                                        },
+                                        {
+                                            "type": "LoseLife",
+                                            "amount": {
+                                                "type": "Fixed",
+                                                "amount": 1
+                                            },
+                                            "target": "Controller"
+                                        }
+                                    ]
+                                },
+                                "description": "You draw a card and you lose 1 life."
+                            },
+                            {
+                                "effect": {
+                                    "type": "DealDamage",
+                                    "amount": {
+                                        "type": "AggregateBattlefield",
+                                        "player": "You",
+                                        "filter": "creature token"
+                                    },
+                                    "target": {
+                                        "type": "BoundVariable",
+                                        "name": "t0"
+                                    }
+                                },
+                                "targetRequirements": [
+                                    {
+                                        "type": "TargetOpponent",
+                                        "id": "t0"
+                                    }
+                                ],
+                                "description": "Caesar deals damage equal to the number of creature tokens you control to target opponent."
+                            }
+                        ],
+                        "chooseCount": 2
+                    },
+                    "descriptionOverride": "You may sacrifice another creature. When you do, choose two —\n• Create two 1/1 red and white Soldier creature tokens with haste that are tapped and attacking.\n• You draw a card and you lose 1 life.\n• Caesar deals damage equal to the number of creature tokens you control to target opponent."
+                },
+                "descriptionOverride": "Whenever you attack, you may sacrifice another creature. When you do, choose two — create two 1/1 red and white Soldier creature tokens with haste that are tapped and attacking; you draw a card and you lose 1 life; or Caesar deals damage equal to the number of creature tokens you control to target opponent."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "1",
+        "rarity": "MYTHIC",
+        "artist": "Alexander Gering",
+        "imageUri": "https://cards.scryfall.io/normal/front/2/4/246a7176-98bc-4f54-aa61-38747420f178.jpg?1783912422",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "You don't choose modes or a target for Caesar, Legion's Emperor's ability at the time it triggers. Rather, a second \"reflexive\" ability triggers when you sacrifice another creature this way. You choose modes and, if you chose the third mode, a target for that ability as it goes on the stack. Each player may respond to this triggered ability as normal."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "The Soldier tokens created by Caesar's ability enter the battlefield tapped and attacking, but since they weren't declared as attacking creatures, no abilities that trigger whenever a creature attacks or whenever you attack (such as Caesar's own ability) will trigger."
+            }
+        ]
+    }
+}
+
 // Charisma Bobblehead
 {
     "name": "Charisma Bobblehead",
@@ -354,6 +476,144 @@
             {
                 "date": "2024-03-08",
                 "text": "The value of X is calculated only once, as Charisma Bobblehead’s last ability resolves."
+            }
+        ]
+    }
+}
+
+// Colonel Autumn
+{
+    "name": "Colonel Autumn",
+    "manaCost": "{1}{W}{B}",
+    "typeLine": "Legendary Creature — Human Soldier",
+    "oracleText": "Lifelink\nExploit (When this creature enters, you may sacrifice a creature.)\nOther legendary creatures you control have exploit.\nWhenever a creature you control exploits a creature, put a +1/+1 counter on each creature you control.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 3
+    },
+    "keywords": [
+        "LIFELINK",
+        "EXPLOIT"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Colonel Autumn:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "ReflexiveTrigger",
+                    "action": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "Sacrifice",
+                                "filter": "creature"
+                            },
+                            "EmitExploitedEvent"
+                        ]
+                    },
+                    "reflexiveEffect": {
+                        "type": "Composite",
+                        "effects": []
+                    },
+                    "descriptionOverride": "You may sacrifice a creature"
+                },
+                "descriptionOverride": "Exploit (When this creature enters, you may sacrifice a creature.)"
+            },
+            {
+                "id": "Colonel Autumn:3",
+                "trigger": "ExploitedEvent",
+                "binding": "ANY",
+                "effect": {
+                    "type": "ForEach",
+                    "space": {
+                        "type": "IterationSpace.Group",
+                        "filter": {
+                            "baseFilter": "creature ctrl:you"
+                        }
+                    },
+                    "body": {
+                        "type": "AddCounters",
+                        "counterType": "PLUS_ONE_PLUS_ONE",
+                        "count": 1,
+                        "target": "IterationEntity"
+                    }
+                },
+                "descriptionOverride": "Whenever a creature you control exploits a creature, put a +1/+1 counter on each creature you control."
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "GrantKeyword",
+                "keyword": "EXPLOIT",
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            "IsCreature",
+                            "IsLegendary"
+                        ],
+                        "controllerPredicate": "ControlledByYou"
+                    },
+                    "excludeSelf": true
+                }
+            },
+            {
+                "type": "GrantTriggeredAbility",
+                "ability": {
+                    "id": "Colonel Autumn:2",
+                    "trigger": {
+                        "type": "ZoneChangeEvent",
+                        "to": "Battlefield"
+                    },
+                    "effect": {
+                        "type": "ReflexiveTrigger",
+                        "action": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "Sacrifice",
+                                    "filter": "creature"
+                                },
+                                "EmitExploitedEvent"
+                            ]
+                        },
+                        "reflexiveEffect": {
+                            "type": "Composite",
+                            "effects": []
+                        },
+                        "descriptionOverride": "You may sacrifice a creature"
+                    },
+                    "descriptionOverride": "Exploit (When this creature enters, you may sacrifice a creature.)"
+                },
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            "IsCreature",
+                            "IsLegendary"
+                        ],
+                        "controllerPredicate": "ControlledByYou"
+                    },
+                    "excludeSelf": true
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "98",
+        "rarity": "RARE",
+        "artist": "Daniel Romanovsky",
+        "imageUri": "https://cards.scryfall.io/normal/front/c/a/ca0c3e5a-64f3-40b5-8080-1c53be45aa40.jpg?1783912390",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "You can sacrifice the creature with exploit if it’s still on the battlefield. If it has an ability that triggers when it exploits a creature (or, in this case, when any creature you control exploits a creature), that ability will trigger."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If Colonel Autumn isn’t on the battlefield as an exploit ability of a creature you control resolves, Colonel Autumn’s last ability won’t trigger. You won’t get +1/+1 counters, even if you sacrifice a creature."
             }
         ]
     }
@@ -1954,6 +2214,138 @@
     ]
 }
 
+// Overseer of Vault 76
+{
+    "name": "Overseer of Vault 76",
+    "manaCost": "{2}{W}",
+    "typeLine": "Legendary Creature — Human Advisor",
+    "oracleText": "First Contact — Whenever Overseer of Vault 76 or another creature you control with power 3 or less enters, put a quest counter on Overseer of Vault 76.\nAt the beginning of combat on your turn, you may remove three quest counters from among permanents you control. When you do, put a +1/+1 counter on each creature you control and they gain vigilance until end of turn.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 3
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Overseer of Vault 76:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "AddCounters",
+                    "counterType": "QUEST",
+                    "count": 1,
+                    "target": "Self"
+                },
+                "descriptionOverride": "First Contact — Whenever Overseer of Vault 76 or another creature you control with power 3 or less enters, put a quest counter on Overseer of Vault 76."
+            },
+            {
+                "id": "Overseer of Vault 76:2",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "filter": "creature pow<=3 ctrl:you",
+                    "to": "Battlefield"
+                },
+                "binding": "OTHER",
+                "effect": {
+                    "type": "AddCounters",
+                    "counterType": "QUEST",
+                    "count": 1,
+                    "target": "Self"
+                },
+                "descriptionOverride": "First Contact — Whenever Overseer of Vault 76 or another creature you control with power 3 or less enters, put a quest counter on Overseer of Vault 76."
+            },
+            {
+                "id": "Overseer of Vault 76:3",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "BEGIN_COMBAT"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.DoAction",
+                        "action": {
+                            "type": "PayOrSuffer",
+                            "cost": {
+                                "type": "PayAtom",
+                                "atom": {
+                                    "type": "AtomRemoveCounters",
+                                    "counterType": "QUEST",
+                                    "count": {
+                                        "type": "Fixed",
+                                        "amount": 3
+                                    }
+                                }
+                            },
+                            "suffer": {
+                                "type": "Composite",
+                                "effects": []
+                            },
+                            "consequenceDescription": "don't remove them"
+                        },
+                        "successCriterion": "SuccessCriterion.CountersRemoved"
+                    },
+                    "then": {
+                        "type": "ReflexiveTrigger",
+                        "action": {
+                            "type": "Composite",
+                            "effects": []
+                        },
+                        "optional": false,
+                        "reflexiveEffect": {
+                            "type": "ForEach",
+                            "space": {
+                                "type": "IterationSpace.Group",
+                                "filter": {
+                                    "baseFilter": "creature ctrl:you"
+                                }
+                            },
+                            "body": {
+                                "type": "Composite",
+                                "effects": [
+                                    {
+                                        "type": "AddCounters",
+                                        "counterType": "PLUS_ONE_PLUS_ONE",
+                                        "count": 1,
+                                        "target": "IterationEntity"
+                                    },
+                                    {
+                                        "type": "GrantKeyword",
+                                        "keyword": "VIGILANCE",
+                                        "target": "IterationEntity"
+                                    }
+                                ]
+                            }
+                        },
+                        "descriptionOverride": "Put a +1/+1 counter on each creature you control and they gain vigilance until end of turn."
+                    },
+                    "descriptionOverride": "You may remove three quest counters from among permanents you control. When you do, put a +1/+1 counter on each creature you control and they gain vigilance until end of turn."
+                },
+                "descriptionOverride": "At the beginning of combat on your turn, you may remove three quest counters from among permanents you control. When you do, put a +1/+1 counter on each creature you control and they gain vigilance until end of turn."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "19",
+        "rarity": "RARE",
+        "artist": "Kieran Yanner",
+        "imageUri": "https://cards.scryfall.io/normal/front/3/5/35848917-d658-4c3b-b675-4f0185f76dc4.jpg?1783912418",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "If Overseer of Vault 76 and one or more other creatures with power 3 or less enter the battlefield under your control at the same time, Overseer of Vault 76's first ability will trigger for each of them."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Overseer of Vault 76's last ability lets you choose to remove exactly three quest counters from among permanents you control when it resolves. You can't remove more quest counters to multiply the effect."
+            }
+        ]
+    }
+}
+
 // Paladin Elizabeth Taggerdy
 {
     "name": "Paladin Elizabeth Taggerdy",
@@ -2347,6 +2739,99 @@
             {
                 "date": "2024-03-08",
                 "text": "If, for some reason, the creature doesn’t have the squad ability when it’s on the battlefield, the ability won’t trigger, even if you’ve paid the squad cost one or more times."
+            }
+        ]
+    }
+}
+
+// Securitron Squadron
+{
+    "name": "Securitron Squadron",
+    "manaCost": "{1}{W}",
+    "typeLine": "Artifact Creature — Robot",
+    "oracleText": "Squad {3} (As an additional cost to cast this spell, you may pay {3} any number of times. When this creature enters, create that many tokens that are copies of it.)\nVigilance\nWhenever a creature token you control enters, put a +1/+1 counter on it.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 2
+    },
+    "keywords": [
+        "VIGILANCE",
+        "SQUAD"
+    ],
+    "keywordAbilities": [
+        {
+            "type": "Kicker",
+            "manaCost": "{3}",
+            "multi": true,
+            "displayPrefix": "Squad",
+            "keyword": "SQUAD",
+            "declaredSlot": "SQUAD"
+        }
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Securitron Squadron:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "CreateTokenCopyOfTarget",
+                    "target": "TriggeringEntity",
+                    "count": {
+                        "type": "CastChoice",
+                        "slot": "SQUAD"
+                    }
+                },
+                "interveningIf": {
+                    "type": "CastChoiceMade",
+                    "slot": "SQUAD"
+                }
+            },
+            {
+                "id": "Securitron Squadron:2",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "filter": "creature token ctrl:you",
+                    "to": "Battlefield"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "AddCounters",
+                    "counterType": "PLUS_ONE_PLUS_ONE",
+                    "count": 1,
+                    "target": "TriggeringEntity"
+                },
+                "descriptionOverride": "Whenever a creature token you control enters, put a +1/+1 counter on it."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "23",
+        "rarity": "RARE",
+        "artist": "Jonas De Ro",
+        "imageUri": "https://cards.scryfall.io/normal/front/b/6/b689a206-aec3-4a31-95cf-3d4b840db04c.jpg?1783912416",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "You may pay the squad cost any number of times. You will create a token that is a copy of that permanent for each time you paid the squad cost. If you paid the squad cost multiple times, the tokens will all enter the battlefield simultaneously."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If Securitron Squadron enters the battlefield at the same time as one or more creature tokens, its last ability will trigger for each of those creature tokens. If that Securitron Squadron is itself a creature token, its last ability will trigger when it enters the battlefield as well."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "For example, if you pay Securitron Squadron's squad cost three times, then you'll create three token copies of Securitron Squadron when its squad ability resolves. Each of those tokens will enter the battlefield simultaneously. When they enter, their last abilities will each trigger three times (once for each of the other two tokens, and once for itself.) If the original Securitron Squadron is still on the battlefield, its last ability will trigger three times as well. After all of the triggered abilities resolve, each of the three token copies of Securitron Squadron will have four +1/+1 counters on it."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the spell resolves but the creature with squad leaves the battlefield before its squad ability resolves, you'll still create the token copies."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the spell is countered, the squad ability will not trigger, and no tokens will be created."
             }
         ]
     }
@@ -3351,6 +3836,130 @@
             {
                 "date": "2024-03-08",
                 "text": "You pay all costs and follow all normal timing rules for cards played from exile with Wild Wasteland’s ability. For example, if one of the exiled cards is a land card, you may play it only during your main phase while the stack is empty."
+            }
+        ]
+    }
+}
+
+// Yes Man, Personal Securitron
+{
+    "name": "Yes Man, Personal Securitron",
+    "manaCost": "{2}{W}",
+    "typeLine": "Legendary Artifact Creature — Robot",
+    "oracleText": "{T}: Target opponent gains control of Yes Man. When they do, you draw two cards and put a quest counter on Yes Man. Activate only during your turn.\nWild Card — When Yes Man leaves the battlefield, its owner creates a tapped 1/1 white Soldier creature token for each quest counter on it.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 2
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Yes Man, Personal Securitron:2",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "from": "Battlefield"
+                },
+                "effect": {
+                    "type": "CreateToken",
+                    "count": {
+                        "type": "LastKnownSourceCounters",
+                        "counterType": "QUEST"
+                    },
+                    "power": 1,
+                    "toughness": 1,
+                    "colors": [
+                        "WHITE"
+                    ],
+                    "creatureTypes": [
+                        "Soldier"
+                    ],
+                    "imageUri": "https://cards.scryfall.io/normal/front/a/f/af191656-5e62-440f-b63a-705cfed314e7.jpg?1783912045",
+                    "controller": {
+                        "type": "PlayerRef",
+                        "player": "OwnerOfSource"
+                    },
+                    "tapped": true
+                },
+                "descriptionOverride": "Wild Card — When Yes Man leaves the battlefield, its owner creates a tapped 1/1 white Soldier creature token for each quest counter on it."
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Yes Man, Personal Securitron:1",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.DoAction",
+                        "action": {
+                            "type": "GiveControlToTargetPlayer",
+                            "permanent": "Self",
+                            "newController": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        },
+                        "successCriterion": "SuccessCriterion.ControlChanged"
+                    },
+                    "then": {
+                        "type": "ReflexiveTrigger",
+                        "action": {
+                            "type": "Composite",
+                            "effects": []
+                        },
+                        "optional": false,
+                        "reflexiveEffect": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "DrawCards",
+                                    "count": {
+                                        "type": "Fixed",
+                                        "amount": 2
+                                    }
+                                },
+                                {
+                                    "type": "AddCounters",
+                                    "counterType": "QUEST",
+                                    "count": 1,
+                                    "target": "Self"
+                                }
+                            ]
+                        },
+                        "descriptionOverride": "You draw two cards and put a quest counter on Yes Man."
+                    },
+                    "descriptionOverride": "Target opponent gains control of Yes Man. When they do, you draw two cards and put a quest counter on Yes Man."
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetOpponent",
+                        "id": "t0"
+                    }
+                ],
+                "restrictions": [
+                    "OnlyDuringYourTurn"
+                ],
+                "descriptionOverride": "{T}: Target opponent gains control of Yes Man. When they do, you draw two cards and put a quest counter on Yes Man. Activate only during your turn."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "29",
+        "rarity": "RARE",
+        "artist": "Dan Murayama Scott",
+        "imageUri": "https://cards.scryfall.io/normal/front/8/e/8e2fac8c-a574-4414-ac68-632fc822ddbb.jpg?1783912412",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "If Yes Man isn't on the battlefield as its first ability resolves, or if the target opponent is an illegal target as the ability tries to resolve, nothing will happen. You won't draw two cards, because that effect is part of a reflexive triggered ability that triggers only if the target opponent gains control of Yes Man."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "When Yes Man's controller leaves the game, if that player wasn't its owner, the effect giving that player control of Yes Man ends. Yes Man will return to the control of the player still in the game who most recently controlled it, ignoring any control effects whose durations have already expired."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "When Yes Man's owner leaves the game, Yes Man leaves the game along with that player. It's just doing what it's told."
             }
         ]
     }
