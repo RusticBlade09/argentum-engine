@@ -50,17 +50,18 @@ class FuseScenarioTest : ScenarioTestBase() {
             spell { effect = Effects.Pipeline {
                 val hand = gather(CardSource.FromZone(Zone.HAND))
                 val selected = chooseSpell(hand)
-                add(CastFromCollectionWithoutPayingCostEffect(selected.name))
+                run(Effects.CastFromCollectionWithoutPayingCost(selected))
             } }
         }
         cardRegistry.register(listOf(ordered, paused, xSpell, freeHost))
-        fun board(name: String = ordered.name, extraHand: String? = null): TestGame {
+        fun board(name: String = ordered.name, extraHand: String? = null, permanent: String? = null): TestGame {
             val builder = scenario().withPlayers("Caster", "Opponent").withCardInHand(1, name)
                 .withLandsOnBattlefield(1, "Mountain", 3).withLandsOnBattlefield(1, "Plains", 3)
                 .withCardInLibrary(1, "Plains").withCardInLibrary(1, "Mountain").withCardInLibrary(1, "Island")
                 .withCardInLibrary(2, "Plains").withActivePlayer(1)
                 .inPhase(Phase.PRECOMBAT_MAIN, Step.PRECOMBAT_MAIN)
             extraHand?.let { builder.withCardInHand(1, it) }
+            permanent?.let { builder.withCardOnBattlefield(1, it) }
             return builder.build()
         }
         fun TestGame.cardId(name: String = ordered.name) = state.getHand(player1Id).first { state.getEntity(it)?.get<CardComponent>()?.name == name }
@@ -119,13 +120,19 @@ class FuseScenarioTest : ScenarioTestBase() {
             game.getLegalActions(1).none { (it.action as? CastSpell)?.castFused == true } shouldBe true
             game.execute(CastSpell(game.player1Id, game.cardId(), castFused = true)).error.shouldNotBeNull()
         }
-        test("combined cost reductions apply once") {
-            val game = board()
-            game.state = game.state.updateEntity(game.cardId()) { it }
-            val fused = SplitSpellCasts.fusedDefinition(ordered)
-            fused.manaCost.toString() shouldBe "{1}{R}{W}"
-            // The three-symbol cost remains one spell for all ordinary cost modifiers.
-            fused.script.targetRequirements.size shouldBe 0
+        test("combined spell pays a tax only once") {
+            val game = board(permanent = "Thalia, Guardian of Thraben")
+            val offer = game.getLegalActions(1).first { (it.action as? CastSpell)?.castFused == true }
+            offer.manaCostString shouldBe "{2}{R}{W}"
+            game.execute(CastSpell(game.player1Id, game.cardId(), castFused = true)).error.shouldBeNull()
+            game.resolveStack(); game.getLifeTotal(1) shouldBe 21
+        }
+        test("combined spell receives a reduction only once") {
+            val game = board(permanent = "Mocking Sprite")
+            val offer = game.getLegalActions(1).first { (it.action as? CastSpell)?.castFused == true }
+            offer.manaCostString shouldBe "{R}{W}"
+            game.execute(CastSpell(game.player1Id, game.cardId(), castFused = true)).error.shouldBeNull()
+            game.resolveStack(); game.getLifeTotal(1) shouldBe 21
         }
         test("the free-cast hand picker offers fuse and resumes both halves") {
             val game = board(ordered.name, freeHost.name); val id = game.cardId()

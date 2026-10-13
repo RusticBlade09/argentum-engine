@@ -176,10 +176,10 @@ class IntentCatalog private constructor(private val registry: CardRegistry?) {
     fun spellTargetPolarities(cardName: String, transformed: Boolean = false, faceIndex: Int? = null, castFused: Boolean = false): List<TargetPolarity> {
         val printed = registry?.getCard(cardName) ?: return emptyList()
         if (castFused) return printed.cardFaces.flatMap { face ->
-            TargetPolarityAnalyzer.forSpell(printed.copy(script = face.script, cardFaces = emptyList()), ::tokenDefinition)
+            TargetPolarityAnalyzer.forSpell(printed.copy(name = face.name, script = face.script, cardFaces = emptyList()), ::tokenDefinition)
         }
         val definition = if (transformed) printed.backFace ?: return emptyList()
-            else faceIndex?.let { printed.cardFaces.getOrNull(it)?.let { face -> printed.copy(script = face.script, cardFaces = emptyList()) } } ?: printed
+            else faceIndex?.let { printed.cardFaces.getOrNull(it)?.let { face -> printed.copy(name = face.name, script = face.script, cardFaces = emptyList()) } } ?: printed
         return TargetPolarityAnalyzer.forSpell(definition, ::tokenDefinition)
     }
 
