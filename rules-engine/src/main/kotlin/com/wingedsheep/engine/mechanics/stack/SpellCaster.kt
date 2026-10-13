@@ -318,7 +318,7 @@ internal class SpellCaster(
             faceIndex?.let { cardRegistry.getCard(cardComponent.cardDefinitionId)?.takeIf { d -> d.isSplit }?.cardFaces?.getOrNull(it)?.name }
                 ?: cardComponent.name
         }
-        // Preserve SpellCastEvent.cardName's historical public-name contract. The trusted
+        // SpellCastEvent.cardName is the spell's public name (a split half's own name). The trusted
         // presentation snapshot below separately retains semantic identity and private audiences.
         val eventName = if (castFaceDown) FACE_DOWN_DISPLAY_NAME else spellName
         val targetNames = castTargetNames(newState, effectiveTargets, casterId)
