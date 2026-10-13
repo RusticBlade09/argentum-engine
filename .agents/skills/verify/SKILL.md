@@ -24,6 +24,7 @@ waiting on.
 
 | Change | Command |
 |---|---|
+| Agent-loop unit, before opening its PR | `just loop-gate` (diff-based; CI runs the full suite) |
 | Card using only existing effects | `just build` |
 | Card or feature with new engine behavior | `just test` |
 | Engine-only | `just test-rules` (engine tests + every card scenario) |

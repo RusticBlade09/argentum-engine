@@ -19,6 +19,7 @@ class AssayLoopTest(unittest.TestCase):
         self.bin.mkdir()
         (self.root / ".git").mkdir()
         shutil.copy(Path(__file__).with_name("assay-loop"), self.bin / "assay-loop")
+        shutil.copy(Path(__file__).with_name("loop-lib.sh"), self.bin / "loop-lib.sh")
         self.stub("git", 'echo "$TEST_ROOT/.git"')
         self.stub("gh", "exit 0")
         self.stub("sleep", 'echo "$1" >> "$TEST_ROOT/sleeps"; touch "$TEST_ROOT/.claude/loop-runs/assay.stop"')

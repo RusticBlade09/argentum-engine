@@ -57,6 +57,12 @@ where QUERY:
 test-class CLASS *ARGS:
     scripts/test-class "{{CLASS}}" {{ARGS}}
 
+# The agent loops' pre-PR gate: only the tests the branch's diff can break (CI runs the full suite)
+# Run the narrow diff-based gate; --plan prints what it would run
+[group: 'build']
+loop-gate *ARGS:
+    scripts/loop-gate {{ARGS}}
+
 # Re-bless per-set card snapshot goldens after an intentional change (review the diff: only your cards should move)
 [group: 'build']
 rebless-cards:

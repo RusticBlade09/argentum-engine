@@ -105,10 +105,12 @@ command -v "$HARNESS" >/dev/null || { echo "set-loop: $HARNESS is not installed"
 REPO=$(cd "$(git rev-parse --git-common-dir)/.." && pwd)
 RUNS="$REPO/.claude/loop-runs"
 mkdir -p "$RUNS"
+# shellcheck source=loop-lib.sh
+source "$(dirname "$0")/loop-lib.sh"
 
 PROMPT="You are one iteration of an unattended loop implementing MTG set '$CODE' (Scryfall code).
 You are a fresh session: your memory is the ledger at $RUNS/$CODE-cards.md (create it if missing),
-the gap analysis at $RUNS/$CODE-gaps.md, and GitHub. Do exactly ONE of the steps below, then stop.
+the gap analysis at $RUNS/$CODE-gaps.md, and GitHub. Do exactly ONE of the steps below, then stop — except that merging a PR is followed by the next build step in the same session.
 
 The set is built in four phases: gap analysis once, then the Assay-ready sweep (the cards Argentum Assay
 already reads whole, authored to its compiled model), then every engine gap one PR at a time, then the
@@ -137,13 +139,8 @@ worktree (recreate it with \`git worktree add\` if missing). Never work in the m
    '## Assay-ready' — the split's counts per bucket, and a \`- [ ] sweep\` line. If the split is all zero (or only
      unscaffolded/absent), write \`- [x] sweep — nothing to sweep\`.
    Stop after writing it.
-1. PR open, CI failed -> read only the failing log tail (\`gh run view <id> --log-failed | tail -200\`),
-   fix it, re-run the affected gate per the verify skill, push. A known-flaky test: \`gh run rerun --failed\` instead.
-2. PR open, has merge conflicts -> rebase on origin/main (re-bless snapshot goldens instead of hand-merging), gate, push.
-3. PR open, CI green, not yet reviewed (no 'loop-reviewed' comment) -> review it with the review-changes skill,
-   fix what holds up, gate, push, and post a PR comment starting 'loop-reviewed' listing fixes and declines.
-4. PR open, CI green, reviewed, nothing pushed since -> \`gh pr merge --squash --delete-branch\` (from $REPO, after
-   \`git worktree remove\` of its worktree), mark the unit done in the ledger. If it closed a gap, tick it \`[x]\`
+1-4. Our PR is open -> follow the PR LIFECYCLE below (CI failed, conflicts, unreviewed, or ready to merge).
+   Merge bookkeeping: mark the unit done in the ledger. If it closed a gap, tick it \`[x]\`
    in the gaps file and move the cards it unlocked (minus any it shipped) into '## Ready'. If it was an Assay sweep
    whose after-count left nothing but dropped, unscaffolded and absent cards, tick the sweep \`[x]\`.
 5. No PR open, the '## Assay-ready' sweep line is not \`[x]\` or \`[!]\` (add it as \`[ ]\` if a gaps file predates it)
@@ -158,8 +155,8 @@ worktree (recreate it with \`git worktree add\` if missing). Never work in the m
    or the differential shows needs new vocabulary, or that the batch can't make faithful, is dropped: name it in
    the gaps file under '## Assay-ready' as \`dropped: <card> — <reason>\`, add it to '## Gaps' or '## Ready', and
    never sweep it again. One definition file and one scenario test file per authored card. Gate per Stage 5
-   (\`just build\`, \`just rebless-cards\` moving only your cards, \`just assay-differential\` with only the delta
-   classified, \`just check-card-printing\`), then re-run \`just assay-ready $CODE\` on the branch. Commit, push, open
+   (\`just loop-gate\` in place of \`just build\`, \`just rebless-cards\` moving only your cards, \`just assay-differential\` with only the delta
+   classified, \`just check-card-printing\`), then re-run \`just assay-ready $CODE\` on the branch. Commit, review, push and open
    a PR titled '[agent-loop: $MODEL] Add <N> Assay-ready <set name> cards' whose body carries the split, the
    before/after differential triple, the before/after assay-ready count, dropped cards with reasons, and that
    nothing was play-tested. Record the unit and its after-count in the ledger; a sweep with cards left over gets
@@ -167,13 +164,13 @@ worktree (recreate it with \`git worktree add\` if missing). Never work in the m
 6. No PR open, sweep \`[x]\` or \`[!]\`, an unticked gap whose deps are all \`[x]\` -> engine gap. \`git fetch\`, new worktree + 'loop-$CODE-' branch
    from origin/main. Take the first such gap, mark it \`[~]\`, and build it with the add-feature skill: the capability,
    its SDK reference entry, engine tests, plus one or two of the cards it unlocks as proof (one scenario test file
-   per card). Gate, commit, push, open a PR titled '[agent-loop: $MODEL] <capability> for <set name>' whose body
+   per card). Gate, commit, review, push, open a PR titled '[agent-loop: $MODEL] <capability> for <set name>' whose body
    names the gap, the cards it unlocks, the gate run, and that nothing was play-tested. Record the unit in the ledger.
 7. No PR open, sweep \`[x]\` or \`[!]\`, no buildable gap left -> card batch. \`git fetch\`, new worktree + 'loop-$CODE-' branch from origin/main. Take up
    to 15 unimplemented cards from '## Ready', grouped by colour or theme. Fan them out to subagents, one card each,
    with the add-card skill (one definition file and one scenario test file per card). A card that turns out to need
    new vocabulary is dropped from the batch and added to '## Gaps' as a new \`[ ]\` gap — the next iteration builds
-   it before more cards. Gate once per the verify skill, commit, push, open a PR titled
+   it before more cards. Gate once with \`just loop-gate\`, commit, review, push, open a PR titled
    '[agent-loop: $MODEL] Add <N> <set name> cards' whose body lists the cards, the gate run, and that nothing was
    play-tested. Record the unit in the ledger.
 8. No PR open, \`card-status\` shows every card implemented, finishing PR not yet merged -> finishing PR. \`git fetch\`, new
@@ -203,11 +200,9 @@ worktree (recreate it with \`git worktree add\` if missing). Never work in the m
      world, its headline mechanics, how its decks feel, so a player can tell from the feed alone whether to try it.
      The archetypes above (or the set's mechanics.md) are the source; don't describe mechanics the set lacks.
      \`tryIf\` completes 'Try it if you like ...' (e.g. 'tribal synergies and creature-type deckbuilding').
-   Gate (\`just test-ai\`, \`npm run typecheck\` and \`npx vitest run src/components/whatsNew\` in web-client, and the set-module tests the baseline re-bless touches), commit, push, open a PR titled
+   Gate (\`just test-ai\`, \`npm run typecheck\` and \`npx vitest run src/components/whatsNew\` in web-client, and \`just loop-gate\`), commit, review, push, open a PR titled
    '[agent-loop: $MODEL] Finish <set name>: archetypes + draftable' and record the unit in the ledger.
 
-PR open, CI still pending or running -> do nothing; don't poll or wait on it — the loop waits for CI
-between sessions. Answer WAITING_CI.
 
 A card whose earliest real printing is in a set that isn't scaffolded yet (\`just check-card-printing\` says NOT
 SCAFFOLDED) is an ordinary '## Ready' card, never needs-human and never a reason to answer STUCK: scaffold that set
@@ -228,6 +223,8 @@ An unrelated failure on origin/main (a test in a module your change doesn't touc
 STUCK: run the gates for the modules you changed, note the unrelated failure in the ledger and the PR body,
 and carry on. Only answer STUCK when the failure is inside code your unit changed or depends on. If the
 failure is a trivial stale test, you may fix it in a separate one-commit PR.
+
+$LOOP_PR_PROTOCOL
 
 A human watches your text live, one line at a time, so keep them posted in short lines (under 150 chars each):
 - once you know which step you're taking: 'Working on: <step and unit, e.g. step 6, G3 splice onto Arcane>'
@@ -311,15 +308,8 @@ log "set-loop $CODE started (harness $HARNESS, model $MODEL, log $RUNS/$CODE.log
 N=0
 while [ ! -e "$RUNS/$CODE.stop" ]; do
   N=$((N + 1))
-  # Wait on CI for free instead of spending a session on it.
-  PR=$(gh pr list --author @me --state open --json number,headRefName \
-        --jq "[.[] | select(.headRefName | startswith(\"loop-$CODE-\"))][0].number // empty")
-  if [ -n "$PR" ]; then
-    log "waiting for CI on PR #$PR"
-    sleep 60
-    gh pr checks "$PR" --watch >/dev/null 2>&1
-    log "CI on PR #$PR: $(gh pr checks "$PR" --json bucket --jq '[.[].bucket] | group_by(.) | map("\(.[0])=\(length)") | join(" ")' 2>/dev/null)"
-  fi
+  PR=$(loop_find_pr "loop-$CODE-")
+  [ -n "$PR" ] && loop_wait_ci "$PR"
 
   TRANSCRIPT="$LOGDIR/$(date '+%Y%m%d-%H%M%S')-iter$N.jsonl"
   log "iteration $N (PR: ${PR:-none}) — transcript $TRANSCRIPT"

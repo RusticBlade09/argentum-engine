@@ -101,11 +101,13 @@ command -v "$HARNESS" >/dev/null || { echo "commander-loop: $HARNESS is not inst
 REPO=$(cd "$(git rev-parse --git-common-dir)/.." && pwd)
 RUNS="$REPO/.claude/loop-runs"
 mkdir -p "$RUNS"
+# shellcheck source=loop-lib.sh
+source "$(dirname "$0")/loop-lib.sh"
 
 PROMPT="You are one iteration of an unattended loop that makes EDHREC's top $TOP Commander decks playable in
 Argentum, one reviewed PR at a time. You are a fresh session: your memory is the ledger at
 $RUNS/commander-cards.md (create it if missing), the triage at $RUNS/commander-gaps.md, the queue at
-$RUNS/commander-queue.md, and GitHub. None of them is committed. Do exactly ONE of the steps below, then stop.
+$RUNS/commander-queue.md, and GitHub. None of them is committed. Do exactly ONE of the steps below, then stop — except that merging a PR is followed by the next build step in the same session.
 
 The queue decides the order. \`scripts/commander-staples --top $TOP --out $RUNS/commander-queue.md\`, run from a
 worktree on fresh origin/main, lists the top commanders' average decks in the order that finishes the most
@@ -129,13 +131,8 @@ Triage format ($RUNS/commander-gaps.md), three sections:
 '## Ready' — cards that compose from existing primitives today, one per line, with their queue deck rank.
 '## Triaged decks' — the queue ranks already triaged, so a later step knows where to resume.
 
-1. PR open, CI failed -> read only the failing log tail (\`gh run view <id> --log-failed | tail -200\`),
-   fix it, re-run the affected gate per the verify skill, push. A known-flaky test: \`gh run rerun --failed\` instead.
-2. PR open, has merge conflicts -> rebase on origin/main (re-bless snapshot goldens instead of hand-merging), gate, push.
-3. PR open, CI green, not yet reviewed (no 'loop-reviewed' comment) -> review it with the review-changes skill,
-   fix what holds up, gate, push, and post a PR comment starting 'loop-reviewed' listing fixes and declines.
-4. PR open, CI green, reviewed, nothing pushed since -> \`gh pr merge --squash --delete-branch\` (from $REPO, after
-   \`git worktree remove\` of its worktree), record the unit in the ledger. If it closed a gap, tick it \`[x]\` and move
+1-4. Our PR is open -> follow the PR LIFECYCLE below (CI failed, conflicts, unreviewed, or ready to merge).
+   Merge bookkeeping: record the unit in the ledger. If it closed a gap, tick it \`[x]\` and move
    the cards it unlocked (minus any it shipped) into '## Ready'. Remove shipped cards from '## Ready'.
 5. No PR open, the current deck or any of the next 9 decks with missing cards is not in '## Triaged decks' -> triage,
    no PR. \`git fetch\`, worktree 'loop-cmdr-triage' off origin/main, regenerate the queue there. Take the missing
@@ -148,7 +145,7 @@ Triage format ($RUNS/commander-gaps.md), three sections:
 6. No PR open, the current deck has no '## Ready' cards left, and an unticked gap that blocks it has all deps \`[x]\`
    -> engine gap. \`git fetch\`, new worktree + 'loop-cmdr-' branch from origin/main. Take the first such gap, mark it
    \`[~]\`, and build it with the add-feature skill: the capability, its SDK reference entry, engine tests, plus one or
-   two of the cards it unlocks as proof (one scenario test file per card). Gate, commit, push, open a PR titled
+   two of the cards it unlocks as proof (one scenario test file per card). Gate, commit, review, push, open a PR titled
    '[agent-loop: $MODEL] <capability> for Commander staples' whose body names the gap, the cards and decks it
    unlocks, the gate run, and that nothing was play-tested. Record the unit in the ledger.
 7. No PR open, '## Ready' has cards in the current deck or a later one -> card batch. \`git fetch\`, new worktree +
@@ -157,15 +154,13 @@ Triage format ($RUNS/commander-gaps.md), three sections:
    one card each, with the add-card skill: each canonical in its earliest real printing's set, \`Printing\` rows in
    every scaffolded set that reprints it (\`scripts/generate-reprints.py --since origin/main\`), a scenario test only
    when add-card says the card earns one (one test file per card, never a shared one). A card that turns out to need
-   new vocabulary is dropped from the batch and added to '## Gaps' as a new \`[ ]\` gap. Gate once per the verify skill
-   (\`just build\`, \`just rebless-cards\` moving only your cards, \`just check-card-printing\` per card), regenerate the
+   new vocabulary is dropped from the batch and added to '## Gaps' as a new \`[ ]\` gap. Gate once with \`just loop-gate\`
+   (\`just loop-gate\`, \`just rebless-cards\` moving only your cards, \`just check-card-printing\` per card), regenerate the
    queue to see which decks became playable, commit, push, and open a PR titled
    '[agent-loop: $MODEL] Add <N> Commander staples' whose body has a table of the cards (card, real decks running it,
    canonical set + number, what it's built from), the decks this PR makes fully playable, dropped cards with the
    gap they need, the gate run, and that nothing was play-tested. Record the unit in the ledger.
 
-PR open, CI still pending or running -> do nothing; don't poll or wait on it — the loop waits for CI
-between sessions. Answer WAITING_CI.
 
 A card whose earliest real printing is in a set that isn't scaffolded yet (\`just check-card-printing\` says NOT
 SCAFFOLDED) is an ordinary '## Ready' card, never needs-human and never a reason to answer STUCK: scaffold that set
@@ -186,6 +181,8 @@ An unrelated failure on origin/main (a test in a module your change doesn't touc
 STUCK: run the gates for the modules you changed, note the unrelated failure in the ledger and the PR body,
 and carry on. Only answer STUCK when the failure is inside code your unit changed or depends on. If the
 failure is a trivial stale test, you may fix it in a separate one-commit PR.
+
+$LOOP_PR_PROTOCOL
 
 A human watches your text live, one line at a time, so keep them posted in short lines (under 150 chars each):
 - once you know which step you're taking: 'Working on: <step and unit, e.g. step 7, 12 cards for Baylen + Animar>'
@@ -246,15 +243,8 @@ log "commander-loop started (top $TOP, harness $HARNESS, model $MODEL, log $RUNS
 N=0
 while [ ! -e "$RUNS/commander.stop" ]; do
   N=$((N + 1))
-  # Wait on CI for free instead of spending a session on it.
-  PR=$(gh pr list --author @me --state open --json number,headRefName \
-        --jq "[.[] | select(.headRefName | startswith(\"loop-cmdr-\"))][0].number // empty")
-  if [ -n "$PR" ]; then
-    log "waiting for CI on PR #$PR"
-    sleep 60
-    gh pr checks "$PR" --watch >/dev/null 2>&1
-    log "CI on PR #$PR: $(gh pr checks "$PR" --json bucket --jq '[.[].bucket] | group_by(.) | map("\(.[0])=\(length)") | join(" ")' 2>/dev/null)"
-  fi
+  PR=$(loop_find_pr "loop-cmdr-")
+  [ -n "$PR" ] && loop_wait_ci "$PR"
 
   TRANSCRIPT="$LOGDIR/$(date '+%Y%m%d-%H%M%S')-iter$N.jsonl"
   log "iteration $N (PR: ${PR:-none}) — transcript $TRANSCRIPT"

@@ -20,6 +20,7 @@ class SetLoopTest(unittest.TestCase):
         self.bin.mkdir()
         (self.root / ".git").mkdir()
         shutil.copy(Path(__file__).with_name("set-loop"), self.bin / "set-loop")
+        shutil.copy(Path(__file__).with_name("loop-lib.sh"), self.bin / "loop-lib.sh")
         self.stub("resolve-set", 'echo ecl')
         self.stub("git", 'echo "$TEST_ROOT/.git"')
         self.stub("gh", "exit 0")
@@ -76,6 +77,15 @@ echo '{"type":"result","result":"SET_COMPLETE","num_turns":1,"duration_ms":1000}
                 self.assertEqual(args[args.index("--model") + 1], model)
                 if model in ("sonnet", "opus"):
                     self.assertIn("resolve the actual driving", "\n".join(args))
+
+    def test_prompt_reviews_before_the_pr_and_gates_narrowly(self):
+        result = self.run_loop("claude-opus-5-5")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        prompt = "\n".join((self.root / "args").read_text().splitlines())
+        self.assertIn("PR LIFECYCLE", prompt)
+        self.assertIn("just loop-gate", prompt)
+        self.assertIn("loop-reviewed <full sha", prompt)
+        self.assertNotIn("$LOOP_PR_PROTOCOL", prompt)
 
     def test_picker_without_terminal_does_not_launch(self):
         result = self.run_loop("pick")
