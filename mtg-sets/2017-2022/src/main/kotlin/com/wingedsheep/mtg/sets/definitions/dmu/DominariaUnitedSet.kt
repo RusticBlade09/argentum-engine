@@ -16,7 +16,6 @@ object DominariaUnitedSet : MtgSet {
     override val code = "DMU"
     override val displayName = "Dominaria United"
     override val releaseDate = "2022-09-09"
-    override val incomplete = true
 
     override val cards: List<CardDefinition> by lazy {
         CardDiscovery.findIn(CARDS_PACKAGE)
