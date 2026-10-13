@@ -3,6 +3,7 @@ package com.wingedsheep.gameserver.config
 import com.wingedsheep.gameserver.coverage.SetCoverageService
 import com.wingedsheep.sdk.limited.EchoedPairsPlayBooster
 import com.wingedsheep.sdk.limited.LandSlotBooster
+import com.wingedsheep.sdk.limited.LegendarySlotBooster
 import com.wingedsheep.sdk.limited.StandardBooster
 import com.wingedsheep.sdk.model.Rarity
 import io.kotest.assertions.withClue
@@ -51,6 +52,26 @@ class GameBeansConfigBoosterPoolTest : FunSpec({
         }
         // 1 in 8 rare slots upgrades to a mythic.
         (mythics.toDouble() / packs) shouldBe (0.125 plusOrMinus 0.03)
+    }
+
+    test("every Dominaria United draft pack opens exactly one legendary creature from its booster pool") {
+        val dmu = boosterGenerator.availableSets["DMU"].shouldNotBeNull()
+        dmu.fullyImplemented shouldBe true
+        dmu.boosterStrategy.shouldBeInstanceOf<LegendarySlotBooster>()
+        val eligibleNames = dmu.cards
+            .filter { it.metadata.inBooster && !it.typeLine.isBasicLand }
+            .mapTo(hashSetOf()) { it.name }
+        repeat(500) {
+            val pack = boosterGenerator.generateBooster("DMU")
+            pack.size shouldBe 14
+            pack.map { it.name }.toSet().size shouldBe 14
+            withClue("pack ${pack.map { it.name }} holds an off-sheet card") {
+                pack.all { it.name in eligibleNames } shouldBe true
+            }
+            pack.count { it.typeLine.isLegendary && it.typeLine.isCreature } shouldBe 1
+            pack.count { it.metadata.rarity == Rarity.COMMON } shouldBe 10
+            pack.count { it.metadata.rarity == Rarity.RARE || it.metadata.rarity == Rarity.MYTHIC } shouldBe 1
+        }
     }
 
     test("Reality Fracture is selectable as a complete set and generates a nonempty pack") {

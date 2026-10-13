@@ -454,6 +454,14 @@ plus the frame fields:
 metadata (set code, collector number, art, artist, Scryfall id, and the back-face art for genuine DFCs) and leaves the
 card's oracle identity untouched.
 
+**Legendary-slot boosters** — `LegendarySlotBooster(commons, uncommons, legendaryRareChance, mythicChance)` opens
+exactly one legendary creature per pack. With `legendaryRareChance` it is a rare or mythic in the rare slot beside
+`uncommons` nonlegendary uncommons; otherwise it is an uncommon taking one uncommon slot, beside a nonlegendary
+rare/mythic. The other slots never hold a legendary creature. An empty tier (host bans) falls back to the other;
+no legendary creatures at all gives a `StandardBooster`. Dominaria United uses `legendaryRareChance = 0.25`.
+`GuaranteedLegendaryBooster` (Dominaria) is the older shape: one legendary picked uniformly across rarities,
+replacing the slot of its rarity.
+
 **Echoed-pair boosters** — override `MtgSet.boosterStrategy` with
 `EchoedPairsPlayBooster(echoedPairs = listOf("First half" to "Second half", ...))`.
 Both halves must be in the pool to open as a pair; the third echoed card excludes the selected pair.

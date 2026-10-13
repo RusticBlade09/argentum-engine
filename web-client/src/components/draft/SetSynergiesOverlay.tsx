@@ -1646,6 +1646,72 @@ const SET_SYNERGIES: Record<string, SetSynergies> = {
       },
     ],
   },
+  DMU: {
+    setCode: 'DMU',
+    setName: 'Dominaria United',
+    archetypes: [
+      {
+        name: 'Spells Tempo',
+        colors: ['W', 'U'],
+        keyCard: 'Raff, Weatherlight Stalwart',
+        description: 'Cast instants and sorceries to tap your team for cards and make Soldier tokens, then pump the board with flyers on top. A tempo deck that grinds value out of every spell.',
+      },
+      {
+        name: 'Spells Recursion',
+        colors: ['U', 'B'],
+        keyCard: 'Vohar, Vodalian Desecrator',
+        description: 'Loot instants and sorceries into the graveyard, recast them later, and drain the opponent with every spell. A patient control deck that wins the long game on card quality.',
+      },
+      {
+        name: 'Sacrifice Aggro',
+        colors: ['B', 'R'],
+        keyCard: 'Garna, Bloodfist of Keld',
+        description: 'Attack with expendable creatures and tokens, then turn each one that dies into a card or a point of damage. An aggressive attrition deck that profits from every trade.',
+      },
+      {
+        name: 'Domain Stompy',
+        colors: ['R', 'G'],
+        keyCard: 'Radha, Coalition Warlord',
+        description: 'Assemble basic land types for domain, then tap your creatures to turn that domain count into big pumps. A stompy midrange deck whose threats grow with every land type.',
+      },
+      {
+        name: 'Tokens',
+        colors: ['G', 'W'],
+        keyCard: 'Queen Allenal of Ruadach',
+        description: 'Go wide with Soldier tokens, then grow the team with counters and creature-count payoffs. A swarm deck whose board outsizes every blocker.',
+      },
+      {
+        name: 'Sacrifice Drain',
+        colors: ['W', 'B'],
+        keyCard: 'Elas il-Kor, Sadistic Pilgrim',
+        description: 'Flood the board with small creatures, sacrifice them for value, and drain the opponent each time one enters or dies. A grindy midrange deck that pulls ahead on life.',
+      },
+      {
+        name: 'Spells Aggro',
+        colors: ['U', 'R'],
+        keyCard: 'Balmor, Battlemage Captain',
+        description: 'Chain cheap instants and sorceries to pump and give trample to the whole team, with flash and copy effects for reach. A tempo deck that turns every spell into extra damage.',
+      },
+      {
+        name: 'Lands Graveyard',
+        colors: ['B', 'G'],
+        keyCard: 'Uurg, Spawn of Turg',
+        description: 'Surveil and sacrifice lands to fill the graveyard, then recur creatures with domain and grow graveyard-sized threats. A grindy midrange deck built to outlast the opponent.',
+      },
+      {
+        name: 'Power Aggro',
+        colors: ['R', 'W'],
+        keyCard: 'Baird, Argivian Recruiter',
+        description: 'Curve out with cheap attackers and pump them above their base power to make Soldier tokens each turn. A fast aggro deck that snowballs every combat.',
+      },
+      {
+        name: 'Domain Ramp',
+        colors: ['G', 'U'],
+        keyCard: 'Tatyova, Steward of Tides',
+        description: "Ramp into all five basic land types and the set's biggest domain payoffs, then turn lands into flying creatures. A ramp deck that wins with an oversized late game.",
+      },
+    ],
+  },
   BRO: {
     setCode: 'BRO',
     setName: "The Brothers' War",
