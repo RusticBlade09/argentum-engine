@@ -141,7 +141,7 @@ class MoveCollectionExecutor(
 
         var result = when (destination) {
             is CardDestination.ToZone ->
-                moveToZone(state, context, cards, destination, effect.order, effect.revealed, effect.moveType, effect.faceDown, effect.noRegenerate, effect.storeMovedAs, effect.underOwnersControl, effect.revealToSelf, fromCollection = effect.from)
+                moveToZone(state, context, cards, destination, effect.order, effect.revealed, effect.moveType, effect.faceDown, effect.noRegenerate, effect.storeMovedAs, effect.underOwnersControl, effect.revealToSelf, fromCollection = effect.from, entryCounterType = effect.addCounterType)
             is CardDestination.ToZoneExiledFrom ->
                 moveToZonesExiledFrom(state, context, cards, destination, effect)
         }
@@ -158,7 +158,15 @@ class MoveCollectionExecutor(
             var newState = result.state
             val counterEvents = mutableListOf<GameEvent>()
             for (cardId in arrivedCards) {
-                if (newState.getEntity(cardId) == null) continue
+                if (newState.getEntity(cardId) == null || cardId in newState.getBattlefield()) continue
+                // Only annotate a card that actually arrived in the requested nonbattlefield zone.
+                val expectedZone = when (destination) {
+                    is CardDestination.ToZone -> destination.zone
+                    is CardDestination.ToZoneExiledFrom -> originZoneOf(state, cardId, destination.fallback)
+                }
+                if (expectedZone == Zone.BATTLEFIELD || newState.zones.none { (key, ids) ->
+                        key.zoneType == expectedZone && cardId in ids
+                    }) continue
                 newState = newState.updateEntity(cardId) { c ->
                     val existing = c.get<CountersComponent>() ?: CountersComponent()
                     c.with(existing.withAdded(counterType, 1))
@@ -237,10 +245,10 @@ class MoveCollectionExecutor(
                     auraId, card, hostId, controllerId
                 )
                 if (!legal || hostId !in newState.getBattlefield()) continue
-                val (afterMove, moveEvents) = moveAuraToBattlefield(newState, auraId, hostId, controllerId)
+                val (afterMove, moveEvents) = moveAuraToBattlefield(newState, auraId, hostId, controllerId, effect.addCounterType, context)
                 newState = afterMove
                 events.addAll(moveEvents)
-                moved.add(auraId)
+                if (auraId in newState.getBattlefield()) moved.add(auraId)
             }
         }
         val storeMovedAs = effect.storeMovedAs
@@ -250,7 +258,8 @@ class MoveCollectionExecutor(
         }
         val rest = moveToZone(
             newState, context, others, destination, effect.order, effect.revealed, effect.moveType,
-            effect.faceDown, effect.noRegenerate, storeMovedAs, effect.underOwnersControl, effect.revealToSelf
+            effect.faceDown, effect.noRegenerate, storeMovedAs, effect.underOwnersControl, effect.revealToSelf,
+            entryCounterType = effect.addCounterType
         )
         val collections = if (storeMovedAs != null) {
             rest.updatedCollections + (storeMovedAs to (moved + (rest.updatedCollections[storeMovedAs] ?: emptyList())))
@@ -354,7 +363,8 @@ class MoveCollectionExecutor(
                 runningState, context, group,
                 CardDestination.ToZone(zone),
                 effect.order, effect.revealed, effect.moveType, effect.faceDown,
-                effect.noRegenerate, effect.storeMovedAs, effect.underOwnersControl, effect.revealToSelf
+                effect.noRegenerate, effect.storeMovedAs, effect.underOwnersControl, effect.revealToSelf,
+                entryCounterType = effect.addCounterType
             )
             runningState = groupResult.state
             events.addAll(groupResult.events)
@@ -467,7 +477,8 @@ class MoveCollectionExecutor(
         storeMovedAs: String? = null,
         underOwnersControl: Boolean = false,
         revealToSelf: Boolean = true,
-        fromCollection: String? = null
+        fromCollection: String? = null,
+        entryCounterType: com.wingedsheep.sdk.core.CounterType? = null
     ): EffectResult {
         val destPlayerId = resolvePlayer(destination.player, context, state)
             ?: return EffectResult.error(state, "Could not resolve destination player for MoveCollection")
@@ -504,7 +515,7 @@ class MoveCollectionExecutor(
             cards to state
         }
 
-        val result = moveCardsToZone(stateForMove, context, orderedCards, destination, destPlayerId, revealed, moveType, faceDown, noRegenerate, storeMovedAs, underOwnersControl, revealToSelf)
+        val result = moveCardsToZone(stateForMove, context, orderedCards, destination, destPlayerId, revealed, moveType, faceDown, noRegenerate, storeMovedAs, underOwnersControl, revealToSelf, entryCounterType)
 
         // Random library placement: the mover doesn't know where the cards landed, so strip
         // their reveal markers. moveCardsToZone marks moved cards as revealed to the controller
@@ -602,7 +613,8 @@ class MoveCollectionExecutor(
         noRegenerate: Boolean = false,
         storeMovedAs: String? = null,
         underOwnersControl: Boolean = false,
-        revealToSelf: Boolean = true
+        revealToSelf: Boolean = true,
+        entryCounterType: com.wingedsheep.sdk.core.CounterType? = null
     ): EffectResult {
         val destZone = destination.zone
 
@@ -614,7 +626,7 @@ class MoveCollectionExecutor(
             for (cardId in cards) {
                 val container = state.getEntity(cardId)
                 val cardComponent = container?.get<CardComponent>()
-                if (cardComponent?.isAura == true && context.entryCopies[cardId]?.copiedCard == null) {
+                if (cardComponent?.isAura == true && cardId !in context.entryAuraHosts && context.entryCopies[cardId]?.copiedCard == null) {
                     auraCards.add(cardId)
                 } else {
                     nonAuraCards.add(cardId)
@@ -628,7 +640,7 @@ class MoveCollectionExecutor(
 
                 if (nonAuraCards.isNotEmpty()) {
                     val nonAuraResult = moveCardsToZoneInternal(
-                        newState, context, nonAuraCards, destination, destPlayerId, revealed, moveType, faceDown, noRegenerate, storeMovedAs, underOwnersControl, revealToSelf
+                        newState, context, nonAuraCards, destination, destPlayerId, revealed, moveType, faceDown, noRegenerate, storeMovedAs, underOwnersControl, revealToSelf, entryCounterType
                     )
                     newState = nonAuraResult.state
                     events.addAll(nonAuraResult.events)
@@ -658,7 +670,7 @@ class MoveCollectionExecutor(
             }
         }
 
-        return moveCardsToZoneInternal(state, context, cards, destination, destPlayerId, revealed, moveType, faceDown, noRegenerate, storeMovedAs, underOwnersControl, revealToSelf)
+        return moveCardsToZoneInternal(state, context, cards, destination, destPlayerId, revealed, moveType, faceDown, noRegenerate, storeMovedAs, underOwnersControl, revealToSelf, entryCounterType)
     }
 
     /**
@@ -786,74 +798,21 @@ class MoveCollectionExecutor(
         state: GameState,
         auraId: EntityId,
         targetId: EntityId,
-        destPlayerId: EntityId
+        destPlayerId: EntityId,
+        entryCounterType: com.wingedsheep.sdk.core.CounterType? = null,
+        context: EffectContext? = null
     ): Pair<GameState, List<GameEvent>> {
-        val events = mutableListOf<GameEvent>()
-        var newState = state
-
-        val ownerId = newState.getEntity(auraId)?.get<OwnerComponent>()?.playerId ?: destPlayerId
-        val cardName = newState.getEntity(auraId)?.get<CardComponent>()?.name ?: "Unknown"
-
-        // Find and remove from current zone
-        val fromZone = findCurrentZone(newState, auraId, ownerId)
-        if (fromZone != null) {
-            newState = newState.removeFromZone(ZoneKey(ownerId, fromZone), auraId)
-        }
-
-        // Add to battlefield
-        newState = com.wingedsheep.engine.handlers.effects.BattlefieldEntry
-            .place(newState, destPlayerId, auraId)
-
-        // Apply battlefield components + AttachedToComponent on aura
-        val container = newState.getEntity(auraId)
-        if (container != null) {
-            val cardDef = container.get<CardComponent>()
-                ?.let { cardRegistry.getCard(it.cardDefinitionId) }
-            var newContainer = container
-                .with(ControllerComponent(destPlayerId))
-                .with(AttachedToComponent(targetId))
-            // Wire up static/replacement abilities from the card definition
-            if (cardDef != null) {
-                val staticHandler = com.wingedsheep.engine.mechanics.layers.StaticAbilityHandler(cardRegistry)
-                newContainer = staticHandler.addContinuousEffectComponent(newContainer, cardDef)
-                newContainer = staticHandler.addReplacementEffectComponent(newContainer, cardDef)
-            }
-            newState = newState.copy(entities = newState.entities + (auraId to newContainer))
-        }
-
-        // Update target's AttachmentsComponent to include this aura
-        newState = newState.updateEntity(targetId) { targetContainer ->
-            val existing = targetContainer.get<AttachmentsComponent>()
-            val updatedIds = (existing?.attachedIds ?: emptyList()) + auraId
-            targetContainer.with(AttachmentsComponent(updatedIds))
-        }
-
-        if (fromZone != null) {
-            events.add(
-                ZoneChangeEvent(
-                    entityId = auraId,
-                    entityName = cardName,
-                    fromZone = fromZone,
-                    toZone = Zone.BATTLEFIELD,
-                    ownerId = ownerId,
-                    oldObject = state.objectRef(auraId),
-                    newObject = newState.objectRef(auraId)
-                )
-            )
-        }
-
-        // CR 603.2f — the Aura "becomes attached" as it enters attached by this effect; emit so
-        // attachment triggers (Eriette, the Beguiler) fire on the effect-driven attach path too.
-        events.add(
-            com.wingedsheep.engine.core.PermanentAttachedEvent(
-                attachmentId = auraId,
-                attachmentName = cardName,
-                attachedToId = targetId,
-                controllerId = destPlayerId,
-            )
-        )
-
-        return Pair(newState, events)
+        val transition = zones.moveToZone(state, auraId, Zone.BATTLEFIELD,
+            com.wingedsheep.engine.handlers.effects.ZoneEntryOptions(
+                controllerId = destPlayerId, auraHostId = targetId, entryCounterType = entryCounterType,
+                entryChoices = context?.entryChoices?.get(auraId)?.values.orEmpty(),
+                grantedRiotModes = context?.entryChoices?.get(auraId)?.riotModes.orEmpty(),
+                lookBackGrants = context?.lookBackGrants?.get(auraId)))
+        if (transition.actualDestination != Zone.BATTLEFIELD) return transition.state to transition.events
+        val (entered, counterEvents) = EntersWithReplacements.applyOnEntry(
+            transition.state, auraId, destPlayerId, cardRegistry, predicateEvaluator = predicateEvaluator,
+            preEntryZone = state.zones.entries.firstOrNull { auraId in it.value }?.key)
+        return entered to (transition.events + counterEvents)
     }
 
     private fun moveCardsToZoneInternal(
@@ -868,7 +827,8 @@ class MoveCollectionExecutor(
         noRegenerate: Boolean = false,
         storeMovedAs: String? = null,
         underOwnersControl: Boolean = false,
-        revealToSelf: Boolean = true
+        revealToSelf: Boolean = true,
+        entryCounterType: com.wingedsheep.sdk.core.CounterType? = null
     ): EffectResult {
         val destZone = destination.zone
         val events = mutableListOf<GameEvent>()
@@ -1005,6 +965,7 @@ class MoveCollectionExecutor(
             }
             val entryOptions = com.wingedsheep.engine.handlers.effects.ZoneEntryOptions(
                 controllerId = actualDestPlayerId,
+                entryCounterType = entryCounterType.takeIf { destZone == Zone.BATTLEFIELD },
                 entryCopy = context.entryCopies[cardId],
                 entryChoices = context.entryChoices[cardId]?.values.orEmpty(),
                 grantedRiotModes = context.entryChoices[cardId]?.riotModes.orEmpty(),
@@ -1048,7 +1009,7 @@ class MoveCollectionExecutor(
             // needs more than the two-line call: this is a loop, the replacement can pause for a
             // decision, and pausing mid-loop requires a continuation that resumes the remaining
             // cards. See docs/card-sdk-language-reference.md, OnEnterRun "Scope today".
-            if (destZone == Zone.BATTLEFIELD && faceDown == null) {
+            if (transitionResult.actualDestination == Zone.BATTLEFIELD && faceDown == null) {
                 val (counterState, counterEvents) = EntersWithReplacements.applyOnEntry(
                     newState, cardId, actualDestPlayerId, cardRegistry,
                     predicateEvaluator = predicateEvaluator, preEntryZone = fromZoneKey

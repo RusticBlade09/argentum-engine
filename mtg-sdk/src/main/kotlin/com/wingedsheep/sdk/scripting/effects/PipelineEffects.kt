@@ -1380,6 +1380,8 @@ data class MoveCollectionEffect(
     val noRegenerate: Boolean = false,
     val storeMovedAs: String? = null,
     val underOwnersControl: Boolean = false,
+    /** Each card enters the battlefield with one counter, honoring placement replacements/prevention;
+     * other destinations annotate the arriving card. Redirected/failed moves get no counter. */
     val addCounterType: CounterType? = null,
     /**
      * When true, each card moved to the battlefield is stamped with an

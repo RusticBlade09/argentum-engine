@@ -365,8 +365,9 @@ data class MoveToZoneEffect(
      */
     val positionFromTop: Int? = null,
     /**
-     * When non-null, one counter of this type is put on the card after it lands in its destination
-     * zone — "exile it with a stash counter on it" (Tinybones, Bauble Burglar), "with a dream
+     * When non-null, the card enters the battlefield with one counter of this type, honoring
+     * counter-placement replacements and prevention. In other destinations this annotates the
+     * arriving card — "exile it with a stash counter on it" (Tinybones, Bauble Burglar), "with a dream
      * counter on it" (Goliath Daydreamer). The single-target counterpart of
      * [MoveCollectionEffect.addCounterType]; skipped along with the move when [fromZone] gates it out.
      */

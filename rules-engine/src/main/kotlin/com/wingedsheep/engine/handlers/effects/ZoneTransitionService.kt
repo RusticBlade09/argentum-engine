@@ -91,6 +91,11 @@ data class ZoneEntryOptions(
      * the printed riot replacement/static abilities that would read a recorded `MODE` choice.
      */
     val grantedRiotModes: List<String> = emptyList(),
+    /** Effect-supplied counters are part of entry, including counter replacements and prevention. */
+    val entryCounterType: com.wingedsheep.sdk.core.CounterType? = null,
+    val entryCounterFilter: com.wingedsheep.sdk.scripting.GameObjectFilter? = null,
+    val entryCounterSourceId: EntityId? = null,
+    val entryCounterEffectControllerId: EntityId? = null,
     val controllerId: EntityId? = null,
     val libraryPlacement: LibraryPlacement = LibraryPlacement.Top,
     val tapped: Boolean = false,
@@ -909,6 +914,25 @@ class ZoneTransitionService(
                 )
                 newState = entryCounterState
                 events.addAll(entryCounterEvents)
+                // The move's "with a counter" instruction modifies this entry, even when the
+                // permanent enters face down. Read characteristics after entry/copy registration,
+                // before publishing the zone event, through the same replacement chokepoint as
+                // printed enters-with counters. A redirected move never reaches this branch.
+                options.entryCounterType?.let { kind ->
+                    val matches = options.entryCounterFilter?.let { filter ->
+                        predicateEvaluator.matches(newState, newState.projectedState, entityId, filter,
+                            com.wingedsheep.engine.handlers.PredicateContext(
+                                sourceId = options.entryCounterSourceId,
+                                controllerId = options.entryCounterEffectControllerId ?: destControllerId))
+                    } ?: true
+                    if (matches) {
+                        val (afterCounters, counterEvents) = EntersWithReplacements.placeEntryCounters(
+                            newState, entityId, kind, 1, destControllerId, cardComponent.name,
+                            predicateEvaluator = predicateEvaluator)
+                        newState = afterCounters
+                        events.addAll(counterEvents)
+                    }
+                }
                 val entryCopy = options.entryCopy?.takeIf { it.copiedCard != null && !options.faceDown }
                 entryCopy?.replacement?.additionalCounters?.let { amount ->
                     val count = predicateEvaluator.amounts.evaluate(newState, amount,

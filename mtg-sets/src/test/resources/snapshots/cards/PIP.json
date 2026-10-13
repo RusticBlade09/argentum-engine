@@ -106,6 +106,127 @@
     }
 }
 
+// Battle of Hoover Dam
+{
+    "name": "Battle of Hoover Dam",
+    "manaCost": "{3}{W}",
+    "typeLine": "Enchantment",
+    "oracleText": "As this enchantment enters, choose NCR or Legion.\n• NCR — At the beginning of your end step, return target creature card with mana value 3 or less from your graveyard to the battlefield with a finality counter on it.\n• Legion — Whenever a creature you control dies, put two +1/+1 counters on target creature you control.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Battle of Hoover Dam:1",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "END"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "MoveToZone",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "destination": "Battlefield",
+                    "fromZone": "Graveyard",
+                    "addCounterType": "FINALITY"
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": "creature mv<=3 own:you",
+                        "zone": "Graveyard"
+                    },
+                    "id": "t0"
+                },
+                "triggerRestriction": {
+                    "type": "SourceChosenModeIs",
+                    "modeId": "ncr"
+                }
+            },
+            {
+                "id": "Battle of Hoover Dam:2",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "filter": "creature ctrl:you",
+                    "from": "Battlefield",
+                    "to": "Graveyard"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "AddCounters",
+                    "counterType": "PLUS_ONE_PLUS_ONE",
+                    "count": 2,
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t1"
+                    }
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": "creature ctrl:you"
+                    },
+                    "id": "t1"
+                },
+                "triggerRestriction": {
+                    "type": "SourceChosenModeIs",
+                    "modeId": "legion"
+                }
+            }
+        ],
+        "replacementEffects": [
+            {
+                "type": "EntersWithChoice",
+                "choiceType": "MODE",
+                "modeOptions": [
+                    {
+                        "id": "ncr",
+                        "label": "NCR",
+                        "description": "Return a creature with mana value 3 or less at your end step."
+                    },
+                    {
+                        "id": "legion",
+                        "label": "Legion",
+                        "description": "When your creature dies, put two +1/+1 counters on your creature."
+                    }
+                ]
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "11",
+        "rarity": "RARE",
+        "artist": "Campbell White",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/9/59c0f13a-4e83-4e0b-a790-1f78b5ee6a64.jpg?1783912419",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "Finality counters aren’t keyword counters, and a finality counter doesn’t give any abilities to the permanent it’s on. If that permanent loses its abilities and then would go to a graveyard, it will still be exiled instead."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Finality counters work on any permanent, not only creatures. If a permanent with a finality counter on it would be put into a graveyard from the battlefield, exile it instead."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Finality counters don’t stop permanents from going to zones other than the graveyard from the battlefield. For example, if a permanent with a finality counter on it would be put into its owner’s hand from the battlefield, it does so normally."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Multiple finality counters on a single permanent are redundant."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If you somehow control Battle of Hoover Dam and no choice was made for it (perhaps because another permanent on the battlefield became a copy of it), it has neither of the two triggered abilities."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
 // Boomer Scrapper
 {
     "name": "Boomer Scrapper",

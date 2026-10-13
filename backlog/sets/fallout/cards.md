@@ -2,7 +2,7 @@
 
 **Set Size:** 336 cards
 **Release Date:** March 8, 2024
-**Implemented:** 157 / 336
+**Implemented:** 158 / 336
 | Section    | Total | Done |
 |------------|-------|------|
 | Extras     | 336   | 157  |
@@ -37,7 +37,7 @@
 - [ ] Ayula, Queen Among Bears
 - [x] Basilisk Collar
 - [x] Bastion of Remembrance
-- [ ] Battle of Hoover Dam
+- [x] Battle of Hoover Dam
 - [x] Behemoth Sledge
 - [ ] Behemoth of Vault 0
 - [ ] Bighorner Rancher

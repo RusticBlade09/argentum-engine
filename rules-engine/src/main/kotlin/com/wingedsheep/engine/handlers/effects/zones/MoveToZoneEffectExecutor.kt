@@ -152,7 +152,7 @@ class MoveToZoneEffectExecutor(
         // during stack resolution and never reach this executor, and the explicit
         // "attached to ..." effect has its own executor, so a generic move-to-battlefield of an
         // Aura is always the choose-as-it-enters case.
-        if (effect.destination == Zone.BATTLEFIELD && effect.faceDown == null && cardComponent.typeLine.isAura && context.entryCopies[targetId]?.copiedCard == null) {
+        if (effect.destination == Zone.BATTLEFIELD && effect.faceDown == null && cardComponent.typeLine.isAura && targetId !in context.entryAuraHosts && context.entryCopies[targetId]?.copiedCard == null) {
             return attachAuraOnEnter(state, targetId, cardComponent, controllerId, context)
         }
 
@@ -168,7 +168,11 @@ class MoveToZoneEffectExecutor(
         val entryOptions = buildEntryOptions(effect, cardComponent, controllerId, context.controllerId)
             .copy(lookBackGrants = context.lookBackGrants[targetId], entryCopy = context.entryCopies[targetId], auraHostId = context.entryAuraHosts[targetId],
                 entryChoices = context.entryChoices[targetId]?.values.orEmpty(),
-                grantedRiotModes = context.entryChoices[targetId]?.riotModes.orEmpty())
+                grantedRiotModes = context.entryChoices[targetId]?.riotModes.orEmpty(),
+                entryCounterType = effect.addCounterType.takeIf { effect.destination == Zone.BATTLEFIELD },
+                entryCounterFilter = effect.addCounterIf,
+                entryCounterSourceId = context.sourceId,
+                entryCounterEffectControllerId = context.controllerId)
 
         val transitionResult = zones.moveToZone(
             state, targetId, effect.destination, entryOptions, currentZone
@@ -204,7 +208,7 @@ class MoveToZoneEffectExecutor(
                 com.wingedsheep.engine.handlers.PredicateContext(controllerId = controllerId, sourceId = context.sourceId)
             )
         } ?: true
-        if (counterAllowed) effect.addCounterType?.let { counterType ->
+        if (counterAllowed && actualDestZone == effect.destination && actualDestZone != Zone.BATTLEFIELD) effect.addCounterType?.let { counterType ->
             resultState = resultState.updateEntity(targetId) { container ->
                 val existing = container.get<CountersComponent>() ?: CountersComponent()
                 container.with(existing.withAdded(counterType, 1))
