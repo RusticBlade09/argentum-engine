@@ -176,6 +176,197 @@
     ]
 }
 
+// Lethal Scheme
+{
+    "name": "Lethal Scheme",
+    "manaCost": "{2}{B}{B}",
+    "typeLine": "Instant",
+    "oracleText": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nDestroy target creature or planeswalker. Each creature that convoked this spell connives. (Draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on that creature.)",
+    "keywords": [
+        "CONVOKE"
+    ],
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "MoveToZone",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "destination": "Graveyard",
+                    "byDestruction": true
+                },
+                {
+                    "type": "ForEach",
+                    "space": {
+                        "type": "IterationSpace.Group",
+                        "filter": {
+                            "baseFilter": {
+                                "cardPredicates": [
+                                    "IsCreature",
+                                    "ConvokedSource"
+                                ]
+                            }
+                        }
+                    },
+                    "body": {
+                        "type": "Connive",
+                        "subject": "IterationEntity",
+                        "body": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "DrawCards",
+                                    "count": {
+                                        "type": "Fixed",
+                                        "amount": 1
+                                    }
+                                },
+                                {
+                                    "type": "GatherCards",
+                                    "source": {
+                                        "type": "FromZone",
+                                        "zone": "Hand"
+                                    },
+                                    "storeAs": "connive_hand"
+                                },
+                                {
+                                    "type": "SelectFromCollection",
+                                    "from": "connive_hand",
+                                    "selection": {
+                                        "type": "ChooseExactly",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "storeSelected": "connive_discarded",
+                                    "prompt": "Choose a card to discard"
+                                },
+                                {
+                                    "type": "MoveCollection",
+                                    "from": "connive_discarded",
+                                    "destination": {
+                                        "type": "ToZone",
+                                        "zone": "Graveyard"
+                                    },
+                                    "moveType": "Discard"
+                                },
+                                {
+                                    "type": "ConditionalOnCollection",
+                                    "collection": "connive_discarded",
+                                    "ifNotEmpty": {
+                                        "type": "AddCounters",
+                                        "counterType": "PLUS_ONE_PLUS_ONE",
+                                        "count": 1,
+                                        "target": "IterationEntity"
+                                    },
+                                    "filter": "nonland"
+                                }
+                            ],
+                            "descriptionOverride": "Connive"
+                        }
+                    }
+                },
+                {
+                    "type": "RepeatDynamicTimes",
+                    "amount": {
+                        "type": "Subtract",
+                        "left": {
+                            "type": "CastChoice",
+                            "slot": "CONVOKED_CREATURES"
+                        },
+                        "right": {
+                            "type": "AggregateBattlefield",
+                            "player": "Each",
+                            "filter": {
+                                "cardPredicates": [
+                                    "IsCreature",
+                                    "ConvokedSource"
+                                ]
+                            }
+                        }
+                    },
+                    "body": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "DrawCards",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            {
+                                "type": "Composite",
+                                "effects": [
+                                    {
+                                        "type": "GatherCards",
+                                        "source": {
+                                            "type": "FromZone",
+                                            "zone": "Hand"
+                                        },
+                                        "storeAs": "hand"
+                                    },
+                                    {
+                                        "type": "SelectFromCollection",
+                                        "from": "hand",
+                                        "selection": {
+                                            "type": "ChooseExactly",
+                                            "count": {
+                                                "type": "Fixed",
+                                                "amount": 1
+                                            }
+                                        },
+                                        "storeSelected": "discarded",
+                                        "prompt": "Choose 1 card to discard"
+                                    },
+                                    {
+                                        "type": "MoveCollection",
+                                        "from": "discarded",
+                                        "destination": {
+                                            "type": "ToZone",
+                                            "zone": "Graveyard"
+                                        },
+                                        "moveType": "Discard"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetCreatureOrPlaneswalker",
+                "id": "t0"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "36",
+        "rarity": "RARE",
+        "artist": "Tuan Duong Chu",
+        "imageUri": "https://cards.scryfall.io/normal/front/6/5/65864680-9520-4eb3-9774-fa478e54a290.jpg?1783923366",
+        "rulings": [
+            {
+                "date": "2022-04-29",
+                "text": "When multiple creatures are instructed to connive simultaneously, they connive one at a time in the order of their controller's choice."
+            },
+            {
+                "date": "2022-04-29",
+                "text": "If a resolving spell or ability instructs a specific creature to connive but that creature has left the battlefield, the creature still connives. If you discard a nonland card this way, you won't put a +1/+1 counter on anything. Abilities that trigger \"when [that creature] connives\" will trigger."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
 // Master of Ceremonies
 {
     "name": "Master of Ceremonies",

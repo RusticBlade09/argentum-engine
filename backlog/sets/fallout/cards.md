@@ -2,7 +2,7 @@
 
 **Set Size:** 336 cards
 **Release Date:** March 8, 2024
-**Implemented:** 140 / 336
+**Implemented:** 156 / 336
 | Section    | Total | Done |
 |------------|-------|------|
 | Extras     | 336   | 129  |
@@ -30,7 +30,7 @@
 - [ ] Armory Paladin
 - [x] Ash Barrens
 - [ ] Assaultron Dominator
-- [ ] Assemble the Legion
+- [x] Assemble the Legion
 - [ ] Atomize
 - [x] Austere Command
 - [ ] Automated Assembly Line
@@ -42,7 +42,7 @@
 - [ ] Behemoth of Vault 0
 - [ ] Bighorner Rancher
 - [ ] Biomass Mutation
-- [ ] Black Market
+- [x] Black Market
 - [x] Blasphemous Act
 - [ ] Bloatfly Swarm
 - [ ] Bloodforged Battle-Axe
@@ -99,7 +99,7 @@
 - [ ] Elder Owyn Lyons
 - [ ] Electrosiphon
 - [ ] Endurance Bobblehead
-- [ ] Entrapment Maneuver
+- [x] Entrapment Maneuver
 - [ ] Everflowing Chalice
 - [x] Evolving Wilds
 - [x] Exotic Orchard
@@ -110,7 +110,7 @@
 - [ ] Feral Ghoul
 - [x] Ferrous Lake
 - [x] Fertile Ground
-- [ ] Fervent Charge
+- [x] Fervent Charge
 - [x] Fetid Pools
 - [ ] Find
 - [x] Fireshrieker
@@ -118,7 +118,7 @@
 - [ ] Fraying Sanity
 - [ ] Gary Clone
 - [ ] Gemrazer
-- [ ] General's Enforcer
+- [x] General's Enforcer
 - [x] Glacial Fortress
 - [ ] Glimmer of Genius
 - [ ] Glowing One
@@ -154,10 +154,10 @@
 - [x] Jungle Shrine
 - [ ] Junk Jet
 - [ ] Junktown
-- [ ] Keeper of the Accord
+- [x] Keeper of the Accord
 - [ ] Kellogg, Dangerous Mind
 - [ ] Legate Lanius, Caesar's Ace
-- [ ] Lethal Scheme
+- [x] Lethal Scheme
 - [ ] Liberty Prime, Recharged
 - [x] Lightning Greaves
 - [ ] Lily Bowen, Raging Grandma
@@ -169,7 +169,7 @@
 - [ ] Mantle of the Ancients
 - [ ] Marcus, Mutant Mayor
 - [ ] Mariposa Military Base
-- [ ] Marshal's Anthem
+- [x] Marshal's Anthem
 - [x] Martial Coup
 - [ ] Masterwork of Ingenuity
 - [x] Mechanized Production
@@ -214,7 +214,7 @@
 - [ ] Pitiless Plunderer
 - [ ] Plains
 - [ ] Plasma Caster
-- [ ] Powder Ganger
+- [x] Powder Ganger
 - [ ] Power Fist
 - [x] Prairie Stream
 - [ ] Pre-War Formalwear
@@ -262,7 +262,7 @@
 - [x] Squirrel Nest
 - [x] Steel Overseer
 - [ ] Sticky Fingers
-- [ ] Stolen Strategy
+- [x] Stolen Strategy
 - [ ] Strength Bobblehead
 - [ ] Strong Back
 - [ ] Strong, the Brutish Thespian
@@ -280,9 +280,9 @@
 - [ ] Synth Eradicator
 - [ ] Synth Infiltrator
 - [ ] T-45 Power Armor
-- [ ] Tainted Field
+- [x] Tainted Field
 - [ ] Tainted Isle
-- [ ] Tainted Peak
+- [x] Tainted Peak
 - [x] Tainted Wood
 - [ ] Talisman of Conviction
 - [x] Talisman of Creativity
@@ -314,7 +314,7 @@
 - [x] Thirst for Knowledge
 - [x] Thought Vessel
 - [ ] Three Dog, Galaxy News DJ
-- [ ] Thrill-Kill Disciple
+- [x] Thrill-Kill Disciple
 - [x] Tireless Tracker
 - [ ] Treasure Vault
 - [x] Unexpected Windfall
@@ -337,13 +337,13 @@
 - [x] Walking Ballista
 - [ ] War Room
 - [x] Wasteland
-- [ ] Wasteland Raider
+- [x] Wasteland Raider
 - [ ] Watchful Radstag
 - [x] Wayfarer's Bauble
 - [x] Wear
 - [ ] Well Rested
 - [x] Whirler Rogue
-- [ ] White Glove Gourmand
+- [x] White Glove Gourmand
 - [x] Wild Growth
 - [ ] Wild Wasteland
 - [x] Windbrisk Heights

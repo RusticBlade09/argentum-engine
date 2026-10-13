@@ -452,3 +452,77 @@
         "GREEN"
     ]
 }
+
+// Stolen Strategy
+{
+    "name": "Stolen Strategy",
+    "manaCost": "{4}{R}",
+    "typeLine": "Enchantment",
+    "oracleText": "At the beginning of your upkeep, exile the top card of each opponent's library. Until end of turn, you may cast spells from among those exiled cards, and you may spend mana as though it were mana of any color to cast those spells.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Stolen Strategy:1",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "UPKEEP"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "TopOfLibrary",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                },
+                                "player": "EachOpponent"
+                            },
+                            "storeAs": "gathered0"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "gathered0",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Exile"
+                            }
+                        },
+                        {
+                            "type": "GrantMayPlayFromExile",
+                            "from": "gathered0",
+                            "withAnyManaType": true,
+                            "nonLandOnly": true
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "64",
+        "rarity": "RARE",
+        "artist": "Dmitry Burmak",
+        "imageUri": "https://cards.scryfall.io/normal/front/b/b/bb90e4b8-8f66-45f0-a457-a081f2ff231c.jpg?1783934855",
+        "rulings": [
+            {
+                "date": "2018-06-08",
+                "text": "Stolen Strategy doesn't change when you can cast the exiled card. For example, if you exile a sorcery card, you can cast it only during your main phase when the stack is empty."
+            },
+            {
+                "date": "2018-06-08",
+                "text": "Casting an exiled card causes it to leave exile. You can't cast it multiple times."
+            },
+            {
+                "date": "2018-06-08",
+                "text": "If you don't cast the exiled cards, they remain exiled. They can't be cast on later turns."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "RED"
+    ]
+}

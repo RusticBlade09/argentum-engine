@@ -863,6 +863,8 @@ export const PASSIVE_COUNTER_TYPES: readonly CounterType[] = [
   CounterType.VITALITY,
   // Weatherlight Compleated's phyresis tally: a Phyrexian creature at four, card draw at seven.
   CounterType.PHYRESIS,
+  // Assemble the Legion's muster tally sets how many Soldiers it makes each upkeep.
+  CounterType.MUSTER,
   CounterType.PLUS_ONE_PLUS_TWO,
   CounterType.PLUS_TWO_PLUS_TWO,
   CounterType.MINUS_TWO_MINUS_TWO,

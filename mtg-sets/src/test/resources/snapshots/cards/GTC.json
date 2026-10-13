@@ -75,6 +75,77 @@
     ]
 }
 
+// Assemble the Legion
+{
+    "name": "Assemble the Legion",
+    "manaCost": "{3}{R}{W}",
+    "typeLine": "Enchantment",
+    "oracleText": "At the beginning of your upkeep, put a muster counter on this enchantment. Then create a 1/1 red and white Soldier creature token with haste for each muster counter on this enchantment.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Assemble the Legion:1",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "UPKEEP"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "AddCounters",
+                            "counterType": "MUSTER",
+                            "count": 1,
+                            "target": "Self"
+                        },
+                        {
+                            "type": "CreateToken",
+                            "count": {
+                                "type": "EntityProperty",
+                                "entity": "Self",
+                                "numericProperty": {
+                                    "type": "CounterCount",
+                                    "counterType": "MUSTER"
+                                }
+                            },
+                            "power": 1,
+                            "toughness": 1,
+                            "colors": [
+                                "RED",
+                                "WHITE"
+                            ],
+                            "creatureTypes": [
+                                "Soldier"
+                            ],
+                            "keywords": [
+                                "HASTE"
+                            ],
+                            "imageUri": "https://cards.scryfall.io/normal/front/a/8/a8a5a5a5-a8ae-41ed-9af5-b99d80ce0b35.jpg?1783940147"
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "142",
+        "rarity": "RARE",
+        "artist": "Eric Deschamps",
+        "imageUri": "https://cards.scryfall.io/normal/front/4/3/43675ed7-ece1-4414-965e-9ebadcbf3dfb.jpg?1783940113",
+        "rulings": [
+            {
+                "date": "2024-01-12",
+                "text": "If Assemble the Legion isn't on the battlefield when its ability resolves, use the number of muster counters it had when it was last on the battlefield to determine how many Soldier tokens to create."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "RED",
+        "WHITE"
+    ]
+}
+
 // Aurelia, the Warleader
 {
     "name": "Aurelia, the Warleader",

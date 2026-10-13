@@ -1008,6 +1008,107 @@
     ]
 }
 
+// Powder Ganger
+{
+    "name": "Powder Ganger",
+    "manaCost": "{2}{R}",
+    "typeLine": "Creature — Human Rogue",
+    "oracleText": "Squad {2} (As an additional cost to cast this spell, you may pay {2} any number of times. When this creature enters, create that many tokens that are copies of it.)\nWhen this creature enters, destroy up to one target artifact.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 2
+    },
+    "keywords": [
+        "SQUAD"
+    ],
+    "keywordAbilities": [
+        {
+            "type": "Kicker",
+            "manaCost": "{2}",
+            "multi": true,
+            "displayPrefix": "Squad",
+            "keyword": "SQUAD",
+            "declaredSlot": "SQUAD"
+        }
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Powder Ganger:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "CreateTokenCopyOfTarget",
+                    "target": "TriggeringEntity",
+                    "count": {
+                        "type": "CastChoice",
+                        "slot": "SQUAD"
+                    }
+                },
+                "interveningIf": {
+                    "type": "CastChoiceMade",
+                    "slot": "SQUAD"
+                }
+            },
+            {
+                "id": "Powder Ganger:2",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "MoveToZone",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "destination": "Graveyard",
+                    "byDestruction": true
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "optional": true,
+                    "filter": {
+                        "baseFilter": "artifact"
+                    },
+                    "id": "t0"
+                },
+                "descriptionOverride": "When this creature enters, destroy up to one target artifact."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "65",
+        "rarity": "RARE",
+        "artist": "Fesbra",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/b/7bb57c73-a454-450d-9db9-67501bf4559d.jpg?1783912402",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "You may pay the squad cost any number of times. You will create a token that is a copy of that permanent for each time you paid the squad cost. If you paid the squad cost multiple times, the tokens will all enter the battlefield simultaneously."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the spell is countered, the squad ability will not trigger, and no tokens will be created."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the spell resolves but the creature with squad leaves the battlefield before its squad ability resolves, you’ll still create the token copies."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "The tokens created by the squad ability aren’t “cast,” so any abilities that trigger when a spell is cast won’t trigger for the copies."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If, for some reason, the creature doesn’t have the squad ability when it’s on the battlefield, the ability won’t trigger, even if you’ve paid the squad cost one or more times."
+            }
+        ]
+    }
+}
+
 // Rose, Cutthroat Raider
 {
     "name": "Rose, Cutthroat Raider",
@@ -1325,6 +1426,102 @@
     }
 }
 
+// Thrill-Kill Disciple
+{
+    "name": "Thrill-Kill Disciple",
+    "manaCost": "{2}{R}",
+    "typeLine": "Creature — Human Mercenary",
+    "oracleText": "Squad—{1}, Discard a card. (As an additional cost to cast this spell, you may pay its squad cost any number of times. When this creature enters, create that many tokens that are copies of it.)\nWhen this creature dies, create a Junk token.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 2
+    },
+    "keywords": [
+        "SQUAD"
+    ],
+    "keywordAbilities": [
+        {
+            "type": "Kicker",
+            "manaCost": "{1}",
+            "additionalCost": {
+                "type": "AdditionalAtom",
+                "atom": "AtomDiscard"
+            },
+            "multi": true,
+            "displayPrefix": "Squad",
+            "keyword": "SQUAD",
+            "declaredSlot": "SQUAD"
+        }
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Thrill-Kill Disciple:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "CreateTokenCopyOfTarget",
+                    "target": "TriggeringEntity",
+                    "count": {
+                        "type": "CastChoice",
+                        "slot": "SQUAD"
+                    }
+                },
+                "interveningIf": {
+                    "type": "CastChoiceMade",
+                    "slot": "SQUAD"
+                }
+            },
+            {
+                "id": "Thrill-Kill Disciple:2",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "from": "Battlefield",
+                    "to": "Graveyard"
+                },
+                "effect": {
+                    "type": "CreatePredefinedToken",
+                    "tokenType": "Junk"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "68",
+        "rarity": "RARE",
+        "artist": "Mathias Kollros",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/6/5628e781-9f12-49ed-a575-6b467d39510b.jpg?1783912400",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "You can’t sacrifice a Junk token to pay multiple costs. For example, you can’t sacrifice a Junk token to activate its own ability and also to activate the second ability of Junk Jet."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "You may pay the squad cost any number of times. You will create a token that is a copy of that permanent for each time you paid the squad cost. If you paid the squad cost multiple times, the tokens will all enter the battlefield simultaneously."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the spell is countered, the squad ability will not trigger, and no tokens will be created."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the spell resolves but the creature with squad leaves the battlefield before its squad ability resolves, you’ll still create the token copies."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "The tokens created by the squad ability aren’t “cast,” so any abilities that trigger when a spell is cast won’t trigger for the copies."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If, for some reason, the creature doesn’t have the squad ability when it’s on the battlefield, the ability won’t trigger, even if you’ve paid the squad cost one or more times."
+            }
+        ]
+    }
+}
+
 // V.A.T.S.
 {
     "name": "V.A.T.S.",
@@ -1597,5 +1794,175 @@
     "colorIdentityOverride": [
         "BLACK",
         "GREEN"
+    ]
+}
+
+// Wasteland Raider
+{
+    "name": "Wasteland Raider",
+    "manaCost": "{2}{B}{B}",
+    "typeLine": "Creature — Human Mercenary",
+    "oracleText": "Squad {2} (As an additional cost to cast this spell, you may pay {2} any number of times. When this creature enters, create that many tokens that are copies of it.)\nWhen this creature enters, each player sacrifices a creature of their choice.",
+    "creatureStats": {
+        "power": 4,
+        "toughness": 3
+    },
+    "keywords": [
+        "SQUAD"
+    ],
+    "keywordAbilities": [
+        {
+            "type": "Kicker",
+            "manaCost": "{2}",
+            "multi": true,
+            "displayPrefix": "Squad",
+            "keyword": "SQUAD",
+            "declaredSlot": "SQUAD"
+        }
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Wasteland Raider:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "CreateTokenCopyOfTarget",
+                    "target": "TriggeringEntity",
+                    "count": {
+                        "type": "CastChoice",
+                        "slot": "SQUAD"
+                    }
+                },
+                "interveningIf": {
+                    "type": "CastChoiceMade",
+                    "slot": "SQUAD"
+                }
+            },
+            {
+                "id": "Wasteland Raider:2",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "ForceSacrifice",
+                    "filter": "creature",
+                    "target": {
+                        "type": "PlayerRef",
+                        "player": "Each"
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "52",
+        "rarity": "RARE",
+        "artist": "Yigit Koroglu",
+        "flavorText": "Honor means nothing. Survival means everything.",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/e/9eae2596-013a-4e9b-982b-e0fc8d1e78bf.jpg?1783912406",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "You may pay the squad cost any number of times. You will create a token that is a copy of that permanent for each time you paid the squad cost. If you paid the squad cost multiple times, the tokens will all enter the battlefield simultaneously."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the spell is countered, the squad ability will not trigger, and no tokens will be created."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the spell resolves but the creature with squad leaves the battlefield before its squad ability resolves, you’ll still create the token copies."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "The tokens created by the squad ability aren’t “cast,” so any abilities that trigger when a spell is cast won’t trigger for the copies."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If, for some reason, the creature doesn’t have the squad ability when it’s on the battlefield, the ability won’t trigger, even if you’ve paid the squad cost one or more times."
+            }
+        ]
+    }
+}
+
+// White Glove Gourmand
+{
+    "name": "White Glove Gourmand",
+    "manaCost": "{2}{W}{B}",
+    "typeLine": "Creature — Human Noble",
+    "oracleText": "When this creature enters, create two 1/1 white Human Soldier creature tokens.\nAt the beginning of your end step, if another Human died under your control this turn, create a Food token.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 2
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "White Glove Gourmand:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "CreateToken",
+                    "count": {
+                        "type": "Fixed",
+                        "amount": 2
+                    },
+                    "power": 1,
+                    "toughness": 1,
+                    "colors": [
+                        "WHITE"
+                    ],
+                    "creatureTypes": [
+                        "Human",
+                        "Soldier"
+                    ],
+                    "imageUri": "https://cards.scryfall.io/normal/front/7/3/737741e7-b2b2-4c41-ab7c-4eeaf9f37b71.jpg?1783912046"
+                }
+            },
+            {
+                "id": "White Glove Gourmand:2",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "END"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "CreatePredefinedToken",
+                    "tokenType": "Food"
+                },
+                "interveningIf": {
+                    "type": "CreatureWithSubtypeDiedThisTurn",
+                    "subtype": "Human",
+                    "player": "You"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "124",
+        "rarity": "UNCOMMON",
+        "artist": "Wonchun Choi",
+        "flavorText": "\"Here's to us! It's time we move beyond beef!\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/c/5/c5bf1f6c-4653-4734-9bd7-af689a1b679d.jpg?1783912382",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "White Glove Gourmand doesn't need to have been on the battlefield when the Human died. For example, if a Human dies during combat on your turn and you cast White Glove Gourmand during your second main phase, its last ability will trigger at the beginning of your end step."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "White Glove Gourmand's last ability will trigger only once during your end step, no matter how many Humans died under your control this turn. However, if no Humans have died under your control so far this turn as your end step begins, the ability won't trigger at all. It's not possible to cause a Human to die under your control during the end step in time to have the ability trigger."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE",
+        "BLACK"
     ]
 }

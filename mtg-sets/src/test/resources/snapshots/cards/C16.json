@@ -185,6 +185,72 @@
     ]
 }
 
+// Entrapment Maneuver
+{
+    "name": "Entrapment Maneuver",
+    "manaCost": "{3}{W}",
+    "typeLine": "Instant",
+    "oracleText": "Target player sacrifices an attacking creature of their choice. You create X 1/1 white Soldier creature tokens, where X is that creature's toughness.",
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "ForceSacrifice",
+                    "filter": "creature attacking",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                {
+                    "type": "CreateToken",
+                    "count": {
+                        "type": "EntityProperty",
+                        "entity": "SacrificedAsCost",
+                        "numericProperty": "Toughness"
+                    },
+                    "power": 1,
+                    "toughness": 1,
+                    "colors": [
+                        "WHITE"
+                    ],
+                    "creatureTypes": [
+                        "Soldier"
+                    ],
+                    "imageUri": "https://cards.scryfall.io/normal/front/0/a/0a47f751-52f1-4042-85dd-ea222e5d969d.jpg?1783937015"
+                }
+            ]
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetPlayer",
+                "id": "t0"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "2",
+        "rarity": "RARE",
+        "artist": "Filip Burburan",
+        "flavorText": "\"Greed, rage, and bloodlust all lead to death at the hands of those who keep their heads.\"\n—Sergeant Eyra",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/4/f4dcebe1-bfc7-4f7d-ad8c-91a4b9f23eef.jpg?1783937091",
+        "rulings": [
+            {
+                "date": "2016-11-08",
+                "text": "Entrapment Maneuver doesn't target the creature to be sacrificed. The target player chooses one as it resolves. No player may take any other actions between the target player choosing the creature and you creating Soldier tokens."
+            },
+            {
+                "date": "2016-11-08",
+                "text": "To determine how many Soldier tokens are created, use the toughness of the sacrificed creature as it last existed on the battlefield."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
 // Ishai, Ojutai Dragonspeaker
 {
     "name": "Ishai, Ojutai Dragonspeaker",

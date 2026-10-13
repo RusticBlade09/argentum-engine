@@ -734,6 +734,12 @@ value class CounterType(val name: String) {
          */
         val PHYRESIS = CounterType("PHYRESIS")
 
+        /**
+         * Muster counter (GTC — Assemble the Legion). A passive tally with no inherent rule: the
+         * card's upkeep trigger adds one, then creates a Soldier token for each muster counter.
+         */
+        val MUSTER = CounterType("MUSTER")
+
         /** Every counter kind the SDK names, in declaration order. */
         val KNOWN: List<CounterType> = listOf(
             PLUS_ONE_PLUS_ONE,
@@ -863,6 +869,7 @@ value class CounterType(val name: String) {
             BRICK,
             VITALITY,
             PHYRESIS,
+            MUSTER,
         )
 
         /**
