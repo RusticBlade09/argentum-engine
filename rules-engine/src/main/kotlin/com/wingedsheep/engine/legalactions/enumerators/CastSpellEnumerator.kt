@@ -224,6 +224,18 @@ class CastSpellEnumerator(
                         SplitFaceCastOffers.offer(context, cardId, cardDef, faceIndex, face, result)
                     }
                 }
+                if (com.wingedsheep.engine.mechanics.SplitSpellCasts.hasFuse(cardDef)) {
+                    val fused = com.wingedsheep.engine.mechanics.SplitSpellCasts.fusedDefinition(cardDef)
+                    val face = cardDef.cardFaces.first().copy(name = "${cardDef.name} (fused)",
+                        manaCost = fused.manaCost, typeLine = fused.typeLine, script = fused.script,
+                        keywords = fused.keywords, oracleText = fused.oracleText)
+                    SplitFaceCastOffers.offer(context, cardId, fused, null, face, result, castFused = true)
+                    if (context.freeCastPermissionFor(cardId)) {
+                        SplitFaceCastOffers.offer(context, cardId, fused, null, face, result,
+                            descriptionSuffix = " without paying its mana cost", castFused = true,
+                            useWithoutPayingManaCost = true)
+                    }
+                }
                 continue
             }
 

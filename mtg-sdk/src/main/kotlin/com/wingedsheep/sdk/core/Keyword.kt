@@ -293,6 +293,9 @@ enum class Keyword(val displayName: String) {
      * (`CastSpell.faceIndex`), not an `AlternativeCostType`.
      */
     AFTERMATH("Aftermath"),
+
+    /** Cast both halves of a split card as one spell from hand. */
+    FUSE("Fuse"),
     DREDGE("Dredge"),
 
     /**

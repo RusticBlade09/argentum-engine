@@ -196,6 +196,7 @@ export interface CastSpellAction {
    * cast. Required for SPLIT cards; null/omitted for normal single-face cards.
    */
   readonly faceIndex?: number | null
+  readonly castFused?: boolean
 }
 
 export type PaymentStrategy =

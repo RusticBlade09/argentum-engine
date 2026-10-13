@@ -2,7 +2,7 @@
 
 **Set Size:** 336 cards
 **Release Date:** March 8, 2024
-**Implemented:** 137 / 336
+**Implemented:** 138 / 336
 | Section    | Total | Done |
 |------------|-------|------|
 | Extras     | 336   | 129  |
@@ -340,7 +340,7 @@
 - [ ] Wasteland Raider
 - [ ] Watchful Radstag
 - [x] Wayfarer's Bauble
-- [ ] Wear
+- [x] Wear
 - [ ] Well Rested
 - [x] Whirler Rogue
 - [ ] White Glove Gourmand

@@ -313,6 +313,14 @@ carries the other side for the hover preview's flip toggle.
   cast independently via `CastSpell.faceIndex`; only the chosen half goes on the stack (CR 709.4). A non-permanent half
   carries its effect in a `face("Name") { spell { … } }` block (with its own `target(...)` requirements); a permanent
   half (Room) carries triggered/activated/static abilities instead.
+  - **Fuse** is `keywords(Keyword.FUSE)` on a split card and its faces. The hand action menu offers
+    each half and **Cast … (fused)**. `CastSpell.castFused = true` casts both halves as one spell;
+    it cannot be combined with `faceIndex` and is rejected outside the caster's hand. The spell
+    has both halves' colors, types and mana costs, with cost modifiers applied once to the combined
+    cost. Free casting from hand may still use fuse. Each half declares its own `spell` effect and
+    targets; resolution runs left then right with separate, position-preserving target slices,
+    including across decisions. One illegal target does not stop the other half; all illegal
+    targets stop the whole spell. Spell copies retain the fused choice.
   - **Aftermath (CR 702.127)** is `keywords(Keyword.AFTERMATH)` on the aftermath **face** — no new type, no
     alternative cost. That half is offered only from its owner's graveyard (`CastFromZoneEnumerator`, "Cast Dawn
     (Aftermath)", `sourceZone = GRAVEYARD`) for its own printed cost at its normal timing; the hand enumerator skips
