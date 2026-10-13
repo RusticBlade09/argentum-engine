@@ -348,7 +348,7 @@ class CastSpellHandler(
                     .filter { !it.requiresSacrifice && it.tapPermanentsSubCost == null }.map { it.entityId }
                 val explicit = action.copy(paymentStrategy = com.wingedsheep.engine.core.PaymentStrategy.Explicit(sources))
                 if (castCostPayer.validateManaPayment(announcedState, explicit, computed.cost, computed.paymentXValue) != null) {
-                    val cost = (if (castCostPayer.isCastWithAnyManaType(announcedState, action)) computed.cost.relaxColors() else computed.cost)
+                    val cost = castCostPayer.relaxForCastPermission(announcedState, action, computed.cost)
                         .withXAs(computed.paymentXValue)
                     return announcedState.suspendForDecision(
                         question = { id -> com.wingedsheep.engine.mechanics.mana.ManaPaymentWindow.buildDecision(

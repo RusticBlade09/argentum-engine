@@ -752,8 +752,13 @@ class TriggerMatcher(
             is EventPattern.ConnivedEvent -> {
                 if (event !is com.wingedsheep.engine.core.PermanentConnivedEvent) return false
                 // Subject gate: the conniving permanent must match the filter, resolving "you" to
-                // the observing ability's controller. A null filter matches any permanent.
+                // the observing ability's controller. A null filter matches any permanent. One that
+                // had already left as it connived is matched as it last existed (CR 701.50b).
                 val filter = trigger.filter ?: return true
+                val predicateContext = PredicateContext(controllerId = controllerId, sourceId = sourceId)
+                event.lastKnown?.let {
+                    return predicateEvaluator.matchesSnapshot(state, it, filter, predicateContext)
+                }
                 predicateEvaluator.matches(
                     state,
                     state.projectedState,

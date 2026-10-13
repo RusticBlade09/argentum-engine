@@ -21,7 +21,8 @@ import io.kotest.matchers.types.shouldBeInstanceOf
  *
  * The convokers are read off the *spell's* convoke record while it resolves on the stack. A
  * convoker still on the battlefield connives as itself; one that has left — here, destroyed by the
- * spell — still connives (2022-04-29 ruling): its controller draws and discards, no counter.
+ * spell — still connives (2022-04-29 ruling, CR 701.50b): its controller draws and discards, no
+ * counter, and a connive replacement sees it as the creature it last was.
  */
 class LethalSchemeScenarioTest : ScenarioTestBase() {
 
@@ -132,6 +133,62 @@ class LethalSchemeScenarioTest : ScenarioTestBase() {
                     plusCounters(game, second) shouldBe 1
                     game.handSize(1) shouldBe 2
                     game.findCardsInGraveyard(1, "Hill Giant").size shouldBe 2
+                }
+            }
+
+            test("a destroyed convoker connives by last-known information, so Leader's replacement applies to it") {
+                val game = scenario()
+                    .withPlayers("Player1", "Player2")
+                    .withCardInHand(1, "Lethal Scheme")
+                    .withCardInHand(1, "Hill Giant")
+                    .withCardInHand(1, "Hill Giant")
+                    .withLandsOnBattlefield(1, "Swamp", 2)
+                    .withCardOnBattlefield(1, "Grizzly Bears")
+                    .withCardOnBattlefield(1, "Glory Seeker")
+                    .withCardOnBattlefield(1, "Leader, Super-Genius")
+                    .withCardInLibrary(1, "Swamp")
+                    .withCardInLibrary(1, "Swamp")
+                    .withCardInLibrary(1, "Swamp")
+                    .withCardInLibrary(1, "Swamp")
+                    .withCardInLibrary(1, "Swamp")
+                    .withActivePlayer(1)
+                    .inPhase(Phase.PRECOMBAT_MAIN, Step.PRECOMBAT_MAIN)
+                    .build()
+                val bear = game.findPermanent("Grizzly Bears")!!
+                val seeker = game.findPermanent("Glory Seeker")!!
+
+                val cast = game.execute(
+                    CastSpell(
+                        playerId = game.player1Id,
+                        cardId = game.findCardsInHand(1, "Lethal Scheme").single(),
+                        targets = listOf(ChosenTarget.Permanent(bear)),
+                        alternativePayment = AlternativePaymentChoice(
+                            convokedCreatures = mapOf(
+                                bear to ConvokePayment(color = null),
+                                seeker to ConvokePayment(color = null)
+                            )
+                        )
+                    )
+                )
+                cast.error shouldBe null
+                game.resolveStack()
+
+                withClue("the targeted convoker is destroyed") {
+                    game.isInGraveyard(1, "Grizzly Bears") shouldBe true
+                }
+
+                val giants = game.findCardsInHand(1, "Hill Giant")
+                discard(game, giants[0])
+                discard(game, giants[1])
+                game.hasPendingDecision() shouldBe false
+
+                withClue("Leader replaced both connives — the destroyed bear's too — so four cards were drawn") {
+                    game.handSize(1) shouldBe 4
+                    game.findCardsInHand(1, "Swamp").size shouldBe 4
+                }
+                withClue("the live convoker grows; the destroyed one's counter has nowhere to go") {
+                    plusCounters(game, seeker) shouldBe 1
+                    plusCounters(game, bear) shouldBe 0
                 }
             }
         }

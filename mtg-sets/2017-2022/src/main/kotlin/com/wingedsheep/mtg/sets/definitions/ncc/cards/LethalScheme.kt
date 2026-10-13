@@ -1,16 +1,11 @@
 package com.wingedsheep.mtg.sets.definitions.ncc.cards
 
 import com.wingedsheep.sdk.core.Keyword
-import com.wingedsheep.sdk.dsl.DynamicAmounts
 import com.wingedsheep.sdk.dsl.Effects
-import com.wingedsheep.sdk.dsl.Patterns
 import com.wingedsheep.sdk.dsl.Targets
 import com.wingedsheep.sdk.dsl.card
-import com.wingedsheep.sdk.dsl.minus
 import com.wingedsheep.sdk.model.Rarity
-import com.wingedsheep.sdk.scripting.GameObjectFilter
-import com.wingedsheep.sdk.scripting.filters.unified.GroupFilter
-import com.wingedsheep.sdk.scripting.references.Player
+import com.wingedsheep.sdk.scripting.effects.CardSource
 import com.wingedsheep.sdk.scripting.targets.EffectTarget
 
 /**
@@ -19,15 +14,15 @@ import com.wingedsheep.sdk.scripting.targets.EffectTarget
  * Convoke
  * Destroy target creature or planeswalker. Each creature that convoked this spell connives.
  *
- * "Each creature that convoked this spell" (CR 702.51c) is the Zephyr Singer group,
- * `GameObjectFilter.Creature.thatConvokedSource()`, read off the spell's own convoke record while
- * it resolves on the stack. Each one still on the battlefield connives as itself (draw, discard, a
- * +1/+1 counter on it for a nonland discard).
+ * "Each creature that convoked this spell" (CR 702.51c) is gathered from the spell's own convoke
+ * record with `CardSource.CreaturesThatConvokedSource`, which — unlike the battlefield-only
+ * `thatConvokedSource()` group — keeps the convokers that have left. Each one still on the
+ * battlefield connives as itself (draw, discard, a +1/+1 counter on it for a nonland discard).
  *
  * A creature that convoked the spell but has since left the battlefield — including one destroyed
- * by this very spell — still connives (2022-04-29 ruling): its controller draws and discards, and
- * the counter has nowhere to go. That leg is the convoked count (which keeps counting departed
- * creatures) minus the convokers still present, each a plain draw-then-discard.
+ * by this very spell — still connives (2022-04-29 ruling, CR 701.50b): the engine froze its last
+ * known information on the spell as it left, so its controller draws and discards, the counter has
+ * nowhere to go, and "whenever … connives" triggers and connive replacements still see it.
  */
 val LethalScheme = card("Lethal Scheme") {
     manaCost = "{2}{B}{B}"
@@ -42,17 +37,10 @@ val LethalScheme = card("Lethal Scheme") {
 
     spell {
         val t = target(Targets.CreatureOrPlaneswalker)
-        val convokers = GameObjectFilter.Creature.thatConvokedSource()
-        effect = Effects.Destroy(t) then
-            Effects.ForEachInGroup(
-                GroupFilter(convokers),
-                Effects.Connive(EffectTarget.IterationEntity)
-            ) then
-            Effects.Repeat(
-                DynamicAmounts.convokedCreatureCount() -
-                    DynamicAmounts.battlefield(Player.Each, convokers).count(),
-                Patterns.Hand.loot()
-            )
+        effect = Effects.Destroy(t) then Effects.Pipeline {
+            val convokers = gather(CardSource.CreaturesThatConvokedSource)
+            run(Effects.ForEachInCollection(convokers, Effects.Connive(EffectTarget.IterationEntity)))
+        }
     }
 
     metadata {

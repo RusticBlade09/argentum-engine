@@ -494,7 +494,7 @@
                         {
                             "type": "GrantMayPlayFromExile",
                             "from": "gathered0",
-                            "withAnyManaType": true,
+                            "withAnyManaColor": true,
                             "nonLandOnly": true
                         }
                     ]

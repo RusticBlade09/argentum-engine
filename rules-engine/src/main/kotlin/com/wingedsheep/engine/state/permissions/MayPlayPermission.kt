@@ -51,6 +51,8 @@ data class MayPlayPermission(
     val sourceId: EntityId? = null,
     val condition: Condition? = null,
     val withAnyManaType: Boolean = false,
+    /** "Spend mana as though it were mana of any color" — colored pips relaxed, `{C}` kept (CR 609.4b). */
+    val withAnyManaColor: Boolean = false,
     val colorlessAsAnyColor: Boolean = false,
     /**
      * If true, cards played via this permission may be cast at instant speed — "as though they

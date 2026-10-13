@@ -176,6 +176,7 @@ class GrantMayPlayFromExileExecutor : EffectExecutor<GrantMayPlayFromExileEffect
                     sourceId = context.sourceId,
                     condition = effect.condition,
                     withAnyManaType = effect.withAnyManaType,
+                    withAnyManaColor = effect.withAnyManaColor,
                     colorlessAsAnyColor = effect.colorlessAsAnyColor,
                     asThoughFlash = effect.asThoughFlash,
                     landEntersTapped = effect.landEntersTapped,

@@ -570,10 +570,12 @@ class CastFromZoneEnumerator(
                     // it is cast from (Vizier of the Menagerie).
                     val anyManaType = permissions.any { it.withAnyManaType } ||
                         context.castPermissionUtils.canSpendAnyManaTypeForSpell(state, playerId, cardId)
-                    var effectiveCost = if (anyManaType) {
-                        baseCost.relaxColors()
-                    } else {
-                        baseCost
+                    // "As though it were mana of any color" (Stolen Strategy) relaxes only the
+                    // colored pips — a {C} pip still needs colorless (CR 609.4b).
+                    var effectiveCost = when {
+                        anyManaType -> baseCost.relaxColors()
+                        permissions.any { it.withAnyManaColor } -> baseCost.relaxColoredRequirements()
+                        else -> baseCost
                     }
                     if (!playForFree && runtimeCostIncrease != null) {
                         effectiveCost = effectiveCost + runtimeCostIncrease.cost

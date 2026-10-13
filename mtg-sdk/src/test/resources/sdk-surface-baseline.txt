@@ -198,6 +198,7 @@ CardSource.BottomOfLibrary — CardSource
 CardSource.ChosenTargets — CardSource
 CardSource.ControlledPermanents — CardSource
 CardSource.CraftedMaterials — CardSource
+CardSource.CreaturesThatConvokedSource — CardSource
 CardSource.CreaturesThatCrewedOrSaddledSource — CardSource
 CardSource.EnteredViaThisResolution — CardSource
 CardSource.ExiledAsCost — CardSource

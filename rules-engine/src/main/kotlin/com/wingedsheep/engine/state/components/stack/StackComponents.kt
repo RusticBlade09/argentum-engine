@@ -139,6 +139,14 @@ data class SpellOnStackComponent(
      */
     val convokedCreatures: Map<EntityId, Long> = emptyMap(),
     /**
+     * Last-known information (CR 113.7a) for each convoker in [convokedCreatures] that has left the
+     * battlefield since it convoked this spell, stamped by `ZoneTransitionService` at the moment it
+     * left. "Each creature that convoked this spell connives" (Lethal Scheme) still has a departed
+     * convoker connive, and which object that was and who controlled it are read from here
+     * (CR 701.50b). Empty while every convoker is still the object that convoked it.
+     */
+    val convokedLastKnown: Map<EntityId, EntitySnapshot> = emptyMap(),
+    /**
      * Entity ids of cards discarded to pay this spell's additional discard cost
      * (`Costs.additional.DiscardCards(...)`). Read at resolution via
      * [com.wingedsheep.sdk.scripting.targets.EffectTarget.DiscardedAsCost] so a condition can

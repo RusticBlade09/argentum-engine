@@ -5195,7 +5195,7 @@
                         {
                             "type": "GrantMayPlayFromExile",
                             "from": "gathered0",
-                            "withAnyManaType": true,
+                            "withAnyManaColor": true,
                             "recipient": "ControllerOfTriggeringEntity"
                         }
                     ]

@@ -24,6 +24,9 @@ import com.wingedsheep.sdk.scripting.references.Player
 import com.wingedsheep.engine.state.components.battlefield.AttachmentsComponent
 import com.wingedsheep.engine.state.components.battlefield.CrewSaddleContributorsComponent
 import com.wingedsheep.engine.state.components.battlefield.CraftedFromExiledComponent
+import com.wingedsheep.engine.state.components.battlefield.entitiesChoice
+import com.wingedsheep.sdk.scripting.ChoiceSlot
+import com.wingedsheep.engine.state.components.stack.SpellOnStackComponent
 import com.wingedsheep.engine.state.components.stack.entityIds
 import kotlin.reflect.KClass
 
@@ -329,6 +332,19 @@ class GatherCardsExecutor(
                     ?.get<CrewSaddleContributorsComponent>()
                     ?.creatureIds
                     ?.filter { it in battlefield }
+                    ?: emptyList()
+            }
+
+            is CardSource.CreaturesThatConvokedSource -> {
+                // CR 702.51c — every creature tapped for the source's convoke, in tap order, read off
+                // the spell's record (or, for a permanent spell that has resolved, the cast-choices
+                // bag it carried). Departed convokers are kept, because an instruction may still
+                // apply to them through last-known information (CR 701.50b — connive).
+                val source = context.sourceId?.let { state.getEntity(it) }
+                    ?: return EffectResult.error(state, "No source entity for CreaturesThatConvokedSource")
+                (source.entitiesChoice(ChoiceSlot.CONVOKED_CREATURES)?.entryStamps
+                    ?: source.get<SpellOnStackComponent>()?.convokedCreatures)
+                    ?.keys?.toList()
                     ?: emptyList()
             }
 

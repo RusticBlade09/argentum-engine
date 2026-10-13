@@ -304,7 +304,7 @@ class LegacySuspensionMigrationTest : ScenarioTestBase() {
 
     /**
      * Added copiable rules data postdates the capture; old identities must default those lists empty.
-     * Likewise a may-play permission's later `colorlessAsAnyColor` rider and the card's later
+     * Likewise a may-play permission's later `colorlessAsAnyColor` / `withAnyManaColor` riders and the card's later
      * `hasCycling` flag must default false.
      */
     private fun withoutPostCaptureCardDefaults(value: JsonElement): JsonElement = when (value) {
@@ -337,17 +337,20 @@ class LegacySuspensionMigrationTest : ScenarioTestBase() {
                 value.getValue("playedThisTurn") shouldBe JsonPrimitive(0)
                 value - "playedThisTurn"
             } else if ("colorlessAsAnyColor" in value && "singleUse" in value) {
-                // MayPlayPermission's colorless-as-any-color and face-down riders postdate the capture.
+                // MayPlayPermission's any-color, colorless-as-any-color and face-down riders postdate the capture.
+                value.getValue("withAnyManaColor") shouldBe JsonPrimitive(false)
                 value.getValue("colorlessAsAnyColor") shouldBe JsonPrimitive(false)
                 value.getValue("castFaceDown") shouldBe JsonPrimitive(false)
                 value.getValue("turnsFaceUpInstead") shouldBe JsonPrimitive(false)
-                value - "colorlessAsAnyColor" - "castFaceDown" - "turnsFaceUpInstead"
+                value - "withAnyManaColor" - "colorlessAsAnyColor" - "castFaceDown" - "turnsFaceUpInstead"
             } else if (value["type"] == JsonPrimitive(
                     "com.wingedsheep.engine.state.components.stack.SpellOnStackComponent"
                 )) {
-                // The turns-face-up-instead rider (Illusionary Mask) postdates the capture.
+                // The turns-face-up-instead rider (Illusionary Mask) and the departed-convoker
+                // last-known information postdate the capture.
                 value.getValue("turnsFaceUpInstead") shouldBe JsonPrimitive(false)
-                value - "turnsFaceUpInstead"
+                value.getValue("convokedLastKnown") shouldBe JsonObject(emptyMap())
+                value - "turnsFaceUpInstead" - "convokedLastKnown"
             } else if (value["type"] == JsonPrimitive(
                     "com.wingedsheep.engine.state.components.stack.ActivatedAbilityOnStackComponent"
                 )) {

@@ -421,6 +421,26 @@ sealed interface CardSource {
     }
 
     /**
+     * Each creature that convoked the resolving spell (CR 702.51c), in the order they were tapped
+     * — **including any that has since left the battlefield**. Unlike the
+     * `GameObjectFilter.thatConvokedSource()` group, which can only see convokers still on the
+     * battlefield, this names every creature the spell's convoke record holds, because some
+     * instructions apply to a convoker that is gone: "each creature that convoked this spell
+     * connives" (Lethal Scheme) — a convoker the spell itself destroyed still connives, by its last
+     * known information (CR 701.50b).
+     *
+     * A departed convoker is gathered by its id — the card it became, or nothing at all for a
+     * token — so only pair this with an instruction that reads last-known information for a
+     * convoker that is gone, as `Effects.Connive` does; anything else wants the battlefield-only
+     * group. Empty when the spell wasn't convoked.
+     */
+    @SerialName("CreaturesThatConvokedSource")
+    @Serializable
+    data object CreaturesThatConvokedSource : CardSource {
+        override val description: String = "creatures that convoked it"
+    }
+
+    /**
      * Every permanent that was put onto the battlefield by *this* resolving spell or ability, read
      * off the `EnteredViaAbilityComponent(sourceId == context.sourceId)` stamp left by a
      * [MoveCollectionEffect] with `markEnteredViaSourceAbility = true`. Restricted to permanents
@@ -1641,6 +1661,14 @@ data class GrantMayPlayFromExileEffect(
      */
     val withAnyManaType: Boolean = false,
     /**
+     * When true, mana may be spent **as though it were mana of any color** to cast the granted
+     * cards (CR 609.4b) — "and you may spend mana as though it were mana of any color to cast
+     * those spells" (Stolen Strategy, Curse of Hospitality). Every colored pip is relaxed to
+     * generic, but unlike [withAnyManaType] a `{C}` pip still needs colorless mana: colorless is a
+     * type of mana, not a color (CR 106.1, 118.14).
+     */
+    val withAnyManaColor: Boolean = false,
+    /**
      * When true, colorless mana may be spent **as though it were mana of any color** to cast the
      * granted cards (CR 609.4b) — "and you may spend colorless mana as though it were mana of any
      * color to cast that spell" (Abstruse Appropriation). Narrower than [withAnyManaType]: the cost
@@ -1824,6 +1852,7 @@ data class GrantMayPlayFromExileEffect(
         }
         if (asThoughFlash) append(", as though they had flash")
         if (withAnyManaType) append(", and mana of any type can be spent to cast them")
+        if (withAnyManaColor) append(", and you may spend mana as though it were mana of any color to cast them")
         if (colorlessAsAnyColor) append(", and you may spend colorless mana as though it were mana of any color to cast them")
         if (landEntersTapped) append(". Each land played this way enters tapped")
         insteadOfGraveyard?.let { append(it.riderText) }

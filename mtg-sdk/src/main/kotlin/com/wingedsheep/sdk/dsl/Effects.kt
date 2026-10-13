@@ -1586,6 +1586,8 @@ object Effects {
      *
      * Set [colorlessAsAnyColor] for "you may spend colorless mana as though it were mana of any
      * color to cast that spell" (Abstruse Appropriation) — narrower than [withAnyManaType].
+     * Set [withAnyManaColor] for "you may spend mana as though it were mana of any color to cast
+     * those spells" (Stolen Strategy) — every colored pip relaxed, but `{C}` still needs colorless.
      */
     fun GrantMayPlayFromExile(
         from: String,
@@ -1601,11 +1603,13 @@ object Effects {
         ownerControls: Boolean = false,
         castColorRestriction: Color? = null,
         singleUse: Boolean = false,
-        colorlessAsAnyColor: Boolean = false
+        colorlessAsAnyColor: Boolean = false,
+        withAnyManaColor: Boolean = false
     ): Effect = GrantMayPlayFromExileEffect(
         from = from,
         expiry = expiry,
         withAnyManaType = withAnyManaType,
+        withAnyManaColor = withAnyManaColor,
         colorlessAsAnyColor = colorlessAsAnyColor,
         condition = condition,
         landEntersTapped = landEntersTapped,
@@ -4648,11 +4652,13 @@ object Effects {
         recipient: EffectTarget = EffectTarget.Controller,
         asThoughFlash: Boolean = false,
         singleUse: Boolean = false,
-        colorlessAsAnyColor: Boolean = false
+        colorlessAsAnyColor: Boolean = false,
+        withAnyManaColor: Boolean = false
     ): Effect = GrantMayPlayFromExileEffect(
         from = from.key,
         expiry = expiry,
         withAnyManaType = withAnyManaType,
+        withAnyManaColor = withAnyManaColor,
         colorlessAsAnyColor = colorlessAsAnyColor,
         condition = condition,
         landEntersTapped = landEntersTapped,

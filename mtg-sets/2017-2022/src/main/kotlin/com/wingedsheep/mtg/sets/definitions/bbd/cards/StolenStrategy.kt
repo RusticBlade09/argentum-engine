@@ -19,7 +19,9 @@ import com.wingedsheep.sdk.scripting.references.Player
  * were mana of any color to cast those spells.
  *
  * The Etali, Primal Storm gather (top card of each opponent's library, one collection) feeding the
- * Curse of Hospitality grant: an end-of-turn may-play permission with any-mana spending.
+ * Curse of Hospitality grant: an end-of-turn may-play permission with `withAnyManaColor` — every
+ * colored pip relaxed, while a `{C}` pip still needs colorless mana (CR 609.4b: colorless is a
+ * type, not a color).
  * "Cast spells" is `nonLandOnly` — an exiled land can't be played. Normal timing still applies and
  * a card cast leaves exile, so it can't be cast twice (2018-06-08 rulings).
  */
@@ -43,7 +45,7 @@ val StolenStrategy = card("Stolen Strategy") {
                 Effects.GrantMayPlayFromExile(
                     from = stolen,
                     expiry = MayPlayExpiry.EndOfTurn,
-                    withAnyManaType = true,
+                    withAnyManaColor = true,
                     nonLandOnly = true,
                 )
             )

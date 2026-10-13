@@ -568,6 +568,23 @@ class ZoneTransitionService(
                     )
                 }
             }
+
+            // Freeze last-known information onto every spell on the stack this permanent convoked
+            // (CR 702.51c), so "each creature that convoked this spell connives" can still have it
+            // connive as the object it was (CR 701.50b — Lethal Scheme). Only the visit that
+            // convoked counts: the entry stamp must match the one recorded at the tap, so a
+            // convoker that was blinked and then leaves again doesn't overwrite its first exit.
+            if (lastKnownSnapshot != null) {
+                for (stackItemId in newState.stack) {
+                    val spell = newState.getEntity(stackItemId)
+                        ?.get<com.wingedsheep.engine.state.components.stack.SpellOnStackComponent>() ?: continue
+                    if (spell.convokedCreatures[entityId] != (lastKnownSnapshot.battlefieldEntryTimestamp ?: 0L)) continue
+                    if (entityId in spell.convokedLastKnown) continue
+                    newState = newState.updateEntity(stackItemId) { c ->
+                        c.with(spell.copy(convokedLastKnown = spell.convokedLastKnown + (entityId to lastKnownSnapshot)))
+                    }
+                }
+            }
         }
 
         // 5. Strip face-down if leaving exile

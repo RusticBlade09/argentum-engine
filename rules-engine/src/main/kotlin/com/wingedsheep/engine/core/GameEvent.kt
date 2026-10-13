@@ -664,13 +664,18 @@ data class PermanentExploredEvent(
  * @property connivingPermanentId The permanent that connived (the trigger's subject).
  * @property controllerId The connive effect's controller at connive time.
  * @property sourceName The card/ability that caused the connive (for display).
+ * @property lastKnown The conniving permanent as it last existed on the battlefield, when it had
+ *   already left as it connived (CR 701.50b — a creature that convoked Lethal Scheme and was
+ *   destroyed by it). Trigger subject filters match this instead of the live object. Null for an
+ *   ordinary connive by a permanent still on the battlefield.
  */
 @Serializable
 @SerialName("PermanentConnivedEvent")
 data class PermanentConnivedEvent(
     val connivingPermanentId: EntityId,
     val controllerId: EntityId,
-    val sourceName: String? = null
+    val sourceName: String? = null,
+    val lastKnown: com.wingedsheep.engine.state.components.stack.EntitySnapshot? = null
 ) : GameEvent
 
 /**
