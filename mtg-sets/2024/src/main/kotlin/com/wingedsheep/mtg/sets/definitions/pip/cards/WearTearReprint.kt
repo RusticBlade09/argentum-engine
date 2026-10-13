@@ -3,6 +3,9 @@ package com.wingedsheep.mtg.sets.definitions.pip.cards
 import com.wingedsheep.sdk.model.Printing
 import com.wingedsheep.sdk.model.Rarity
 
+/**
+ * Wear // Tear reprint in PIP. Canonical CardDefinition lives in its earliest set.
+ */
 val WearTearReprint = Printing(
     oracleId = "9842734c-1eac-4509-a731-4c22017ae586",
     name = "Wear // Tear",

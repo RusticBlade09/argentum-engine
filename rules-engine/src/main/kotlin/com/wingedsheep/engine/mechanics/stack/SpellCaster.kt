@@ -313,7 +313,9 @@ internal class SpellCaster(
         val spellName = if (castTransformed) {
             newState.getEntity(cardId)?.get<CardComponent>()?.name ?: cardComponent.name
         } else {
-            faceIndex?.let { cardRegistry.getCard(cardComponent.cardDefinitionId)?.cardFaces?.getOrNull(it)?.name }
+            // CR 709.3b — a single split half on the stack has only that half's name. Other face
+            // casts (Adventure, prepare) keep the card's name, which name-keyed trackers rely on.
+            faceIndex?.let { cardRegistry.getCard(cardComponent.cardDefinitionId)?.takeIf { d -> d.isSplit }?.cardFaces?.getOrNull(it)?.name }
                 ?: cardComponent.name
         }
         // Preserve SpellCastEvent.cardName's historical public-name contract. The trusted

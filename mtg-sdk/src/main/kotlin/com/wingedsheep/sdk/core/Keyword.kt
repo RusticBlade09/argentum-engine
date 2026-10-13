@@ -294,7 +294,7 @@ enum class Keyword(val displayName: String) {
      */
     AFTERMATH("Aftermath"),
 
-    /** Cast both halves of a split card as one spell from hand. */
+    /** Fuse (CR 702.102): cast both halves of a split card as one spell from hand. Declared on the card, not its faces. */
     FUSE("Fuse"),
     DREDGE("Dredge"),
 

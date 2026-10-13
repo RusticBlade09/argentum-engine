@@ -16,7 +16,6 @@ val WearTear = card("Wear // Tear") {
         manaCost = "{1}{R}"
         typeLine = "Instant"
         oracleText = "Destroy target artifact.\nFuse (You may cast one or both halves of this card from your hand.)"
-        keywords(Keyword.FUSE)
         spell {
             val permanent = target(TargetFilter.Artifact)
             effect = Effects.Destroy(permanent)
@@ -27,7 +26,6 @@ val WearTear = card("Wear // Tear") {
         manaCost = "{W}"
         typeLine = "Instant"
         oracleText = "Destroy target enchantment.\nFuse (You may cast one or both halves of this card from your hand.)"
-        keywords(Keyword.FUSE)
         spell {
             val permanent = target(TargetFilter.Enchantment)
             effect = Effects.Destroy(permanent)

@@ -6,7 +6,7 @@ import com.wingedsheep.sdk.model.Rarity
 /**
  * Wear // Tear reprint in CMR. Canonical CardDefinition lives in its earliest set.
  */
-val WearReprint = Printing(
+val WearTearReprint = Printing(
     oracleId = "9842734c-1eac-4509-a731-4c22017ae586",
     name = "Wear // Tear",
     setCode = "CMR",

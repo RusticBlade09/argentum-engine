@@ -230,7 +230,8 @@ class CastSpellEnumerator(
                         manaCost = fused.manaCost, typeLine = fused.typeLine, script = fused.script,
                         keywords = fused.keywords, oracleText = fused.oracleText)
                     SplitFaceCastOffers.offer(context, cardId, fused, null, face, result, castFused = true)
-                    if (context.freeCastPermissionFor(cardId)) {
+                    // Judge the free-cast source's filter against the fused spell, as the validator does.
+                    if (context.costCalculator.hasFreeCastPermission(context.state, context.playerId, fused, com.wingedsheep.sdk.core.Zone.HAND)) {
                         SplitFaceCastOffers.offer(context, cardId, fused, null, face, result,
                             descriptionSuffix = " without paying its mana cost", castFused = true,
                             useWithoutPayingManaCost = true)

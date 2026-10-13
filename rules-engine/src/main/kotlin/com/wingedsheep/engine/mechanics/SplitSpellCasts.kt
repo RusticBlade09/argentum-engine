@@ -19,9 +19,10 @@ data class SplitSpellCharacteristicsComponent(val original: CardComponent) : Com
 object SplitSpellCasts {
     /** Selection-pipeline face key; normal faces are nonnegative, primary/back use -1/-2. */
     const val FUSED_FACE = -3
+    /** Fuse (CR 702.102) is declared once, on the split card; a fused spell combines both halves. */
     fun hasFuse(definition: CardDefinition?): Boolean = definition?.isSplit == true &&
         definition.cardFaces.size == 2 && definition.cardFaces.none { it.typeLine.isPermanent } &&
-        (Keyword.FUSE in definition.keywords || definition.cardFaces.any { Keyword.FUSE in it.keywords })
+        Keyword.FUSE in definition.keywords
 
     fun choiceFailure(state: GameState, definition: CardDefinition?, action: CastSpell): String? {
         if (action.castFused) {

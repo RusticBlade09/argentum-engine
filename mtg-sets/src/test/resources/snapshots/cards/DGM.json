@@ -556,9 +556,6 @@
             "manaCost": "{1}{R}",
             "typeLine": "Instant",
             "oracleText": "Destroy target artifact.\nFuse (You may cast one or both halves of this card from your hand.)",
-            "keywords": [
-                "FUSE"
-            ],
             "script": {
                 "spellEffect": {
                     "type": "MoveToZone",
@@ -585,9 +582,6 @@
             "manaCost": "{W}",
             "typeLine": "Instant",
             "oracleText": "Destroy target enchantment.\nFuse (You may cast one or both halves of this card from your hand.)",
-            "keywords": [
-                "FUSE"
-            ],
             "script": {
                 "spellEffect": {
                     "type": "MoveToZone",

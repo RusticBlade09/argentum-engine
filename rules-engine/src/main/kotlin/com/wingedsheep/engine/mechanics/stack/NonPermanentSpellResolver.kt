@@ -121,7 +121,8 @@ internal class NonPermanentSpellResolver(
         val splicedSlotCount = SpliceCasts
             .splicedTargetSlotCounts(spellComponent.splicedCardNames, cardRegistry, allTargetRequirements).sum()
 
-        if (spellEffect != null || spellComponent.castFused) {
+        val fusedDefinition = resolvedCardDef?.takeIf { spellComponent.castFused }
+        if (spellEffect != null || fusedDefinition != null) {
             // Requirements are never filtered, so the tail comes straight off the end.
             val targetRequirements = allTargetRequirements.dropLast(splicedRequirementCount)
             // The tail is dropped from `alignedTargets`, NOT from `targets`: only the aligned list is
@@ -146,8 +147,8 @@ internal class NonPermanentSpellResolver(
             )
             newState = newState.pushContinuation(finishing)
 
-            val effectResult = if (spellComponent.castFused && resolvedCardDef != null) {
-                val entries = fusedEntries(state, spellId, resolvedCardDef, targetRequirements, mainAlignedTargets)
+            val effectResult = if (fusedDefinition != null) {
+                val entries = fusedEntries(state, spellId, fusedDefinition, targetRequirements, mainAlignedTargets)
                 processPreTargetedEffectQueue(newState, entries + spliceEntries,
                     PreTargetedEffectContext(baseContext = context, controllerId = context.controllerId,
                         sourceId = spellId, sourceName = cardComponent?.name, xValue = context.xValue,

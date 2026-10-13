@@ -6,6 +6,8 @@ import com.wingedsheep.engine.core.OptionChosenResponse
 import com.wingedsheep.engine.mechanics.SplitSpellCharacteristicsComponent
 import com.wingedsheep.engine.mechanics.SplitSpellCasts
 import com.wingedsheep.engine.mechanics.stack.StackPlacement
+import com.wingedsheep.engine.state.components.battlefield.TappedComponent
+import com.wingedsheep.engine.state.components.stack.ChosenTarget
 import com.wingedsheep.engine.state.ZoneKey
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.stack.SpellOnStackComponent
@@ -20,6 +22,7 @@ import com.wingedsheep.sdk.dsl.card
 import com.wingedsheep.sdk.model.CardLayout
 import com.wingedsheep.sdk.scripting.effects.CardSource
 import com.wingedsheep.sdk.scripting.effects.CastFromCollectionWithoutPayingCostEffect
+import com.wingedsheep.sdk.scripting.filters.unified.TargetFilter
 import com.wingedsheep.sdk.scripting.references.Player
 import com.wingedsheep.sdk.scripting.values.DynamicAmount
 import io.kotest.matchers.nulls.shouldBeNull
@@ -53,7 +56,21 @@ class FuseScenarioTest : ScenarioTestBase() {
                 run(Effects.CastFromCollectionWithoutPayingCost(selected))
             } }
         }
-        cardRegistry.register(listOf(ordered, paused, xSpell, freeHost))
+        val targeted = card("Test Targeted Fuse") {
+            layout = CardLayout.SPLIT
+            keywords(Keyword.FUSE)
+            face("Tap Half") {
+                manaCost = "{R}"; typeLine = "Instant"
+                spell { val creature = target(TargetFilter.Creature); effect = Effects.Tap(creature) }
+            }
+            face("Destroy Half") {
+                manaCost = "{W}"; typeLine = "Instant"
+                spell { val creature = target(TargetFilter.Creature); effect = Effects.Destroy(creature) }
+            }
+        }
+        val tapMe = card("Test Tap Me") { manaCost = "{1}"; typeLine = "Creature — Bear"; power = 2; toughness = 2 }
+        val destroyMe = card("Test Destroy Me") { manaCost = "{1}"; typeLine = "Creature — Bear"; power = 2; toughness = 2 }
+        cardRegistry.register(listOf(ordered, paused, xSpell, freeHost, targeted, tapMe, destroyMe))
         fun board(name: String = ordered.name, extraHand: String? = null, permanent: String? = null): TestGame {
             val builder = scenario().withPlayers("Caster", "Opponent").withCardInHand(1, name)
                 .withLandsOnBattlefield(1, "Mountain", 3).withLandsOnBattlefield(1, "Plains", 3)
@@ -65,6 +82,32 @@ class FuseScenarioTest : ScenarioTestBase() {
             return builder.build()
         }
         fun TestGame.cardId(name: String = ordered.name) = state.getHand(player1Id).first { state.getEntity(it)?.get<CardComponent>()?.name == name }
+        fun targetedBoard(): TestGame = scenario().withPlayers("Caster", "Opponent").withCardInHand(1, targeted.name)
+            .withLandsOnBattlefield(1, "Mountain", 1).withLandsOnBattlefield(1, "Plains", 1)
+            .withCardOnBattlefield(2, tapMe.name).withCardOnBattlefield(2, destroyMe.name)
+            .withCardInLibrary(1, "Plains").withCardInLibrary(2, "Plains").withActivePlayer(1)
+            .inPhase(Phase.PRECOMBAT_MAIN, Step.PRECOMBAT_MAIN).build()
+        fun TestGame.graveyardTarget(name: String) {
+            val id = findPermanent(name)!!
+            state = state.removeFromZone(ZoneKey(player2Id, Zone.BATTLEFIELD), id).addToZone(ZoneKey(player2Id, Zone.GRAVEYARD), id)
+        }
+        fun TestGame.castTargeted() = execute(CastSpell(player1Id, cardId(targeted.name), castFused = true,
+            targets = listOf(ChosenTarget.Permanent(findPermanent(tapMe.name)!!), ChosenTarget.Permanent(findPermanent(destroyMe.name)!!))))
+        test("each half applies its own effect to its own target") {
+            val game = targetedBoard(); game.castTargeted().error.shouldBeNull(); game.resolveStack()
+            game.state.getEntity(game.findPermanent(tapMe.name)!!)!!.has<TappedComponent>() shouldBe true
+            game.findPermanent(destroyMe.name).shouldBeNull()
+        }
+        test("an illegal left target leaves the right half on its own target") {
+            val game = targetedBoard(); game.castTargeted().error.shouldBeNull()
+            game.graveyardTarget(tapMe.name); game.resolveStack()
+            game.findPermanent(destroyMe.name).shouldBeNull()
+        }
+        test("an illegal right target still lets the left half act") {
+            val game = targetedBoard(); game.castTargeted().error.shouldBeNull()
+            game.graveyardTarget(destroyMe.name); game.resolveStack()
+            game.state.getEntity(game.findPermanent(tapMe.name)!!)!!.has<TappedComponent>() shouldBe true
+        }
         test("fused instructions run left before right") {
             val game = board(); val id = game.cardId()
             game.execute(CastSpell(game.player1Id, id, castFused = true)).error.shouldBeNull()
