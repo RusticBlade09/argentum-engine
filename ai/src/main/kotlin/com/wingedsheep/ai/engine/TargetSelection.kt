@@ -415,7 +415,11 @@ object TargetSelection {
         val needed = maxOf(1, info.minTargets)
         val picks = mutableListOf<EntityId>()
         val controllers = mutableSetOf<EntityId>()
-        for (candidate in available.sortedByDescending(rankTarget)) {
+        val grouped = info.selectionGroups?.map { group -> available.filter { it in group } }
+            ?.filter { it.size >= info.minTargets }
+            ?.maxByOrNull { group -> group.sortedByDescending(rankTarget).take(needed).sumOf(rankTarget) }
+        val pool = if (info.selectionGroups != null) grouped.orEmpty() else available
+        for (candidate in pool.sortedByDescending(rankTarget)) {
             if (picks.size == needed) break
             if (info.differentControllers) {
                 val controller = state.projectedState.getController(candidate)

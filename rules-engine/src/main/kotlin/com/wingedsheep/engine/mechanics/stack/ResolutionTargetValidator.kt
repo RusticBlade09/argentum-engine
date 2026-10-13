@@ -1,5 +1,7 @@
 package com.wingedsheep.engine.mechanics.stack
 
+import com.wingedsheep.engine.handlers.effects.TargetResolutionUtils.toEntityId
+
 import com.wingedsheep.engine.mechanics.targeting.HexproofFromRules
 import com.wingedsheep.engine.mechanics.targeting.ColorProtection
 import com.wingedsheep.engine.core.*
@@ -119,7 +121,26 @@ internal class ResolutionTargetValidator(
                 }
         }.toSet()
         val sharingController = targetsSharingAController(projected, state, targets, individuallyLegal, targetRequirements)
-        return targets.filterIndexed { index, _ -> index in individuallyLegal && index !in sharingController }
+        if (targetRequirements.none { (it as? TargetObject)?.sameNumericProperty != null }) {
+            return targets.filterIndexed { index, _ -> index in individuallyLegal && index !in sharingController }
+        }
+        val unequal = (individuallyLegal - sharingController).groupBy { index ->
+            var offset = 0
+            targetRequirements.indices.firstOrNull { group ->
+                val end = offset + targetRequirements[group].count
+                val contains = index in offset until end
+                offset = end
+                contains
+            }
+        }.flatMap { (group, indices) ->
+                val property = (group?.let { targetRequirements[it] } as? TargetObject)?.sameNumericProperty
+                if (property != null && !com.wingedsheep.engine.mechanics.targeting.NumericTargetEquality.isSatisfied(
+                        state, indices.map { targets[it].toEntityId() }, property
+                    )) indices else emptyList()
+            }.toSet()
+        return targets.filterIndexed { index, _ ->
+            index in individuallyLegal && index !in sharingController && index !in unequal
+        }
     }
 
     /**

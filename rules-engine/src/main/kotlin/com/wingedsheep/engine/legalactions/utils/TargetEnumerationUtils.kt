@@ -363,7 +363,12 @@ class TargetEnumerationUtils(
                 // (CR 601.2c, 115.3), so the requirement reports none and the action isn't offered.
                 ?.takeIf { it.size >= bounds.min }
                 ?: emptyList()
+            val equalityGroups = (req as? TargetObject)?.sameNumericProperty?.let {
+                com.wingedsheep.engine.mechanics.targeting.NumericTargetEquality.groups(state, validTargets, it)
+                    .filter { group -> group.size >= bounds.min }
+            }
             TargetInfo(
+                selectionGroups = equalityGroups,
                 index = index,
                 description = req.description,
                 minTargets = bounds.min,
@@ -382,7 +387,7 @@ class TargetEnumerationUtils(
                     req.unlimited -> minOf(validTargets.size, bounds.max ?: validTargets.size)
                     else -> bounds.max ?: req.count
                 },
-                validTargets = validTargets,
+                validTargets = equalityGroups?.flatten() ?: validTargets,
                 targetZone = getTargetZone(req),
                 mustDifferFromEarlier = req is TargetOther,
                 xConstrainsManaValue = requirementComparesToX(req, CardNumericProperty.MANA_VALUE, ComparisonOperator.LTE),
@@ -408,6 +413,9 @@ class TargetEnumerationUtils(
         )
         return requirements.mapIndexed { index, req ->
             val legal = tables[index].values.flatten().distinct()
+            val groups = (req as? TargetObject)?.sameNumericProperty?.let {
+                com.wingedsheep.engine.mechanics.targeting.NumericTargetEquality.groups(state, legal, it)
+            }
             TargetInfo(
                 index = index,
                 description = req.description,
@@ -416,6 +424,7 @@ class TargetEnumerationUtils(
                 maxTargets = if (req.unlimited) legal.size else req.count,
                 validTargets = legal,
                 targetZone = getTargetZone(req),
+                selectionGroups = groups,
                 validTargetsByPrefix = if (index == 0) null else tables[index],
             )
         }

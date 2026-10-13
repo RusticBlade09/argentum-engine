@@ -2,7 +2,7 @@
 
 **Set Size:** 336 cards
 **Release Date:** March 8, 2024
-**Implemented:** 135 / 336
+**Implemented:** 136 / 336
 | Section    | Total | Done |
 |------------|-------|------|
 | Extras     | 336   | 129  |
@@ -318,7 +318,7 @@
 - [x] Tireless Tracker
 - [ ] Treasure Vault
 - [x] Unexpected Windfall
-- [ ] V.A.T.S.
+- [x] V.A.T.S.
 - [x] Valorous Stance
 - [x] Vandalblast
 - [ ] Vault 101: Birthday Party

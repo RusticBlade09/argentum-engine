@@ -141,6 +141,9 @@ data class TargetRequirementInfo(
      * selected card's owner in [DecisionValidators.validateTargets].
      */
     val sameOwner: Boolean = false,
+    val sameNumericProperty: com.wingedsheep.sdk.scripting.values.CardNumericProperty? = null,
+    /** Server-computed pools whose members may be selected together. */
+    val selectionGroups: List<List<EntityId>>? = null,
     /**
      * When non-null, the combined mana value of the chosen card targets for this requirement may
      * not exceed this cap — "any number of target creature cards with total mana value X or less"
@@ -213,7 +216,10 @@ fun ChooseTargetsDecision.legalTargetsFor(index: Int, chosen: Map<Int, List<Enti
 /** The first `minTargets` legal picks per slot, chosen in slot order so a later slot reads earlier ones. */
 fun ChooseTargetsDecision.minimalSelection(): Map<Int, List<EntityId>> =
     targetRequirements.fold(emptyMap()) { chosen, req ->
-        chosen + (req.index to legalTargetsFor(req.index, chosen).take(req.minTargets))
+        val pool = legalTargetsFor(req.index, chosen)
+        val compatible = req.selectionGroups?.firstOrNull { group -> group.count { it in pool } >= req.minTargets }
+            ?.filter { it in pool } ?: if (req.selectionGroups == null) pool else emptyList()
+        chosen + (req.index to compatible.take(req.minTargets))
     }
 
 /**

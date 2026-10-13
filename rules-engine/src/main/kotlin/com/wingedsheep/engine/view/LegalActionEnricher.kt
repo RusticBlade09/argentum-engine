@@ -260,6 +260,7 @@ class LegalActionEnricher(
         maxTargets = maxTargets,
         validTargets = validTargets,
         validTargetsByPrefix = validTargetsByPrefix,
+        selectionGroups = selectionGroups,
         targetZone = targetZone,
         xConstrainsManaValue = xConstrainsManaValue,
         xConstrainsManaValueExactly = xConstrainsManaValueExactly,

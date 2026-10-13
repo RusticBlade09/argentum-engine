@@ -5268,7 +5268,7 @@ spell {
 - **Several object targets under one requirement** — "two target creatures", "up to X target
   creatures", "any number of target cards from a single graveyard" — are
   `targets(filter, count, minCount, optional, unlimited, dynamicMaxCount, exactly, sameController,
-  sameOwner, sameCreatureType, sameCardType, totalManaValueAtMost, differentNames, differentControllers,
+  sameOwner, sameNumericProperty, sameCreatureType, sameCardType, totalManaValueAtMost, differentNames, differentControllers,
   onePerCardType, chooser)`, which returns one handle per slot:
   `val (first, second) = targets(TargetFilter.Creature, count = 2)`. An ability that treats the
   targets uniformly ignores the handles and reads them with `Effects.ForEachTarget(…)`.
@@ -5432,6 +5432,13 @@ Every `TargetRequirement` carries count semantics (defaults shown):
   creature type" (Unbury). "Up to three target creature cards **of the creature type of your choice**"
   (Aphetto Dredging) is the same knob: naming a type and targeting only cards of it admits exactly the sets
   that share one.
+- `sameNumericProperty: CardNumericProperty? = null` — on `TargetObject` and `targets(...)`:
+  chosen targets must have equal power, toughness, mana value, or total counter count. Battlefield
+  values come from projected state; other zones use the card's characteristics. Zero or one target
+  satisfies equality. At resolution, compare the remaining individually legal targets; unequal
+  values invalidate the whole requirement. Server-computed `selectionGroups` guide board targeting
+  and AI choices without client rules. V.A.T.S. uses
+  `targets(TargetFilter.Creature, unlimited = true, sameNumericProperty = CardNumericProperty.TOUGHNESS)`.
 - `sameCardType = false` — on `TargetObject` / `TargetObject(filter = TargetFilter.Permanent, count = ...)`; the **card-type** sibling of
   `sameCreatureType`. When `true` and the requirement picks more than one target, the chosen **permanent**
   targets must all share at least one *card type* per CR 205.2a — artifact, creature, enchantment,

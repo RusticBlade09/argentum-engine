@@ -182,3 +182,16 @@ describe('dependent spell targets', () => {
     expect(targeting(store).validTargets).toEqual([id('a')])
   })
 })
+
+it('narrows a server-group pool and restores it after the last deselection', () => {
+  const { store } = makeStore()
+  const action = store.getState().pipelineState!.accumulatedAction
+  store.getState().startTargeting({ action, validTargets: [id('a'), id('b'), id('c')], selectedTargets: [], minTargets: 0, maxTargets: 3,
+    selectionGroups: [[id('a'), id('b')], [id('c')]] })
+  store.getState().addTarget(id('a'))
+  expect(targeting(store).validTargets).toEqual([id('a'), id('b')])
+  store.getState().addTarget(id('c'))
+  expect(targeting(store).selectedTargets).toEqual([id('a')])
+  store.getState().removeTarget(id('a'))
+  expect(targeting(store).validTargets).toEqual([id('a'), id('b'), id('c')])
+})

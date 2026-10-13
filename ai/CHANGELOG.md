@@ -28,6 +28,8 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- Chooses compatible groups for spells and abilities whose targets must have equal toughness or another numeric value.
+
 - #3170 Values every token payoff in a mixed token-creation batch when assessing cards for play and deckbuilding.
 
 - Keeps ranked secret bids at their floor, chooses matching numbers independently, and casts creature ballots from the visible board without reading unrevealed answers.

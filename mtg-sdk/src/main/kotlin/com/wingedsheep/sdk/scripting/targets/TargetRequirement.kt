@@ -456,6 +456,15 @@ data class TargetObject(
      */
     val sameOwner: Boolean = false,
     /**
+     * All targets in this requirement must have equal values of this property, both when chosen
+     * and when resolving. Battlefield characteristics use projected state; other zones use the
+     * card's characteristics. COUNTERS compares the total number of counters of every kind.
+     * Null imposes no equality restriction. Zero or one target satisfies the restriction.
+     */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val sameNumericProperty: com.wingedsheep.sdk.scripting.values.CardNumericProperty? = null,
+    /**
      * When true and more than one target is chosen for this requirement, the chosen targets must
      * all share at least one creature type with one another — "two target creatures you control
      * that share a creature type" (Secret Tunnel), "two target creature cards that share a creature
@@ -579,10 +588,11 @@ data class TargetObject(
             sameCardType -> "$base that share a card type"
             else -> base
         }
+        val numericQualified = sameNumericProperty?.let { "$qualified with equal ${it.description}" } ?: qualified
         if (totalManaValueAtMost != null) {
-            "$qualified with total mana value ${totalManaValueAtMost.description} or less"
+            "$numericQualified with total mana value ${totalManaValueAtMost.description} or less"
         } else {
-            qualified
+            numericQualified
         }
     }
 

@@ -2,6 +2,7 @@
  * Selection sub-slice — handles X cost, convoke, crew, delve, mana color,
  * decision selection, and mana source selection flows.
  */
+import { compatibleSelectionPool } from '@/utils/selectionGroups'
 import { decisionInteractionEpoch } from '@/network/liveAction'
 import type {
   SliceCreator,
@@ -518,7 +519,8 @@ export const createSelectionSlice: SliceCreator<SelectionSlice> = (set, get) => 
 
   // Decision selection actions
   startDecisionSelection: (state) => {
-    set({ decisionSelectionState: state })
+    set({ decisionSelectionState: { ...state, selectionPool: state.validOptions,
+      validOptions: compatibleSelectionPool(state.validOptions, state.selectionGroups, state.selectedOptions) } })
   },
 
   toggleDecisionSelection: (cardId) => {
@@ -531,15 +533,20 @@ export const createSelectionSlice: SliceCreator<SelectionSlice> = (set, get) => 
           decisionSelectionState: {
             ...state.decisionSelectionState,
             selectedOptions: selectedOptions.filter((id) => id !== cardId),
+            validOptions: compatibleSelectionPool(state.decisionSelectionState.selectionPool ?? state.decisionSelectionState.validOptions,
+              state.decisionSelectionState.selectionGroups, selectedOptions.filter((id) => id !== cardId)),
             warning: null,
           },
         }
       }
+      if (!state.decisionSelectionState.validOptions.includes(cardId)) return state
       if (selectedOptions.length < maxSelections) {
         return {
           decisionSelectionState: {
             ...state.decisionSelectionState,
             selectedOptions: [...selectedOptions, cardId],
+            validOptions: compatibleSelectionPool(state.decisionSelectionState.selectionPool ?? state.decisionSelectionState.validOptions,
+              state.decisionSelectionState.selectionGroups, [...selectedOptions, cardId]),
             warning: null,
           },
         }

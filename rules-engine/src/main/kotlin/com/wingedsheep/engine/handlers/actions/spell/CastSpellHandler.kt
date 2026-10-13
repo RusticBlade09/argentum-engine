@@ -1,4 +1,6 @@
 package com.wingedsheep.engine.handlers.actions.spell
+
+import com.wingedsheep.engine.mechanics.targeting.withNumericEquality
 import com.wingedsheep.engine.handlers.TargetFinder
 import com.wingedsheep.engine.handlers.TargetingSourceType
 import com.wingedsheep.engine.handlers.effects.ZoneTransitionService
@@ -1270,9 +1272,12 @@ class CastSpellHandler(
                     mustDifferFromEarlier = req is com.wingedsheep.sdk.scripting.targets.TargetOther,
                     minTargets = counts.min,
                     maxTargets = maxTargets
-                )
+                ).withNumericEquality(state, req, legalTargetsMap[index].orEmpty())
             }
 
+            if (requirementInfos.any { it.minTargets > it.maxTargets }) {
+                return ExecutionResult.error(state, "No compatible targets for mode: ${mode.description}")
+            }
             val pickNumber = ordinal + 1
             val prompt = "Choose targets for $cardName — ${mode.description} ($pickNumber of ${chosenModeIndices.size})"
             val continuation = com.wingedsheep.engine.core.CastModalTargetSelectionContinuation(

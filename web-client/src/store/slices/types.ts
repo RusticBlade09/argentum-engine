@@ -82,6 +82,10 @@ export interface MulliganState {
  * Targeting state when selecting targets for a spell/ability.
  */
 export interface TargetingState {
+  /** Original pool, preserved while selections narrow the highlighted choices. */
+  selectionPool?: readonly EntityId[]
+  /** Server-approved pools whose members may be selected together. */
+  selectionGroups?: readonly (readonly EntityId[])[] | null
   action: GameAction
   validTargets: readonly EntityId[]
   selectedTargets: readonly EntityId[]
@@ -246,6 +250,10 @@ export interface GameOverState {
  * Decision selection state for SelectCardsDecision with useTargetingUI=true.
  */
 export interface DecisionSelectionState {
+  /** Original pool, preserved while selections narrow the highlighted choices. */
+  selectionPool?: readonly EntityId[]
+  /** Server-approved pools whose members may be selected together. */
+  selectionGroups?: readonly (readonly EntityId[])[] | null
   /** The pending decision this selection is for */
   decisionId: string
   /** Valid card IDs that can be selected */

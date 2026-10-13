@@ -10,6 +10,7 @@ import type {
   EntityId,
   TargetingState,
 } from '../types'
+import { compatibleSelectionPool } from '@/utils/selectionGroups'
 import { costInfoForPhase } from './pipelinePhases'
 
 export interface TargetingSliceState {
@@ -31,19 +32,23 @@ export const createTargetingSlice: SliceCreator<TargetingSlice> = (set, get) => 
   targetingState: null,
 
   startTargeting: (targetingState) => {
-    set({ targetingState })
+    set({ targetingState: { ...targetingState, selectionPool: targetingState.selectionPool ?? targetingState.validTargets,
+      validTargets: compatibleSelectionPool(targetingState.selectionPool ?? targetingState.validTargets,
+        targetingState.selectionGroups, targetingState.selectedTargets) } })
   },
 
   addTarget: (targetId) => {
     set((state) => {
       if (!state.targetingState) return state
       const { selectedTargets, maxTargets } = state.targetingState
-      if (selectedTargets.includes(targetId)) return state
+      if (selectedTargets.includes(targetId) || !state.targetingState.validTargets.includes(targetId)) return state
       if (selectedTargets.length < maxTargets) {
         return {
           targetingState: {
             ...state.targetingState,
             selectedTargets: [...selectedTargets, targetId],
+            validTargets: compatibleSelectionPool(state.targetingState.selectionPool ?? state.targetingState.validTargets,
+              state.targetingState.selectionGroups, [...selectedTargets, targetId]),
             warning: null,
           },
         }
@@ -76,6 +81,8 @@ export const createTargetingSlice: SliceCreator<TargetingSlice> = (set, get) => 
         targetingState: {
           ...state.targetingState,
           selectedTargets: newTargets,
+          validTargets: compatibleSelectionPool(state.targetingState.selectionPool ?? state.targetingState.validTargets,
+            state.targetingState.selectionGroups, newTargets),
           warning: null,
         },
       }
@@ -153,6 +160,7 @@ export const createTargetingSlice: SliceCreator<TargetingSlice> = (set, get) => 
             selectedTargets: [],
             minTargets: nextReq.minTargets,
             maxTargets: nextReq.maxTargets,
+            selectionGroups: nextReq.selectionGroups ?? null,
             currentRequirementIndex: nextIndex,
             allSelectedTargets: allSelected,
             targetRequirements: targetingState.targetRequirements,

@@ -223,6 +223,21 @@ class DecisionResponder(
         val maxCandidates = budget.allowances.targetCandidates
         if (decision.targetRequirements.size == 1) {
             val req = decision.targetRequirements.first()
+            val equalityGroups = req.selectionGroups
+            if (equalityGroups != null) {
+                val answers = equalityGroups.flatMap { group ->
+                    val ranked = group.sortedByDescending { targetHeuristic(state, it, playerId) }
+                    val minimum = maxOf(1, req.minTargets)
+                    val maximum = if (fillUpToMaxTargets) minOf(req.maxTargets, ranked.size) else minOf(minimum, ranked.size)
+                    (minimum..maximum).map { ranked.take(it) }
+                }.toMutableList()
+                if (req.minTargets == 0) answers.add(emptyList())
+                val best = answers.maxByOrNull { picks ->
+                    evaluateResult(state, simulator.simulateDecision(state,
+                        TargetsResponse(decision.id, mapOf(req.index to picks))), playerId)
+                } ?: emptyList()
+                return TargetsResponse(decision.id, mapOf(req.index to best))
+            }
             val targets = decision.legalTargets[req.index] ?: return cancelOrFirst(decision)
             if (targets.isEmpty()) return cancelOrFirst(decision)
 
@@ -284,7 +299,18 @@ class DecisionResponder(
             TargetsResponse(decision.id, decision.repairSlotsAfter(index, selected + (index to picks)))
         for (req in decision.targetRequirements) {
             val targets = decision.legalTargetsFor(req.index, selected)
-            val answer = if (targets.isEmpty()) {
+            val groups = req.selectionGroups
+            val answer = if (groups != null) {
+                val answers = groups.flatMap { group ->
+                    val ranked = group.filter { it in targets }.sortedByDescending { targetHeuristic(state, it, playerId) }
+                    val minimum = maxOf(1, req.minTargets)
+                    val maximum = if (fillUpToMaxTargets) minOf(req.maxTargets, ranked.size) else minOf(minimum, ranked.size)
+                    (minimum..maximum).map { ranked.take(it) }
+                }.toMutableList()
+                if (req.minTargets == 0) answers.add(emptyList())
+                answers.maxByOrNull { picks -> evaluateResult(state,
+                    simulator.simulateDecision(state, probe(req.index, picks)), playerId) } ?: emptyList()
+            } else if (targets.isEmpty()) {
                 emptyList()
             } else {
                 val best = pickBestBySimulation(

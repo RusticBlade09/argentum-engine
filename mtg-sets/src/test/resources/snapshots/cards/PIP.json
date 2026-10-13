@@ -931,6 +931,74 @@
     }
 }
 
+// V.A.T.S.
+{
+    "name": "V.A.T.S.",
+    "manaCost": "{2}{B}{B}",
+    "typeLine": "Instant",
+    "oracleText": "Split second (As long as this spell is on the stack, players can't cast spells or activate abilities that aren't mana abilities.)\nChoose any number of target creatures with equal toughness. Destroy the chosen creatures.",
+    "keywords": [
+        "SPLIT_SECOND"
+    ],
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "GatherCards",
+                    "source": "ChosenTargets",
+                    "storeAs": "gathered0"
+                },
+                {
+                    "type": "MoveCollection",
+                    "from": "gathered0",
+                    "destination": {
+                        "type": "ToZone",
+                        "zone": "Graveyard"
+                    },
+                    "moveType": "Destroy"
+                }
+            ]
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetObject",
+                "unlimited": true,
+                "filter": {
+                    "baseFilter": "creature"
+                },
+                "id": "t0",
+                "sameNumericProperty": "TOUGHNESS"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "50",
+        "rarity": "RARE",
+        "artist": "Diego Gisbert",
+        "flavorText": "The Vault-Tec Assisted Targeting System redefines combat. Get your V.A.T.S. today!",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/1/512df222-0db0-4b24-9372-d0c01b181b91.jpg?1783912406",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "If you choose just one target for V.A.T.S., that creature will be destroyed when V.A.T.S. resolves as long as it’s still a legal target, regardless of whether or not its toughness has changed since V.A.T.S. was cast."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "In the rare case where the legal targets no longer all have equal toughness (probably because of a triggered ability or special action) when V.A.T.S. tries to resolve, it won’t resolve. None of the chosen creatures will be destroyed."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Players may turn face-down creatures face up while a spell with split second is on the stack."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Split second doesn’t stop triggered abilities from triggering. If one does, its controller puts it on the stack and chooses targets for it, if any. Those abilities will resolve as normal."
+            }
+        ]
+    }
+}
+
 // Vault 11: Voter's Dilemma
 {
     "name": "Vault 11: Voter's Dilemma",

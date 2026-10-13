@@ -1,5 +1,7 @@
 package com.wingedsheep.engine.handlers.actions.ability
 
+import com.wingedsheep.engine.mechanics.targeting.withNumericEquality
+
 import com.wingedsheep.engine.handlers.TargetingSourceType
 import com.wingedsheep.engine.core.ActivateAbility
 import com.wingedsheep.engine.core.ActivateAbilityChooseManaXContinuation
@@ -541,17 +543,17 @@ internal class ActivationChoicePauses(
                 state, req, action.playerId, action.sourceId,
                 targetingSourceType = TargetingSourceType.ACTIVATED_ABILITY, pipelineContext = pipelineContext
             )
-            if (legal.isEmpty() && req.effectiveMinCount > 0) {
+            if (com.wingedsheep.engine.mechanics.targeting.NumericTargetEquality.eligible(state, legal, req).size < req.effectiveMinCount) {
                 return ExecutionResult.error(state, "No legal target for ${sourceName}")
             }
-            legalTargets[index] = legal
+            legalTargets[index] = com.wingedsheep.engine.mechanics.targeting.NumericTargetEquality.eligible(state, legal, req)
             TargetRequirementInfo(
                 index = index,
                 description = req.description,
                 mustDifferFromEarlier = req is com.wingedsheep.sdk.scripting.targets.TargetOther,
                 minTargets = req.effectiveMinCount,
-                maxTargets = req.count
-            )
+                maxTargets = if (req.unlimited) legal.size else req.count
+            ).withNumericEquality(state, req, legal)
         }
         val prompt = "Choose ${controllerTargetReqsExec.joinToString(" and ") { it.description }} for ${sourceName}"
         val continuation = ActivateAbilityControllerTargetContinuation(
@@ -674,19 +676,19 @@ internal class ActivationChoicePauses(
         val legalTargets = mutableMapOf<Int, List<EntityId>>()
         val requirementInfos = opponentReqs.mapIndexed { index, req ->
             val legal = finder.findLegalTargets(state, req, action.playerId, action.sourceId, targetingSourceType = TargetingSourceType.ACTIVATED_ABILITY)
-            if (legal.isEmpty() && req.effectiveMinCount > 0) {
+            if (com.wingedsheep.engine.mechanics.targeting.NumericTargetEquality.eligible(state, legal, req).size < req.effectiveMinCount) {
                 // A required target with no legal choice means the ability can't be activated
                 // (the enumerator gates on this; guard the engine-direct path too).
                 return ExecutionResult.error(state, "No legal target for opponent's choice")
             }
-            legalTargets[index] = legal
+            legalTargets[index] = com.wingedsheep.engine.mechanics.targeting.NumericTargetEquality.eligible(state, legal, req)
             TargetRequirementInfo(
                 index = index,
                 description = req.description,
                 mustDifferFromEarlier = req is com.wingedsheep.sdk.scripting.targets.TargetOther,
                 minTargets = req.effectiveMinCount,
-                maxTargets = req.count
-            )
+                maxTargets = if (req.unlimited) legal.size else req.count
+            ).withNumericEquality(state, req, legal)
         }
 
         // The prompt is shown to the opponent who is making the choice, so the "of an opponent's

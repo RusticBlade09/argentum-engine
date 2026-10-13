@@ -101,10 +101,12 @@ object DependentTargetSelection {
             if (canStopAt(requirements, prefix.size)) return true
             val next = requirements[prefix.size]
             // The multi-target last slot completes with enough legal targets for its minimum.
-            if (prefix.size == requirements.lastIndex) return candidates(prefix).size >= next.effectiveMinCount
+            if (prefix.size == requirements.lastIndex) return com.wingedsheep.engine.mechanics.targeting.NumericTargetEquality
+                .eligible(state, candidates(prefix), next).size >= next.effectiveMinCount
             return candidates(prefix).any { canComplete(prefix + listOf(listOf(it))) }
         }
-        return candidates(chosen).filter { canComplete(chosen + listOf(listOf(it))) }
+        val legal = com.wingedsheep.engine.mechanics.targeting.NumericTargetEquality.eligible(state, candidates(chosen), requirements[chosen.size])
+        return legal.filter { canComplete(chosen + listOf(listOf(it))) }
     }
 
     /**

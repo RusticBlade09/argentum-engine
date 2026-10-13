@@ -1222,13 +1222,14 @@ export function enterPhase(
         ? { sourceCardName: actionInfo.description.replace(/^Cast /, '') }
         : {}
 
-      if (actionInfo.targetRequirements && actionInfo.targetRequirements.length > 1) {
+      if (actionInfo.targetRequirements && actionInfo.targetRequirements.length > 0) {
         const firstReq = actionInfo.targetRequirements[0]!
         const maxTargets = resolveMaxByX(firstReq.maxTargets, firstReq.xConstrainsCount)
         store.startTargeting({
           action,
           validTargets: applyXFilters(firstReq.validTargets, firstReq.xConstrainsManaValue, firstReq.xConstrainsPower, firstReq.xConstrainsManaValueExactly),
           selectedTargets: [],
+          selectionGroups: firstReq.selectionGroups ?? null,
           minTargets: resolveMinByX(firstReq.minTargets, maxTargets, firstReq.xConstrainsCountExactly),
           maxTargets,
           currentRequirementIndex: 0,

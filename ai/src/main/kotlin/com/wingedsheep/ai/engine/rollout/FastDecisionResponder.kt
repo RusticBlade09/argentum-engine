@@ -82,7 +82,12 @@ class FastDecisionResponder(private val intents: IntentCatalog = IntentCatalog.N
             is ChooseTargetsDecision -> TargetsResponse(
                 decision.id,
                 decision.targetRequirements.fold(emptyMap()) { chosen, req ->
-                    val legal = decision.legalTargetsFor(req.index, chosen)
+                    val pool = decision.legalTargetsFor(req.index, chosen)
+                    val legal = req.selectionGroups?.map { group -> group.filter { it in pool } }
+                        ?.filter { it.size >= req.minTargets }
+                        ?.maxByOrNull { group -> group.sortedByDescending { TargetSelection.rank(state, it, playerId, intents) }
+                            .take(req.maxTargets).sumOf { TargetSelection.rank(state, it, playerId, intents) } }
+                        ?: if (req.selectionGroups == null) pool else emptyList()
                     val count = req.maxTargets.coerceAtMost(legal.size).coerceAtLeast(
                         req.minTargets.coerceAtMost(legal.size)
                     )

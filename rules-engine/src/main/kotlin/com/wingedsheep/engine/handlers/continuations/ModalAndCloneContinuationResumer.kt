@@ -1,5 +1,6 @@
 package com.wingedsheep.engine.handlers.continuations
 
+import com.wingedsheep.engine.mechanics.targeting.withNumericEquality
 import com.wingedsheep.engine.state.components.identity.copiableCardComponent
 import com.wingedsheep.engine.core.*
 import com.wingedsheep.engine.handlers.EffectContext
@@ -1717,18 +1718,19 @@ internal fun processChosenModeQueue(
             controllerId = controllerId,
             sourceId = sourceId
         )
-        legalTargetsMap[index] = legalTargets
+        val compatible = com.wingedsheep.engine.mechanics.targeting.NumericTargetEquality.eligible(state, legalTargets, req)
+        legalTargetsMap[index] = compatible
         TargetRequirementInfo(
             index = index,
             description = req.description,
             mustDifferFromEarlier = req is com.wingedsheep.sdk.scripting.targets.TargetOther,
             minTargets = req.effectiveMinCount,
-            maxTargets = req.count
-        )
+            maxTargets = if (req.unlimited) compatible.size else req.count
+        ).withNumericEquality(state, req, compatible)
     }
 
     val allSatisfied = requirementInfos.all { info ->
-        (legalTargetsMap[info.index]?.isNotEmpty() == true) || info.minTargets == 0
+        info.minTargets == 0 || (legalTargetsMap[info.index].orEmpty().size >= info.minTargets && info.maxTargets >= info.minTargets)
     }
     if (!allSatisfied) {
         // Fizzle just this mode; continue with the rest.

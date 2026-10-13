@@ -210,6 +210,12 @@ object DecisionValidators {
             if (selectedIds.size > req.maxTargets) {
                 return "Too many targets for requirement $reqIndex: maximum is ${req.maxTargets}"
             }
+            if (req.sameNumericProperty != null && state != null &&
+                !com.wingedsheep.engine.mechanics.targeting.NumericTargetEquality.isSatisfied(state, selectedIds, req.sameNumericProperty)
+            ) return "Targets for requirement $reqIndex must have equal ${req.sameNumericProperty.description}"
+            if (req.selectionGroups != null && selectedIds.isNotEmpty() &&
+                req.selectionGroups.none { group -> selectedIds.all { it in group } }
+            ) return "Targets for requirement $reqIndex must be selected from one compatible group"
             // "... from a single graveyard" — every chosen card target must share an owner.
             if (req.sameOwner && selectedIds.size > 1 && state != null) {
                 val owners = selectedIds.mapNotNull { id ->

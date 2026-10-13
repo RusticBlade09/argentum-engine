@@ -78,6 +78,7 @@ export function BattlefieldTargetingUI({
       decisionId: decision.id,
       validOptions: [...legalTargets],
       selectedOptions: [...initialSelection],
+      selectionGroups: targetReq?.selectionGroups ?? null,
       minSelections: minTargets,
       maxSelections: maxTargets,
       prompt: targetReq?.description ?? decision.prompt,

@@ -1,5 +1,6 @@
 package com.wingedsheep.engine.event
 
+import com.wingedsheep.engine.mechanics.targeting.withNumericEquality
 import com.wingedsheep.engine.handlers.TargetingSourceType
 import com.wingedsheep.engine.handlers.DependentTargetSelection
 import com.wingedsheep.engine.core.*
@@ -390,7 +391,7 @@ class TriggerProcessor(
                 // resolve at legality time — Fear of Burning Alive's delirium payoff.
                 pipelineContext = targetingContext,
             )
-            allLegalTargets[index] = legalTargets
+            allLegalTargets[index] = com.wingedsheep.engine.mechanics.targeting.NumericTargetEquality.eligible(state, legalTargets, req)
         }
 
         // If no legal targets exist for any required requirement, the ability is not put on the stack
@@ -500,6 +501,10 @@ class TriggerProcessor(
                     else -> req.effectiveMinCount
                 },
                 maxTargets = maxTargets,
+                sameNumericProperty = (req as? com.wingedsheep.sdk.scripting.targets.TargetObject)?.sameNumericProperty,
+                selectionGroups = (req as? com.wingedsheep.sdk.scripting.targets.TargetObject)?.sameNumericProperty?.let {
+                    com.wingedsheep.engine.mechanics.targeting.NumericTargetEquality.groups(state, allLegalTargets[index].orEmpty(), it)
+                },
                 sameOwner = (req as? com.wingedsheep.sdk.scripting.targets.TargetObject)?.sameOwner == true,
                 totalManaValueAtMost = resolveTotalManaValueAtMost(state, trigger, req),
                 differentNames = (req as? com.wingedsheep.sdk.scripting.targets.TargetObject)?.differentNames == true,
@@ -818,16 +823,20 @@ class TriggerProcessor(
 
             val legalTargetsMap = mutableMapOf<Int, List<EntityId>>()
             val requirementInfos = mode.targetRequirements.mapIndexed { index, req ->
-                legalTargetsMap[index] = findModeLegalTargets(state, ability, req)
+                legalTargetsMap[index] = com.wingedsheep.engine.mechanics.targeting.NumericTargetEquality.eligible(
+                    state, findModeLegalTargets(state, ability, req), req)
                 TargetRequirementInfo(
                     index = index,
                     description = req.description,
                     mustDifferFromEarlier = req is com.wingedsheep.sdk.scripting.targets.TargetOther,
                     minTargets = req.effectiveMinCount,
-                    maxTargets = req.count
-                )
+                    maxTargets = if (req.unlimited) legalTargetsMap[index].orEmpty().size else req.count
+                ).withNumericEquality(state, req, legalTargetsMap[index].orEmpty())
             }
 
+            if (requirementInfos.any { it.minTargets > it.maxTargets }) {
+                return ExecutionResult.error(state, "No compatible targets for mode: ${mode.description}")
+            }
             // Auto-select the lone mandatory legal player target instead of prompting (mirrors
             // processTargetedTrigger's single-player-target shortcut).
             val soleReq = mode.targetRequirements.singleOrNull()
@@ -966,7 +975,8 @@ class TriggerProcessor(
         ability: TriggeredAbilityOnStackComponent,
         mode: com.wingedsheep.sdk.scripting.effects.Mode
     ): Boolean = mode.targetRequirements.all { req ->
-        req.effectiveMinCount == 0 || findModeLegalTargets(state, ability, req).isNotEmpty()
+        req.effectiveMinCount == 0 || com.wingedsheep.engine.mechanics.targeting.NumericTargetEquality
+            .eligible(state, findModeLegalTargets(state, ability, req), req).size >= req.effectiveMinCount
     }
 
     /**

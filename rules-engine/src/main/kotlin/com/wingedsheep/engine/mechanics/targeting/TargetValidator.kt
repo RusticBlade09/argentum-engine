@@ -1,5 +1,7 @@
 package com.wingedsheep.engine.mechanics.targeting
 
+import com.wingedsheep.engine.handlers.effects.TargetResolutionUtils.toEntityId
+
 import com.wingedsheep.engine.handlers.SourceTypeTargeting
 import com.wingedsheep.engine.handlers.DynamicAmountEvaluator
 import com.wingedsheep.engine.handlers.EffectContext
@@ -256,6 +258,14 @@ class TargetValidator(
                 }
                 if (controllers.toSet().size > 1) {
                     return "Targets must be controlled by the same player"
+                }
+            }
+
+            val numericProperty = (requirement as? TargetObject)?.sameNumericProperty
+            if (numericProperty != null) {
+                val ids = targetsForReq.map { it.toEntityId() }
+                if (!NumericTargetEquality.isSatisfied(state, ids, numericProperty)) {
+                    return "Targets must have equal ${numericProperty.description}"
                 }
             }
 

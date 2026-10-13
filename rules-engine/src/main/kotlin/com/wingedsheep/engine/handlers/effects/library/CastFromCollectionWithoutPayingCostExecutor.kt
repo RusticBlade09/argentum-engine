@@ -1,5 +1,6 @@
 package com.wingedsheep.engine.handlers.effects.library
 
+import com.wingedsheep.engine.mechanics.targeting.withNumericEquality
 import com.wingedsheep.engine.core.suspendForDecision
 import com.wingedsheep.engine.core.CastSpell
 import com.wingedsheep.engine.core.CastFromCollectionTargetsContinuation
@@ -357,14 +358,15 @@ class CastFromCollectionWithoutPayingCostExecutor(
                     sourceId = cardId,
                     targetingSourceType = TargetingSourceType.SPELL,
                 )
-                legalTargetsMap[index] = legal
+                val compatible = com.wingedsheep.engine.mechanics.targeting.NumericTargetEquality.eligible(state, legal, requirement)
+                legalTargetsMap[index] = compatible
                 TargetRequirementInfo(
                     index = index,
                     description = requirement.description,
                     mustDifferFromEarlier = requirement is com.wingedsheep.sdk.scripting.targets.TargetOther,
                     minTargets = requirement.effectiveMinCount,
-                    maxTargets = requirement.count,
-                )
+                    maxTargets = if (requirement.unlimited) compatible.size else requirement.count,
+                ).withNumericEquality(state, requirement, compatible)
             }
             val mandatoryRequirementHasNoTargets = requirementInfos.any { info ->
                 info.minTargets > 0 && legalTargetsMap[info.index].isNullOrEmpty()

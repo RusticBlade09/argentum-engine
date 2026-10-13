@@ -1,5 +1,7 @@
 package com.wingedsheep.engine.handlers.actions.ability
 
+import com.wingedsheep.engine.mechanics.targeting.withNumericEquality
+
 import com.wingedsheep.engine.core.*
 import com.wingedsheep.engine.handlers.ConditionEvaluator
 import com.wingedsheep.engine.handlers.EffectContext
@@ -145,7 +147,9 @@ internal class ActivationModalChoices(
                 val bounds = counts(state, action, req)
                 TargetRequirementInfo(index = index, description = req.description,
                     minTargets = bounds.min, maxTargets = bounds.max!!.coerceAtMost(maxOf(legal.getValue(index).size, bounds.min)))
+                    .withNumericEquality(state, req, legal.getValue(index))
             }
+            if (infos.any { it.minTargets > it.maxTargets }) return ExecutionResult.error(state, "No compatible targets for mode")
             val name = state.getEntity(action.sourceId)?.get<CardComponent>()?.name
             return state.withPriority(action.playerId).suspendForDecision(
                 question = { id -> ChooseTargetsDecision(id = id, playerId = action.playerId,

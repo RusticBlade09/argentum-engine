@@ -1,3 +1,4 @@
+import { compatibleSelectionPool } from '@/utils/selectionGroups'
 import { useState, useMemo } from 'react'
 import { useGameStore } from '@/store/gameStore.ts'
 import { ZoneType } from '@/types'
@@ -186,6 +187,7 @@ export function GraveyardTargetingUI({
         minSelections={minTargets}
         maxSelections={maxTargets}
         initialSelection={initialSelection}
+        selectionGroups={targetReq?.selectionGroups ?? null}
         responsive={responsive}
         onConfirm={handleConfirm}
         confirmText={isOptionalTarget ? optionalConfirmText : 'Confirm Target'}
@@ -276,6 +278,7 @@ export function GraveyardTargetingUI({
         minSelections={minTargets}
         maxSelections={maxTargets}
         totalManaValueAtMost={targetReq?.totalManaValueAtMost ?? null}
+        selectionGroups={targetReq?.selectionGroups ?? null}
         responsive={responsive}
         onConfirm={handleConfirm}
         onMinimize={() => setMinimized(true)}
@@ -294,6 +297,7 @@ export function GraveyardTargetingUI({
  * Now accepts selectedCards as a prop to persist across tab switches.
  */
 function GraveyardCardSelection({
+  selectionGroups,
   cards,
   selectedCards,
   onSelectedCardsChange,
@@ -315,6 +319,7 @@ function GraveyardCardSelection({
   minSelections: number
   maxSelections: number
   totalManaValueAtMost?: number | null
+  selectionGroups?: readonly (readonly EntityId[])[] | null
   responsive: ResponsiveSizes
   onConfirm: (selectedCards: EntityId[]) => void
   onMinimize: () => void
@@ -371,6 +376,7 @@ function GraveyardCardSelection({
       onSelectedCardsChange(selectedCards.filter((id) => id !== cardId))
       return
     }
+    if (maxSelections > 1 && !compatibleSelectionPool(cards.map((c) => c.id), selectionGroups, selectedCards).includes(cardId)) return
     if (selectedCards.length >= maxSelections) {
       // Single-select slot at its cap: clicking a different card replaces the pick, the same rule
       // the board path uses (toggleDecisionSelection). It also unblocks a mixed
