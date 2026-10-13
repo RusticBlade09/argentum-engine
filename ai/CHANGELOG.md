@@ -28,7 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
-- AI puts shield counters, pumps and protection from triggered abilities and from modal or tiered spells (Proud Pack-Rhino, Restoration Magic) on its own permanents instead of an opponent's
+- #3182 AI puts shield counters, pumps and protection from triggered abilities and from modal or tiered spells (Proud Pack-Rhino, Restoration Magic) on its own permanents instead of an opponent's
 - #3180 Chooses targets for the face being cast — a split half, both fused halves, an Adventure, Room or prepare face — avoiding beneficial enemy targets and harmful friendly targets.
 
 - #3181 Scry and surveil no longer keep a surplus land on top just because this turn's land drop is unspent — a card left in the library is drawn next turn at the earliest
