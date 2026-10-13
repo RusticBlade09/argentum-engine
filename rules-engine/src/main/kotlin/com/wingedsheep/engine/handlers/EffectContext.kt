@@ -281,7 +281,9 @@ data class EffectContext(
      * Creature type, a stolen permanent's controller. Scoped to the resolution on purpose — a card
      * that left the battlefield on some earlier turn is a new object whose current
      * characteristics are the answer. Threaded between instructions like [sacrificedPermanents];
-     * it rides every continuation frame's context, so it survives a mid-resolution pause.
+     * it rides every continuation frame's context and is handed to the frame beneath when a paused
+     * composite, gate branch or loop drains ([com.wingedsheep.engine.handlers.continuations.exposeCollectionsToNextFrame]),
+     * so it survives a mid-resolution pause.
      */
     @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)

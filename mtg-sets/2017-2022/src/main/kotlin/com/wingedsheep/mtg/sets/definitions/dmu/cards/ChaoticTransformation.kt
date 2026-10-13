@@ -13,7 +13,7 @@ import com.wingedsheep.sdk.scripting.targets.EffectTarget
 
 /**
  * Chaotic Transformation
- * {2}{R}
+ * {5}{R}
  * Sorcery
  * Exile up to one target artifact, up to one target creature, up to one target enchantment, up to
  * one target planeswalker, and/or up to one target land. For each permanent exiled this way, its
@@ -22,9 +22,10 @@ import com.wingedsheep.sdk.scripting.targets.EffectTarget
  *
  * - Every chosen target is exiled by one move (ruling: "exiled all at the same time"). That move
  *   records each permanent as it last existed on the battlefield, and the loop's
- *   `IterationEntity` reads that record — so an exiled token still has its types, an animated
- *   land still shares Creature, and a stolen permanent's "controller" is the player who
- *   controlled it, not its owner (CR 608.2h).
+ *   `IterationEntity` reads that record — so an animated land still shares Creature (its card in
+ *   exile is only a Land), and a token is compared by its battlefield types even if it has ceased
+ *   to exist; a stolen permanent's "controller" is the player who controlled it, not its owner
+ *   (CR 608.2h).
  * - Players act in APNAP order (`ForEachPlayer(ActivePlayerFirst)`); each one handles the exiled
  *   permanents they controlled, read by their last-known controller (`youControl()` on a card
  *   that has left the battlefield). A permanent whose exile was replaced isn't "exiled this way",
@@ -37,7 +38,7 @@ import com.wingedsheep.sdk.scripting.targets.EffectTarget
  *   battlefield.
  */
 val ChaoticTransformation = card("Chaotic Transformation") {
-    manaCost = "{2}{R}"
+    manaCost = "{5}{R}"
     colorIdentity = "R"
     typeLine = "Sorcery"
     oracleText = "Exile up to one target artifact, up to one target creature, up to one target " +

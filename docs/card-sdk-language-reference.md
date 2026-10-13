@@ -4838,13 +4838,17 @@ A resolving nonpermanent spell retains its stack instance through serialized eff
   **Value reads after this resolution moved it** (`lkiPolicyFor` = `LIVE_THEN_OWN_MOVE_LKI`): every
   `MoveCollectionEffect` that takes permanents off the battlefield (exile, destroy, bounce,
   sacrifice) publishes their battlefield-exit snapshots into `EffectContext.departedPermanents`,
-  threaded between instructions and carried by every continuation frame, so it survives a pause. A
-  value read of the loop's object — `.sharingCardTypeWith(IterationEntity)` /
-  `.sharingCreatureTypeWith`, `EntityProperty(IterationEntity, …)`, `Player.ControllerOfIterationEntity`
-  — then reads it as it last existed on the battlefield (CR 608.2h), even once a token has ceased to
-  exist. Only *this resolution's* moves count: a loop over graveyard cards that died on an earlier
-  turn visits new objects (CR 400.7) and reads their printed characteristics, and an object the
-  resolution returned to the battlefield is read live.
+  threaded between instructions, carried by every continuation frame, and handed to the frame
+  beneath when a paused composite, gate branch or loop drains, so it survives a pause. A value read
+  of the loop's object — `.sharingCardTypeWith(IterationEntity)` / `.sharingCreatureTypeWith`,
+  `EntityProperty(IterationEntity, …)` — then reads it as it last existed on the battlefield
+  (CR 608.2h), even once a token has ceased to exist. For those characteristic reads only *this
+  resolution's* moves count: a loop over graveyard cards that died on an earlier turn visits new
+  objects (CR 400.7) and reads their printed characteristics, and an object the resolution returned
+  to the battlefield is read live. `Player.ControllerOfIterationEntity` is broader, as every
+  "its controller" read already was: an object off the battlefield answers with the last-known
+  controller its card carries from its latest battlefield exit, and the resolution's own capture
+  stands in only once the object has ceased to exist.
   - **Self-noun rendering (type-aware text).** `EffectTarget.Self.description` is "this creature"
     (most self-referential effects live on creatures). Effects that also apply to *non-creature*
     permanents — `TransformEffect` / `ExileAndReturnTransformedEffect`, `SacrificeTargetEffect`

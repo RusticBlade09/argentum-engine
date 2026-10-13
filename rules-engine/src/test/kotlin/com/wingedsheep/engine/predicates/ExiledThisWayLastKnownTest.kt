@@ -30,6 +30,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 
 /**
  * "For each permanent exiled this way, its controller reveals cards until they reveal a card that
@@ -61,6 +62,28 @@ class ExiledThisWayLastKnownTest : FunSpec({
         }
     }
 
+    /** The same, but the exile sits behind a "you may" — so a prompt pauses between move and loop. */
+    val mayReshape = card("Test May Exile Reshape") {
+        manaCost = "{R}"
+        typeLine = "Sorcery"
+        spell {
+            target(TargetFilter.Permanent)
+            effect = Effects.Pipeline {
+                val chosen = gather(CardSource.ChosenTargets)
+                run(Effects.May(Effects.Pipeline {
+                    move(chosen, CardDestination.ToZone(Zone.EXILE))
+                }))
+                val exiled = filter(chosen, GameObjectFilter.Any.currentlyIn(Zone.EXILE))
+                run(Effects.ForEachInCollection(exiled, Effects.Pipeline {
+                    val (found, _) = gatherUntilMatch(
+                        GameObjectFilter.Any.sharingCardTypeWith(EffectTarget.IterationEntity),
+                    )
+                    move(found, CardDestination.ToZone(Zone.BATTLEFIELD))
+                }))
+            }
+        }
+    }
+
     /** For each land card in your graveyard, reveal until a card sharing a type with it. */
     val graveyardEcho = card("Test Graveyard Echo") {
         manaCost = "{R}"
@@ -79,7 +102,7 @@ class ExiledThisWayLastKnownTest : FunSpec({
     }
 
     fun driver() = GameTestDriver().apply {
-        registerCards(TestCards.all + listOf(reshape, graveyardEcho))
+        registerCards(TestCards.all + listOf(reshape, mayReshape, graveyardEcho))
         initMirrorMatch(Deck.of("Forest" to 40))
         passPriorityUntil(Step.PRECOMBAT_MAIN)
     }
@@ -109,6 +132,26 @@ class ExiledThisWayLastKnownTest : FunSpec({
 
         d.getExile(me) shouldContain factory
         // Printed Land alone would have skipped the Bears for the Forest under it.
+        d.battlefieldOf(me) shouldContain bears
+    }
+
+    test("the departure snapshot survives a prompted may between the exile and the loop") {
+        val d = driver(); val me = d.activePlayer!!
+        val factory = d.putLandOnBattlefield(me, "Mishra's Factory")
+        d.giveColorlessMana(me, 1)
+        d.submit(ActivateAbility(me, factory, TestCards.all.first { it.name == "Mishra's Factory" }.activatedAbilities[1].id))
+        d.bothPass()
+        val bears = d.putCardOnTopOfLibrary(me, "Grizzly Bears")
+
+        val spell = d.putCardInHand(me, "Test May Exile Reshape")
+        d.giveMana(me, Color.RED, 1)
+        d.castSpell(me, spell, listOf(factory)).outcome shouldBe Outcome.Done
+        d.bothPass()
+        d.state.pendingDecision shouldNotBe null // the may paused between the exile and the loop
+        d.submitYesNo(me, true).outcome shouldBe Outcome.Done
+        d.stackSize shouldBe 0
+
+        d.getExile(me) shouldContain factory
         d.battlefieldOf(me) shouldContain bears
     }
 

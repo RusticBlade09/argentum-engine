@@ -613,7 +613,9 @@ class DynamicAmountEvaluator(
                 // self-sacrificing source, or a sacrificed / tapped / chosen cost permanent. When
                 // such a reference resolves off the battlefield, read its captured characteristics
                 // before falling through to base characteristics. [LkiPolicy.LIVE_ONLY] references
-                // (targets, iteration, …) skip this and read the live board. Off the battlefield the
+                // (targets, Amass, …) skip this and read the live board; a loop's object
+                // ([LkiPolicy.LIVE_THEN_OWN_MOVE_LKI]) reads only the capture of this resolution's
+                // own move off the battlefield. Off the battlefield the
                 // projected P/T is null, so the final resolveNumericProperty yields base
                 // characteristics anyway — this replaces the former per-reference
                 // `useProjected = false` branches (Ghitu Fire-Eater, Heart-Piercer Manticore, …).
