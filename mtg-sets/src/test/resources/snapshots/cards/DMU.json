@@ -2321,6 +2321,166 @@
     ]
 }
 
+// Chaotic Transformation
+{
+    "name": "Chaotic Transformation",
+    "manaCost": "{2}{R}",
+    "typeLine": "Sorcery",
+    "oracleText": "Exile up to one target artifact, up to one target creature, up to one target enchantment, up to one target planeswalker, and/or up to one target land. For each permanent exiled this way, its controller reveals cards from the top of their library until they reveal a card that shares a card type with it, puts that card onto the battlefield, then shuffles.",
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "GatherCards",
+                    "source": "ChosenTargets",
+                    "storeAs": "gathered0"
+                },
+                {
+                    "type": "MoveCollection",
+                    "from": "gathered0",
+                    "destination": {
+                        "type": "ToZone",
+                        "zone": "Exile"
+                    }
+                },
+                {
+                    "type": "ForEach",
+                    "space": {
+                        "type": "IterationSpace.Players",
+                        "players": "ActivePlayerFirst"
+                    },
+                    "body": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "GatherCards",
+                                "source": "ChosenTargets",
+                                "storeAs": "gathered2"
+                            },
+                            {
+                                "type": "FilterCollection",
+                                "from": "gathered2",
+                                "filter": {
+                                    "statePredicates": [
+                                        {
+                                            "type": "InZone",
+                                            "zone": "Exile"
+                                        }
+                                    ],
+                                    "controllerPredicate": "ControlledByYou"
+                                },
+                                "storeMatching": "matching3"
+                            },
+                            {
+                                "type": "ForEach",
+                                "space": {
+                                    "type": "IterationSpace.Collection",
+                                    "collection": "matching3"
+                                },
+                                "body": {
+                                    "type": "Composite",
+                                    "effects": [
+                                        {
+                                            "type": "GatherUntilMatch",
+                                            "filter": {
+                                                "cardPredicates": [
+                                                    {
+                                                        "type": "SharesCardTypeWith",
+                                                        "entity": "IterationEntity"
+                                                    }
+                                                ]
+                                            },
+                                            "storeMatch": "matched4",
+                                            "storeRevealed": "revealed4"
+                                        },
+                                        {
+                                            "type": "RevealCollection",
+                                            "from": "revealed4",
+                                            "fromZone": "Library",
+                                            "toZone": "Battlefield"
+                                        },
+                                        {
+                                            "type": "MoveCollection",
+                                            "from": "matched4",
+                                            "destination": {
+                                                "type": "ToZone",
+                                                "zone": "Battlefield"
+                                            }
+                                        },
+                                        "ShuffleLibrary"
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetObject",
+                "optional": true,
+                "filter": {
+                    "baseFilter": "artifact"
+                },
+                "id": "t0"
+            },
+            {
+                "type": "TargetObject",
+                "optional": true,
+                "filter": {
+                    "baseFilter": "creature"
+                },
+                "id": "t1"
+            },
+            {
+                "type": "TargetObject",
+                "optional": true,
+                "filter": {
+                    "baseFilter": "enchantment"
+                },
+                "id": "t2"
+            },
+            {
+                "type": "TargetObject",
+                "optional": true,
+                "filter": {
+                    "baseFilter": "planeswalker"
+                },
+                "id": "t3"
+            },
+            {
+                "type": "TargetObject",
+                "optional": true,
+                "filter": {
+                    "baseFilter": "land"
+                },
+                "id": "t4"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "117",
+        "rarity": "RARE",
+        "artist": "Joseph Meehan",
+        "imageUri": "https://cards.scryfall.io/normal/front/b/d/bdfb44f1-e366-437a-bde3-59bfdb362864.jpg?1783921321",
+        "rulings": [
+            {
+                "date": "2022-09-09",
+                "text": "The target permanents are exiled all at the same time."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "If a player controls multiple permanents that were exiled this way, that player first chooses which target they're considering, then they reveal cards until they reveal a card that shares a type with that permanent as it last existed on the battlefield, then they put that card onto the battlefield and shuffle. They then repeat this process for the remaining targets they controlled."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "RED"
+    ]
+}
+
 // Charismatic Vanguard
 {
     "name": "Charismatic Vanguard",

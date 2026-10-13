@@ -18,4 +18,6 @@ data class GraveyardOrderContinuation(
     val sacrificed: List<EntitySnapshot> = emptyList(),
     /** The spell or ability whose moves these are, so a later owner's prompt names it too. */
     val sourceId: EntityId? = null,
+    /** Permanents the paused move took off the battlefield, for the instructions after it. */
+    val departed: List<EntitySnapshot> = emptyList(),
 ) : AnswerContinuation

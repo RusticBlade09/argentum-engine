@@ -340,8 +340,12 @@ object TargetResolutionUtils {
                 ?.let { controllerOf(state, it) }
             // "its controller", inside a ForEach over entities — the loop's current entity, not the
             // effect's source or its chosen target.
-            Player.ControllerOfIterationEntity -> context.iterationEntityId
-                ?.let { controllerOf(state, it) }
+            // A loop's object this resolution moved off the battlefield answers with the controller
+            // captured as it left (CR 608.2h) even once it has ceased to exist — an exiled token.
+            Player.ControllerOfIterationEntity -> context.iterationEntityId?.let { id ->
+                controllerOf(state, id)
+                    ?: context.departedPermanents.lastOrNull { it.entityId == id }?.controllerId
+            }
             // "its controller" for the permanent a continuous effect is modifying.
             Player.ControllerOfAffectedEntity -> context.affectedEntityId
                 ?.let { controllerOf(state, it) }

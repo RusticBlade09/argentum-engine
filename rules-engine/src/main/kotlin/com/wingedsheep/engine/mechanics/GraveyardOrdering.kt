@@ -33,7 +33,7 @@ object GraveyardOrdering {
         val source = sourceId ?: result.events.lastOrNull { it is ResolvedEvent || it is AbilityResolvedEvent }?.let {
             when (it) { is ResolvedEvent -> it.entityId; is AbilityResolvedEvent -> it.sourceId; else -> null }
         }
-        val paused = ask(result.state, groups, events, result.updatedCollections, result.updatedStoredNumbers, result.updatedChosenValues, result.updatedSubtypeGroups, result.updatedSacrificedPermanents, source)
+        val paused = ask(result.state, groups, events, result.updatedCollections, result.updatedStoredNumbers, result.updatedChosenValues, result.updatedSubtypeGroups, result.updatedSacrificedPermanents, source, result.updatedDepartedPermanents)
         return result.copy(state = paused.state, events = paused.events, outcome = paused.outcome)
     }
 
@@ -54,7 +54,8 @@ object GraveyardOrdering {
             chosenValues: Map<String, String> = emptyMap(),
             subtypeGroups: Map<String, List<Set<String>>> = emptyMap(),
             sacrificed: List<com.wingedsheep.engine.state.components.stack.EntitySnapshot> = emptyList(),
-            sourceId: EntityId? = null): ExecutionResult {
+            sourceId: EntityId? = null,
+            departed: List<com.wingedsheep.engine.state.components.stack.EntitySnapshot> = emptyList()): ExecutionResult {
         if (groups.isEmpty()) return ExecutionResult.success(state, events)
         val active = state.turnOrder.indexOf(state.activePlayerId).coerceAtLeast(0)
         val order = state.turnOrder.drop(active) + state.turnOrder.take(active)
@@ -71,7 +72,7 @@ object GraveyardOrdering {
                     SearchCardInfo(name = c?.name ?: "Card", manaCost = c?.manaCost?.toString() ?: "",
                         typeLine = c?.typeLine?.toString() ?: "", imageUri = c?.imageUri)
                 }, orderingTitle = "Order Graveyard", firstLabel = "TOP OF GRAVEYARD", lastLabel = "BOTTOM OF NEW CARDS") },
-            GraveyardOrderContinuation(owner, cards, groups - owner, events, collections, numbers, chosenValues, subtypeGroups, sacrificed, sourceId)
+            GraveyardOrderContinuation(owner, cards, groups - owner, events, collections, numbers, chosenValues, subtypeGroups, sacrificed, sourceId, departed)
         )
     }
 
