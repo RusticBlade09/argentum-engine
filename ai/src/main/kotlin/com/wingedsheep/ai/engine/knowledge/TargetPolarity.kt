@@ -43,6 +43,8 @@ import com.wingedsheep.sdk.scripting.effects.GrantHexproofFromChosenColorEffect
 import com.wingedsheep.sdk.scripting.effects.GrantKeywordEffect
 import com.wingedsheep.sdk.scripting.effects.GrantProtectionFromChosenColorEffect
 import com.wingedsheep.sdk.scripting.effects.MarkExileOnDeathEffect
+import com.wingedsheep.sdk.scripting.effects.ModalEffect
+import com.wingedsheep.sdk.scripting.effects.Mode
 import com.wingedsheep.sdk.scripting.effects.ModifyStatsEffect
 import com.wingedsheep.sdk.scripting.effects.MoveToZoneEffect
 import com.wingedsheep.sdk.scripting.effects.MoveUntilSourceLeavesEffect
@@ -130,6 +132,7 @@ object TargetPolarityAnalyzer {
 
     private val spellCache = ConcurrentHashMap<Pair<String, Boolean>, List<TargetPolarity>>()
     private val abilityCache = ConcurrentHashMap<Triple<String, String, Boolean>, List<TargetPolarity>>()
+    private val modeCache = ConcurrentHashMap<Triple<String, List<Int>, Boolean>, List<TargetPolarity>>()
 
     /**
      * Polarity of each target slot of [card] cast as a spell, in requirement order — or an empty
@@ -148,6 +151,27 @@ object TargetPolarityAnalyzer {
                 else -> emptyList()
             }
         }
+
+    /**
+     * Polarity of each target slot of the modes [modeIndices] of [card]'s modal spell — a
+     * choose-one spell is offered once per mode, and a tiered spell is a choose-one whose modes
+     * carry costs — in the order the chosen modes' requirements are surfaced. Empty when the card
+     * is not a plain modal spell (its targets are not the modes'), or an index is out of range.
+     */
+    fun forSpellModes(
+        card: CardDefinition,
+        modeIndices: List<Int>,
+        definitions: CardLookup = NO_DEFINITIONS,
+    ): List<TargetPolarity> = modeCache.getOrPut(Triple(card.name, modeIndices, definitions !== NO_DEFINITIONS)) {
+        if (card.cardFaces.isNotEmpty() || card.script.targetRequirements.isNotEmpty()) return@getOrPut emptyList()
+        val modal = card.script.spellEffect as? ModalEffect ?: return@getOrPut emptyList()
+        val modes = modeIndices.map { modal.modes.getOrNull(it) ?: return@getOrPut emptyList() }
+        modes.flatMap { forMode(it, definitions) }
+    }
+
+    /** Polarity of each target slot of one [mode] of a modal spell or triggered ability. */
+    fun forMode(mode: Mode, definitions: CardLookup = NO_DEFINITIONS): List<TargetPolarity> =
+        forRequirements(mode.effect, mode.targetRequirements, definitions)
 
     /** Polarity of each target slot of the activated [ability] printed on [card]. */
     fun forAbility(
@@ -276,11 +300,33 @@ object TargetPolarityAnalyzer {
         }
     }
 
+    /**
+     * A counter kind's polarity for the permanent it lands on. Stat counters read by their sign,
+     * a shield or keyword counter is a gift, and a stun or finality counter is a curse. Every
+     * other kind — charge, time, loyalty, the bespoke ones — means whatever its card makes of it,
+     * and stays unread.
+     */
     private fun counterPolarity(type: CounterType): TargetPolarity? = when (type) {
-        CounterType.PLUS_ONE_PLUS_ONE -> TargetPolarity.BENEFICIAL
-        CounterType.MINUS_ONE_MINUS_ONE -> TargetPolarity.HARMFUL
+        in BENEFICIAL_COUNTERS -> TargetPolarity.BENEFICIAL
+        in HARMFUL_COUNTERS -> TargetPolarity.HARMFUL
         else -> null
     }
+
+    private val BENEFICIAL_COUNTERS = setOf(
+        CounterType.PLUS_ONE_PLUS_ONE, CounterType.PLUS_ONE_PLUS_ZERO, CounterType.PLUS_ZERO_PLUS_ONE,
+        CounterType.PLUS_TWO_PLUS_ZERO, CounterType.PLUS_ZERO_PLUS_TWO, CounterType.PLUS_ONE_PLUS_TWO,
+        CounterType.PLUS_TWO_PLUS_TWO,
+        CounterType.SHIELD,
+        CounterType.FLYING, CounterType.FIRST_STRIKE, CounterType.DOUBLE_STRIKE, CounterType.VIGILANCE,
+        CounterType.LIFELINK, CounterType.INDESTRUCTIBLE, CounterType.DEATHTOUCH, CounterType.TRAMPLE,
+        CounterType.HEXPROOF, CounterType.REACH, CounterType.HASTE, CounterType.MENACE, CounterType.SHADOW,
+    )
+
+    private val HARMFUL_COUNTERS = setOf(
+        CounterType.MINUS_ONE_MINUS_ONE, CounterType.MINUS_ONE_MINUS_ZERO, CounterType.MINUS_ZERO_MINUS_ONE,
+        CounterType.MINUS_TWO_MINUS_TWO,
+        CounterType.STUN, CounterType.FINALITY,
+    )
 
     /**
      * A keyword or ability flag's polarity. Evasion, combat and protective keywords are good for

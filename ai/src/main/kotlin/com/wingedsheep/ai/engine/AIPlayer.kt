@@ -299,6 +299,7 @@ class AIPlayer(
                 holdUnusablePumps = profile.holdUnusablePumps,
                 combatAdvisor = combatAdvisor.takeIf { profile.pumpsNeedAPlannedAttack },
                 surplusAwareLands = profile.surplusAwareLands,
+                targetPolarityFromEffect = profile.targetPolarityFromEffect,
             )
 
             // Wire up the decision resolver so simulations can resolve non-trivial

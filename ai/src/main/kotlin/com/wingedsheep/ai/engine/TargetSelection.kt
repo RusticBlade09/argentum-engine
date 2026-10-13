@@ -8,6 +8,10 @@ import com.wingedsheep.engine.state.components.identity.ControllerComponent
 import com.wingedsheep.engine.core.ActivateAbility
 import com.wingedsheep.engine.core.AlternativeCostType
 import com.wingedsheep.engine.core.CastSpell
+import com.wingedsheep.engine.core.ChooseTargetsDecision
+import com.wingedsheep.engine.core.Suspension
+import com.wingedsheep.engine.core.TriggerModalTargetSelectionContinuation
+import com.wingedsheep.engine.core.TriggeredAbilityContinuation
 import com.wingedsheep.engine.core.GameAction
 import com.wingedsheep.engine.legalactions.LegalAction
 import com.wingedsheep.engine.legalactions.ModalLegalEnumeration
@@ -137,16 +141,24 @@ object TargetSelection {
 
     /**
      * [TargetPolarity] of each of [action]'s target slots, in [targetInfosFor] order — or empty
-     * when it cannot be read: no card knowledge, a modal spell (each mode has its own slots), a
-     * face-down cast, or a definition whose requirements do not line up one-to-one with the slots
+     * when it cannot be read: no card knowledge, a choose-N modal spell whose modes are not yet
+     * chosen, a face-down cast, or a definition whose requirements do not line up one-to-one with the slots
      * the enumerator offered. Empty means UNKNOWN everywhere, never "no targets".
      */
     fun polarities(state: GameState, action: LegalAction, intents: IntentCatalog): List<TargetPolarity> {
         if (!intents.isEnabled || action.modalEnumeration != null) return emptyList()
         val read = when (val base = action.action) {
             is CastSpell -> if (base.castFaceDown) emptyList()
-                else state.getEntity(base.cardId)?.get<CardComponent>()?.name
-                    ?.let { intents.spellTargetPolarities(it, castsTransformed(state, base), base.faceIndex, base.castFused) }.orEmpty()
+                else state.getEntity(base.cardId)?.get<CardComponent>()?.name?.let { name ->
+                    val transformed = castsTransformed(state, base)
+                    // A choose-one modal (or tiered) spell is offered once per mode, with that
+                    // mode pre-chosen: its slots are the mode's, and the card has none of its own.
+                    if (base.chosenModes.isNotEmpty() && base.faceIndex == null && !base.castFused) {
+                        intents.spellModeTargetPolarities(name, base.chosenModes, transformed)
+                    } else {
+                        intents.spellTargetPolarities(name, transformed, base.faceIndex, base.castFused)
+                    }
+                }.orEmpty()
             is ActivateAbility -> state.getEntity(base.sourceId)?.get<CardComponent>()?.name
                 ?.let { intents.abilityTargetPolarities(it, base.abilityId) }.orEmpty()
             else -> emptyList()
@@ -223,6 +235,51 @@ object TargetSelection {
             TargetPolarity.UNKNOWN -> false
         }
     }
+
+    /**
+     * [TargetPolarity] of each requirement of [decision], indexed by
+     * [com.wingedsheep.engine.core.TargetRequirementInfo.index] — read off the continuation that
+     * asked it, when that continuation carries the effect the targets are for: a triggered ability
+     * being put on the stack ([TriggeredAbilityContinuation]), or one mode of a modal triggered
+     * ability ([TriggerModalTargetSelectionContinuation] — Proud Pack-Rhino's "put a shield counter
+     * on target permanent"). Empty — UNKNOWN everywhere — for any other question, and for a
+     * trigger whose dependent targets are asked one slot at a time.
+     */
+    fun decisionPolarities(
+        state: GameState,
+        decision: ChooseTargetsDecision,
+        intents: IntentCatalog,
+    ): Map<Int, TargetPolarity> {
+        if (!intents.isEnabled) return emptyMap()
+        val suspension = state.peekContinuation() as? Suspension ?: return emptyMap()
+        if (suspension.question.id != decision.id) return emptyMap()
+        val read = when (val answer = suspension.answer) {
+            is TriggeredAbilityContinuation ->
+                if (answer.sequentialTargets != null) emptyList()
+                else intents.effectTargetPolarities(answer.effect, answer.targetRequirements)
+            is TriggerModalTargetSelectionContinuation -> {
+                val mode = answer.chosenModeIndices.getOrNull(answer.currentOrdinal)
+                    ?.let(answer.modes::getOrNull)
+                if (mode == null) emptyList()
+                else intents.effectTargetPolarities(mode.effect, mode.targetRequirements)
+            }
+            else -> emptyList()
+        }
+        return decision.targetRequirements.mapNotNull { req ->
+            read.getOrNull(req.index)?.let { req.index to it }
+        }.toMap()
+    }
+
+    /**
+     * Whether [entityId] sits on our side of the table for [playerId] — the side a
+     * [TargetPolarity.BENEFICIAL] slot wants. A teammate's permanent is ours (CR 810).
+     */
+    fun isOurs(state: GameState, entityId: EntityId, playerId: EntityId): Boolean =
+        sideOf(state, entityId, playerId) == Side.OURS
+
+    /** Whether [entityId] sits on an opponent's side for [playerId]. */
+    fun isTheirs(state: GameState, entityId: EntityId, playerId: EntityId): Boolean =
+        sideOf(state, entityId, playerId) == Side.THEIRS
 
     private enum class Side { OURS, THEIRS, NEITHER }
 

@@ -11,6 +11,7 @@ import com.wingedsheep.ai.engine.evaluation.CardAdvantage
 import com.wingedsheep.ai.engine.knowledge.ExpiringGrantWindow
 import com.wingedsheep.ai.engine.knowledge.GraveyardSynergy
 import com.wingedsheep.ai.engine.knowledge.IntentCatalog
+import com.wingedsheep.ai.engine.knowledge.TargetPolarity
 import com.wingedsheep.engine.core.*
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.battlefield.CountersComponent
@@ -107,6 +108,13 @@ class DecisionResponder(
     private val surplusAwareLands: Boolean = false,
     /** Secret commitments are chosen independently of other players' unrevealed answers. */
     private val secretChoiceRandom: Random = Random.Default,
+    /**
+     * [AiProfile.targetPolarityFromEffect]: a target slot the ability's effect reads as
+     * [TargetPolarity.BENEFICIAL] — a shield counter, a pump, an untap — draws from our own side
+     * whenever our side has a legal target, and ties break toward our most valuable permanent
+     * instead of toward the best *removal* target. Off is the historical removal-oriented ranking.
+     */
+    private val targetPolarityFromEffect: Boolean = false,
 ) {
     private val priors: ChoicePriors? = if (informedChoices) ChoicePriors(simulator.cardRegistry) else null
 
@@ -221,6 +229,17 @@ class DecisionResponder(
         budget: DecisionBudget,
     ): DecisionResponse {
         val maxCandidates = budget.allowances.targetCandidates
+        val polarities = if (targetPolarityFromEffect) {
+            TargetSelection.decisionPolarities(state, decision, intents)
+        } else {
+            emptyMap()
+        }
+        fun heuristicFor(req: TargetRequirementInfo): (EntityId) -> Double =
+            if (polarities[req.index] == TargetPolarity.BENEFICIAL) {
+                { id -> beneficialTargetHeuristic(state, id, playerId) }
+            } else {
+                { id -> targetHeuristic(state, id, playerId) }
+            }
         if (decision.targetRequirements.size == 1) {
             val req = decision.targetRequirements.first()
             val equalityGroups = req.selectionGroups
@@ -238,20 +257,23 @@ class DecisionResponder(
                 } ?: emptyList()
                 return TargetsResponse(decision.id, mapOf(req.index to best))
             }
-            val targets = decision.legalTargets[req.index] ?: return cancelOrFirst(decision)
-            if (targets.isEmpty()) return cancelOrFirst(decision)
+            val legal = decision.legalTargets[req.index] ?: return cancelOrFirst(decision)
+            if (legal.isEmpty()) return cancelOrFirst(decision)
+            val targets = polarityPool(state, legal, playerId, polarities[req.index])
+            val heuristic = heuristicFor(req)
 
             // For small target pools, simulate each; for large pools, use heuristics then simulate top candidates
             val candidates = if (targets.size <= maxCandidates) {
                 targets
             } else {
-                targets.sortedByDescending { targetHeuristic(state, it, playerId) }.take(maxCandidates)
+                targets.sortedByDescending(heuristic).take(maxCandidates)
             }
 
             val optional = req.minTargets == 0
             val best = pickBestBySimulation(
                 state, candidates, playerId,
                 reject = { optional && strandsALand(state, it.state, playerId) },
+                heuristic = heuristic,
             ) { target ->
                 TargetsResponse(decision.id, mapOf(req.index to listOf(target)))
             }
@@ -298,7 +320,8 @@ class DecisionResponder(
         fun probe(index: Int, picks: List<EntityId>) =
             TargetsResponse(decision.id, decision.repairSlotsAfter(index, selected + (index to picks)))
         for (req in decision.targetRequirements) {
-            val targets = decision.legalTargetsFor(req.index, selected)
+            val targets = polarityPool(state, decision.legalTargetsFor(req.index, selected), playerId, polarities[req.index])
+            val heuristic = heuristicFor(req)
             val groups = req.selectionGroups
             val answer = if (groups != null) {
                 val answers = groups.flatMap { group ->
@@ -316,6 +339,7 @@ class DecisionResponder(
                 val best = pickBestBySimulation(
                     state, targets.take(maxCandidates), playerId,
                     reject = { req.minTargets == 0 && strandsALand(state, it.state, playerId) },
+                    heuristic = heuristic,
                 ) { target ->
                     probe(req.index, listOf(target))
                 }
@@ -378,6 +402,47 @@ class DecisionResponder(
             score = nextScore
         }
         return picks
+    }
+
+    /**
+     * The legal targets a slot of [polarity] should draw from: for a [TargetPolarity.BENEFICIAL]
+     * slot, our own side when it has any legal target, else anything but an opponent's, else
+     * everything (a mandatory slot still needs an answer). Every other polarity keeps [legal].
+     *
+     * A filter rather than a tie-break because the simulation rarely separates the sides: a
+     * triggered ability's target is scored with the ability still on the stack, so a shield counter
+     * on our creature and on theirs evaluate the same, and the removal-oriented tie-break then
+     * hands it to them.
+     */
+    private fun polarityPool(
+        state: GameState,
+        legal: List<EntityId>,
+        playerId: EntityId,
+        polarity: TargetPolarity?,
+    ): List<EntityId> {
+        if (polarity != TargetPolarity.BENEFICIAL) return legal
+        return legal.filter { TargetSelection.isOurs(state, it, playerId) }
+            .ifEmpty { legal.filterNot { TargetSelection.isTheirs(state, it, playerId) } }
+            .ifEmpty { legal }
+    }
+
+    /**
+     * [targetHeuristic]'s mirror for a [TargetPolarity.BENEFICIAL] slot: our side first, our most
+     * valuable creature ahead of a lesser one, an opponent's permanent last.
+     */
+    private fun beneficialTargetHeuristic(state: GameState, targetId: EntityId, playerId: EntityId): Double {
+        val side = when {
+            TargetSelection.isOurs(state, targetId, playerId) -> 10.0
+            TargetSelection.isTheirs(state, targetId, playerId) -> -10.0
+            else -> 0.0
+        }
+        val projected = state.projectedState
+        val value = if (projected.isCreature(targetId)) {
+            (projected.getPower(targetId) ?: 0) + (projected.getToughness(targetId) ?: 0).toDouble()
+        } else {
+            0.0
+        }
+        return side + if (side < 0) -value else value
     }
 
     /** Heuristic for pre-ranking targets before simulation. Higher = better target. */
@@ -1385,6 +1450,8 @@ class DecisionResponder(
         playerId: EntityId,
         /** A candidate whose result this accepts ranks last, whatever it scores. */
         reject: (SimulationResult) -> Boolean = { false },
+        /** The last tie-break between equally scored candidates. */
+        heuristic: (EntityId) -> Double = { targetHeuristic(state, it, playerId) },
         buildResponse: (EntityId) -> DecisionResponse
     ): EntityId {
         val scored = candidates.map { candidate ->
@@ -1400,7 +1467,7 @@ class DecisionResponder(
         return tied.maxWith(
             compareBy<Triple<EntityId, SimulationResult, Double>>(
                 { libraryAndGraveyardPreference(state, it.second.state, playerId) },
-                { targetHeuristic(state, it.first, playerId) },
+                { heuristic(it.first) },
             )
         ).first
     }

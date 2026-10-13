@@ -14,6 +14,7 @@ import com.wingedsheep.sdk.scripting.AbilityCost
 import com.wingedsheep.sdk.scripting.AbilityId
 import com.wingedsheep.sdk.scripting.ActivatedAbility
 import com.wingedsheep.sdk.scripting.effects.Effect
+import com.wingedsheep.sdk.scripting.targets.TargetRequirement
 
 /**
  * Card-name → [CardIntent] lookup, and the switch that turns Phase 6 on.
@@ -182,6 +183,31 @@ class IntentCatalog private constructor(private val registry: CardRegistry?) {
             else faceIndex?.let { printed.cardFaces.getOrNull(it)?.let { face -> printed.copy(name = face.name, script = face.script, cardFaces = emptyList()) } } ?: printed
         return TargetPolarityAnalyzer.forSpell(definition, ::tokenDefinition)
     }
+
+    /**
+     * [TargetPolarity] of each target slot of the modes [modeIndices] of the modal spell called
+     * [cardName] — a choose-one spell is offered once per mode, so its slots are the chosen
+     * mode's, not the card's (which has none). Empty under the same conditions as
+     * [spellTargetPolarities], or when the card is not a plain modal spell.
+     */
+    fun spellModeTargetPolarities(
+        cardName: String,
+        modeIndices: List<Int>,
+        transformed: Boolean = false,
+    ): List<TargetPolarity> {
+        val printed = registry?.getCard(cardName) ?: return emptyList()
+        val definition = if (transformed) printed.backFace ?: return emptyList() else printed
+        return TargetPolarityAnalyzer.forSpellModes(definition, modeIndices, ::tokenDefinition)
+    }
+
+    /**
+     * [TargetPolarity] of each of [requirements], read off [effect] — a triggered ability being put
+     * on the stack, whose effect and requirements travel on its continuation rather than on a card
+     * the catalog can look up. Empty when the catalog is off.
+     */
+    fun effectTargetPolarities(effect: Effect, requirements: List<TargetRequirement>): List<TargetPolarity> =
+        if (!isEnabled) emptyList()
+        else TargetPolarityAnalyzer.forRequirements(effect, requirements, ::tokenDefinition)
 
     /**
      * [TargetPolarity] of each target slot of the printed activated ability [abilityId] on the card

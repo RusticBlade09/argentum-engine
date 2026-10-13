@@ -30,6 +30,13 @@ import com.wingedsheep.mtg.sets.definitions.vow.cards.MischievousCatgeist
 import com.wingedsheep.mtg.sets.definitions.rav.cards.StrandsOfUndeath
 import com.wingedsheep.mtg.sets.definitions.woe.cards.DiminisherWitch
 import com.wingedsheep.mtg.sets.definitions.woe.cards.EmberethVeteran
+import com.wingedsheep.mtg.sets.definitions.fin.cards.RestorationMagic
+import com.wingedsheep.mtg.sets.definitions.mh3.cards.ProudPackRhino
+import com.wingedsheep.engine.core.ChooseOptionDecision
+import com.wingedsheep.engine.core.ChooseTargetsDecision
+import com.wingedsheep.engine.core.OptionChosenResponse
+import com.wingedsheep.engine.core.TargetsResponse
+import com.wingedsheep.sdk.scripting.effects.ModalEffect
 import com.wingedsheep.mtg.sets.tokens.PredefinedTokens
 import com.wingedsheep.engine.state.components.battlefield.AttachedToComponent
 import com.wingedsheep.engine.state.components.battlefield.AttachmentsComponent
@@ -55,6 +62,7 @@ class TargetPolarityAiTest : FunSpec({
         GiantGrowth, Unsummon, Pacifism, BlatantThievery, DaruHealer, GustcloakHarrier, Sandskin,
         GloriousAnthem, MischievousCatgeist, EmberethVeteran, StrandsOfUndeath, DiminisherWitch,
         PredefinedTokens.YoungHeroRole, PredefinedTokens.CursedRole,
+        ProudPackRhino, RestorationMagic,
     )
     val registry = CardRegistry().apply { register(cards) }
 
@@ -109,6 +117,17 @@ class TargetPolarityAiTest : FunSpec({
             // Without the token's definition the slot stays unread rather than guessed.
             TargetPolarityAnalyzer.forRequirements(veteran.effect, veteran.targetRequirements) shouldBe
                 listOf(TargetPolarity.UNKNOWN)
+        }
+        test("a shield counter is a gift, read off the mode that places it") {
+            val modal = ProudPackRhino.script.triggeredAbilities.single().effect as ModalEffect
+            TargetPolarityAnalyzer.forMode(modal.modes[0]) shouldBe listOf(TargetPolarity.BENEFICIAL)
+        }
+        test("a tiered spell's slots are its chosen tier's") {
+            // Cure and Cura: "target permanent gains hexproof and indestructible" (Cura adds 3 life).
+            TargetPolarityAnalyzer.forSpellModes(RestorationMagic, listOf(0)) shouldBe listOf(TargetPolarity.BENEFICIAL)
+            TargetPolarityAnalyzer.forSpellModes(RestorationMagic, listOf(1)) shouldBe listOf(TargetPolarity.BENEFICIAL)
+            // Curaga targets nothing.
+            TargetPolarityAnalyzer.forSpellModes(RestorationMagic, listOf(2)) shouldBe emptyList()
         }
         test("an Aura whose own ability regenerates the enchanted creature is a gift") {
             TargetPolarityAnalyzer.forSpell(StrandsOfUndeath) shouldBe listOf(TargetPolarity.BENEFICIAL)
@@ -295,5 +314,53 @@ class TargetPolarityAiTest : FunSpec({
 
         val onOurs = enchant(d.putCreatureOnBattlefield(d.player1, "Grizzly Bears"))
         TargetSelection.aimsOnlyAtTheWrongSide(d.state, onOurs, d.player1, intents) shouldBe false
+    }
+
+    // 4p engine-vs-engine log: Proud Pack-Rhino's ETB shield counter went on an opponent's
+    // creature three times. The target is chosen as the trigger goes on the stack, so the
+    // simulation cannot tell the sides apart and the removal-oriented tie-break chose theirs.
+    test("a triggered shield counter goes on our own permanent, not theirs") {
+        fun controllerIsUs(profile: AiProfile): Boolean {
+            val d = driver()
+            d.putCreatureOnBattlefield(d.player1, "Grizzly Bears")
+            d.putCreatureOnBattlefield(d.player2, "Gustcloak Harrier")
+            lands(d, d.player1, "Plains" to 3)
+            val rhino = d.putCardInHand(d.player1, "Proud Pack-Rhino")
+            d.castSpell(d.player1, rhino)
+            d.bothPass()
+            val modes = d.pendingDecision.shouldBeInstanceOf<ChooseOptionDecision>()
+            d.submitDecision(d.player1, OptionChosenResponse(modes.id, 0))
+            val decision = d.pendingDecision.shouldBeInstanceOf<ChooseTargetsDecision>()
+            val response = AIPlayer.create(registry, d.player1, profile).respondToDecision(d.state, decision)
+            val target = response.shouldBeInstanceOf<TargetsResponse>().selectedTargets.values.flatten().single()
+            return d.state.projectedState.getController(target) == d.player1
+        }
+
+        controllerIsUs(live) shouldBe false
+        controllerIsUs(fixed) shouldBe true
+    }
+
+    // 4p engine-vs-engine log: Restoration Magic cast at its Cura tier on an opponent's Plains,
+    // just for the 3 life. A choose-one spell is offered once per mode, and the card itself has
+    // no target requirements — its slots are the chosen tier's.
+    test("a tiered protection spell targets our own permanent, not theirs") {
+        fun aimedAtUs(profile: AiProfile): Boolean {
+            val d = driver()
+            lands(d, d.player1, "Plains" to 2)
+            lands(d, d.player2, "Plains" to 2)
+            val magic = d.putCardInHand(d.player1, "Restoration Magic")
+            val cura = d.legalActions(d.player1).single {
+                val cast = it.action as? CastSpell
+                cast?.cardId == magic && cast.chosenModes == listOf(1)
+            }
+            TargetSelection.polarities(d.state, cura, IntentCatalog.of(registry)) shouldBe
+                listOf(TargetPolarity.BENEFICIAL)
+            val chosen = choose(profile, d, listOf(cura)).action.shouldBeInstanceOf<CastSpell>()
+            val target = (chosen.targets.single() as ChosenTarget.Permanent).entityId
+            return d.state.projectedState.getController(target) == d.player1
+        }
+
+        aimedAtUs(live) shouldBe false
+        aimedAtUs(fixed) shouldBe true
     }
 })
