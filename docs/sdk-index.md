@@ -1108,6 +1108,7 @@ Families:
 - `EntityNumericProperty.ColoredManaSymbolCount(colors: List<Color>)` — The number of mana symbols of colors in **this one entity's** printed mana cost — `{1}{U}{U}` counts 2 blue, `{U/R}{R}` counts 1 blue.
 - `EntityNumericProperty.CounterCount(counterType: CounterType?)` — The number of counterType counters on the entity — of every kind when `null`.
 - `EntityNumericProperty.DamageDealtThisTurn` — Actual damage dealt by this object this turn, after prevention and replacement effects.
+- `EntityNumericProperty.EnlistmentsThisCombat` — Paid enlist instances for this rules object during the current combat.
 - `EntityNumericProperty.ExcessMarkedDamage` — The excess damage (CR 120.4a) currently marked on this entity: `max(0, marked − toughness)`, read from post-damage state.
 - `EntityNumericProperty.KeywordValue(keyword: Keyword)` — The total N across this entity's instances of a numeric keyword ("bushido N", "toxic N") — Takeno, Samurai General's "for each point of bushido it has".
 - `EntityNumericProperty.ManaSpent` — Total mana actually paid from the pool to cast a spell on the stack.

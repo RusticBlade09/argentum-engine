@@ -592,6 +592,18 @@ class DynamicAmountEvaluator(
             // Composable entity property — replaces SourcePower, TargetPower, CountersOnSelf, etc.
             is DynamicAmount.EntityProperty -> {
                 val entityId = TargetResolutionUtils.resolveEntity(amount.entity, context, state)
+                if (amount.numericProperty == EntityNumericProperty.EnlistmentsThisCombat) {
+                    val reference = when (amount.entity) {
+                        EffectTarget.Self -> if (context.objectReferences.captured) context.objectReferences.origin
+                            else entityId?.let(state::objectRef)
+                        EffectTarget.TriggeringEntity -> if (context.objectReferences.captured) context.objectReferences.triggering
+                            else context.triggerContext?.triggeringObject ?: entityId?.let(state::objectRef)
+                        EffectTarget.IterationEntity -> context.objectReferences.iteration?.let { it.objectRef }
+                            ?: if (context.objectReferences.iteration != null) null else entityId?.let(state::objectRef)
+                        else -> entityId?.let { context.lkiSnapshotFor(amount.entity, it)?.objectRef ?: state.objectRef(it) }
+                    }
+                    return if (reference == null) 0 else state.enlistmentsThisCombat.count { it == reference }
+                }
                 // Enchanted-creature power reads use last-known information when the source aura
                 // has detached: the enchanted creature (and the aura) can leave the battlefield
                 // before the ability resolves — e.g. removed in response to the aura's ETB
@@ -1606,6 +1618,9 @@ class DynamicAmountEvaluator(
         explicitProjected: ProjectedState? = null
     ): Int {
         return when (property) {
+            is EntityNumericProperty.EnlistmentsThisCombat ->
+                state.objectRef(entityId)?.let { ref -> state.enlistmentsThisCombat.count { it == ref } } ?: 0
+
             is EntityNumericProperty.Power ->
                 resolvePowerOrToughness(state, entityId, isPower = true, context, useProjected, explicitProjected)
 

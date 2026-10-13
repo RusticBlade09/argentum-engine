@@ -14559,6 +14559,13 @@ read is available to other snapshot-backed entity references once their captured
   (`ManaCost.coloredSymbolCount`), so they agree symbol-for-symbol and differ only in scope.
   Being `TriggeringEntity`-scoped, it is rejected by `SetBaseStatsEffect(reevaluateContinuously = true)`
   like every other context-scoped amount; read off `EffectTarget.Self` it is projector-safe.
+- `DynamicAmounts.enlistmentsThisCombat(entity)` — `EntityNumericProperty.EnlistmentsThisCombat`
+  through the existing `DynamicAmount.EntityProperty`. Counts paid enlist instances for the named
+  rules object in the current combat; repeated instances count separately. Compose a numeric comparison
+  with `Triggers.a(GameObjectFilter.Creature.youControl()).attacks()` as Aradesh's intervening condition.
+  History is recorded before attack triggers are detected, survives removal from combat and
+  departure when read through a captured source/triggering reference, and clears when combat ends.
+  A returned permanent is a new object and starts at zero. No new enlist-event observer is required.
 - `DynamicAmount.EntityProperty(entity, EntityNumericProperty.DamageDealtThisTurn)` — actual damage
   dealt by a battlefield permanent or resolving spell this turn, including combat and noncombat
   damage to any recipient. The tally is bound to the source’s object identity. Prevention

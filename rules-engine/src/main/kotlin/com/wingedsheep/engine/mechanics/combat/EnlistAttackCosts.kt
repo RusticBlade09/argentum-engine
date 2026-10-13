@@ -50,7 +50,9 @@ internal object EnlistAttackCosts {
             val attackerName = nameVisibleToAll(state, attacker, state.getEntity(attacker)?.get<CardComponent>()?.name ?: "Creature")
             val enlistedName = nameVisibleToAll(state, enlisted, state.getEntity(enlisted)?.get<CardComponent>()?.name ?: "Creature")
             val (tapped, tapEvents) = tap(next, enlisted, tappedById = controller)
-            next = tapped
+            val attackerObject = next.objectRef(attacker)
+                ?: return ExecutionResult.error(state, "Enlisting creature has no object identity")
+            next = tapped.copy(enlistmentsThisCombat = tapped.enlistmentsThisCombat + attackerObject)
             events.addAll(tapEvents)
             events.add(EnlistedEvent(attacker, attackerName, enlisted, enlistedName, controller))
             events.add(ReflexiveAbilityTriggeredEvent(

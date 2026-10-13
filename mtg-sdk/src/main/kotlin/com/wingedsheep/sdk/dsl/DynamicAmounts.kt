@@ -1016,6 +1016,10 @@ object DynamicAmounts {
     fun propertyOf(entity: EffectTarget.SingleEntity, property: EntityNumericProperty): DynamicAmount =
         DynamicAmount.EntityProperty(entity, property)
 
+    /** Number of enlist costs this object paid in the current combat, including repeated instances. */
+    fun enlistmentsThisCombat(entity: EffectTarget.SingleEntity): DynamicAmount =
+        propertyOf(entity, EntityNumericProperty.EnlistmentsThisCombat)
+
     /** [entity]'s power (a target handle, `EffectTarget.TriggeringEntity`, `IterationEntity`, …). */
     fun powerOf(entity: EffectTarget.SingleEntity): DynamicAmount = propertyOf(entity, EntityNumericProperty.Power)
 

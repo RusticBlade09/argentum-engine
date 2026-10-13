@@ -172,6 +172,8 @@ class CombatManager(
             }
         )
 
+        if (newState.enlistmentsThisCombat.isNotEmpty()) newState = newState.copy(enlistmentsThisCombat = emptyList())
+
         // Expire "until end of combat" effects (CR 511.2: they expire at the end of the combat
         // phase, which per CR 511.3 is once the end of combat step has ended — i.e. here, the same
         // point creatures leave combat). Nothing swept these before: `CleanupPhaseManager` dropped

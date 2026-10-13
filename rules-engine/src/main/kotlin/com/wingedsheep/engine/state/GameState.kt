@@ -335,6 +335,10 @@ data class GameState(
      */
     val pendingSacrificeIds: Set<EntityId> = emptySet(),
 
+    /** One entry per paid enlist instance; object identity keeps departed visits distinct. Cleared at end of combat. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val enlistmentsThisCombat: List<ObjectRef> = emptyList(),
+
     /**
      * Cards currently being discarded *by a spell or ability*, mapped to that spell/ability's
      * controller. Recorded by the discard sites (`ZoneTransitionService.discardCards` and the

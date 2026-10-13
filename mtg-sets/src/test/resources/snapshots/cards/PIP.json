@@ -1,3 +1,111 @@
+// Aradesh, the Founder
+{
+    "name": "Aradesh, the Founder",
+    "manaCost": "{2}{W}",
+    "typeLine": "Legendary Creature — Human Soldier",
+    "oracleText": "Enlist (As this creature attacks, you may tap a nonattacking creature you control without summoning sickness. When you do, add its power to this creature's until end of turn.)\nWhenever a creature you control attacks, if it enlisted a creature this combat, the creature that attacked gains double strike until end of turn. If that creature's power is 4 or greater, draw a card.",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 4
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Aradesh, the Founder:1",
+                "trigger": {
+                    "type": "AttackEvent",
+                    "filter": "creature ctrl:you"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GrantKeyword",
+                            "keyword": "DOUBLE_STRIKE",
+                            "target": "TriggeringEntity"
+                        },
+                        {
+                            "type": "Gated",
+                            "gate": {
+                                "type": "Gate.WhenCondition",
+                                "condition": {
+                                    "type": "Compare",
+                                    "left": {
+                                        "type": "EntityProperty",
+                                        "entity": "TriggeringEntity",
+                                        "numericProperty": "Power"
+                                    },
+                                    "operator": "GTE",
+                                    "right": {
+                                        "type": "Fixed",
+                                        "amount": 4
+                                    }
+                                }
+                            },
+                            "then": {
+                                "type": "DrawCards",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            }
+                        }
+                    ]
+                },
+                "interveningIf": {
+                    "type": "Compare",
+                    "left": {
+                        "type": "EntityProperty",
+                        "entity": "TriggeringEntity",
+                        "numericProperty": "EnlistmentsThisCombat"
+                    },
+                    "operator": "GTE",
+                    "right": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                }
+            }
+        ],
+        "staticAbilities": [
+            "Enlist"
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "9",
+        "rarity": "RARE",
+        "artist": "Campbell White",
+        "imageUri": "https://cards.scryfall.io/normal/front/6/7/6701dae4-348e-40f6-9db4-d6f0039be831.jpg?1783912420",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "The attacking player chooses whether to tap a creature for an enlist ability immediately after they tap the creatures that they have chosen to attack with. You can’t choose to enlist a creature later."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "To enlist a creature, that creature must be untapped, it must not be attacking (even if it has vigilance), and it must have haste or have been under that attacking player’s control since the beginning of their current turn."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "When a player taps a creature for an attacking creature’s enlist ability, that attacking creature gets +X/+0 until end of turn, where X is the tapped creature’s power. This is a triggered ability that goes on the stack immediately after attackers have been declared in the declare attackers step."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "You may tap only one creature for an enlist ability of an attacking creature, and a single creature can’t be tapped for more than one enlist ability."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Aradesh’s last ability has an intervening if clause. If a creature that attacks hasn’t enlisted a creature this combat, the ability won’t trigger at all for that creature."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "It doesn’t matter what happens to the enlisted creature after Aradesh’s last ability triggers. As long as the creature that attacked enlisted a creature this combat, when Aradesh’s last ability resolves, the creature that attacked will still get double strike, and if that creature’s power is 4 or greater, you’ll still draw a card."
+            }
+        ]
+    }
+}
+
 // Contaminated Drink
 {
     "name": "Contaminated Drink",

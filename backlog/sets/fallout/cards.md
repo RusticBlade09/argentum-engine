@@ -2,7 +2,7 @@
 
 **Set Size:** 336 cards
 **Release Date:** March 8, 2024
-**Implemented:** 139 / 336
+**Implemented:** 140 / 336
 | Section    | Total | Done |
 |------------|-------|------|
 | Extras     | 336   | 129  |
@@ -24,7 +24,7 @@
 - [ ] Alpha Deathclaw
 - [x] Anguished Unmaking
 - [ ] Animal Friend
-- [ ] Aradesh, the Founder
+- [x] Aradesh, the Founder
 - [ ] Arcade Gannon
 - [x] Arcane Signet
 - [ ] Armory Paladin

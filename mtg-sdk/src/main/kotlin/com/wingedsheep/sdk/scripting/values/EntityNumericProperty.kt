@@ -27,6 +27,18 @@ sealed interface EntityNumericProperty {
         override val description: String = "damage dealt this turn"
     }
 
+    /**
+     * Paid enlist instances for this rules object during the current combat. Unlike
+     * [DamageDealtThisTurn], this is combat-scoped and records optional attack costs rather than
+     * damage; [PermanentsSacrificedToCast] records spell costs, not a permanent's attack costs.
+     * Survives removal from combat and departure for captured references; a new object starts at zero.
+     */
+    @SerialName("EnlistmentsThisCombat")
+    @Serializable
+    data object EnlistmentsThisCombat : EntityNumericProperty {
+        override val description: String = "the number of creatures it enlisted this combat"
+    }
+
     @SerialName("Power")
     @Serializable
     data object Power : EntityNumericProperty {
