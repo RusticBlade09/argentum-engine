@@ -625,7 +625,9 @@ class DynamicAmountEvaluator(
                 // self-sacrificing source, or a sacrificed / tapped / chosen cost permanent. When
                 // such a reference resolves off the battlefield, read its captured characteristics
                 // before falling through to base characteristics. [LkiPolicy.LIVE_ONLY] references
-                // (targets, iteration, …) skip this and read the live board. Off the battlefield the
+                // (targets, Amass, …) skip this and read the live board; a loop's object
+                // ([LkiPolicy.LIVE_THEN_OWN_MOVE_LKI]) reads only the capture of this resolution's
+                // own move off the battlefield. Off the battlefield the
                 // projected P/T is null, so the final resolveNumericProperty yields base
                 // characteristics anyway — this replaces the former per-reference
                 // `useProjected = false` branches (Ghitu Fire-Eater, Heart-Piercer Manticore, …).
@@ -638,15 +640,24 @@ class DynamicAmountEvaluator(
                     }
                 val capturedSnapshot = context.lkiSnapshotFor(amount.entity, entityId)
                 val capturedObjectLeft = capturedSnapshot?.objectRef?.let { !state.isCurrentObject(it) } == true
-                if (lkiPolicyFor(amount.entity) == LkiPolicy.LIVE_THEN_LKI &&
-                    (entityId !in state.getBattlefield() || staleSource || capturedObjectLeft)
-                ) {
+                val lkiPolicy = lkiPolicyFor(amount.entity)
+                // A loop's object back on the battlefield is the new object the loop is visiting
+                // (it was returned by this resolution) — read it live, never its old capture.
+                val readsLastKnown = when (lkiPolicy) {
+                    LkiPolicy.LIVE_ONLY -> false
+                    LkiPolicy.LIVE_THEN_LKI -> entityId !in state.getBattlefield() || staleSource || capturedObjectLeft
+                    LkiPolicy.LIVE_THEN_OWN_MOVE_LKI -> entityId !in state.getBattlefield()
+                }
+                if (readsLastKnown) {
                     // A reference-specific capture (the cost-paid snapshot) wins; otherwise the
                     // departed object's own battlefield-exit snapshot, which the entity carries until
                     // its next zone change — Archfiend of the Dross killed with its upkeep trigger on
-                    // the stack counts the oil counters it left with (ruling 2023-02-04).
+                    // the stack counts the oil counters it left with (ruling 2023-02-04). A loop's
+                    // object (LIVE_THEN_OWN_MOVE_LKI) takes only the capture of this resolution's
+                    // own move: a card that left the battlefield some other time is a new object.
                     val snapshot = capturedSnapshot
                         ?: state.getEntity(entityId)?.get<LastKnownPermanentComponent>()?.snapshot
+                            ?.takeIf { lkiPolicy == LkiPolicy.LIVE_THEN_LKI }
                     when (val property = amount.numericProperty) {
                         is EntityNumericProperty.Power -> {
                             if (snapshot?.typeLine?.isCreature == false) return 0

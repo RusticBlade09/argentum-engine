@@ -508,6 +508,8 @@ class EffectAndTriggerContinuationResumer(
             continuation.effectContext.pipeline.storedCollections + branchResult.updatedCollections,
             continuation.effectContext.pipeline.storedNumbers + branchResult.updatedStoredNumbers,
             continuation.effectContext.pipeline.chosenValues + branchResult.updatedChosenValues,
+            sacrificed = continuation.effectContext.sacrificedPermanents + branchResult.updatedSacrificedPermanents,
+            departed = continuation.effectContext.departedPermanents + branchResult.updatedDepartedPermanents,
         )
 
         return checkForMore(stateWithCollections, result.events.toList())

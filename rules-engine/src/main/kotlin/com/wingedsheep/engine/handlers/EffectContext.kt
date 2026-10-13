@@ -270,6 +270,24 @@ data class EffectContext(
      * [com.wingedsheep.sdk.scripting.targets.EffectTarget.PipelineTarget].
      */
     val chosenEntitySnapshots: List<EntitySnapshot> = emptyList(),
+    /**
+     * LKI snapshots (CR 608.2h) of the permanents an earlier instruction of *this* resolution
+     * moved off the battlefield — a `MoveCollectionEffect` exile, destroy, bounce or sacrifice —
+     * each the same capture its [com.wingedsheep.engine.core.ZoneChangeEvent.lastKnown] carries.
+     * Read by [EffectTarget.IterationEntity] (see
+     * [com.wingedsheep.engine.handlers.effects.LkiPolicy.LIVE_THEN_OWN_MOVE_LKI]) so "for each
+     * permanent exiled this way, … a card that shares a card type with it" compares against the
+     * permanent as it last existed on the battlefield: a token's types, an animated land's
+     * Creature type, a stolen permanent's controller. Scoped to the resolution on purpose — a card
+     * that left the battlefield on some earlier turn is a new object whose current
+     * characteristics are the answer. Threaded between instructions like [sacrificedPermanents];
+     * it rides every continuation frame's context and is handed to the frame beneath when a paused
+     * composite, gate branch or loop drains ([com.wingedsheep.engine.handlers.continuations.exposeCollectionsToNextFrame]),
+     * so it survives a mid-resolution pause.
+     */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val departedPermanents: List<EntitySnapshot> = emptyList(),
     // --- Trigger state ---
     /**
      * Everything the trigger event said about why the resolving ability fired — damage amount,

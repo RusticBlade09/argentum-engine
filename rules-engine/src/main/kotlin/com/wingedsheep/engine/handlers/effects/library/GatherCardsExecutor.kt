@@ -256,7 +256,10 @@ class GatherCardsExecutor(
                         is com.wingedsheep.engine.state.components.stack.ChosenTarget.Spell -> chosen.spellEntityId
                         is com.wingedsheep.engine.state.components.stack.ChosenTarget.Player -> null
                     }
-                }
+                    // One object may fill several instances of "target" (CR 115.3) — an artifact
+                    // creature chosen as both "target artifact" and "target creature". A gathered
+                    // collection is a set of objects, so it is visited, moved and counted once.
+                }.distinct()
             }
 
             is CardSource.SourceLinkedBattlefield -> {

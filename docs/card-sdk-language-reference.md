@@ -4844,6 +4844,20 @@ A resolving nonpermanent spell retains its stack instance through serialized eff
   (History of Benalia III). Identity-captured (see above); resolves to nothing outside such a loop.
   Its text is "that permanent", which a group loop's description splices the group into ("each
   Knight you control gets +2/+1").
+  **Value reads after this resolution moved it** (`lkiPolicyFor` = `LIVE_THEN_OWN_MOVE_LKI`): every
+  `MoveCollectionEffect` that takes permanents off the battlefield (exile, destroy, bounce,
+  sacrifice) publishes their battlefield-exit snapshots into `EffectContext.departedPermanents`,
+  threaded between instructions, carried by every continuation frame, and handed to the frame
+  beneath when a paused composite, gate branch or loop drains, so it survives a pause. A value read
+  of the loop's object — `.sharingCardTypeWith(IterationEntity)` / `.sharingCreatureTypeWith`,
+  `EntityProperty(IterationEntity, …)` — then reads it as it last existed on the battlefield
+  (CR 608.2h), even once a token has ceased to exist. For those characteristic reads only *this
+  resolution's* moves count: a loop over graveyard cards that died on an earlier turn visits new
+  objects (CR 400.7) and reads their printed characteristics, and an object the resolution returned
+  to the battlefield is read live. `Player.ControllerOfIterationEntity` is broader, as every
+  "its controller" read already was: an object off the battlefield answers with the last-known
+  controller its card carries from its latest battlefield exit, and the resolution's own capture
+  stands in only once the object has ceased to exist.
   - **Self-noun rendering (type-aware text).** `EffectTarget.Self.description` is "this creature"
     (most self-referential effects live on creatures). Effects that also apply to *non-creature*
     permanents — `TransformEffect` / `ExileAndReturnTransformedEffect`, `SacrificeTargetEffect`
@@ -5843,6 +5857,13 @@ This is the player-arm prerequisite for the planned composable mixed `TargetUnio
   (Braids, Arisen Nightmare: `gather(Permanent.sharingCardTypeWith(EffectTarget.SacrificedAsCost()))`
   inside `forEachPlayerCollecting(EachOpponent)`). `.sharingCreatureTypeWith` takes the same
   last-known read for its subtypes. A reference still on the battlefield is always read live.
+  **`IterationEntity` over permanents this resolution moved off the battlefield** reads the snapshot
+  that move captured — "for each permanent exiled this way, its controller reveals cards … until they
+  reveal a card that shares a card type with it": `exile(gather(CardSource.ChosenTargets))`, then
+  `ForEachInCollection(…, Pipeline { gatherUntilMatch(Any.sharingCardTypeWith(IterationEntity)) … })`
+  sees an exiled token's types, an animated land's Creature type, and (via
+  `Player.ControllerOfIterationEntity` or a `youControl()` filter) the controller it had, not its owner
+  (Chaotic Transformation). See `IterationEntity` in §6 for the scoping.
 - `.sharingCardTypeWithLinkedExile()` — `CardPredicate.SharesCardTypeWithLinkedExile`: shares ≥1 card type
   with **any** card still exiled with the filtering ability's source (CR 607 linked abilities). The
   pile-wide form of `.sharingCardTypeWith(EffectTarget.LinkedExiledCard())`, which reads one index —

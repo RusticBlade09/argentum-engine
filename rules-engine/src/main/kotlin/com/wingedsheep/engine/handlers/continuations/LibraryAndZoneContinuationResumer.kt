@@ -67,9 +67,9 @@ class LibraryAndZoneContinuationResumer(
         var reordered = com.wingedsheep.engine.mechanics.GraveyardOrdering.reorder(
             state, continuation.ownerId, continuation.cards, response.orderedObjects)
         if (continuation.remaining.isNotEmpty()) return com.wingedsheep.engine.mechanics.GraveyardOrdering.ask(
-            reordered, continuation.remaining, continuation.events + GraveyardOrderedEvent(continuation.ownerId, response.orderedObjects), continuation.collections, continuation.numbers, continuation.chosenValues, continuation.subtypeGroups, continuation.sacrificed, continuation.sourceId)
+            reordered, continuation.remaining, continuation.events + GraveyardOrderedEvent(continuation.ownerId, response.orderedObjects), continuation.collections, continuation.numbers, continuation.chosenValues, continuation.subtypeGroups, continuation.sacrificed, continuation.sourceId, continuation.departed)
         reordered = exposeCollectionsToNextFrame(reordered, continuation.collections, continuation.numbers,
-            continuation.chosenValues, continuation.subtypeGroups, continuation.sacrificed)
+            continuation.chosenValues, continuation.subtypeGroups, continuation.sacrificed, continuation.departed)
         return checkForMore(reordered, continuation.events + GraveyardOrderedEvent(continuation.ownerId, response.orderedObjects))
     }
 

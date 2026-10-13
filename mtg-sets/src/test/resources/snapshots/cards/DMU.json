@@ -2321,6 +2321,166 @@
     ]
 }
 
+// Chaotic Transformation
+{
+    "name": "Chaotic Transformation",
+    "manaCost": "{5}{R}",
+    "typeLine": "Sorcery",
+    "oracleText": "Exile up to one target artifact, up to one target creature, up to one target enchantment, up to one target planeswalker, and/or up to one target land. For each permanent exiled this way, its controller reveals cards from the top of their library until they reveal a card that shares a card type with it, puts that card onto the battlefield, then shuffles.",
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "GatherCards",
+                    "source": "ChosenTargets",
+                    "storeAs": "gathered0"
+                },
+                {
+                    "type": "MoveCollection",
+                    "from": "gathered0",
+                    "destination": {
+                        "type": "ToZone",
+                        "zone": "Exile"
+                    }
+                },
+                {
+                    "type": "ForEach",
+                    "space": {
+                        "type": "IterationSpace.Players",
+                        "players": "ActivePlayerFirst"
+                    },
+                    "body": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "GatherCards",
+                                "source": "ChosenTargets",
+                                "storeAs": "gathered2"
+                            },
+                            {
+                                "type": "FilterCollection",
+                                "from": "gathered2",
+                                "filter": {
+                                    "statePredicates": [
+                                        {
+                                            "type": "InZone",
+                                            "zone": "Exile"
+                                        }
+                                    ],
+                                    "controllerPredicate": "ControlledByYou"
+                                },
+                                "storeMatching": "matching3"
+                            },
+                            {
+                                "type": "ForEach",
+                                "space": {
+                                    "type": "IterationSpace.Collection",
+                                    "collection": "matching3"
+                                },
+                                "body": {
+                                    "type": "Composite",
+                                    "effects": [
+                                        {
+                                            "type": "GatherUntilMatch",
+                                            "filter": {
+                                                "cardPredicates": [
+                                                    {
+                                                        "type": "SharesCardTypeWith",
+                                                        "entity": "IterationEntity"
+                                                    }
+                                                ]
+                                            },
+                                            "storeMatch": "matched4",
+                                            "storeRevealed": "revealed4"
+                                        },
+                                        {
+                                            "type": "RevealCollection",
+                                            "from": "revealed4",
+                                            "fromZone": "Library",
+                                            "toZone": "Battlefield"
+                                        },
+                                        {
+                                            "type": "MoveCollection",
+                                            "from": "matched4",
+                                            "destination": {
+                                                "type": "ToZone",
+                                                "zone": "Battlefield"
+                                            }
+                                        },
+                                        "ShuffleLibrary"
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetObject",
+                "optional": true,
+                "filter": {
+                    "baseFilter": "artifact"
+                },
+                "id": "t0"
+            },
+            {
+                "type": "TargetObject",
+                "optional": true,
+                "filter": {
+                    "baseFilter": "creature"
+                },
+                "id": "t1"
+            },
+            {
+                "type": "TargetObject",
+                "optional": true,
+                "filter": {
+                    "baseFilter": "enchantment"
+                },
+                "id": "t2"
+            },
+            {
+                "type": "TargetObject",
+                "optional": true,
+                "filter": {
+                    "baseFilter": "planeswalker"
+                },
+                "id": "t3"
+            },
+            {
+                "type": "TargetObject",
+                "optional": true,
+                "filter": {
+                    "baseFilter": "land"
+                },
+                "id": "t4"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "117",
+        "rarity": "RARE",
+        "artist": "Joseph Meehan",
+        "imageUri": "https://cards.scryfall.io/normal/front/b/d/bdfb44f1-e366-437a-bde3-59bfdb362864.jpg?1783921321",
+        "rulings": [
+            {
+                "date": "2022-09-09",
+                "text": "The target permanents are exiled all at the same time."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "If a player controls multiple permanents that were exiled this way, that player first chooses which target they're considering, then they reveal cards until they reveal a card that shares a type with that permanent as it last existed on the battlefield, then they put that card onto the battlefield and shuffle. They then repeat this process for the remaining targets they controlled."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "RED"
+    ]
+}
+
 // Charismatic Vanguard
 {
     "name": "Charismatic Vanguard",
@@ -6616,6 +6776,230 @@
     ]
 }
 
+// Jaya, Fiery Negotiator
+{
+    "name": "Jaya, Fiery Negotiator",
+    "manaCost": "{2}{R}{R}",
+    "typeLine": "Legendary Planeswalker — Jaya",
+    "oracleText": "+1: Create a 1/1 red Monk creature token with prowess.\n−1: Exile the top two cards of your library. Choose one of them. You may play that card this turn.\n−2: Choose target creature an opponent controls. Whenever you attack this turn, Jaya deals damage equal to the number of attacking creatures to that creature.\n−8: You get an emblem with \"Whenever you cast a red instant or sorcery spell, copy it twice. You may choose new targets for the copies.\"",
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Jaya, Fiery Negotiator:1",
+                "cost": {
+                    "type": "CostLoyalty",
+                    "change": 1
+                },
+                "effect": {
+                    "type": "CreateToken",
+                    "power": 1,
+                    "toughness": 1,
+                    "colors": [
+                        "RED"
+                    ],
+                    "creatureTypes": [
+                        "Monk"
+                    ],
+                    "keywords": [
+                        "PROWESS"
+                    ],
+                    "imageUri": "https://cards.scryfall.io/normal/front/3/8/388180bd-cc96-4b18-9ddd-18a3f7e06282.jpg?1783921127"
+                },
+                "timing": "SorcerySpeed",
+                "isPlaneswalkerAbility": true,
+                "descriptionOverride": "Create a 1/1 red Monk creature token with prowess."
+            },
+            {
+                "id": "Jaya, Fiery Negotiator:2",
+                "cost": {
+                    "type": "CostLoyalty",
+                    "change": -1
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "TopOfLibrary",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 2
+                                }
+                            },
+                            "storeAs": "gathered0"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "gathered0",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Exile"
+                            }
+                        },
+                        {
+                            "type": "SelectFromCollection",
+                            "from": "gathered0",
+                            "selection": {
+                                "type": "ChooseExactly",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            "storeSelected": "selected2",
+                            "prompt": "Choose a card you may play this turn"
+                        },
+                        {
+                            "type": "GrantMayPlayFromExile",
+                            "from": "selected2"
+                        }
+                    ]
+                },
+                "timing": "SorcerySpeed",
+                "isPlaneswalkerAbility": true,
+                "descriptionOverride": "Exile the top two cards of your library. Choose one of them. You may play that card this turn."
+            },
+            {
+                "id": "Jaya, Fiery Negotiator:3",
+                "cost": {
+                    "type": "CostLoyalty",
+                    "change": -2
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": "ChosenTargets",
+                            "storeAs": "gathered0"
+                        },
+                        {
+                            "type": "CreateDelayedTrigger",
+                            "effect": {
+                                "type": "DealDamage",
+                                "amount": {
+                                    "type": "AggregateBattlefield",
+                                    "player": "Each",
+                                    "filter": "creature attacking"
+                                },
+                                "target": {
+                                    "type": "PipelineTarget",
+                                    "collectionName": "gathered0"
+                                }
+                            },
+                            "trigger": {
+                                "event": "YouAttackEvent",
+                                "binding": "ANY"
+                            },
+                            "carryCollections": [
+                                "gathered0"
+                            ]
+                        }
+                    ]
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "creature ctrl:opponent"
+                        },
+                        "id": "t0"
+                    }
+                ],
+                "timing": "SorcerySpeed",
+                "isPlaneswalkerAbility": true,
+                "descriptionOverride": "Choose target creature an opponent controls. Whenever you attack this turn, Jaya deals damage equal to the number of attacking creatures to that creature."
+            },
+            {
+                "id": "Jaya, Fiery Negotiator:5",
+                "cost": {
+                    "type": "CostLoyalty",
+                    "change": -8
+                },
+                "effect": {
+                    "type": "CreateGlobalTriggeredAbility",
+                    "ability": {
+                        "id": "Jaya, Fiery Negotiator:4",
+                        "trigger": {
+                            "type": "SpellCastEvent",
+                            "spellFilter": {
+                                "cardPredicates": [
+                                    {
+                                        "type": "Or",
+                                        "predicates": [
+                                            "IsInstant",
+                                            "IsSorcery"
+                                        ]
+                                    },
+                                    {
+                                        "type": "HasColor",
+                                        "color": "RED"
+                                    }
+                                ]
+                            }
+                        },
+                        "binding": "ANY",
+                        "effect": {
+                            "type": "CopyTargetSpell",
+                            "target": "TriggeringEntity",
+                            "copies": {
+                                "type": "Fixed",
+                                "amount": 2
+                            }
+                        },
+                        "descriptionOverride": "Whenever you cast a red instant or sorcery spell, copy it twice. You may choose new targets for the copies."
+                    },
+                    "descriptionOverride": "Whenever you cast a red instant or sorcery spell, copy it twice. You may choose new targets for the copies."
+                },
+                "timing": "SorcerySpeed",
+                "isPlaneswalkerAbility": true,
+                "descriptionOverride": "You get an emblem with \"Whenever you cast a red instant or sorcery spell, copy it twice. You may choose new targets for the copies.\""
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "133",
+        "rarity": "MYTHIC",
+        "artist": "Marta Nael",
+        "imageUri": "https://cards.scryfall.io/normal/front/3/b/3b9f54f0-4368-4d28-aa21-3f1e7be1b23a.jpg?1783921315",
+        "rulings": [
+            {
+                "date": "2022-09-09",
+                "text": "You must pay all costs and follow all normal timing rules to play a card chosen for Jaya's second loyalty ability. For example, if you choose a land card, you may only play it during one of your main phases while the stack is empty, and only if you haven't yet played a land in the same turn."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "Activating Jaya's third loyalty ability creates a delayed triggered ability that will trigger each time you declare attackers this turn (usually, this will only happen once). This ability will trigger even if Jaya is no longer on the battlefield. If anything needs information about the source of that damage, use Jaya's characteristics as she last existed on the battlefield."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "The triggered ability of Jaya's emblem will copy any red instant or sorcery spell you cast, not just one with targets."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "Copies are created even if the spell that caused the ability to trigger has been countered by the time that ability resolves. The copies resolve before the original spell."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "If the spell that's copied is modal (that is, it says \"Choose one —\" or the like), the copies will have the same mode or modes. You can't choose different ones."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "You can't choose to pay any additional costs for the copies. However, effects based on any additional costs that were paid for the original spell are copied as though those same costs were paid for the copies too. Notably, if the spell you copy was kicked, the copies will also be kicked."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "The copies are created on the stack, so they're not \"cast.\" Abilities that trigger when a player casts a spell won't trigger."
+            }
+        ]
+    },
+    "startingLoyalty": 4,
+    "colorIdentityOverride": [
+        "RED"
+    ]
+}
+
 // Jhoira, Ageless Innovator
 {
     "name": "Jhoira, Ageless Innovator",
@@ -6772,6 +7156,187 @@
         ]
     },
     "colorIdentityOverride": []
+}
+
+// Jodah, the Unifier
+{
+    "name": "Jodah, the Unifier",
+    "manaCost": "{W}{U}{B}{R}{G}",
+    "typeLine": "Legendary Creature — Human Wizard",
+    "oracleText": "Legendary creatures you control get +X/+X, where X is the number of legendary creatures you control.\nWhenever you cast a legendary spell from your hand, exile cards from the top of your library until you exile a legendary nonland card with lesser mana value. You may cast that card without paying its mana cost. Put the rest on the bottom of your library in a random order.",
+    "creatureStats": {
+        "power": 5,
+        "toughness": 5
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Jodah, the Unifier:1",
+                "trigger": {
+                    "type": "SpellCastEvent",
+                    "spellFilter": {
+                        "cardPredicates": [
+                            "IsLegendary"
+                        ]
+                    },
+                    "requires": [
+                        {
+                            "type": "SpellCastFromZone",
+                            "zone": "Hand"
+                        }
+                    ]
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherUntilMatch",
+                            "filter": {
+                                "cardPredicates": [
+                                    "IsNonland",
+                                    "IsLegendary",
+                                    {
+                                        "type": "ManaValueAtMostDynamic",
+                                        "amount": {
+                                            "type": "Subtract",
+                                            "left": {
+                                                "type": "ContextProperty",
+                                                "key": "TRIGGERING_SPELL_MANA_VALUE"
+                                            },
+                                            "right": {
+                                                "type": "Fixed",
+                                                "amount": 1
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            "storeMatch": "matched0",
+                            "storeRevealed": "revealed0"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "revealed0",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Exile"
+                            }
+                        },
+                        {
+                            "type": "ConditionalOnCollection",
+                            "collection": "matched0",
+                            "ifNotEmpty": {
+                                "type": "Gated",
+                                "gate": "Gate.MayDecide",
+                                "then": {
+                                    "type": "CastFromCollectionWithoutPayingCost",
+                                    "from": "matched0"
+                                }
+                            }
+                        },
+                        {
+                            "type": "FilterCollection",
+                            "from": "revealed0",
+                            "collectionFilter": {
+                                "type": "ExcludeOtherCollection",
+                                "otherCollectionName": "matched0"
+                            },
+                            "storeMatching": "matching4"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "matching4",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Library",
+                                "placement": "Bottom"
+                            },
+                            "order": "Random"
+                        }
+                    ]
+                },
+                "descriptionOverride": "Whenever you cast a legendary spell from your hand, exile cards from the top of your library until you exile a legendary nonland card with lesser mana value. You may cast that card without paying its mana cost. Put the rest on the bottom of your library in a random order."
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "GrantDynamicStats",
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            "IsCreature",
+                            "IsLegendary"
+                        ],
+                        "controllerPredicate": "ControlledByYou"
+                    }
+                },
+                "powerBonus": {
+                    "type": "AggregateBattlefield",
+                    "player": "You",
+                    "filter": {
+                        "cardPredicates": [
+                            "IsCreature",
+                            "IsLegendary"
+                        ]
+                    }
+                },
+                "toughnessBonus": {
+                    "type": "AggregateBattlefield",
+                    "player": "You",
+                    "filter": {
+                        "cardPredicates": [
+                            "IsCreature",
+                            "IsLegendary"
+                        ]
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "203",
+        "rarity": "MYTHIC",
+        "artist": "Ryan Pancoast",
+        "imageUri": "https://cards.scryfall.io/normal/front/e/4/e4b1aa1e-b4e3-4346-8937-76b312501c70.jpg?1783921283",
+        "rulings": [
+            {
+                "date": "2022-09-09",
+                "text": "Both Jodah, the Unifier's triggered ability and the spell cast with that ability resolve before the spell that caused the ability to trigger, even if the original spell was countered in response."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "The legendary nonland card exiled may be cast immediately. If you do not cast it immediately, you don't get to cast it at a later time."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "If you choose not to cast the card, it remains in exile. The rest of the cards will be put on the bottom of your library in a random order."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "If you cast a spell \"without paying its mana cost,\" you can't choose to cast it for any alternative costs. You can, however, pay additional costs. If the card has any mandatory additional costs, you must pay those to cast the spell."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "If the card has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "The mana value of the spell that caused the ability to trigger is determined only by its mana cost, no matter what the total cost to cast the spell was. If that spell had an {X} in its cost, include the chosen value for X when determining its mana value."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "If you exile your entire library without exiling a legendary nonland card with lesser mana value, you will randomize the exiled cards and they again become your library, ending the effect. You will not continue to exile and shuffle your library forever."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE",
+        "BLUE",
+        "BLACK",
+        "RED",
+        "GREEN"
+    ]
 }
 
 // Join Forces
@@ -10630,6 +11195,135 @@
         "RED",
         "GREEN",
         "WHITE"
+    ]
+}
+
+// Rivaz of the Claw
+{
+    "name": "Rivaz of the Claw",
+    "manaCost": "{1}{B}{R}",
+    "typeLine": "Legendary Creature — Lizard Warlock",
+    "oracleText": "Menace\n{T}: Add two mana in any combination of colors. Spend this mana only to cast Dragon creature spells.\nOnce during each of your turns, you may cast a Dragon creature spell from your graveyard.\nWhenever you cast a Dragon creature spell from your graveyard, it gains \"When this creature dies, exile it.\"",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 3
+    },
+    "keywords": [
+        "MENACE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Rivaz of the Claw:3",
+                "trigger": {
+                    "type": "SpellCastEvent",
+                    "spellFilter": {
+                        "cardPredicates": [
+                            "IsCreature",
+                            {
+                                "type": "HasSubtype",
+                                "subtype": "Dragon"
+                            }
+                        ]
+                    },
+                    "requires": [
+                        {
+                            "type": "SpellCastFromZone",
+                            "zone": "Graveyard"
+                        }
+                    ]
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "GrantTriggeredAbility",
+                    "ability": {
+                        "id": "Rivaz of the Claw:2",
+                        "trigger": {
+                            "type": "ZoneChangeEvent",
+                            "from": "Battlefield",
+                            "to": "Graveyard"
+                        },
+                        "effect": {
+                            "type": "MoveToZone",
+                            "target": "Self",
+                            "destination": "Exile",
+                            "fromZone": "Graveyard"
+                        },
+                        "descriptionOverride": "When this creature dies, exile it."
+                    },
+                    "target": "TriggeringEntity",
+                    "duration": "Permanent"
+                },
+                "descriptionOverride": "Whenever you cast a Dragon creature spell from your graveyard, it gains \"When this creature dies, exile it.\""
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Rivaz of the Claw:1",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "AddDynamicMana",
+                    "amountSource": {
+                        "type": "Fixed",
+                        "amount": 2
+                    },
+                    "allowedColors": [
+                        "WHITE",
+                        "BLUE",
+                        "BLACK",
+                        "RED",
+                        "GREEN"
+                    ],
+                    "restriction": {
+                        "type": "SubtypeSpellsOrAbilitiesOnly",
+                        "subtype": "Dragon",
+                        "creatureOnly": true
+                    }
+                },
+                "timing": "ManaAbility",
+                "isManaAbility": true
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "MayCastFromGraveyard",
+                "filter": "creature Dragon",
+                "duringYourTurnOnly": true,
+                "oncePerTurn": true
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "215",
+        "rarity": "RARE",
+        "artist": "Joshua Raphael",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/a/9a47573a-601e-4738-acef-16118289f939.jpg?1783921278",
+        "rulings": [
+            {
+                "date": "2022-09-09",
+                "text": "You can use mana generated by the activated ability to pay an alternative cost (such as an escape cost) or an additional cost to cast a Dragon spell. It's not limited to paying just that spell's mana cost."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "The casting permission granted by Rivaz's third ability doesn't change when you may cast the spell from your graveyard."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "The last ability triggers when you cast a Dragon creature spell from your graveyard for any reason. It triggers even if you didn't use mana generated by Rivaz's activated ability to pay its costs."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "The ability that the spell gains as Rivaz's last ability resolves continues to apply to the permanent that spell becomes after the spell resolves, even if it stops being a Dragon or stops being a creature."
+            },
+            {
+                "date": "2022-09-09",
+                "text": "The ability that the spell gains only applies to it once it's on the battlefield. If the spell is countered before it resolves, that ability will not exile it."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK",
+        "RED"
     ]
 }
 

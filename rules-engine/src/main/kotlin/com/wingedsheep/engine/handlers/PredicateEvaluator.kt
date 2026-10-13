@@ -534,9 +534,11 @@ class PredicateEvaluator(
      * is read as it last existed, so an animated land still counts as a creature and a sacrificed
      * token, which has ceased to exist (CR 704.5d), still has types to share.
      *
-     * Only references whose policy is [LkiPolicy.LIVE_THEN_LKI] have a snapshot; a reference still
-     * on the battlefield (it has a projection entry) or with none captured returns null and the
-     * caller reads it where it is now.
+     * Only references whose policy reads last-known information ([LkiPolicy.LIVE_THEN_LKI], or
+     * [LkiPolicy.LIVE_THEN_OWN_MOVE_LKI] for a loop's object this resolution moved off the
+     * battlefield — "for each permanent exiled this way", Chaotic Transformation) have a snapshot;
+     * a reference still on the battlefield (it has a projection entry) or with none captured
+     * returns null and the caller reads it where it is now.
      */
     private fun referenceLastKnown(
         projected: ProjectedState,
@@ -545,7 +547,7 @@ class PredicateEvaluator(
         context: PredicateContext?
     ): EntitySnapshot? {
         if (context == null || projected.getProjectedValues(referenceId) != null) return null
-        if (lkiPolicyFor(reference) != LkiPolicy.LIVE_THEN_LKI) return null
+        if (lkiPolicyFor(reference) == LkiPolicy.LIVE_ONLY) return null
         return context.toEffectContext().lkiSnapshotFor(reference, referenceId)
     }
 

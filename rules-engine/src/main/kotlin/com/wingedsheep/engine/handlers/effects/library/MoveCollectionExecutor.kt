@@ -136,7 +136,7 @@ class MoveCollectionExecutor(
 
         val attachTo = effect.attachTo
         if (attachTo != null && destination is CardDestination.ToZone && destination.zone == Zone.BATTLEFIELD) {
-            return moveAurasAttachedTo(state, context, cards, destination, attachTo, effect)
+            return withDepartedPermanents(state, moveAurasAttachedTo(state, context, cards, destination, attachTo, effect), cards)
         }
 
         var result = when (destination) {
@@ -180,7 +180,27 @@ class MoveCollectionExecutor(
         if (effect.markEnteredViaSourceAbility && marksBattlefieldEntries && result.outcome is Outcome.Done) {
             result = markEnteredViaSourceAbility(result, context, cards)
         }
-        return result
+        return withDepartedPermanents(state, result, cards)
+    }
+
+    /**
+     * Publish the last-known snapshot of every card in [cards] this move took off the battlefield
+     * ([EffectResult.updatedDepartedPermanents], CR 608.2h) — the very capture the zone transition
+     * stamped on the card ([com.wingedsheep.engine.state.components.battlefield.LastKnownPermanentComponent]
+     * and `ZoneChangeEvent.lastKnown`), so a token, an animated land or a stolen permanent is
+     * remembered as it last existed there. Applied once to each of [execute]'s moving return paths
+     * (the attach-to-host path and the general one), after every branch has run, so the Aura,
+     * per-origin-zone and look-in-exile branches don't each have to carry it.
+     */
+    private fun withDepartedPermanents(before: GameState, result: EffectResult, cards: List<EntityId>): EffectResult {
+        val battlefieldBefore = before.getBattlefield()
+        val departed = cards.mapNotNull { cardId ->
+            if (cardId !in battlefieldBefore || cardId in result.state.getBattlefield()) return@mapNotNull null
+            result.state.getEntity(cardId)
+                ?.get<com.wingedsheep.engine.state.components.battlefield.LastKnownPermanentComponent>()
+                ?.snapshot
+        }
+        return if (departed.isEmpty()) result else result.copy(updatedDepartedPermanents = departed)
     }
 
     /**

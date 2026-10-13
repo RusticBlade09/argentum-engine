@@ -60,7 +60,11 @@ class CoreAutoResumerModule(
                     result.state, events + result.events
                 )
             }
-            val published = exposeCollectionsToNextFrame(result.state, result.updatedCollections)
+            val published = exposeCollectionsToNextFrame(
+                result.state, result.updatedCollections,
+                sacrificed = continuation.effectContext.sacrificedPermanents + result.updatedSacrificedPermanents,
+                departed = continuation.effectContext.departedPermanents + result.updatedDepartedPermanents,
+            )
             checkForMore(published, events + result.events)
         },
 
@@ -154,6 +158,11 @@ class CoreAutoResumerModule(
                 continuation.effectContext.pipeline.storedCollections + runResult.updatedCollections,
                 continuation.effectContext.pipeline.storedNumbers + runResult.updatedStoredNumbers,
                 continuation.effectContext.pipeline.chosenValues + runResult.updatedChosenValues,
+                // Last-known snapshots of permanents this frame's instructions sacrificed or moved off
+                // the battlefield ride along too, so an outer "for each permanent exiled this way"
+                // loop reads them whether or not a question paused the frame.
+                sacrificed = continuation.effectContext.sacrificedPermanents + runResult.updatedSacrificedPermanents,
+                departed = continuation.effectContext.departedPermanents + runResult.updatedDepartedPermanents,
             )
             checkForMore(stateWithCollections, events + runResult.events)
         },
