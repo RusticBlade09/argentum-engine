@@ -6,7 +6,7 @@ import com.wingedsheep.engine.state.components.battlefield.CountersComponent
 import com.wingedsheep.engine.support.GameTestDriver
 import com.wingedsheep.engine.support.TestCards
 import com.wingedsheep.mtg.sets.definitions.pip.cards.ColonelAutumn
-import com.wingedsheep.mtg.sets.definitions.pip.cards.OverseerOfVault76
+import com.wingedsheep.mtg.sets.definitions.pip.cards.AradeshTheFounder
 import com.wingedsheep.sdk.core.Color
 import com.wingedsheep.sdk.core.CounterType
 import com.wingedsheep.sdk.core.Step
@@ -17,7 +17,7 @@ import io.kotest.matchers.shouldBe
 
 class ColonelAutumnScenarioTest : FunSpec({
     fun setup() = GameTestDriver().apply {
-        registerCards(TestCards.all + listOf(ColonelAutumn, OverseerOfVault76))
+        registerCards(TestCards.all + listOf(ColonelAutumn, AradeshTheFounder))
         initMirrorMatch(Deck.of("Plains" to 40), startingPlayer = 0)
         passPriorityUntil(Step.PRECOMBAT_MAIN)
     }
@@ -71,21 +71,21 @@ class ColonelAutumnScenarioTest : FunSpec({
         val d = setup()
         val colonel = d.putPermanentOnBattlefield(d.player1, ColonelAutumn.name)
         val bears = d.putCreatureOnBattlefield(d.player1, "Grizzly Bears")
-        val overseer = d.putCardInHand(d.player1, OverseerOfVault76.name)
+        val aradesh = d.putCardInHand(d.player1, AradeshTheFounder.name)
         d.giveMana(d.player1, Color.WHITE, 3)
-        d.castSpell(d.player1, overseer).error shouldBe null
+        d.castSpell(d.player1, aradesh).error shouldBe null
         d.drain(bears)
         (bears in d.getGraveyard(d.player1)) shouldBe true
         d.counters(colonel) shouldBe 1
-        d.counters(overseer) shouldBe 1
+        d.counters(aradesh) shouldBe 1
     }
     test("Colonel absent when another creature exploits gives no counters") {
         val d = setup()
         val colonel = d.putPermanentOnBattlefield(d.player1, ColonelAutumn.name)
         val bears = d.putCreatureOnBattlefield(d.player1, "Grizzly Bears")
-        val overseer = d.putCardInHand(d.player1, OverseerOfVault76.name)
+        val aradesh = d.putCardInHand(d.player1, AradeshTheFounder.name)
         d.giveMana(d.player1, Color.WHITE, 3)
-        d.castSpell(d.player1, overseer).error shouldBe null
+        d.castSpell(d.player1, aradesh).error shouldBe null
         d.bothPass()
         val bolt = d.putCardInHand(d.player1, "Lightning Bolt")
         d.giveMana(d.player1, Color.RED)
@@ -93,7 +93,7 @@ class ColonelAutumnScenarioTest : FunSpec({
         d.bothPass()
         d.drain(bears)
         (bears in d.getGraveyard(d.player1)) shouldBe true
-        d.counters(overseer) shouldBe 0
+        d.counters(aradesh) shouldBe 0
     }
     test("ordinary creatures do not gain exploit") {
         val d = setup()

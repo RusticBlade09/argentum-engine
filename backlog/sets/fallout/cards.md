@@ -2,10 +2,10 @@
 
 **Set Size:** 336 cards
 **Release Date:** March 8, 2024
-**Implemented:** 161 / 336
+**Implemented:** 160 / 336
 | Section    | Total | Done |
 |------------|-------|------|
-| Extras     | 336   | 161  |
+| Extras     | 336   | 160  |
 
 > Verify status anytime with `scripts/card-status --set PIP` (and `--list`). That command's count is authoritative — keep this file's `Implemented:` line in sync (`just fix-backlog`) as boxes are checked. The set's mechanics are catalogued in [`mechanics.md`](mechanics.md).
 
@@ -202,7 +202,7 @@
 - [x] Opulent Palace
 - [ ] Overencumbered
 - [x] Overflowing Basin
-- [x] Overseer of Vault 76
+- [ ] Overseer of Vault 76
 - [ ] Paladin Danse, Steel Maverick
 - [ ] Paladin Elizabeth Taggerdy
 - [x] Panharmonicon
