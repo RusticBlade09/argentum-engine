@@ -40,6 +40,7 @@ test('Battle of Hoover Dam returns an NCR graveyard target with a finality count
   await p1.screenshot('NCR end-step target excludes mana value four Hill Giant')
   await p1.selectCardInZoneOverlay('Glory Seeker')
   await p1.confirmTargets()
+  await p1.resolveStack('Battle of Hoover Dam trigger')
 
   await p1.expectOnBattlefield('Glory Seeker')
   await p1.expectNotOnBattlefield('Hill Giant')
