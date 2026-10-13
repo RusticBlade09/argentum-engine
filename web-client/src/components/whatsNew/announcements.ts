@@ -31,13 +31,13 @@ export interface Announcement {
 export const ANNOUNCEMENTS: readonly Announcement[] = [
   {
     id: 'set-dmu',
-    date: '2026-10-14',
+    date: '2026-10-13',
     kind: 'set',
     setCode: 'DMU',
     title: 'Dominaria United is complete',
     body:
-      'Dominaria’s last stand against the Phyrexian invasion is fully playable: domain rewards every basic land type you control, kicker lets a spell scale up late, enlist lets an attacker borrow a creature’s power, read-ahead Sagas start at the chapter you choose, and stun counters lock down blockers. Five-colour piles and multicolour legends sit beside lean two-colour aggro, so drafts swing between greedy domain decks and focused curves.',
-    tryIf: 'multicolour decks, flexible kicker spells and legendary creatures',
+      'Dominaria’s coalition makes its stand against the Phyrexian invasion, and every card is playable: domain rewards you for gathering basic land types, kicker lets spells scale up late, enlist taps a creature to power up an attacker, and read ahead lets you start a Saga on any chapter. Every draft pack opens a legendary creature, and the ten two-colour signposts range from Soldier swarms to spell-slinging Wizards and five-colour domain ramp.',
+    tryIf: 'legendary creatures, multicolour domain decks and flexible kicker spells',
   },
   {
     id: 'set-bro',

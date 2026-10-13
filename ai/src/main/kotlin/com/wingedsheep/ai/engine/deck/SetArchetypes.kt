@@ -734,6 +734,32 @@ object SetArchetypes {
                     "Hit every land drop and play the modal double-faced spell lands as either half, rewarding landfall and lands entering with card advantage. A flexible value deck that never misses a beat."),
             )
         ),
+        "DMU" to SetSynergies(
+            setCode = "DMU",
+            setName = "Dominaria United",
+            archetypes = listOf(
+                Archetype("Spells Tempo", listOf(Color.WHITE, Color.BLUE),
+                    "Cast instants and sorceries to tap your team for cards and make Soldier tokens, then pump the board with flyers on top. A tempo deck that grinds value out of every spell."),
+                Archetype("Spells Recursion", listOf(Color.BLUE, Color.BLACK),
+                    "Loot instants and sorceries into the graveyard, recast them later, and drain the opponent with every spell. A patient control deck that wins the long game on card quality."),
+                Archetype("Sacrifice Aggro", listOf(Color.BLACK, Color.RED),
+                    "Attack with expendable creatures and tokens, then turn each one that dies into a card or a point of damage. An aggressive attrition deck that profits from every trade."),
+                Archetype("Domain Stompy", listOf(Color.RED, Color.GREEN),
+                    "Assemble basic land types for domain, then tap your creatures to turn that domain count into big pumps. A stompy midrange deck whose threats grow with every land type."),
+                Archetype("Tokens", listOf(Color.GREEN, Color.WHITE),
+                    "Go wide with Soldier tokens, then grow the team with counters and creature-count payoffs. A swarm deck whose board outsizes every blocker."),
+                Archetype("Sacrifice Drain", listOf(Color.WHITE, Color.BLACK),
+                    "Flood the board with small creatures, sacrifice them for value, and drain the opponent each time one enters or dies. A grindy midrange deck that pulls ahead on life."),
+                Archetype("Spells Aggro", listOf(Color.BLUE, Color.RED),
+                    "Chain cheap instants and sorceries to pump and give trample to the whole team, with flash and copy effects for reach. A tempo deck that turns every spell into extra damage."),
+                Archetype("Lands Graveyard", listOf(Color.BLACK, Color.GREEN),
+                    "Surveil and sacrifice lands to fill the graveyard, then recur creatures with domain and grow graveyard-sized threats. A grindy midrange deck built to outlast the opponent."),
+                Archetype("Power Aggro", listOf(Color.RED, Color.WHITE),
+                    "Curve out with cheap attackers and pump them above their base power to make Soldier tokens each turn. A fast aggro deck that snowballs every combat."),
+                Archetype("Domain Ramp", listOf(Color.GREEN, Color.BLUE),
+                    "Ramp into all five basic land types and the set's biggest domain payoffs, then turn lands into flying creatures. A ramp deck that wins with an oversized late game."),
+            )
+        ),
         "BRO" to SetSynergies(
             setCode = "BRO",
             setName = "The Brothers' War",
