@@ -19,13 +19,21 @@ import io.kotest.matchers.shouldBe
  *  paying its mana cost. Put the rest on the bottom of your library in a random order."
  *
  * The trigger is a hand-spelled "legendary cascade", so the walk is pinned card by card: it passes a
- * cheaper nonlegendary card, a legendary land and a legendary card of *greater* mana value before
+ * cheaper nonlegendary card, a legendary land, a legendary card of *greater* mana value and one of
+ * *equal* mana value (lesser is strict) before
  * stopping on the cheaper legend. Everything else revealed goes to the bottom; a declined card stays
  * in exile (ruling).
  */
 class JodahTheUnifierScenarioTest : ScenarioTestBase() {
 
     private val legendThree = card("Jodah Test Legend Three") {
+        manaCost = "{2}{G}"
+        typeLine = "Legendary Creature — Elf"
+        power = 2
+        toughness = 2
+    }
+    /** Same mana value as the triggering spell: "lesser" is strict, so the walk must pass it. */
+    private val legendThreeB = card("Jodah Test Legend Three B") {
         manaCost = "{2}{G}"
         typeLine = "Legendary Creature — Elf"
         power = 2
@@ -54,17 +62,18 @@ class JodahTheUnifierScenarioTest : ScenarioTestBase() {
     }
 
     init {
-        listOf(legendThree, legendTwo, legendFour, bear, legendaryLand).forEach { cardRegistry.register(it) }
+        listOf(legendThree, legendThreeB, legendTwo, legendFour, bear, legendaryLand).forEach { cardRegistry.register(it) }
 
         fun board(castFromHand: String = "Jodah Test Legend Three") = scenario()
             .withPlayers("Player", "Opponent")
             .withCardOnBattlefield(1, "Jodah, the Unifier")
             .withCardInHand(1, castFromHand)
             .withLandsOnBattlefield(1, "Forest", 3)
-            // Top → bottom: three cards the walk must pass, the hit, then two the walk never reaches.
+            // Top → bottom: four cards the walk must pass, the hit, then two the walk never reaches.
             .withCardInLibrary(1, "Jodah Test Bear")
             .withCardInLibrary(1, "Jodah Test Legendary Land")
             .withCardInLibrary(1, "Jodah Test Legend Four")
+            .withCardInLibrary(1, "Jodah Test Legend Three B")
             .withCardInLibrary(1, "Jodah Test Legend Two")
             .withCardInLibrary(1, "Island")
             .withCardInLibrary(1, "Island")
@@ -114,10 +123,11 @@ class JodahTheUnifierScenarioTest : ScenarioTestBase() {
                     game.isOnBattlefield("Jodah Test Legend Three") shouldBe true
                 }
                 val library = game.state.getLibrary(game.player1Id).map { game.state.getEntity(it)!!.get<CardComponent>()!!.name }
-                withClue("the unrevealed cards stay on top; the passed-over three go to the bottom") {
+                withClue("the unrevealed cards stay on top; the passed-over four go to the bottom") {
                     library.take(2) shouldBe listOf("Island", "Island")
                     library.drop(2) shouldContainExactlyInAnyOrder listOf(
                         "Jodah Test Bear", "Jodah Test Legendary Land", "Jodah Test Legend Four",
+                        "Jodah Test Legend Three B",
                     )
                 }
                 game.state.getExile(game.player1Id).size shouldBe 0
@@ -132,7 +142,7 @@ class JodahTheUnifierScenarioTest : ScenarioTestBase() {
 
                 game.isInExile(1, "Jodah Test Legend Two") shouldBe true
                 game.isOnBattlefield("Jodah Test Legend Two") shouldBe false
-                game.librarySize(1) shouldBe 5
+                game.librarySize(1) shouldBe 6
             }
 
             test("a nonlegendary spell from hand does not trigger") {
@@ -141,7 +151,7 @@ class JodahTheUnifierScenarioTest : ScenarioTestBase() {
                 game.resolveStack()
 
                 game.hasPendingDecision() shouldBe false
-                game.librarySize(1) shouldBe 6
+                game.librarySize(1) shouldBe 7
                 game.state.getExile(game.player1Id).size shouldBe 0
             }
         }
