@@ -23,34 +23,6 @@
 
 .toolbarSpacer { flex: 1; }
 
-.viewToggle {
-  display: inline-flex;
-  flex: none;
-  gap: 2px;
-  padding: 4px;
-  border-radius: 12px;
-  background: rgba(10, 12, 20, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-
-.viewToggleButton {
-  min-height: 32px;
-  padding: 0 14px;
-  border-radius: 9px;
-  border: none;
-  background: transparent;
-  color: #b4bccd;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.viewToggleButton:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
-.viewToggleButton[aria-pressed='true'] { background: rgba(255, 255, 255, 0.14); color: #fff; }
-
 .tools {
   display: flex;
   align-items: center;
@@ -88,7 +60,6 @@
 .toolButton:focus-visible,
 .moreButton:focus-visible,
 .newDeckButton:focus-visible,
-.viewToggleButton:focus-visible,
 .paneTab:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
 
 /* The overflow menu and the deck-library button only exist below the three-column width. */
@@ -2296,7 +2267,7 @@
   .workspace:not(.workspaceDeckMode)[data-pane='filters'] > .center,
   .workspace:not(.workspaceDeckMode)[data-pane='filters'] > .right { display: none; }
 
-  /* The pane tabs below take over the view toggle's job. */
+  /* The pane tabs below take over the view toggle's job (BuilderViewToggle, tagged with this class). */
   .viewToggle { display: none; }
 
   /* The tabs share the toolbar row with More / New deck. */
@@ -2317,7 +2288,6 @@
 
 @media (max-width: 560px) {
   .toolbar { gap: 6px; }
-  .viewToggleButton { padding: 0 10px; }
   .paneTab { gap: 4px; padding: 0 4px; font-size: 13px; }
   .moreButton,
   .newDeckButton { padding: 0 12px; }

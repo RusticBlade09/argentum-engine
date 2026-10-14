@@ -1,5 +1,5 @@
 /**
- * Decks | Cubes — the builder's two modes, in the page title where "Deckbuilder" used to sit.
+ * Deck builder | Cube builder — the builder's two modes, in the page title where "Deckbuilder" used to sit.
  *
  * Decks and cubes are built with the same card browser, so they are one tool with two modes rather
  * than two tools; this switch is what says so. Each mode remembers where it was for the rest of the
@@ -114,7 +114,7 @@ export function BuilderModeSwitch({
           className={styles.option}
           onClick={() => go(m)}
         >
-          {m === 'deck' ? 'Decks' : 'Cubes'}
+          {m === 'deck' ? 'Deck builder' : 'Cube builder'}
         </button>
       ))}
     </div>

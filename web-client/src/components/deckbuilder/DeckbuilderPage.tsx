@@ -84,6 +84,7 @@ import {
   type SharedDeck,
 } from './shareDeck'
 import { PageShell } from '@/components/ui/PageShell'
+import { BuilderViewToggle } from './BuilderViewToggle'
 import { BuilderModeSwitch, clearWorkingCopy, peekWorkingCopy, stashWorkingCopy } from './BuilderModeSwitch'
 import { DeckHoverPreview } from './DeckHoverPreview'
 import { type HoverStore, useHovered, useHoverStore } from '@/components/ui/hoverStore'
@@ -1354,26 +1355,13 @@ export function DeckbuilderPage() {
     <>
     <PageShell title={<BuilderModeSwitch mode="deck" onLeave={stashDeck} />} fit width="full" plain>
       <div className={styles.toolbar}>
-        <div className={styles.viewToggle} role="group" aria-label="View mode">
-          <button
-            type="button"
-            className={styles.viewToggleButton}
-            onClick={() => setViewMode('cards')}
-            aria-pressed={viewMode === 'cards'}
-            title="Browse the catalog and click cards to add them"
-          >
-            Cards to add
-          </button>
-          <button
-            type="button"
-            className={styles.viewToggleButton}
-            onClick={() => setViewMode('deck')}
-            aria-pressed={viewMode === 'deck'}
-            title="See the deck grouped by type — Moxfield style"
-          >
-            Deck
-          </button>
-        </div>
+        <BuilderViewToggle
+          className={styles.viewToggle}
+          noun="Deck"
+          count={totalCards}
+          view={viewMode === 'deck' ? 'list' : 'cards'}
+          onChange={(v) => setViewMode(v === 'list' ? 'deck' : 'cards')}
+        />
         {/* Narrow screens only: one tab bar picks the pane and stands in for the view toggle, whose
             "Deck" view is a superset of the narrow deck pane — two bars with a "Deck" each was noise. */}
         <div className={styles.paneTabs} role="tablist" aria-label="Deckbuilder panes">
@@ -3746,7 +3734,7 @@ function DeckCentricView({
       >
         <p className={styles.deckCentricEmptyText}>
           Your deck is empty. Type a card name in the search bar above, or switch to{' '}
-          <strong>Cards to add</strong> to browse the catalog.
+          <strong>Search cards</strong> to browse the catalog.
         </p>
       </div>
     )

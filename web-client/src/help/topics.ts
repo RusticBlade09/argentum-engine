@@ -135,7 +135,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     body: [
       { kind: 'h', text: 'Top bar' },
       { kind: 'ul', items: [
-        'Deckbuilder — build, import and save decks, and (with the Decks | Cubes switch at the top) cubes.',
+        'Deckbuilder — build, import and save decks, and (with the Deck builder | Cube builder switch at the top) cubes.',
         'Cubes — your cube library: play, share, duplicate or open a cube in the builder.',
         'Replays — every finished game you played, ready to rewatch (shown once you are connected).',
         'Sets — Set Completion: which sets and cards are playable.',
@@ -916,7 +916,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'limited',
     title: 'Building a cube',
     summary:
-      'Cubes are built in the deckbuilder: flip the Decks | Cubes switch at the top, or open a cube from the Cubes page. Flipping back and forth keeps what you were working on in each, saved or not, for the rest of the session. Browse and filter cards exactly as for a deck, add a whole set or paste a list, choose how the cube becomes packs, and save it. The lobby’s Cube panel has a compact editor for quick tweaks. Cubes live alongside your decks — in this browser as a guest, in your account when signed in.',
+      'Cubes are built in the deckbuilder: flip the Deck builder | Cube builder switch at the top, or open a cube from the Cubes page. Flipping back and forth keeps what you were working on in each, saved or not, for the rest of the session. Browse and filter cards exactly as for a deck, add a whole set or paste a list, choose how the cube becomes packs, and save it. The lobby’s Cube panel has a compact editor for quick tweaks. Cubes live alongside your decks — in this browser as a guest, in your account when signed in.',
     body: [
       { kind: 'p', text: 'A cube is a list of card names with counts, so it isn’t tied to any set or printing. The builder keeps the deckbuilder’s card grid and filters; what changes in cube mode is the right-hand panel — no sideboard, format or 4-copy limit, but packs, rarities and pack health instead. Three ways to fill a cube:' },
       { kind: 'ul', items: [
@@ -925,7 +925,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         'Browse — the deckbuilder’s grid, filters and query language (“c:red t:creature cmc<=3”). Click a card to add it, right-click to take one out.',
       ] },
       { kind: 'p', text: 'Packs decides how the cube is played: a shuffled cube is dealt card by card, while Play Boosters and Draft Boosters print packs by rarity like a real set. The list filters by name and groups by type, colour or rarity, so a set-sized cube stays easy to work through.' },
-      { kind: 'p', text: 'Like the deckbuilder’s Deck view, the toggle at the top switches between “Cards to add” (the card grid, with the cube in the right-hand panel) and “Cube”: the whole cube in wide columns with the hovered card shown large on the left. In the Cube view you add cards by typing a name in the bar above the list, and change counts and rarities right in the columns.' },
+      { kind: 'p', text: 'Like the deckbuilder’s Deck list, the tabs under the title switch between “Search cards” (the card grid, with the cube in the right-hand panel) and “Cube list”: the whole cube in wide columns with the hovered card shown large on the left. In the Cube list you add cards by typing a name in the bar above the list, and change counts and rarities right in the columns.' },
       { kind: 'p', text: 'Cubes are usually singleton (one of each), but counts are yours to set — the editor lets any card run as many copies as you want, and each copy is a separate physical card when packs are dealt.' },
       { kind: 'p', text: 'A cube whose names are all implemented is playable; one with cards the engine doesn’t have yet is not, and the editor says so in red with a one-click “drop the unimplemented cards”. You can still save a cube in that state — sets keep landing, so a cube naming a card that arrives next month is worth keeping — but a lobby won’t accept it until it resolves cleanly.' },
       { kind: 'p', text: 'The editor also shows the colour spread, mana curve and rarity spread as you go, which are what a cube is usually balanced on.' },
