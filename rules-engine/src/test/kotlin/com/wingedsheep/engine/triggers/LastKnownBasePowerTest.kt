@@ -1,14 +1,17 @@
 package com.wingedsheep.engine.triggers
 
+import com.wingedsheep.engine.core.ActivateAbility
 import com.wingedsheep.engine.state.components.battlefield.CountersComponent
 import com.wingedsheep.engine.support.ScenarioTestBase
 import com.wingedsheep.sdk.core.CounterType
 import com.wingedsheep.sdk.core.Phase
 import com.wingedsheep.sdk.core.Step
+import com.wingedsheep.sdk.dsl.Costs
 import com.wingedsheep.sdk.dsl.DynamicAmounts
 import com.wingedsheep.sdk.dsl.Effects
 import com.wingedsheep.sdk.dsl.Triggers
 import com.wingedsheep.sdk.dsl.card
+import com.wingedsheep.sdk.scripting.AdditionalCostPayment
 import com.wingedsheep.sdk.scripting.Duration
 import com.wingedsheep.sdk.scripting.GameObjectFilter
 import com.wingedsheep.sdk.scripting.filters.unified.TargetFilter
@@ -77,8 +80,20 @@ class LastKnownBasePowerTest : ScenarioTestBase() {
         }
     }
 
+    private val sacDrawer = card("LKI Sac Drawer") {
+        manaCost = "{U}"
+        typeLine = "Artifact"
+        oracleText = "Sacrifice a creature: Draw cards equal to the sacrificed creature's base power."
+        activatedAbility {
+            cost = Costs.Sacrifice(GameObjectFilter.Creature)
+            effect = Effects.DrawCards(
+                DynamicAmounts.propertyOf(EffectTarget.SacrificedAsCost(), EntityNumericProperty.BasePower)
+            )
+        }
+    }
+
     init {
-        cardRegistry.register(listOf(setBoth, kill, baseDrawer, baseFourWatcher, pumpedWatcher))
+        cardRegistry.register(listOf(setBoth, kill, baseDrawer, baseFourWatcher, pumpedWatcher, sacDrawer))
 
         fun board(watcher: String, setBase: Boolean = true) = scenario()
             .withPlayers()
@@ -124,6 +139,23 @@ class LastKnownBasePowerTest : ScenarioTestBase() {
             game.castSpell(1, "LKI Kill", bear).error shouldBe null
             game.resolveStack()
             game.handSize(1) shouldBe hand - 1 + 2
+        }
+
+        test("a creature sacrificed as a cost reports its set base power from the cost snapshot") {
+            val game = board("LKI Sac Drawer")
+            val bear = game.findPermanent("Grizzly Bears")!!
+            game.castSpell(1, "LKI Base 4/4", bear).error shouldBe null
+            game.resolveStack()
+            val drawer = game.findPermanent("LKI Sac Drawer")!!
+            val hand = game.handSize(1)
+            game.execute(
+                ActivateAbility(
+                    game.player1Id, drawer, sacDrawer.activatedAbilities.single().id,
+                    costPayment = AdditionalCostPayment(sacrificedPermanents = listOf(bear)),
+                )
+            ).error shouldBe null
+            game.resolveStack()
+            game.handSize(1) shouldBe hand + 4
         }
 
         test("a dies trigger filtered on base power matches the last-known set base power") {

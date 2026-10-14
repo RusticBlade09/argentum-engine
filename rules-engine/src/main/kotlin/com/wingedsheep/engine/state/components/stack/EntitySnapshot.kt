@@ -336,6 +336,8 @@ fun captureEntitySnapshots(
         manaValue = state?.let { permanentManaValue(it, id) },
         power = projected.getPower(id),
         toughness = projected.getToughness(id),
+        basePower = projected.getBasePower(id),
+        baseToughness = projected.getBaseToughness(id),
         subtypes = projected.getSubtypes(id),
         supertypes = projected.getSupertypes(id),
         controllerId = projected.getController(id),

@@ -150,7 +150,7 @@
 - [ ] Island
 - [x] Isolated Chapel
 - [ ] James, Wandering Dad
-- [ ] Jason Bright, Glowing Prophet
+- [x] Jason Bright, Glowing Prophet
 - [x] Jungle Shrine
 - [ ] Junk Jet
 - [ ] Junktown
