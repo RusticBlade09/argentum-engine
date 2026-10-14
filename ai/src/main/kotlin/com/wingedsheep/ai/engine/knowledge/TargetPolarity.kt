@@ -20,6 +20,8 @@ import com.wingedsheep.sdk.scripting.RedirectZoneChangeWith
 import com.wingedsheep.sdk.scripting.ReplacementEffect
 import com.wingedsheep.sdk.scripting.TriggeredAbility
 import com.wingedsheep.sdk.scripting.effects.DrawCardsEffect
+import com.wingedsheep.sdk.scripting.effects.ForEachEffect
+import com.wingedsheep.sdk.scripting.effects.IterationSpace
 import com.wingedsheep.sdk.scripting.effects.GainLifeEffect
 import com.wingedsheep.sdk.scripting.effects.LoseLifeEffect
 import com.wingedsheep.sdk.scripting.references.Player
@@ -205,6 +207,14 @@ object TargetPolarityAnalyzer {
         if (effect == null) return requirements.map { TargetPolarity.UNKNOWN }
         val perSlot = List(requirements.size) { mutableListOf<TargetPolarity>() }
         for (leaf in EffectWalker.leaves(effect)) {
+            // "Destroy up to two target artifacts and/or enchantments" (Force of Vigor) runs its
+            // body once per target, each seeing its target as `ContextTarget(0)`. With one slot
+            // that is every target of that slot, so the body reads as the slot's; with several,
+            // `ContextTarget(0)` walks all of them and names no one slot.
+            if (leaf is ForEachEffect && leaf.space == IterationSpace.Targets) {
+                if (requirements.size == 1) perSlot[0] += forRequirements(leaf.body, requirements, definitions)
+                continue
+            }
             for ((target, polarity) in classify(leaf, definitions)) {
                 val slot = slotOf(target, requirements) ?: continue
                 perSlot[slot] += polarity

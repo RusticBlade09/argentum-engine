@@ -353,7 +353,7 @@ data class AiProfile(
      * by [com.wingedsheep.ai.engine.knowledge.TargetPolarityAnalyzer] rather than from the one
      * shape the ranker used to recognise (a fixed stat boost on an activated ability).
      *
-     * Three things change, all from the same reading:
+     * Four things change, all from the same reading:
      *
      *  1. **Ranking.** A beneficial slot — a damage shield, a pump spell, an evasion Aura — ranks
      *     our own best permanent first. Everything else used to rank as removal, which is how a
@@ -368,8 +368,14 @@ data class AiProfile(
      *     kicked one was affordable, on the theory that a kicker only adds. A kicker adds an
      *     *effect*, whose target the cast cannot see: kicked Tolarian Emissary destroyed our own
      *     Traveler's Cloak, the only enchantment on the table (game 3 turn 19).
+     *  4. **Optional slots can stay empty.** An "up to one / up to N target" slot only takes a
+     *     target on the right side, and is left empty when there is none — Tam's Resistance with
+     *     only an opposing creature is cast for its Empower Jace without buffing it. A lone optional
+     *     slot whose side can't be read is left empty when simulating it empty scores strictly
+     *     better than the best target.
      *
-     * Every slot the analyzer cannot read confidently is UNKNOWN and keeps the old behaviour.
+     * Every slot the analyzer cannot read confidently is UNKNOWN and keeps the old behaviour
+     * (bar the simulated skip in 4).
      * Needs [useCardIntent]: the polarity is read off the card definition, which only the intent
      * catalog can reach.
      */

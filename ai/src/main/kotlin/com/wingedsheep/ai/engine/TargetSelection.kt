@@ -334,8 +334,13 @@ object TargetSelection {
         val targetInfos = fillableRequirements(action, fillPartialRequirements) ?: return action.action
 
         val rankTarget = ranker(state, action, playerId, intents, polarityFromEffect)
+        val slotPolarities = if (polarityFromEffect) polarities(state, action, intents) else emptyList()
         val chosenTargets = mutableListOf<ChosenTarget>()
         val chosenIds = mutableSetOf<EntityId>()
+        // How many targets each slot took, kept so a slot left empty *by choice* ahead of a filled
+        // one can be announced explicitly — see [applyTargets].
+        val counts = mutableListOf<Int>()
+        fun finish() = applyTargets(baseAction, chosenTargets, groupCountsFor(action, counts))
         for ((index, info) in targetInfos.withIndex()) {
             val candidates = info.validTargetsByPrefix?.get(chosenTargets.joinToString(",") { it.toEntityId().toString() })
                 ?: if (info.validTargetsByPrefix == null) info.validTargets else emptyList()
@@ -357,10 +362,16 @@ object TargetSelection {
             // (or the engine) to reject. Either beats `first()` on an empty list, which is what this
             // used to do — an `?: available.first()` that could only ever run when `available` was
             // empty, and so could only ever throw.
-            val picks = pick(state, info, available, rankTarget)
+            val worth = worthTargeting(state, info, available, playerId, slotPolarities.getOrNull(index))
+            if (worth.isEmpty() && available.isNotEmpty()) {
+                // An optional slot whose every candidate is on the wrong side: leave it empty.
+                counts += 0
+                continue
+            }
+            val picks = pick(state, info, worth, rankTarget)
             if (picks.isEmpty()) {
                 return if (targetInfos.drop(index).all { it.minTargets == 0 }) {
-                    applyTargets(baseAction, chosenTargets)
+                    finish()
                 } else {
                     action.action
                 }
@@ -370,8 +381,46 @@ object TargetSelection {
             if (picks.size < info.minTargets) return action.action
             picks.forEach { chosenTargets += toChosenTarget(state, info, it, playerId) }
             chosenIds += picks
+            counts += picks.size
         }
-        return applyTargets(baseAction, chosenTargets)
+        return finish()
+    }
+
+    /**
+     * The candidates worth putting in [info]'s slot. A mandatory slot keeps them all — it has to
+     * take *something*, and the ranker already orders the least bad first. An **optional** slot
+     * ("up to one target creature", CR 601.2c lets it hold none) of known [polarity] drops every
+     * candidate on the wrong side of the table: a +1/+1 counter is not put on an opponent's
+     * creature, nor a "destroy" aimed at our own permanent, just because the slot is there. Empty
+     * means the slot is best left empty — Tam's Resistance cast for its Empower Jace alone.
+     */
+    fun worthTargeting(
+        state: GameState,
+        info: TargetInfo,
+        candidates: List<EntityId>,
+        playerId: EntityId,
+        polarity: TargetPolarity?,
+    ): List<EntityId> {
+        if (info.minTargets > 0) return candidates
+        return when (polarity) {
+            TargetPolarity.BENEFICIAL -> candidates.filterNot { isTheirs(state, it, playerId) }
+            TargetPolarity.HARMFUL -> candidates.filterNot { isOurs(state, it, playerId) }
+            TargetPolarity.UNKNOWN, null -> candidates
+        }
+    }
+
+    /**
+     * Explicit per-requirement target counts for [action] when [counts] leaves a slot empty ahead
+     * of a filled one, else null (let the engine infer the split, as it always has). The engine
+     * reads the flat target list greedily, earliest group fullest — so with "up to one target
+     * creature gets +2/+2" skipped and "up to one target creature gets -2/-2" aimed at their
+     * creature, an unannounced split would hand their creature the pump.
+     */
+    fun groupCountsFor(action: LegalAction, counts: List<Int>): List<Int>? {
+        val hole = counts.withIndex().any { (i, n) -> n == 0 && counts.drop(i + 1).any { it > 0 } }
+        if (!hole) return null
+        val slots = targetInfosFor(action)?.size ?: return null
+        return counts + List(maxOf(0, slots - counts.size)) { 0 }
     }
 
     private fun fillModalHeuristically(
@@ -604,11 +653,20 @@ object TargetSelection {
         }
     }
 
-    /** Return [baseAction] with its target list replaced. */
-    fun applyTargets(baseAction: GameAction, targets: List<ChosenTarget>): GameAction =
+    /**
+     * Return [baseAction] with its target list replaced, and — when [groupCounts] is given — the
+     * per-requirement split announced with it ([CastSpell.targetGroupCounts]).
+     */
+    fun applyTargets(
+        baseAction: GameAction,
+        targets: List<ChosenTarget>,
+        groupCounts: List<Int>? = null,
+    ): GameAction =
         when (baseAction) {
-            is CastSpell -> baseAction.copy(targets = targets)
-            is ActivateAbility -> baseAction.copy(targets = targets)
+            is CastSpell -> if (groupCounts == null) baseAction.copy(targets = targets)
+                else baseAction.copy(targets = targets, targetGroupCounts = groupCounts)
+            is ActivateAbility -> if (groupCounts == null) baseAction.copy(targets = targets)
+                else baseAction.copy(targets = targets, targetGroupCounts = groupCounts)
             else -> baseAction
         }
 }
