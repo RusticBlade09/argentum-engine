@@ -28,6 +28,8 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- Holds instant-speed deploys for the opponent's turn: a flash creature is judged by what it can do the turn it lands (an attack-trigger loot no longer gets it jammed in its own main phase), an instant that only makes no-haste tokens or empowers a walker it lets act at instant speed waits for their turn too, and either is cast into idle mana when holding it would leave another instant in hand without mana.
+
 - Defends its own planeswalkers: a walker is priced by the loyalty the next attack leaves it, so one about to die spends its loyalty first (the biggest useful minus) instead of dying with counters unspent, a blocker kept home for it counts, and blocks on attackers aimed at it are worth the walker they save — a chump or trade for a valuable walker, nothing for a near-dead token.
 
 - On Auto against a deck the human brought, plays from that deck's set(s) — another built-in starter from them when one exists (Boros Mice meets another Bloomburrow tribe), else a deck built from those sets in the same 60-card or 40-card shape — instead of a sealed pool from an unrelated set.

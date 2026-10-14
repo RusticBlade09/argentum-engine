@@ -223,6 +223,7 @@ object CardIntentAnalyzer {
         if (speed == Speed.INSTANT && expiringPump) tags += IntentTag.COMBAT_TRICK
 
         val repeatable = repeatableOf(card, scripts)
+        val arrivalTags = arrivalTagsOf(card, scripts, tags)
         val intent = CardIntent(
             tags = tags,
             speed = speed,
@@ -240,8 +241,70 @@ object CardIntentAnalyzer {
             expiringGroupPump = expiringGroupPump,
             selectsIntoHand = (gathersLibraryTop || wishFilters.isNotEmpty()) && movesToHand,
             wishFilters = if (movesToHand) wishFilters else emptyList(),
+            arrivalTags = arrivalTags.takeIf { it != tags },
+            grantsInstantSpeedLoyalty = leaves.any { it is GrantLoyaltyActivationPermissionEffect && it.instantSpeed },
         )
         return intent.copy(staticPriorValue = priorValueOf(card, intent))
+    }
+
+    /**
+     * [CardIntent.arrivalTags]: [tags] less whatever only a later event of the permanent's own can
+     * cash in.
+     *
+     * Built by subtraction rather than by re-deriving the set: the tags the deferred slots add are
+     * taken away only when no slot that can fire this turn adds them too, so a card that draws on
+     * entering *and* on attacking keeps [IntentTag.DRAW]. Everything that is not a deferred slot —
+     * static abilities, ETBs, "whenever you cast" triggers, activations with no tap symbol — is
+     * left exactly as [tags] read it.
+     */
+    private fun arrivalTagsOf(card: CardDefinition, scripts: List<CardScript>, tags: Set<IntentTag>): Set<IntentTag> {
+        if (!card.typeLine.isPermanent) return tags
+        // A creature without haste cannot pay a tap or untap cost on the turn it arrives (CR 302.6).
+        val sick = card.typeLine.isCreature && Keyword.HASTE !in card.keywords
+        val deferred = mutableListOf<Effect>()
+        val immediate = mutableListOf<Effect>()
+        for (script in scripts) {
+            script.spellEffect?.let { immediate += it }
+            immediate += script.stateTriggeredAbilities.map { it.effect }
+            for (trigger in script.triggeredAbilities) {
+                if (waitsForALaterEventOfItsOwn(trigger)) deferred += trigger.effect else immediate += trigger.effect
+            }
+            for (ability in script.activatedAbilities.filterNot { it.isManaAbility }) {
+                if (sick && tapsOrUntapsItself(ability.cost)) deferred += ability.effect else immediate += ability.effect
+            }
+        }
+        // A mana ability is [IntentTag.RAMP] — and a summoning-sick dork's taps for nothing yet.
+        val manaAbilities = scripts.flatMap { it.activatedAbilities }.filter { it.isManaAbility }
+        val sickRamp = sick && manaAbilities.isNotEmpty() && manaAbilities.all { tapsOrUntapsItself(it.cost) }
+        if (deferred.isEmpty() && !sickRamp) return tags
+        fun tagsOfRoots(roots: List<Effect>) = roots.flatMap { EffectWalker.leaves(it) }.flatMapTo(HashSet()) { tagsOf(it) }
+        val later = tagsOfRoots(deferred) + if (sickRamp) setOf(IntentTag.RAMP) else emptySet()
+        val onlyLater = later - tagsOfRoots(immediate) -
+            scripts.flatMap { it.staticAbilities }.flatMapTo(HashSet()) { tagsOf(it) }
+        return tags - onlyLater
+    }
+
+    /**
+     * A trigger bound to the permanent itself whose event is the permanent fighting or leaving —
+     * attacking, blocking, being blocked or unblocked, dealing damage, or leaving the battlefield.
+     * None of those can happen to a no-haste body before the opponent's turn, and the ones that
+     * can (blocking, dying in a block) happen *in* the ambush rather than before it.
+     */
+    private fun waitsForALaterEventOfItsOwn(trigger: TriggeredAbility): Boolean {
+        if (trigger.binding != TriggerBinding.SELF) return false
+        return when (val pattern = trigger.trigger) {
+            is EventPattern.AttackEvent, is EventPattern.BlockEvent, is EventPattern.BecomesBlockedEvent,
+            EventPattern.BecomesUnblockedEvent, is EventPattern.BlocksOrBecomesBlockedByEvent,
+            is EventPattern.DealsDamageEvent -> true
+            is EventPattern.ZoneChangeEvent -> pattern.from == Zone.BATTLEFIELD
+            else -> false
+        }
+    }
+
+    private fun tapsOrUntapsItself(cost: AbilityCost): Boolean = when (cost) {
+        AbilityCost.Tap, AbilityCost.Untap -> true
+        is AbilityCost.Composite -> cost.costs.any { tapsOrUntapsItself(it) }
+        else -> false
     }
 
     /**

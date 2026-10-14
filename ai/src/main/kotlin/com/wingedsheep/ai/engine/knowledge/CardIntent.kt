@@ -179,7 +179,34 @@ data class CardIntent(
      * card thrown away, and must not collect the idle-mana nudge a live one does.
      */
     val wishFilters: List<GameObjectFilter> = emptyList(),
+    /**
+     * The subset of [tags] the card can cash in **the turn it arrives** — everything except what
+     * sits behind a later event of the permanent's own: a trigger on it attacking, blocking, being
+     * blocked, dealing damage or leaving the battlefield, and (for a creature without haste) an
+     * ability that taps or untaps it.
+     *
+     * [AmbushWindow] asks "does this card pay off before the ambush?" and [tags] cannot answer it:
+     * a tag says what the card does *anywhere*. Sphinx of False Conclusions loots when it attacks,
+     * so it reads [IntentTag.DRAW], and the hold treated that as an ETB card draw and jammed the
+     * Sphinx in its own main phase (2026-10-14, Reality Fracture draft) — though a no-haste body
+     * cannot attack before the opponent's turn whichever window it lands in.
+     *
+     * Null means "same as [tags]": what an intent built by hand, or [UNKNOWN], should read.
+     * Only [AmbushWindow] reads it, behind
+     * [com.wingedsheep.ai.engine.AiProfile.holdInstantSpeedDeploys].
+     */
+    val arrivalTags: Set<IntentTag>? = null,
+    /**
+     * Whether the card lets its controller activate planeswalker loyalty abilities **at instant
+     * speed** (Jace's Machinations). A walker it deploys or empowers can then be used at the
+     * opponent's end step as well as in our main phase, so its loyalty is no reason to cast it now.
+     * Read by [AmbushWindow].
+     */
+    val grantsInstantSpeedLoyalty: Boolean = false,
 ) {
+    /** [arrivalTags], falling back to [tags] where the analyzer did not split them. */
+    val tagsOnArrival: Set<IntentTag> get() = arrivalTags ?: tags
+
     operator fun contains(tag: IntentTag): Boolean = tag in tags
 
     companion object {

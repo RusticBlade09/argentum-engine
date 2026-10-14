@@ -160,6 +160,9 @@ class PuzzleComparisonBenchmark : ScenarioTestBase() {
                 // Our own planeswalkers defended, and spent before they die.
                 AiProfile.PRODUCTION_WALKERDEFENCE,
                 AiProfile.PRODUCTION_CANDIDATE_WALKERDEFENCE,
+                // Instant-speed deploys held for the opponent's turn.
+                AiProfile.PRODUCTION_DEPLOYHOLD,
+                AiProfile.PRODUCTION_CANDIDATE_DEPLOYHOLD,
                 // A beginning-of-combat pump bought only for creatures the attack plan sends.
                 AiProfile.PRODUCTION_PLANNEDPUMPS,
                 AiProfile.PRODUCTION_CANDIDATE_PLANNEDPUMPS,

@@ -233,6 +233,10 @@ object ArenaAgents {
         // attack, blocks priced by the walker they save.
         ArenaAgent("production-walkerdefence", AiProfile.PRODUCTION_WALKERDEFENCE),
         ArenaAgent("production-candidate-walkerdefence", AiProfile.PRODUCTION_CANDIDATE_WALKERDEFENCE),
+        // Instant-speed deploys held for the opponent's turn: flash bodies judged by what they do on
+        // arrival, token and walker instants given the same hold.
+        ArenaAgent("production-deployhold", AiProfile.PRODUCTION_DEPLOYHOLD),
+        ArenaAgent("production-candidate-deployhold", AiProfile.PRODUCTION_CANDIDATE_DEPLOYHOLD),
         ArenaAgent("production-targeted", AiProfile.PRODUCTION_TARGETED),
         // Explicit ECL candidates. Their resource-backed weights fail closed to production's
         // evaluator until a validated artifact is installed; automatic selection is set-gated.

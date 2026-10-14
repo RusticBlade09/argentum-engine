@@ -180,6 +180,11 @@ class Strategist(
      */
     private val activatedPumpsNeedAPlannedAttack: Boolean = false,
     /**
+     * [AiProfile.holdInstantSpeedDeploys] — passed straight through to [HoldPolicy], which hands it
+     * to [com.wingedsheep.ai.engine.knowledge.AmbushWindow] along with each candidate's leaf.
+     */
+    private val holdInstantSpeedDeploys: Boolean = false,
+    /**
      * The profile's `EvaluationWeights.boardPresence`. Only [HoldPolicy] reads it, to quote a
      * patience discount in the same units the leaf score prices board value in.
      */
@@ -211,6 +216,7 @@ class Strategist(
         refuseEmptyPayoffs = refuseEmptyPayoffs,
         holdUnusablePumps = holdUnusablePumps,
         drawWithIdleMana = drawWithIdleMana,
+        holdInstantSpeedDeploys = holdInstantSpeedDeploys,
         boardPresenceWeight = boardPresenceWeight,
     )
 
@@ -881,6 +887,7 @@ class Strategist(
             state, playerId, cardName,
             cast = action.action as? CastSpell,
             activation = action.action as? ActivateAbility,
+            leaf = leafState,
         )
         if (timing is TimingVerdict.NoWindow) {
             // The card does nothing here, so nothing the simulation reports should make it beat
