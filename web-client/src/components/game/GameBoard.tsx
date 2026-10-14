@@ -2331,42 +2331,79 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
           alignItems: 'flex-end',
           zIndex: 100,
         }}>
-          {manaSelectionState.manaCost.match(/\{([^}]+)\}/g)?.some((symbol) => symbol.includes('/P')) && (
-            <div style={{
-              backgroundColor: 'rgba(0, 0, 0, 0.9)',
-              border: '1px solid rgba(239, 68, 68, 0.45)',
-              borderRadius: 8,
-              padding: '10px 12px',
+          {manaSelectionState.manaCost.match(/\{([^}]+)\}/g)?.some((symbol) => symbol.includes('/P')) && (() => {
+            // Each Phyrexian pip (CR 107.4f) gets its own Mana | 2 Life choice; the lands above
+            // re-fit to whatever mana is still owed whenever one flips.
+            const life = viewingPlayer?.life ?? 0
+            const lifePips = manaSelectionState.phyrexianLifePipIndices
+            const lifeAfter = life - lifePips.length * 2
+            const segment = (active: boolean, enabled: boolean, accent: string): React.CSSProperties => ({
+              padding: '4px 10px',
+              border: 'none',
+              background: active ? accent : 'transparent',
+              color: active ? '#fff' : enabled ? '#bbb' : '#555',
+              fontWeight: active ? 700 : 500,
+              fontSize: responsive.fontSize.small,
+              cursor: enabled && !active ? 'pointer' : 'default',
               display: 'flex',
-              gap: 8,
               alignItems: 'center',
-            }}>
-              <span style={{ color: '#ddd', fontSize: responsive.fontSize.small }}>Pay with life:</span>
-              {manaSelectionState.manaCost.match(/\{([^}]+)\}/g)!.map((symbol, pipIndex) => {
-                if (!symbol.includes('/P')) return null
-                const selected = manaSelectionState.phyrexianLifePipIndices.includes(pipIndex)
-                const canSelect = selected || ((manaSelectionState.phyrexianLifePipIndices.length + 1) * 2 <= (viewingPlayer?.life ?? 0))
-                return (
-                  <button
-                    key={pipIndex}
-                    type="button"
-                    disabled={!canSelect}
-                    onClick={() => useGameStore.getState().togglePhyrexianLifePayment(pipIndex)}
-                    style={{
-                      padding: '5px 8px',
-                      borderRadius: 6,
-                      border: `1px solid ${selected ? '#ef4444' : '#666'}`,
-                      background: selected ? 'rgba(127, 29, 29, 0.9)' : 'rgba(40, 40, 40, 0.9)',
-                      color: selected ? '#fecaca' : '#ddd',
-                      cursor: canSelect ? 'pointer' : 'not-allowed',
-                    }}
-                  >
-                    <ManaSymbol symbol={symbol.slice(1, -1)} size={18} /> {selected ? '2 life' : 'mana'}
-                  </button>
-                )
-              })}
-            </div>
-          )}
+              gap: 4,
+            })
+            return (
+              <div style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                border: '1px solid rgba(239, 68, 68, 0.45)',
+                borderRadius: 8,
+                padding: '8px 12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+              }}>
+                {manaSelectionState.manaCost.match(/\{([^}]+)\}/g)!.map((symbol, pipIndex) => {
+                  if (!symbol.includes('/P')) return null
+                  const paidWithLife = lifePips.includes(pipIndex)
+                  const canPayLife = paidWithLife || (lifePips.length + 1) * 2 <= life
+                  const toggle = () => useGameStore.getState().togglePhyrexianLifePayment(pipIndex)
+                  return (
+                    <div key={pipIndex} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <ManaSymbol symbol={symbol.slice(1, -1)} size={20} />
+                      <div
+                        role="radiogroup"
+                        aria-label={`Pay ${symbol} with`}
+                        style={{ display: 'flex', borderRadius: 6, border: '1px solid #555', overflow: 'hidden' }}
+                      >
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={!paidWithLife}
+                          onClick={paidWithLife ? toggle : undefined}
+                          style={segment(!paidWithLife, true, 'rgba(37, 99, 235, 0.85)')}
+                        >
+                          <ManaSymbol symbol={symbol.slice(1, -3)} size={14} /> Mana
+                        </button>
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={paidWithLife}
+                          disabled={!canPayLife}
+                          title={canPayLife ? undefined : 'Not enough life'}
+                          onClick={paidWithLife ? undefined : toggle}
+                          style={segment(paidWithLife, canPayLife, 'rgba(185, 28, 28, 0.9)')}
+                        >
+                          ♥ 2 Life
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+                {lifePips.length > 0 && (
+                  <span style={{ color: '#fca5a5', fontSize: responsive.fontSize.small }}>
+                    Life {life} → {lifeAfter}
+                  </span>
+                )}
+              </div>
+            )
+          })()}
           {/* Mana progress indicator */}
           {manaProgress && (
             <div style={{
