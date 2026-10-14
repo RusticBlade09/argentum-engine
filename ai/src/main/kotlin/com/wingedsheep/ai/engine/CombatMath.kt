@@ -436,15 +436,18 @@ object CombatMath {
                 continue
             }
 
+            // Menace takes two bodies to stop. Spending one let a single creature "block" a menace
+            // attacker here, which read a board that needs three chumps to survive as one needing
+            // two — and the crack-back it fed reported a lethal attack as no damage at all.
+            val needed = if (Keyword.MENACE.name in aKeywords) 2 else 1
             if (hasTrample) {
-                // Opponent picks the highest-toughness blocker to minimize overflow
-                val bestBlocker = validBlockers.maxByOrNull { projected.getToughness(it) ?: 0 }!!
-                totalDamage += damageDealtThrough(projected, attacker, bestBlocker)
-                usedBlockers.add(bestBlocker)
+                // Opponent picks the highest-toughness blockers to minimize overflow
+                val bestBlockers = validBlockers.sortedByDescending { projected.getToughness(it) ?: 0 }.take(needed)
+                totalDamage += trampleOverflow(projected, attacker, bestBlockers)
+                usedBlockers.addAll(bestBlockers)
             } else {
                 // Non-trampler: any blocker prevents all damage; opponent uses cheapest
-                val cheapestBlocker = validBlockers.minByOrNull { creatureValue(state, projected, it) }!!
-                usedBlockers.add(cheapestBlocker)
+                usedBlockers.addAll(validBlockers.sortedBy { creatureValue(state, projected, it) }.take(needed))
                 // No damage gets through
             }
         }
@@ -462,6 +465,93 @@ object CombatMath {
         survivesBlock(state, projected, attacker, blocker) ||
             (survivesFirstStrike(state, projected, attacker, blocker) &&
                 wouldKillInCombat(state, projected, blocker, attacker))
+
+    /** What a trampler still deals to the player through [blockers], each soaking its lethal share. */
+    private fun trampleOverflow(projected: ProjectedState, attacker: EntityId, blockers: List<EntityId>): Int {
+        val power = projected.getPower(attacker) ?: 0
+        val deathtouch = Keyword.DEATHTOUCH.name in projected.getKeywords(attacker)
+        val soaked = blockers.sumOf { if (deathtouch) 1 else (projected.getToughness(it) ?: 0) }
+        return (power - soaked).coerceAtLeast(0)
+    }
+
+    /**
+     * The least creature value [blockers] must throw away to survive [attackers] at [life] — the
+     * price, in bodies, of living through that attack. `0.0` when blocks that cost nothing (the
+     * blocker survives, or kills what it blocks) already hold the damage under [life]; `null` when
+     * no assignment survives at all.
+     *
+     * This is the question a chump block now is really asking about the turn after: at 12 life a
+     * 10/9 and a 6/4 menace need one chump (the 10/9) to live through, at 2 life they need three
+     * (the 10/9 and both halves of the menace pair). "Can we survive next turn by chumping
+     * everything" says yes to both and so cannot tell them apart; this can.
+     *
+     * Greedy rather than exact, which is enough for a comparison between two nearby plans: free
+     * blocks first (biggest attacker first), then while the damage is still lethal, the single
+     * chump that alone gets under [life] most cheaply, else the one preventing the most damage per
+     * point of value spent. Menace takes two bodies, trample spills past toughness.
+     */
+    fun survivalChumpCost(
+        state: GameState,
+        projected: ProjectedState,
+        attackers: List<EntityId>,
+        blockers: List<EntityId>,
+        life: Int,
+    ): Double? {
+        if (life <= 0) return null
+        val used = mutableSetOf<EntityId>()
+        val open = mutableListOf<EntityId>()
+        var damage = 0
+        val needed = { attacker: EntityId -> if (Keyword.MENACE.name in projected.getKeywords(attacker)) 2 else 1 }
+        val power = { attacker: EntityId -> (projected.getPower(attacker) ?: 0).coerceAtLeast(0) }
+
+        for (attacker in attackers.filter { power(it) > 0 }.sortedByDescending(power)) {
+            val legal = getValidBlockersFor(state, projected, attacker, blockers)
+            if (legal.size < needed(attacker)) {
+                damage += power(attacker)
+                continue
+            }
+            val free = legal.filter { it !in used && isWorthwhileBlock(state, projected, attacker, it) }
+                .sortedBy { creatureValue(state, projected, it) }
+                .take(needed(attacker))
+            if (free.size == needed(attacker)) {
+                used.addAll(free)
+                damage += trampleOverflowIfAny(projected, attacker, free)
+            } else {
+                open.add(attacker)
+                damage += power(attacker)
+            }
+        }
+
+        var cost = 0.0
+        while (damage >= life) {
+            data class Chump(val attacker: EntityId, val bodies: List<EntityId>, val prevented: Int, val price: Double)
+            val options = open.mapNotNull { attacker ->
+                val count = needed(attacker)
+                val pool = getValidBlockersFor(state, projected, attacker, blockers).filter { it !in used }
+                if (pool.size < count) return@mapNotNull null
+                val bodies = if (Keyword.TRAMPLE.name in projected.getKeywords(attacker)) {
+                    pool.sortedByDescending { projected.getToughness(it) ?: 0 }.take(count)
+                } else {
+                    pool.sortedBy { creatureValue(state, projected, it) }.take(count)
+                }
+                val prevented = power(attacker) - trampleOverflowIfAny(projected, attacker, bodies)
+                if (prevented <= 0) return@mapNotNull null
+                // A body is never free: a 0-value token still stops being a blocker afterwards.
+                Chump(attacker, bodies, prevented, bodies.sumOf { creatureValue(state, projected, it).coerceAtLeast(0.25) })
+            }
+            if (options.isEmpty()) return null
+            val pick = options.filter { damage - it.prevented < life }.minByOrNull { it.price }
+                ?: options.maxBy { it.prevented / it.price }
+            damage -= pick.prevented
+            cost += pick.price
+            used.addAll(pick.bodies)
+            open.remove(pick.attacker)
+        }
+        return cost
+    }
+
+    private fun trampleOverflowIfAny(projected: ProjectedState, attacker: EntityId, blockers: List<EntityId>): Int =
+        if (Keyword.TRAMPLE.name in projected.getKeywords(attacker)) trampleOverflow(projected, attacker, blockers) else 0
 
     /**
      * Get creatures controlled by [playerId] that can actually attack

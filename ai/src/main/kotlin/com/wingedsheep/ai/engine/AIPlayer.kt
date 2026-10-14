@@ -287,6 +287,7 @@ class AIPlayer(
                 lifeWeight = EvalWeights.resolve(profile.evalWeightsId).life,
                 chumpOnlyWhenInDanger = profile.chumpOnlyWhenInDanger,
                 attackPlaneswalkers = profile.attackPlaneswalkers,
+                chumpForTheClock = profile.chumpForTheClock,
             )
             val responder = DecisionResponder(
                 simulator, evaluator,

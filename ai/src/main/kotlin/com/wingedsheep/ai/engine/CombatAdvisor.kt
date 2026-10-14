@@ -78,6 +78,12 @@ class CombatAdvisor(
      * attackers at walkers ([CombatSeed.aimAtPlaneswalkers]) and the local search retargets.
      */
     private val attackPlaneswalkers: Boolean = false,
+     * Value life by the opponent's clock rather than by a lethal-this-turn cliff: after the blocks
+     * are chosen, add a chump block whenever the creature it costs is less than the bodies it
+     * saves on the opponent's *next* attack ([clockChumps]). [AiProfile.chumpForTheClock] carries
+     * the argument.
+     */
+    private val chumpForTheClock: Boolean = false,
 ) {
     /**
      * The engine's own block-legality rules, asked alongside [CombatMath.canBeBlockedBy]'s
@@ -100,6 +106,16 @@ class CombatAdvisor(
          * constant is what `SearchAllowances.LEGACY` and every sub-NORMAL tier resolve to.
          */
         const val MAX_BLOCK_SIMULATIONS = 10
+
+        /**
+         * How much cheaper a clock-pass chump must make the plan before it is added — creature
+         * value units, a fraction of the cheapest real body, so ties and rounding noise keep the
+         * creature.
+         */
+        private const val CLOCK_MARGIN = 0.5
+
+        /** The least a body counts for when it is thrown away: even a 0-value token blocks again. */
+        private const val MIN_BODY_VALUE = 0.25
 
         /**
          * Priority passes [plannedAttackersFrom] may spend walking a quiet precombat state to
@@ -369,9 +385,17 @@ class CombatAdvisor(
             }
         }
 
+        // ── Clock pass: buy the life the next attack would need, when it costs less than it saves ──
+        if (chumpForTheClock) {
+            if (calculateIncomingDamage(state, projected, attackers, bestMap) < myLife) {
+                bestMap = clockChumps(state, projected, playerId, attackers, validBlockers, bestMap, myLife)
+                assignedBlockers.clear()
+                assignedBlockers.addAll(bestMap.keys)
+            }
+        }
         // ── Proactive chump-block: if facing lethal within 2 turns, sacrifice low-value creatures ──
         // Only do this when NOT already facing immediate lethal (that's handled above).
-        if (incomingDamage < myLife) {
+        else if (incomingDamage < myLife) {
             val inDanger = isLifeInDanger(state, projected, attackers, bestMap, myLife, playerId, chumpOnlyWhenInDanger)
             if (inDanger) {
                 val unblockedAttackers = attackers
@@ -1021,6 +1045,159 @@ class CombatAdvisor(
         return sides.opponents.maxOf { team ->
             team.sumOf { CombatMath.estimateNextTurnDamage(state, projected, it, blockers, chumpBlocks) }
         }
+    }
+
+    /**
+     * Add chump blocks to [plan] while each one costs less than it saves on the opponent's next
+     * attack — life priced by the clock, not by whether this hit alone is lethal.
+     *
+     * A plan's price is the creature value its added chumps throw away now plus
+     * [nextAttackChumpCost]: what it would take to survive the attack after, from the life and the
+     * blockers this plan leaves us. Production game `5ae3888c` turn 14 is the shape: at 12 life
+     * facing a 10/9 with a 6/4 menace waiting behind it, chumping the 10/9 with a 2/1 leaves 12
+     * life and one chump (the 10/9 again) needed next turn; taking the hit leaves 2 life, where
+     * surviving takes three bodies — the 10/9's chump and both halves of the menace pair. The old
+     * next-turn test let every creature chump next turn and gave menace one body, so it read both
+     * lines as safe and the AI took ten.
+     *
+     * The floor stays a floor: when the next attack is survivable without chumps, or the chump
+     * would not lower the price (dead either way, or the hit does not change what next turn
+     * costs), nothing is added. When our own next attack is lethal through their remaining
+     * blockers, the race is won and the bodies are kept to swing with.
+     */
+    private fun clockChumps(
+        state: GameState,
+        projected: ProjectedState,
+        playerId: EntityId,
+        attackers: List<EntityId>,
+        validBlockers: List<EntityId>,
+        plan: MutableMap<EntityId, List<EntityId>>,
+        myLife: Int,
+    ): MutableMap<EntityId, List<EntityId>> {
+        if (winsTheRaceFirst(state, projected, playerId, attackers, plan)) return plan
+
+        var current = plan
+        var price = nextAttackChumpCost(state, projected, playerId, attackers, current, myLife)
+        repeat(attackers.size) {
+            if (price == 0.0) return current
+            val assigned = current.keys
+            val blocked = current.values.flatten().toSet()
+            val best = attackers
+                .filter { it !in blocked }
+                .mapNotNull { attacker ->
+                    val needed = if (needsTwoBlockers(projected, attacker)) 2 else 1
+                    val trample = Keyword.TRAMPLE.name in projected.getKeywords(attacker)
+                    val bodies = availableBlockersFor(state, projected, attacker, validBlockers, assigned)
+                        .sortedWith(
+                            if (trample) {
+                                compareByDescending<EntityId> { projected.getToughness(it) ?: 0 }
+                                    .thenBy { CombatMath.creatureValue(state, projected, it) }
+                            } else {
+                                compareBy { CombatMath.creatureValue(state, projected, it) }
+                            }
+                        )
+                        .take(needed)
+                    if (bodies.size < needed) return@mapNotNull null
+                    val candidate = current.toMutableMap().apply { bodies.forEach { put(it, listOf(attacker)) } }
+                    val cost = bodies.sumOf { CombatMath.creatureValue(state, projected, it).coerceAtLeast(MIN_BODY_VALUE) }
+                    val next = nextAttackChumpCost(state, projected, playerId, attackers, candidate, myLife)
+                    Triple(candidate, cost, next)
+                }
+                .minByOrNull { (_, cost, next) -> cost + next }
+                ?: return current
+            val (candidate, cost, next) = best
+            if (cost + next >= price - CLOCK_MARGIN) return current
+            current = candidate
+            price = next
+        }
+        return current
+    }
+
+    /**
+     * Creature value we would have to chump away to survive the strongest opposing side's next
+     * attack after this combat resolves under [plan] — [Double.POSITIVE_INFINITY] when it cannot
+     * be survived, or this combat already kills us.
+     *
+     * Their attackers are every creature that can attack next turn, summoning-sick ones included
+     * (they will not be by then), less the ones [plan] kills. Our blockers are every creature that
+     * untaps before then, less the ones [plan] loses.
+     */
+    private fun nextAttackChumpCost(
+        state: GameState,
+        projected: ProjectedState,
+        playerId: EntityId,
+        attackers: List<EntityId>,
+        plan: Map<EntityId, List<EntityId>>,
+        myLife: Int,
+    ): Double {
+        val lifeAfter = myLife - calculateIncomingDamage(state, projected, attackers, plan)
+        if (lifeAfter <= 0) return Double.POSITIVE_INFINITY
+        val (deadBlockers, deadAttackers) = combatCasualties(state, projected, plan)
+        val ourBlockers = projected.getBattlefieldControlledBy(playerId).filter {
+            projected.isCreature(it) && it !in deadBlockers && !projected.cantBlock(it) && untapsInTime(state, projected, it)
+        }
+        val sides = state.sidesFor(playerId) ?: return 0.0
+        return sides.opponents.maxOfOrNull { team ->
+            val theirAttackers = team.flatMap { projected.getBattlefieldControlledBy(it) }.filter {
+                projected.isCreature(it) && it !in deadAttackers &&
+                    Keyword.DEFENDER.name !in projected.getKeywords(it) && !projected.cantAttack(it) &&
+                    untapsInTime(state, projected, it)
+            }
+            CombatMath.survivalChumpCost(state, projected, theirAttackers, ourBlockers, lifeAfter)
+                ?: Double.POSITIVE_INFINITY
+        } ?: 0.0
+    }
+
+    /** Untapped now, or untaps in its controller's next untap step. */
+    private fun untapsInTime(state: GameState, projected: ProjectedState, entityId: EntityId): Boolean =
+        state.getEntity(entityId)?.has<TappedComponent>() != true || !projected.doesntUntapDuringUntapStep(entityId)
+
+    /**
+     * Blockers [plan] loses and attackers it kills, read from combat math: a blocker dies when an
+     * attacker it blocks would kill it on its own; an attacker dies when one of its blockers kills
+     * it alone or their combined power reaches its toughness.
+     */
+    private fun combatCasualties(
+        state: GameState,
+        projected: ProjectedState,
+        plan: Map<EntityId, List<EntityId>>,
+    ): Pair<Set<EntityId>, Set<EntityId>> {
+        val deadBlockers = plan.filter { (blocker, blocked) ->
+            blocked.any { CombatMath.wouldKillInCombat(state, projected, it, blocker) }
+        }.keys
+        val deadAttackers = plan.values.flatten().toSet().filter { attacker ->
+            val blockers = plan.filterValues { attacker in it }.keys
+                .filter { CombatMath.blockerDealsDamage(state, projected, attacker, it) }
+            blockers.any { CombatMath.wouldKillInCombat(state, projected, it, attacker) } ||
+                (blockers.isNotEmpty() && blockers.sumOf { projected.getPower(it) ?: 0 } >= (projected.getToughness(attacker) ?: 0) &&
+                    Keyword.INDESTRUCTIBLE.name !in projected.getKeywords(attacker))
+        }.toSet()
+        return deadBlockers to deadAttackers
+    }
+
+    /**
+     * Two-player only: after this combat resolves under [plan], is our next attack lethal through
+     * the blockers the attacking player will have on our turn — its creatures still untapped now
+     * (the ones that attacked stay tapped) that survive this combat? Then the race is ours and the
+     * clock pass keeps its bodies to swing with.
+     */
+    private fun winsTheRaceFirst(
+        state: GameState,
+        projected: ProjectedState,
+        playerId: EntityId,
+        attackers: List<EntityId>,
+        plan: Map<EntityId, List<EntityId>>,
+    ): Boolean {
+        val opponent = state.getOpponents(playerId).singleOrNull() ?: return false
+        val (deadBlockers, deadAttackers) = combatCasualties(state, projected, plan)
+        val ourAttackers = projected.getBattlefieldControlledBy(playerId).filter {
+            projected.isCreature(it) && it !in deadBlockers && !projected.cantAttack(it) &&
+                Keyword.DEFENDER.name !in projected.getKeywords(it) && untapsInTime(state, projected, it)
+        }
+        if (ourAttackers.isEmpty()) return false
+        val theirBlockers = CombatMath.getOpponentUntappedCreatures(state, projected, opponent)
+            .filter { it !in deadAttackers && it !in attackers }
+        return CombatMath.isLethalAttack(state, projected, ourAttackers, theirBlockers, state.lifeTotal(opponent))
     }
 
     /**
