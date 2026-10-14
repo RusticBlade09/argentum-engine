@@ -1,7 +1,10 @@
 package com.wingedsheep.ai.engine.knowledge
 
 import com.wingedsheep.engine.handlers.PredicateEvaluator
+import com.wingedsheep.engine.mechanics.mana.ManaSolver
 import com.wingedsheep.engine.registry.CardRegistry
+import com.wingedsheep.engine.state.GameState
+import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.engine.state.ComponentContainer
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.identity.RoomComponent
@@ -42,6 +45,19 @@ class IntentCatalog private constructor(private val registry: CardRegistry?) {
      * against real cards ([DeadSearch]). Null for [NONE], like every other answer here.
      */
     val predicates: PredicateEvaluator? by lazy { registry?.let(::PredicateEvaluator) }
+
+    private val manaSolver: ManaSolver? by lazy {
+        val registry = registry ?: return@lazy null
+        predicates?.let { ManaSolver(registry, it) }
+    }
+
+    /**
+     * The mana [playerId] could produce right now — floating mana plus untapped sources, as the
+     * engine's own solver counts it. Null for [NONE]. Read by [AmbushWindow]'s mana-contention
+     * release.
+     */
+    fun availableMana(state: GameState, playerId: EntityId): Int? =
+        manaSolver?.getAvailableManaCount(state, playerId)
 
     /**
      * The intent of the card called [name], or null when the catalog is off or the name is not a

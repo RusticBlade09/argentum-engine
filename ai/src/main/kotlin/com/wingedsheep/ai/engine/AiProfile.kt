@@ -886,6 +886,31 @@ data class AiProfile(
      * cards already in hand. A follow-up does not lift an enabler the hold policy floored.
      */
     val enablersFirst: Boolean = false,
+    /**
+     * Hold **instant-speed deploys** for the opponent's turn, not just flash creatures whose every
+     * tag happens to be inert.
+     *
+     * 2026-10-14 Reality Fracture draft logs, `LIVE`. Game `8522de5e` turn 8: Sphinx of False
+     * Conclusions (Flash, Flying 4/2; "whenever this creature attacks, draw a card, then discard")
+     * cast in our own precombat main with nothing else to do. Game `2e28f192` turn 6: Jace's
+     * Machinations (instant: "activate Jace loyalty abilities at instant speed this turn", empower
+     * Jace 8) cast in our own main, its Jace used at once and then attacked from 5 loyalty to 3.
+     *
+     * Two halves, one claim — a permanent arriving on our turn that cannot act before we untap is
+     * worth more arriving on theirs:
+     *  - [holdFlashPermanentsForAmbush]'s floor reads only the payoffs a card can cash in the turn it
+     *    arrives (`CardIntent.arrivalTags`): an attack, block, damage or dies trigger, or a tap
+     *    ability on a no-haste creature, no longer reads as "pays off before the ambush". The Sphinx
+     *    was released by its attack-trigger loot.
+     *  - An instant whose whole payoff is a token or a planeswalker's loyalty gets the same floor
+     *    (`AmbushWindow.holdsInstantDeploy`), when what it leaves on the battlefield cannot act this
+     *    turn: a no-haste creature, or a walker the spell also lets us use at instant speed.
+     *
+     * Both release on our own turn when holding would make the card fight another instant in hand
+     * for the same mana on the opponent's turn — a flash body cast into otherwise idle mana keeps the
+     * other instant up. Needs [useCardIntent].
+     */
+    val holdInstantSpeedDeploys: Boolean = false,
     /** Non-null profiles may only be selected automatically for this set. Arena selection stays explicit. */
     val restrictedToSet: String? = null,
 ) {
@@ -1826,6 +1851,7 @@ data class AiProfile(
             activatedPumpsNeedAPlannedAttack = true,
             attackPlaneswalkers = true,
             defendPlaneswalkers = true,
+            holdInstantSpeedDeploys = true,
             enablersFirst = true,
         )
 
@@ -1846,6 +1872,26 @@ data class AiProfile(
         val PRODUCTION_CANDIDATE_ENABLERS = PRODUCTION_CANDIDATE_EXPIRING.copy(
             id = "production-candidate-enablers",
             enablersFirst = true,
+        )
+
+        /**
+         * [holdInstantSpeedDeploys] on top of [PRODUCTION_AMBUSH] — its first half refines that
+         * profile's flag — so a puzzle or an arena point that moves is attributable to it.
+         */
+        val PRODUCTION_DEPLOYHOLD = PRODUCTION_AMBUSH.copy(
+            id = "production-deployhold",
+            holdInstantSpeedDeploys = true,
+        )
+
+        /**
+         * [holdInstantSpeedDeploys] on top of [PRODUCTION_CANDIDATE_EXPIRING_AMBUSH] — the last
+         * pinned candidate plus the flash hold it refines — so `just arena
+         * production-candidate-expiring-ambush production-candidate-deployhold` measures this flag
+         * and nothing else. [LIVE] ships it.
+         */
+        val PRODUCTION_CANDIDATE_DEPLOYHOLD = PRODUCTION_CANDIDATE_EXPIRING_AMBUSH.copy(
+            id = "production-candidate-deployhold",
+            holdInstantSpeedDeploys = true,
         )
 
         /**

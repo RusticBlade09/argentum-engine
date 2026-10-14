@@ -100,6 +100,20 @@ class PredicateEvaluator(
     private fun isCombatDefender(state: GameState, playerId: EntityId?): Boolean =
         com.wingedsheep.engine.mechanics.combat.CombatDefenders.isCombatDefender(state, playerId)
 
+    /**
+     * The union of [playerId]'s commanders' color identities (CR 903.4) — the same read Command
+     * Tower's [com.wingedsheep.sdk.scripting.values.ManaColorSet.CommanderIdentity] makes. Null on
+     * a registry-free evaluator, which has no definitions to read identity off; callers decide
+     * what "unknown" means (an effect reads 0, a cost is unpayable).
+     */
+    fun commanderColorIdentity(state: GameState, playerId: EntityId): Set<com.wingedsheep.sdk.core.Color>? {
+        val registry = cardRegistry ?: return null
+        return com.wingedsheep.engine.mechanics.mana.ManaColorSetResolver.resolve(
+            com.wingedsheep.sdk.scripting.values.ManaColorSet.CommanderIdentity, state, state.projectedState,
+            sourceId = null, controllerId = playerId, cardRegistry = registry, predicateEvaluator = this,
+        )
+    }
+
     internal fun duringManaAbilityQuery(entityId: EntityId): PredicateEvaluator =
         PredicateEvaluator(cardRegistry, manaAbilityQueries + entityId)
 

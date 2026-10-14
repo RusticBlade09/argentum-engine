@@ -432,6 +432,14 @@ object DynamicAmounts {
     fun devotionTo(vararg colors: Color): DynamicAmount =
         DynamicAmount.DevotionTo(colors.toList())
 
+    /**
+     * The number of colors in your commanders' color identity (War Room) — 0 for a colorless
+     * commander; a Partner / Background pair counts the union of their identities. As a cost it is
+     * unpayable for a player with no commander. See [DynamicAmount.CommanderColorIdentityCount].
+     */
+    fun commanderColorIdentityCount(player: Player = Player.You): DynamicAmount =
+        DynamicAmount.CommanderColorIdentityCount(player)
+
     fun creaturesYouControl(): DynamicAmount =
         battlefield(Player.You, GameObjectFilter.Creature).count()
 

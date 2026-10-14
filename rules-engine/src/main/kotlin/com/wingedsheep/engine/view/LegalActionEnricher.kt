@@ -197,13 +197,24 @@ class LegalActionEnricher(
         return floor.toString().ifEmpty { "{0}" }
     }
 
+    /**
+     * A Phyrexian cost always exposes its sources: the server's [LegalAction.autoTapPreview] solves
+     * the cost with mana only, so `{4}{G/P}` off four Plains has no preview even though it's
+     * affordable with 2 life — and without sources the client's picker can't tap the Plains for
+     * the {4} once the player chooses to pay the pip with life (CR 107.4f).
+     */
     private fun shouldExposeManaSources(action: LegalAction): Boolean =
         action.autoTapPreview != null ||
             (action.hasXCost && action.manaCostString != null) ||
             action.hasConvoke ||
             action.hasTapForGeneric ||
             action.hasDelve ||
-            action.hasHarmonize
+            action.hasHarmonize ||
+            hasPhyrexianPip(action.manaCostString)
+
+    private fun hasPhyrexianPip(manaCostString: String?): Boolean =
+        manaCostString != null && manaCostString.contains("/P}") &&
+            ManaCost.parse(manaCostString).phyrexianSymbols.isNotEmpty()
 
     private fun ModalLegalEnumeration.toDto() = ModalLegalEnumerationInfo(
         chooseCount = chooseCount,

@@ -30,6 +30,10 @@ Format — newest first, one bullet each:
 
 - Casts enablers before the spells they discount: a spell is scored as at least the best spell in hand it makes cheaper or castable, so a noncreature spell goes down before a "costs {2} less if you've cast a noncreature spell this turn" creature instead of the creature being cast at full price.
 
+- Holds instant-speed deploys for the opponent's turn: a flash creature is judged by what it can do the turn it lands (an attack-trigger loot no longer gets it jammed in its own main phase), an instant that only makes no-haste tokens or empowers a walker it lets act at instant speed waits for their turn too, and either is cast into idle mana when holding it would leave another instant in hand without mana.
+
+- Deck building for sets without rating data values planeswalkers as the engines they are instead of as filler (an on-color rare walker no longer loses its slot to a vanilla 3/9), and counts a legend's second copy at a discount for the legend rule, so it stops running doubles of filler legends.
+
 - Defends its own planeswalkers: a walker is priced by the loyalty the next attack leaves it, so one about to die spends its loyalty first (the biggest useful minus) instead of dying with counters unspent, a blocker kept home for it counts, and blocks on attackers aimed at it are worth the walker they save — a chump or trade for a valuable walker, nothing for a near-dead token.
 
 - On Auto against a deck the human brought, plays from that deck's set(s) — another built-in starter from them when one exists (Boros Mice meets another Bloomburrow tribe), else a deck built from those sets in the same 60-card or 40-card shape — instead of a sealed pool from an unrelated set.

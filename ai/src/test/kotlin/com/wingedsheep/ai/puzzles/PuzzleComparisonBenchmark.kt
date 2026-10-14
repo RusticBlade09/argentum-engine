@@ -163,6 +163,9 @@ class PuzzleComparisonBenchmark : ScenarioTestBase() {
                 // Enablers cast before the spells they discount.
                 AiProfile.PRODUCTION_ENABLERS,
                 AiProfile.PRODUCTION_CANDIDATE_ENABLERS,
+                // Instant-speed deploys held for the opponent's turn.
+                AiProfile.PRODUCTION_DEPLOYHOLD,
+                AiProfile.PRODUCTION_CANDIDATE_DEPLOYHOLD,
                 // A beginning-of-combat pump bought only for creatures the attack plan sends.
                 AiProfile.PRODUCTION_PLANNEDPUMPS,
                 AiProfile.PRODUCTION_CANDIDATE_PLANNEDPUMPS,

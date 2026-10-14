@@ -1053,6 +1053,27 @@ sealed interface DynamicAmount : TextReplaceable<DynamicAmount> {
     }
 
     /**
+     * The number of colors (0–5) in [player]'s commanders' color identity — the union of the color
+     * identities of all their commanders, so a Partner / Background pair counts both (CR 903.4).
+     * War Room's "pay life equal to the number of colors in your commanders' color identity" is
+     * `Costs.PayLife(DynamicAmounts.commanderColorIdentityCount())`. A colorless commander counts 0.
+     *
+     * With no commander the quality is undefined (CR 903.4f): it reads 0 as an effect amount
+     * ("that part of the ability won't do anything"), and a *cost* priced from it is unpayable —
+     * War Room's draw can't be activated at all.
+     *
+     * Not [EntityNumericProperty.ColorCount] (one object's current colors) nor an
+     * `AggregateBattlefield` distinct-colors count (colors among permanents): a commander's color
+     * identity is fixed before the game begins (CR 903.4a) and read from its card, wherever it is.
+     */
+    @SerialName("CommanderColorIdentityCount")
+    @Serializable
+    data class CommanderColorIdentityCount(val player: Player = Player.You) : DynamicAmount {
+        override val description: String =
+            "the number of colors in ${player.possessive} commanders' color identity"
+    }
+
+    /**
      * Reference to a stored variable by name.
      * Used for effects that need to reference a previously computed/stored value.
      * Example: Scapeshift stores "sacrificedCount" and SearchLibrary reads it.
