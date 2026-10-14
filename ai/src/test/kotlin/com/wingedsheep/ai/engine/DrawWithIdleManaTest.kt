@@ -36,7 +36,15 @@ class DrawWithIdleManaTest : ScenarioTestBase() {
     private val on by lazy { HoldPolicy(intents, drawWithIdleMana = true) }
 
     private val runner by lazy { PuzzleRunner(cardRegistry) { scenario() } }
-    private val liveWithoutFlag = AiProfile.LIVE.copy(id = "live-without-idledraw", drawWithIdleMana = false)
+    // `precombatPumpsForThePlan` off too: the g2 board (Bears facing a Hill Giant, Giant Growth in
+    // hand) is one where a precombat pump changes the attack plan, so with it on the without-flag
+    // agent casts the trick instead of cracking Omashu City and the control stops isolating this
+    // flag.
+    private val liveWithoutFlag = AiProfile.LIVE.copy(
+        id = "live-without-idledraw",
+        drawWithIdleMana = false,
+        precombatPumpsForThePlan = false,
+    )
 
     private fun decide(
         profile: AiProfile,

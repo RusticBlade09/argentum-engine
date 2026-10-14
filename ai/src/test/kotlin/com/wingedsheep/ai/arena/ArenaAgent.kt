@@ -236,6 +236,9 @@ object ArenaAgents {
         // A spell scored as the best spell it makes cheaper: enablers cast before their payoffs.
         ArenaAgent("production-enablers", AiProfile.PRODUCTION_ENABLERS),
         ArenaAgent("production-candidate-enablers", AiProfile.PRODUCTION_CANDIDATE_ENABLERS),
+        // A precombat pump priced by the attack it buys, when it changes who attacks.
+        ArenaAgent("production-planpumps", AiProfile.PRODUCTION_PLANPUMPS),
+        ArenaAgent("production-candidate-planpumps", AiProfile.PRODUCTION_CANDIDATE_PLANPUMPS),
         // Instant-speed deploys held for the opponent's turn: flash bodies judged by what they do on
         // arrival, token and walker instants given the same hold.
         ArenaAgent("production-deployhold", AiProfile.PRODUCTION_DEPLOYHOLD),
