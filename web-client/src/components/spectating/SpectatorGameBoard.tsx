@@ -3,6 +3,7 @@ import { SpectatorContext } from '../../contexts/SpectatorContext'
 import { GameBoard } from '../game/GameBoard'
 import { CombatArrows } from '../combat/CombatArrows'
 import { DecisionSourceThumbnail } from '../ui/DecisionSourceThumbnail'
+import { SeatPortrait, useHasSeatPortrait } from '../game/SeatPortrait'
 import type { SpectatorDecisionStatus } from '@/types'
 
 // ============================================================================
@@ -36,6 +37,10 @@ import type { SpectatorDecisionStatus } from '@/types'
 
 /** Height of the spectator header bar in pixels */
 const HEADER_HEIGHT = 55
+
+/** The HUD orbs' 1v1 colours — the board puts player 1 at the bottom (blue) and player 2 on top (orange). */
+const PLAYER_RING = 'rgba(74, 154, 234, 0.8)'
+const OPPONENT_RING = 'rgba(255, 158, 70, 0.85)'
 
 /**
  * SpectatorGameBoard - Wrapper component for spectating a game.
@@ -94,6 +99,7 @@ export function SpectatorGameBoard() {
         <SpectatorHeader
           player1Name={spectatingState.player1Name}
           player2Name={spectatingState.player2Name}
+          seatIds={isMultiPod ? players.map((p) => p.playerId) : [spectatingState.player1Id, spectatingState.player2Id]}
           onBack={stopSpectating}
           {...(isMultiPod
             ? {
@@ -157,12 +163,15 @@ function SpectatorLoadingView({
 function SpectatorHeader({
   player1Name,
   player2Name,
+  seatIds,
   onBack,
   matchupOverride,
   seatSwitcher,
 }: {
   player1Name: string
   player2Name: string
+  /** The seats in matchup order: their portraits flank "A vs B" (a pod's lead the roster). */
+  seatIds: readonly (string | null)[]
   onBack: () => void
   /** Multiplayer pods: full roster text instead of "A vs B". */
   matchupOverride?: string
@@ -174,11 +183,25 @@ function SpectatorHeader({
       <button onClick={onBack} style={styles.backButton}>
         Back to Overview
       </button>
+      {/* 1v1: each player's face on their side of "A vs B", like a fight card. A pod's faces
+          overlap ahead of the roster line instead. Seats without a portrait drop out. */}
       <div style={styles.headerCenter}>
-        <div style={styles.spectatingLabel}>Spectating</div>
-        <div style={styles.matchupText}>
-          {matchupOverride ?? `${player1Name} vs ${player2Name}`}
+        {matchupOverride ? (
+          <span style={styles.headerFaces}>
+            {seatIds.map((id, i) => (
+              <SeatPortrait key={id ?? i} playerId={id} size={34} ringColor="#0a0a12" ringWidth={2} style={{ marginLeft: i === 0 ? 0 : -9, zIndex: seatIds.length - i }} />
+            ))}
+          </span>
+        ) : (
+          <SeatPortrait playerId={seatIds[0]} size={36} ringColor={PLAYER_RING} ringWidth={2} />
+        )}
+        <div style={styles.headerTitle}>
+          <div style={styles.spectatingLabel}>Spectating</div>
+          <div style={styles.matchupText}>
+            {matchupOverride ?? `${player1Name} vs ${player2Name}`}
+          </div>
         </div>
+        {!matchupOverride && <SeatPortrait playerId={seatIds[1]} size={36} ringColor={OPPONENT_RING} ringWidth={2} />}
       </div>
       {seatSwitcher ? (
         <button
@@ -205,9 +228,19 @@ function SpectatorDecisionIndicator({
 }: {
   decisionStatus: SpectatorDecisionStatus
 }) {
+  // The deciding player's face, with the spinner as a ring around it — "who is thinking" at a
+  // glance. No portrait: the plain spinner.
+  const hasPortrait = useHasSeatPortrait(decisionStatus.playerId)
   return (
     <div style={styles.decisionIndicator}>
-      <div style={styles.decisionSpinner} />
+      {hasPortrait ? (
+        <span style={styles.decisionFace}>
+          <SeatPortrait playerId={decisionStatus.playerId} size={30} ringColor="transparent" ringWidth={0} />
+          <span aria-hidden style={styles.decisionFaceRing} />
+        </span>
+      ) : (
+        <div style={styles.decisionSpinner} />
+      )}
       <DecisionSourceThumbnail sourceId={decisionStatus.sourceId} />
       <div>
         <div style={styles.decisionText}>
@@ -257,9 +290,23 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   headerCenter: {
-    textAlign: 'center',
     flex: 1,
     minWidth: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+  },
+
+  headerTitle: {
+    textAlign: 'center',
+    minWidth: 0,
+  },
+
+  headerFaces: {
+    display: 'flex',
+    alignItems: 'center',
+    flexShrink: 0,
   },
 
   spectatingLabel: {
@@ -366,6 +413,22 @@ const styles: Record<string, React.CSSProperties> = {
     borderTopColor: '#f2b45c',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite',
+  },
+
+  decisionFace: {
+    position: 'relative',
+    display: 'inline-flex',
+    flexShrink: 0,
+  },
+
+  decisionFaceRing: {
+    position: 'absolute',
+    inset: -4,
+    borderRadius: '50%',
+    border: '2px solid rgba(255, 255, 255, 0.12)',
+    borderTopColor: '#f2b45c',
+    borderRightColor: '#f2b45c',
+    animation: 'spin 1.2s linear infinite',
   },
 
   decisionText: {

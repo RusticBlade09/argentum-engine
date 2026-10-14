@@ -22,6 +22,7 @@ import { isLoneTargetRequirement } from '@/utils/targeting.ts'
 import { defendingPlayerOf } from '@/utils/combatTargets'
 import { AttackRelationBadge, useAttackRelation } from './AttackRelationTag'
 import { EmoteBubble } from '../tableTalk/EmoteBubble'
+import { SeatPortrait, useHasSeatPortrait } from './SeatPortrait'
 
 /**
  * Total viewport width claimed by the fixed rail column (chip width + left offset + a
@@ -470,6 +471,7 @@ function BottomSeatRailChip({ seat, isViewerSeat }: { seat: ClientPlayer; isView
   const sz = chipSizing(responsive)
   const tomb = seat.hasLost
   const lifeDanger = seat.life <= 5
+  const hasPortrait = useHasSeatPortrait(seat.playerId)
 
   const borderColor = tomb ? '#3a3a44' : color.base
   const background = tomb
@@ -528,24 +530,28 @@ function BottomSeatRailChip({ seat, isViewerSeat }: { seat: ClientPlayer; isView
             ▶
           </span>
         )}
-        {/* Seat dot / skull */}
-        <span
-          aria-hidden
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: sz.dot,
-            height: sz.dot,
-            borderRadius: '50%',
-            background: tomb ? 'transparent' : color.base,
-            boxShadow: tomb ? 'none' : `0 0 5px ${color.base}`,
-            fontSize: 10,
-            flexShrink: 0,
-          }}
-        >
-          {tomb ? '💀' : ''}
-        </span>
+        {/* Seat portrait (ringed in the seat colour) / seat dot / skull */}
+        {hasPortrait && !tomb ? (
+          <SeatPortrait playerId={seat.playerId} size={sz.height - 8} ringColor={color.base} ringWidth={1.5} />
+        ) : (
+          <span
+            aria-hidden
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: sz.dot,
+              height: sz.dot,
+              borderRadius: '50%',
+              background: tomb ? 'transparent' : color.base,
+              boxShadow: tomb ? 'none' : `0 0 5px ${color.base}`,
+              fontSize: 10,
+              flexShrink: 0,
+            }}
+          >
+            {tomb ? '💀' : ''}
+          </span>
+        )}
 
         {!compact && (
           <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 5, overflow: 'hidden' }}>
@@ -969,6 +975,7 @@ function RailChip({
   const compact = railCompact(responsive)
   const sz = chipSizing(responsive)
   const tomb = opponent.hasLost
+  const hasPortrait = useHasSeatPortrait(playerId)
 
   const borderColor = tomb
     ? '#3a3a44'
@@ -1104,24 +1111,28 @@ function RailChip({
             ▶
           </span>
         )}
-        {/* Viewed marker / seat dot / skull */}
-        <span
-          aria-hidden
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: sz.dot,
-            height: sz.dot,
-            borderRadius: '50%',
-            background: tomb ? 'transparent' : seat.base,
-            boxShadow: tomb ? 'none' : `0 0 5px ${seat.base}`,
-            fontSize: 10,
-            flexShrink: 0,
-          }}
-        >
-          {tomb ? '💀' : ''}
-        </span>
+        {/* Seat portrait (ringed in the seat colour, so it still does the dot's job) / seat dot / skull */}
+        {hasPortrait && !tomb ? (
+          <SeatPortrait playerId={playerId} size={sz.height - 8} ringColor={seat.base} ringWidth={1.5} />
+        ) : (
+          <span
+            aria-hidden
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: sz.dot,
+              height: sz.dot,
+              borderRadius: '50%',
+              background: tomb ? 'transparent' : seat.base,
+              boxShadow: tomb ? 'none' : `0 0 5px ${seat.base}`,
+              fontSize: 10,
+              flexShrink: 0,
+            }}
+          >
+            {tomb ? '💀' : ''}
+          </span>
+        )}
 
         {/* Attack-restriction marker — this seat can't be attacked this combat. */}
         {isAttackRestricted && (

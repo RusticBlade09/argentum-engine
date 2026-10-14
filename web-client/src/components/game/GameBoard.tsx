@@ -6,7 +6,8 @@ import { useViewingPlayer, useOpponent, useOpponents, useViewedOpponent, useStac
 import { useMultiplayerView, useCombatDefenderFocus } from '@/hooks/useMultiplayerView'
 import { OpponentRail, railReservedWidth, overviewSupported } from './OpponentRail'
 import { hand, getNextStep, StepShortNames } from '@/types'
-import type { EntityId } from '@/types'
+import type { ClientPlayer, EntityId } from '@/types'
+import type React from 'react'
 import { StepStrip } from '../ui/StepStrip'
 import { ManaPool } from '../ui/ManaPool'
 import { ActionMenu } from '../ui/ActionMenu'
@@ -27,6 +28,8 @@ import { ManaSymbol } from '../ui/ManaSymbols'
 import { computeCoverage } from '../decisions/manaCoverage'
 
 // Import extracted components
+import { SeatPortrait, useHasSeatPortrait } from './SeatPortrait'
+import { useResponsiveContext } from './board/shared'
 import { Battlefield, CardRow, CommandZone, OpponentBoardArea, BoardNamePlate, CollapsedBoardTab, COLLAPSED_TAB_WIDTH, CELL_PLATE_BAND, useCellHandMetrics, StackDisplay, ZonePile, ResponsiveContext } from './board'
 import { RenderProfiler } from '@/utils/renderProfiler'
 import { PooledBattlefieldLayoutContext } from './board/shared'
@@ -1168,16 +1171,15 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
       {/* Spectator mode: floating opponent name label (2-player only — the rail
           carries opponent identity in multiplayer) */}
       {spectatorMode && !isMulti && effectiveOpponent && (
-        <div
+        <SpectatorNameLabel
+          player={effectiveOpponent}
+          ringColor={OPPONENT_RING}
           style={{
-            ...styles.spectatorNameLabel,
             position: 'fixed',
             top: effectiveTopOffset + responsive.smallCardHeight + responsive.opponentHandBattlefieldGap + 8,
             left: 16,
           }}
-        >
-          {effectiveOpponent.name}
-        </div>
+        />
       )}
 
       {/* Center - Life totals, phase indicator, and stack.
@@ -1566,18 +1568,17 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
 
       {/* Spectator mode: floating player name label for bottom player */}
       {spectatorMode && effectiveViewingPlayer && !bottomStripActive && (
-        <div
+        <SpectatorNameLabel
+          player={effectiveViewingPlayer}
+          ringColor={isMulti ? undefined : PLAYER_RING}
           style={{
-            ...styles.spectatorNameLabel,
             position: 'fixed',
             // The bottom-left corner, under the command zone — one hand-height up, it sat on the
             // command zone's label (spectators have no log button down here to collide with).
             bottom: responsive.isMobile ? 8 : 16,
             left: responsive.isMobile ? 8 : 16,
           }}
-        >
-          {effectiveViewingPlayer.name}
-        </div>
+        />
       )}
 
       {/* Player hand - fixed at bottom of screen (gone for an eliminated spectator, and for a
@@ -2502,6 +2503,52 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
  * edge where they belong; the corner controls compensate with `controlsTop`.
  */
 const TEAM_STRIP_TOP = 10
+
+/** The 1v1 seat colours of the HUD life orbs, so a name label's portrait ring matches its orb. */
+const PLAYER_RING = 'rgba(74, 154, 234, 0.8)'
+const OPPONENT_RING = 'rgba(255, 158, 70, 0.85)'
+
+/**
+ * The floating name label a spectator (or replay viewer) sees in the corner of each half of the
+ * table. With a portrait the seat's face leads the name, ringed in the seat's colour, so the label
+ * reads as a person rather than a caption; without one it stays the plain text pill.
+ */
+function SpectatorNameLabel({
+  player,
+  ringColor,
+  style,
+}: {
+  player: ClientPlayer
+  /** Defaults to the seat's identity colour (multiplayer). */
+  ringColor: string | undefined
+  style: React.CSSProperties
+}) {
+  const seat = useIdentityColor(player.playerId)
+  const hasPortrait = useHasSeatPortrait(player.playerId)
+  // Phones: a smaller face keeps the label its text-only height, clear of the chrome buttons above.
+  const compact = useResponsiveContext().isMobile
+  return (
+    <div
+      data-spectator-name-label={player.playerId}
+      style={{
+        ...styles.spectatorNameLabel,
+        ...(hasPortrait
+          ? {
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: compact ? 8 : 10,
+              padding: compact ? '3px 12px 3px 3px' : '5px 16px 5px 5px',
+              borderRadius: 999,
+            }
+          : {}),
+        ...style,
+      }}
+    >
+      <SeatPortrait playerId={player.playerId} size={compact ? 24 : 32} ringColor={ringColor ?? seat.base} ringWidth={2} />
+      {player.name}
+    </div>
+  )
+}
 
 function AllyHandFan({
   player,
