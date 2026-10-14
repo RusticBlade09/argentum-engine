@@ -93,6 +93,8 @@ data class ZoneEntryOptions(
     val grantedRiotModes: List<String> = emptyList(),
     /** Effect-supplied counters are part of entry, including counter replacements and prevention. */
     val entryCounterType: com.wingedsheep.sdk.core.CounterType? = null,
+    /** Original board for one simultaneous entry event; excludes other entrants' global replacements. */
+    val entryCounterReplacementState: GameState? = null,
     val entryCounterFilter: com.wingedsheep.sdk.scripting.GameObjectFilter? = null,
     val entryCounterSourceId: EntityId? = null,
     val entryCounterEffectControllerId: EntityId? = null,
@@ -878,8 +880,16 @@ class ZoneTransitionService(
                             .bake(recorded, modeId, cardRegistry)
                     }
                 }
+                val entryCounterTotals = options.entryCounterType?.let {
+                    mutableMapOf<com.wingedsheep.sdk.core.CounterType, Int>()
+                }
                 if (!options.faceDown) {
                     for (riotMode in options.grantedRiotModes) {
+                        if (entryCounterTotals != null && riotMode == com.wingedsheep.sdk.dsl.RIOT_MODE_COUNTER) {
+                            val kind = com.wingedsheep.sdk.core.CounterType.PLUS_ONE_PLUS_ONE
+                            entryCounterTotals[kind] = (entryCounterTotals[kind] ?: 0) + 1
+                            continue
+                        }
                         val (riotState, riotEvents) = EntersWithReplacements.applyGrantedRiotBranch(
                             newState, entityId, destControllerId, riotMode, cardComponent.name,
                             predicateEvaluator = predicateEvaluator
@@ -901,7 +911,7 @@ class ZoneTransitionService(
                 // wires the controller — only then does projection see the right controller.
                 newState = PermanentEntryTracker.record(newState, destControllerId, entityId)
                 // Handle Saga entering the battlefield (Rule 714.3a)
-                val (sagaState, sagaEvents) = applySagaEntryIfNeeded(newState, entityId)
+                val (sagaState, sagaEvents) = ZoneMovementUtils.applySagaEntryIfNeeded(newState, entityId, entryCounterTotals)
                 newState = sagaState
                 events.addAll(sagaEvents)
                 // Handle the intrinsic entry counters of a planeswalker (loyalty, CR 306.5b) or a
@@ -910,39 +920,58 @@ class ZoneTransitionService(
                 // defense (CR 708.2a).
                 val (entryCounterState, entryCounterEvents) = ZoneMovementUtils.applyIntrinsicEntryCountersIfNeeded(
                     newState, entityId, destControllerId, cardRegistry,
-                    predicateEvaluator = predicateEvaluator
+                    predicateEvaluator = predicateEvaluator, counterTotals = entryCounterTotals
                 )
                 newState = entryCounterState
                 events.addAll(entryCounterEvents)
-                // The move's "with a counter" instruction modifies this entry, even when the
-                // permanent enters face down. Read characteristics after entry/copy registration,
-                // before publishing the zone event, through the same replacement chokepoint as
-                // printed enters-with counters. A redirected move never reaches this branch.
+                // Counter placement replaces the complete entry event once per counter kind.
+                // Collect supplied and intrinsic/printed counters before applying modifiers, using
+                // replacement sources from before this event and prospective entrant characteristics.
                 options.entryCounterType?.let { kind ->
                     val matches = options.entryCounterFilter?.let { filter ->
-                        predicateEvaluator.matches(newState, newState.projectedState, entityId, filter,
+                        val prospective = EntersWithReplacements.prospectiveEntryView(
+                            newState, entityId, options.entryCounterReplacementState ?: state)
+                        predicateEvaluator.matches(prospective, prospective.projectedState, entityId, filter,
                             com.wingedsheep.engine.handlers.PredicateContext(
                                 sourceId = options.entryCounterSourceId,
                                 controllerId = options.entryCounterEffectControllerId ?: destControllerId))
                     } ?: true
-                    if (matches) {
-                        val (afterCounters, counterEvents) = EntersWithReplacements.placeEntryCounters(
-                            newState, entityId, kind, 1, destControllerId, cardComponent.name,
-                            predicateEvaluator = predicateEvaluator)
-                        newState = afterCounters
-                        events.addAll(counterEvents)
-                    }
+                    if (matches) entryCounterTotals!![kind] = (entryCounterTotals[kind] ?: 0) + 1
                 }
                 val entryCopy = options.entryCopy?.takeIf { it.copiedCard != null && !options.faceDown }
                 entryCopy?.replacement?.additionalCounters?.let { amount ->
                     val count = predicateEvaluator.amounts.evaluate(newState, amount,
                         com.wingedsheep.engine.handlers.EffectContext(entityId, destControllerId))
-                    val (afterCounters, counterEvents) = EntersWithReplacements.placeEntryCounters(
-                        newState, entityId, com.wingedsheep.sdk.core.CounterType.PLUS_ONE_PLUS_ONE,
-                        count, destControllerId, newState.getEntity(entityId)?.get<CardComponent>()?.name ?: "",
-                        predicateEvaluator = predicateEvaluator)
+                    if (entryCounterTotals != null) {
+                        val kind = com.wingedsheep.sdk.core.CounterType.PLUS_ONE_PLUS_ONE
+                        entryCounterTotals[kind] = (entryCounterTotals[kind] ?: 0) + count
+                    } else {
+                        val (afterCounters, counterEvents) = EntersWithReplacements.placeEntryCounters(
+                            newState, entityId, com.wingedsheep.sdk.core.CounterType.PLUS_ONE_PLUS_ONE,
+                            count, destControllerId, newState.getEntity(entityId)?.get<CardComponent>()?.name ?: "",
+                            predicateEvaluator = predicateEvaluator)
+                        newState = afterCounters
+                        events.addAll(counterEvents)
+                    }
+                }
+                if (entryCounterTotals != null) {
+                    val (afterCounters, counterEvents) = EntersWithReplacements.applyOnEntry(
+                        newState, entityId, destControllerId, cardRegistry,
+                        predicateEvaluator = predicateEvaluator, preEntryZone = currentZoneKey,
+                        suppliedCounters = entryCounterTotals,
+                        replacementSourceState = options.entryCounterReplacementState ?: state)
                     newState = afterCounters
                     events.addAll(counterEvents)
+                    if (counterEvents.none { it is com.wingedsheep.engine.core.CountersAddedEvent &&
+                            it.counterType == com.wingedsheep.sdk.core.CounterType.PLUS_ONE_PLUS_ONE }) {
+                        for (mode in options.grantedRiotModes.filter { it == com.wingedsheep.sdk.dsl.RIOT_MODE_COUNTER }) {
+                            val (hasteState, hasteEvents) = EntersWithReplacements.applyGrantedRiotBranch(
+                                newState, entityId, destControllerId, com.wingedsheep.sdk.dsl.RIOT_MODE_HASTE,
+                                cardComponent.name, predicateEvaluator)
+                            newState = hasteState
+                            events.addAll(hasteEvents)
+                        }
+                    }
                 }
                 if (entryCopy?.replacement?.exileCopiedCard == true && entryCopy.copiedEntity != null) {
                     val exiled = moveToZone(newState, entryCopy.copiedEntity, Zone.EXILE)

@@ -185,6 +185,90 @@ class EffectSuppliedEntryCountersTest : FunSpec({
             result.state.projectedState.getPower(id) shouldBe 3
         }
     }
+    test("an entering broad counter doubler does not modify its own effect-supplied entry counter") {
+        for (collection in listOf(false, true)) {
+            val d = driver()
+            val id = d.putCardInGraveyard(d.player1, doubler.name)
+            val effect = if (collection) MoveCollectionEffect("cards", CardDestination.ToZone(Zone.BATTLEFIELD),
+                addCounterType = kind)
+            else Effects.Move(EffectTarget.SpecificEntity(id), Zone.BATTLEFIELD, addCounterType = kind)
+            val result = d.services.effectExecutorRegistry.execute(d.state, effect,
+                EffectContext(sourceId = null, controllerId = d.player1,
+                    pipeline = PipelineState(storedCollections = mapOf("cards" to listOf(id)))))
+            result.state.getEntity(id)!!.get<CountersComponent>()!!.getCount(kind) shouldBe 1
+            result.events.filterIsInstance<CountersAddedEvent>().single().amount shouldBe 1
+        }
+    }
+    test("simultaneous entrants do not supply broad replacement or prevention effects to each other") {
+        for (first in listOf(true, false)) {
+            for (sourceCard in listOf(doubler, blocker)) {
+                val d = driver()
+                val source = d.putCardInGraveyard(d.player1, sourceCard.name)
+                val recipient = d.putCardInGraveyard(d.player1, "Grizzly Bears")
+                val ids = if (first) listOf(source, recipient) else listOf(recipient, source)
+                val result = d.services.effectExecutorRegistry.execute(d.state,
+                    MoveCollectionEffect("cards", CardDestination.ToZone(Zone.BATTLEFIELD), addCounterType = kind),
+                    EffectContext(sourceId = null, controllerId = d.player1,
+                        pipeline = PipelineState(storedCollections = mapOf("cards" to ids))))
+                result.state.getEntity(recipient)!!.get<CountersComponent>()!!.getCount(kind) shouldBe 1
+                result.events.filterIsInstance<CountersAddedEvent>().single { it.entityId == recipient }.amount shouldBe 1
+            }
+        }
+    }
+    test("printed and supplied counters of one kind are one placement under an additive replacement") {
+        val printed = card("Entry Printed Counter") {
+            typeLine = "Creature"; power = 0; toughness = 0
+            replacementEffect(EntersWithCounters(counterType = kind, count = 1, selfOnly = true))
+        }
+        val scales = card("Entry Additive Counter Replacement") {
+            typeLine = "Enchantment"
+            replacementEffect(ModifyCounterPlacement(modifier = 1,
+                appliesTo = EventPattern.CounterPlacementEvent(kind, Recipient.AnyPermanent)))
+        }
+        for (collection in listOf(false, true)) {
+            val d = driver()
+            d.registerCards(listOf(printed, scales))
+            d.putPermanentOnBattlefield(d.player1, scales.name)
+            val id = d.putCardInGraveyard(d.player1, printed.name)
+            val effect = if (collection) MoveCollectionEffect("cards", CardDestination.ToZone(Zone.BATTLEFIELD),
+                addCounterType = kind)
+            else Effects.Move(EffectTarget.SpecificEntity(id), Zone.BATTLEFIELD, addCounterType = kind)
+            val result = d.services.effectExecutorRegistry.execute(d.state, effect,
+                EffectContext(sourceId = null, controllerId = d.player1,
+                    pipeline = PipelineState(storedCollections = mapOf("cards" to listOf(id)))))
+            result.state.getEntity(id)!!.get<CountersComponent>()!!.getCount(kind) shouldBe 3
+            result.events.filterIsInstance<CountersAddedEvent>().single().amount shouldBe 3
+        }
+    }
+    test("intrinsic loyalty defense and Saga lore combine with a supplied counter before placement replacements") {
+        val scales = card("Entry All Counter Additive Replacement") {
+            typeLine = "Enchantment"
+            replacementEffect(ModifyCounterPlacement(modifier = 1,
+                appliesTo = EventPattern.CounterPlacementEvent(recipient = Recipient.AnyPermanent)))
+        }
+        val walker = card("Entry Counter Walker") {
+            typeLine = "Planeswalker — Tester"; startingLoyalty = 3
+        }
+        val battle = card("Entry Counter Battle") {
+            typeLine = "Battle"; startingDefense = 3
+        }
+        val saga = card("Entry Counter Saga") { typeLine = "Enchantment — Saga" }
+        for ((definition, counterType, expected) in listOf(
+            Triple(walker, CounterType.LOYALTY, 5),
+            Triple(battle, CounterType.DEFENSE, 5),
+            Triple(saga, CounterType.LORE, 3)
+        )) {
+            val d = driver()
+            d.registerCards(listOf(scales, definition))
+            d.putPermanentOnBattlefield(d.player1, scales.name)
+            val id = d.putCardInGraveyard(d.player1, definition.name)
+            val result = d.services.effectExecutorRegistry.execute(d.state,
+                Effects.Move(EffectTarget.SpecificEntity(id), Zone.BATTLEFIELD, addCounterType = counterType),
+                EffectContext(sourceId = null, controllerId = d.player1))
+            result.state.getEntity(id)!!.get<CountersComponent>()!!.getCount(counterType) shouldBe expected
+            result.events.filterIsInstance<CountersAddedEvent>().single().amount shouldBe expected
+        }
+    }
     test("explicitly attached Aura enters through movement replacements with its supplied counters") {
         for (interference in listOf("none", "redirect", "lock")) {
             val d = driver()

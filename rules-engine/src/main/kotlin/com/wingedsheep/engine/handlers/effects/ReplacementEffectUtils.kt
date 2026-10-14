@@ -58,7 +58,8 @@ object ReplacementEffectUtils {
         counterType: CounterType,
         count: Int,
         placerId: EntityId? = null,
-        predicateEvaluator: PredicateEvaluator
+        predicateEvaluator: PredicateEvaluator,
+        replacementSourceState: GameState? = null
     ): Int {
         if (count <= 0) return count
         // A capped recipient can't get more of this kind this turn: the placement doesn't happen.
@@ -66,9 +67,13 @@ object ReplacementEffectUtils {
 
         var modifiedCount = count
 
+        val sources = replacementSourceState ?: state
         // 1. Static battlefield replacement effects (Hardened Scales, Doubling Season, …).
-        for (entityId in state.getBattlefield()) {
-            val container = state.getEntity(entityId) ?: continue
+        val sourceIds = sources.getBattlefield()
+        val entrantSelfSource = targetId.takeIf { replacementSourceState != null && it !in sourceIds }
+        for (entityId in sourceIds + listOfNotNull(entrantSelfSource)) {
+            val selfEntry = entityId == entrantSelfSource
+            val container = (if (selfEntry) state else sources).getEntity(entityId) ?: continue
             val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
             val sourceControllerId = container.get<ControllerComponent>()?.playerId ?: continue
 
@@ -79,6 +84,9 @@ object ReplacementEffectUtils {
                     else -> continue
                 }
                 if (counterEvent !is com.wingedsheep.sdk.scripting.EventPattern.CounterPlacementEvent) continue
+                // An entrant's own replacement applies to its entry only when it affects itself
+                // specifically; broad battlefield grants (Doubling Season) are not active yet.
+                if (selfEntry && counterEvent.recipient != com.wingedsheep.sdk.scripting.events.Recipient.Self) continue
 
                 // Gate on "If YOU would put..." — skip when an opponent is the placer.
                 val placedByYouOnly = when (effect) {
@@ -108,7 +116,7 @@ object ReplacementEffectUtils {
         //    These have no battlefield source permanent: the effect's stored controllerId IS
         //    the "you" for both the recipient filter ("a creature you control") and the placer
         //    gate (only the controller's own counter placements get the bonus).
-        for (modifier in state.activeCounterPlacementModifiers) {
+        for (modifier in sources.activeCounterPlacementModifiers) {
             if (placerId != modifier.controllerId) continue
             if (modifier.counterType != counterType) continue
             // No battlefield source entity — pass the controller as the "source entity" so
@@ -123,7 +131,7 @@ object ReplacementEffectUtils {
 
         // 3. Caps apply last — the order the affected player would pick (Melira's ruling), so a
         //    doubler or an additive modifier can't push a capped placement past the cap.
-        val cap = counterPlacementCap(state, targetId, counterType, predicateEvaluator)
+        val cap = counterPlacementCap(state, targetId, counterType, predicateEvaluator, sources)
         if (cap != null) modifiedCount = minOf(modifiedCount, cap)
 
         return modifiedCount.coerceAtLeast(0)
@@ -160,14 +168,15 @@ object ReplacementEffectUtils {
         state: GameState,
         targetId: EntityId,
         counterType: CounterType,
-        predicateEvaluator: PredicateEvaluator
+        predicateEvaluator: PredicateEvaluator,
+        replacementSourceState: GameState = state
     ): Int? {
         var cap: Int? = null
-        for (entityId in state.getBattlefield()) {
-            val container = state.getEntity(entityId) ?: continue
+        for (entityId in replacementSourceState.getBattlefield()) {
+            val container = replacementSourceState.getEntity(entityId) ?: continue
             val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
             // "You" is the source's current (projected) controller — a stolen Melira protects its thief.
-            val sourceControllerId = state.projectedState.getController(entityId) ?: continue
+            val sourceControllerId = replacementSourceState.projectedState.getController(entityId) ?: continue
             for (effect in replacementComponent.replacementEffects) {
                 if (effect !is CapCounterPlacementThisTurn) continue
                 val counterEvent = effect.appliesTo as? com.wingedsheep.sdk.scripting.EventPattern.CounterPlacementEvent

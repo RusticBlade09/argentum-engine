@@ -3,7 +3,7 @@ import { PLAYER_BATTLEFIELD, cardByName } from '../../helpers/selectors'
 
 test('Battle of Hoover Dam returns an NCR graveyard target with a finality counter', async ({ createGame }) => {
   test.setTimeout(120_000)
-  const { player1 } = await createGame({
+  const { player1, player2 } = await createGame({
     player1Name: 'NCR Commander', player2Name: 'Opponent',
     player1: {
       lifeTotal: 20,
@@ -40,7 +40,7 @@ test('Battle of Hoover Dam returns an NCR graveyard target with a finality count
   await p1.screenshot('NCR end-step target excludes mana value four Hill Giant')
   await p1.selectCardInZoneOverlay('Glory Seeker')
   await p1.confirmTargets()
-  await p1.resolveStack('Battle of Hoover Dam trigger')
+  await player2.gamePage.resolveStack('Battle of Hoover Dam trigger')
 
   await p1.expectOnBattlefield('Glory Seeker')
   await p1.expectNotOnBattlefield('Hill Giant')

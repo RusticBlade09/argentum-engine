@@ -133,29 +133,50 @@ object EntersWithReplacements {
         cardRegistry: CardRegistry,
         xValue: Int? = null,
         predicateEvaluator: PredicateEvaluator,
-        preEntryZone: ZoneKey? = null
+        preEntryZone: ZoneKey? = null,
+        suppliedCounters: Map<CounterType, Int>? = null,
+        replacementSourceState: GameState? = null
     ): Pair<GameState, List<GameEvent>> {
         val container = state.getEntity(enteringEntityId) ?: return state to emptyList()
         val cardComponent = container.get<CardComponent>() ?: return state to emptyList()
         val cardDef = cardRegistry.getCard(cardComponent.cardDefinitionId) ?: return state to emptyList()
 
-        var newState = state
+        var newState = prospectiveEntryView(state, enteringEntityId, replacementSourceState)
         val events = mutableListOf<GameEvent>()
+        val counterTotals = suppliedCounters?.toMutableMap()
 
-        val (ownState, ownEvents) = applyFromDefinition(
+        val (ownState, ownEvents) = if (suppliedCounters != null && container.has<com.wingedsheep.engine.state.components.identity.FaceDownComponent>()) {
+            newState to emptyList<GameEvent>()
+        } else applyFromDefinition(
             newState, enteringEntityId, cardDef, enteringControllerId, xValue,
-            predicateEvaluator = predicateEvaluator, preEntryZone = preEntryZone
+            predicateEvaluator = predicateEvaluator, preEntryZone = preEntryZone, counterTotals = counterTotals
         )
         newState = ownState
         events.addAll(ownEvents)
 
         val (globalState, globalEvents) = applyGlobal(
             newState, enteringEntityId, enteringControllerId, cardRegistry,
-            predicateEvaluator = predicateEvaluator, preEntryZone = preEntryZone
+            predicateEvaluator = predicateEvaluator, preEntryZone = preEntryZone,
+            counterTotals = counterTotals, replacementSourceState = replacementSourceState
         )
         newState = globalState
         events.addAll(globalEvents)
 
+        // Evaluation excludes other simultaneous entrants; preserve the actual moved zones.
+        if (replacementSourceState != null) newState = newState.copy(zones = state.zones)
+        if (counterTotals != null) {
+            for ((kind, amount) in counterTotals) {
+                val (placed, placementEvents) = placeEntryCounters(
+                    newState, enteringEntityId, kind, amount, enteringControllerId, cardComponent.name,
+                    predicateEvaluator, replacementSourceState)
+                newState = placed
+                events.addAll(placementEvents)
+                if (kind == CounterType.PLUS_ONE_PLUS_ONE && placementEvents.isEmpty() &&
+                    cardDef.script.replacementEffects.filterIsInstance<EntersWithCounters>().any { isPrintedRiotCounter(cardDef, it) }) {
+                    newState = fallBackToRiotHaste(newState, enteringEntityId)
+                }
+            }
+        }
         return newState to events
     }
 
@@ -173,7 +194,8 @@ object EntersWithReplacements {
         xValue: Int? = null,
         totalManaSpent: Int = 0,
         predicateEvaluator: PredicateEvaluator,
-        preEntryZone: ZoneKey? = null
+        preEntryZone: ZoneKey? = null,
+        counterTotals: MutableMap<CounterType, Int>? = null
     ): Pair<GameState, List<GameEvent>> {
         var newState = state
         val events = mutableListOf<GameEvent>()
@@ -206,6 +228,10 @@ object EntersWithReplacements {
                         )
                         if (!predicateEvaluator.conditions.evaluate(newState, effect.condition!!, condContext)) continue
                     }
+                    if (counterTotals != null) {
+                        counterTotals[effect.counterType] = (counterTotals[effect.counterType] ?: 0) + effect.count
+                        continue
+                    }
                     val (afterCounters, counterEvents) = placeEntryCounters(
                         newState, entityId, effect.counterType, effect.count, controllerId, entityName,
                         predicateEvaluator = predicateEvaluator
@@ -228,6 +254,10 @@ object EntersWithReplacements {
                     val count = predicateEvaluator.amounts.evaluate(
                         preEntryView(newState, entityId, preEntryZone), effect.count, context
                     )
+                    if (counterTotals != null) {
+                        counterTotals[effect.counterType] = (counterTotals[effect.counterType] ?: 0) + count
+                        continue
+                    }
                     val (afterCounters, counterEvents) = placeEntryCounters(
                         newState, entityId, effect.counterType, count, controllerId, entityName,
                         predicateEvaluator = predicateEvaluator
@@ -291,12 +321,14 @@ object EntersWithReplacements {
         count: Int,
         controllerId: EntityId,
         entityName: String,
-        predicateEvaluator: PredicateEvaluator
+        predicateEvaluator: PredicateEvaluator,
+        replacementSourceState: GameState? = null
     ): Pair<GameState, List<GameEvent>> {
-        if (count <= 0 || !state.projectedState.canReceiveCounters(entityId)) return state to emptyList()
+        val prospective = prospectiveEntryView(state, entityId, replacementSourceState)
+        if (count <= 0 || !prospective.projectedState.canReceiveCounters(entityId)) return state to emptyList()
         val modifiedCount = ReplacementEffectUtils.applyCounterPlacementModifiers(
-            state, entityId, counterType, count, placerId = controllerId,
-            predicateEvaluator = predicateEvaluator
+            prospective, entityId, counterType, count, placerId = controllerId,
+            predicateEvaluator = predicateEvaluator, replacementSourceState = replacementSourceState
         )
         // A modifier can cut the placement to nothing; then no counter was put on it (no event).
         if (modifiedCount <= 0) return state to emptyList()
@@ -317,6 +349,16 @@ object EntersWithReplacements {
                 placedBy = controllerId
             )
         )
+    }
+
+    /** The current entrant's own prospective statics plus only pre-event battlefield sources. */
+    fun prospectiveEntryView(state: GameState, entityId: EntityId, beforeEntry: GameState?): GameState {
+        if (beforeEntry == null) return state
+        val priorPermanents = beforeEntry.getBattlefield().toSet()
+        return state.copy(zones = state.zones.mapValues { (zone, ids) ->
+            if (zone.zoneType == Zone.BATTLEFIELD) ids.filter { it == entityId || it in priorPermanents }
+            else ids
+        })
     }
 
     /**
@@ -351,16 +393,19 @@ object EntersWithReplacements {
         enteringControllerId: EntityId,
         cardRegistry: CardRegistry? = null,
         predicateEvaluator: PredicateEvaluator,
-        preEntryZone: ZoneKey? = null
+        preEntryZone: ZoneKey? = null,
+        counterTotals: MutableMap<CounterType, Int>? = null,
+        replacementSourceState: GameState? = null
     ): Pair<GameState, List<GameEvent>> {
         var newState = state
         val events = mutableListOf<GameEvent>()
         val entityName = newState.getEntity(enteringEntityId)?.get<CardComponent>()?.name ?: ""
 
         val sources = mutableListOf<GlobalReplacementSource>()
-        for (sourceId in newState.getBattlefield()) {
+        val sourceState = replacementSourceState ?: newState
+        for (sourceId in sourceState.getBattlefield()) {
             if (sourceId == enteringEntityId) continue
-            val container = newState.getEntity(sourceId) ?: continue
+            val container = sourceState.getEntity(sourceId) ?: continue
             val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
             val sourceControllerId = container.get<ControllerComponent>()?.playerId ?: continue
             val effects = replacementComponent.replacementEffects
@@ -369,10 +414,10 @@ object EntersWithReplacements {
             sources.add(GlobalReplacementSource(sourceId, sourceControllerId, effects))
         }
         if (cardRegistry != null) {
-            for (playerId in newState.turnOrder) {
-                for (sourceId in newState.getGraveyard(playerId)) {
+            for (playerId in sourceState.turnOrder) {
+                for (sourceId in sourceState.getGraveyard(playerId)) {
                     if (sourceId == enteringEntityId) continue
-                    val cardComponent = newState.getEntity(sourceId)?.get<CardComponent>() ?: continue
+                    val cardComponent = sourceState.getEntity(sourceId)?.get<CardComponent>() ?: continue
                     val cardDef = cardRegistry.getCard(cardComponent.cardDefinitionId) ?: continue
                     val effects = cardDef.script.replacementEffects
                         .filter { Zone.GRAVEYARD in it.activeZones }
@@ -404,6 +449,10 @@ object EntersWithReplacements {
                             if (!predicateEvaluator.conditions.evaluate(newState, effect.condition!!, condContext)) continue
                         }
                         val counterType = effect.counterType
+                        if (counterTotals != null) {
+                            counterTotals[counterType] = (counterTotals[counterType] ?: 0) + effect.count
+                            continue
+                        }
                         val modifiedCount = ReplacementEffectUtils.applyCounterPlacementModifiers(
                             newState, enteringEntityId, counterType, effect.count, placerId = enteringControllerId,
                             predicateEvaluator = predicateEvaluator
@@ -439,6 +488,10 @@ object EntersWithReplacements {
                             preEntryView(newState, enteringEntityId, preEntryZone), effect.count, context
                         )
                         if (count > 0) {
+                            if (counterTotals != null) {
+                                counterTotals[counterType] = (counterTotals[counterType] ?: 0) + count
+                                continue
+                            }
                             val modifiedCount = ReplacementEffectUtils.applyCounterPlacementModifiers(
                                 newState, enteringEntityId, counterType, count, placerId = enteringControllerId,
                                 predicateEvaluator = predicateEvaluator

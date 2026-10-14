@@ -187,7 +187,7 @@ class MoveToZoneEffectExecutor(
         // everything else. Skip face-down entries: morph creatures enter as 2/2 nameless
         // creatures with no replacement effects from their face-up identity.
         val actualDestZone = transitionResult.actualDestination
-        if (actualDestZone == Zone.BATTLEFIELD && effect.faceDown == null) {
+        if (actualDestZone == Zone.BATTLEFIELD && effect.faceDown == null && effect.addCounterType == null) {
             val (counterState, counterEvents) = EntersWithReplacements.applyOnEntry(
                 resultState, targetId, controllerId, cardRegistry,
                 predicateEvaluator = zones.predicateEvaluator, preEntryZone = currentZone

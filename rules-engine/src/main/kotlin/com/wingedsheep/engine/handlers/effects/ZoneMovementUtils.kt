@@ -143,16 +143,22 @@ object ZoneMovementUtils {
      */
     fun applySagaEntryIfNeeded(
         state: GameState,
-        entityId: EntityId
+        entityId: EntityId,
+        counterTotals: MutableMap<CounterType, Int>? = null
     ): Pair<GameState, List<EngineGameEvent>> {
         val container = state.getEntity(entityId) ?: return state to emptyList()
         val cardComponent = container.get<CardComponent>() ?: return state to emptyList()
         if (!cardComponent.typeLine.isSaga) return state to emptyList()
+        if (counterTotals != null && container.has<FaceDownComponent>()) return state to emptyList()
         if (container.has<SagaComponent>()) return state to emptyList()
 
         val current = container.get<CountersComponent>() ?: CountersComponent()
         val loreCount = sagaEntryLoreCount(container)
         val sagaComponent = SagaComponent(triggeredChapters = (1..loreCount).toSet())
+        if (counterTotals != null) {
+            counterTotals[CounterType.LORE] = (counterTotals[CounterType.LORE] ?: 0) + loreCount
+            return state.updateEntity(entityId) { it.with(sagaComponent) } to emptyList()
+        }
         val newState = state.updateEntity(entityId) { c ->
             c.with(sagaComponent)
                 .with(current.withAdded(CounterType.LORE, loreCount))
@@ -213,7 +219,8 @@ object ZoneMovementUtils {
         entityId: EntityId,
         controllerId: EntityId,
         cardRegistry: CardRegistry,
-        predicateEvaluator: PredicateEvaluator
+        predicateEvaluator: PredicateEvaluator,
+        counterTotals: MutableMap<CounterType, Int>? = null
     ): Pair<GameState, List<EngineGameEvent>> {
         val container = state.getEntity(entityId) ?: return state to emptyList()
         if (container.has<FaceDownComponent>()) return state to emptyList()
@@ -226,6 +233,10 @@ object ZoneMovementUtils {
             else -> return state to emptyList()
         }
         if (amount == null) return state to emptyList()
+        if (counterTotals != null) {
+            counterTotals[counterType] = (counterTotals[counterType] ?: 0) + amount
+            return state to emptyList()
+        }
 
         return EntersWithReplacements.placeEntryCounters(
             state, entityId, counterType, amount, controllerId, cardComponent.name,

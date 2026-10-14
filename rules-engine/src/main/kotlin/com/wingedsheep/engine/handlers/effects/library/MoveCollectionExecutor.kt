@@ -245,7 +245,7 @@ class MoveCollectionExecutor(
                     auraId, card, hostId, controllerId
                 )
                 if (!legal || hostId !in newState.getBattlefield()) continue
-                val (afterMove, moveEvents) = moveAuraToBattlefield(newState, auraId, hostId, controllerId, effect.addCounterType, context)
+                val (afterMove, moveEvents) = moveAuraToBattlefield(newState, auraId, hostId, controllerId, effect.addCounterType, context, state)
                 newState = afterMove
                 events.addAll(moveEvents)
                 if (auraId in newState.getBattlefield()) moved.add(auraId)
@@ -259,7 +259,7 @@ class MoveCollectionExecutor(
         val rest = moveToZone(
             newState, context, others, destination, effect.order, effect.revealed, effect.moveType,
             effect.faceDown, effect.noRegenerate, storeMovedAs, effect.underOwnersControl, effect.revealToSelf,
-            entryCounterType = effect.addCounterType
+            entryCounterType = effect.addCounterType, replacementSourceState = state
         )
         val collections = if (storeMovedAs != null) {
             rest.updatedCollections + (storeMovedAs to (moved + (rest.updatedCollections[storeMovedAs] ?: emptyList())))
@@ -478,7 +478,8 @@ class MoveCollectionExecutor(
         underOwnersControl: Boolean = false,
         revealToSelf: Boolean = true,
         fromCollection: String? = null,
-        entryCounterType: com.wingedsheep.sdk.core.CounterType? = null
+        entryCounterType: com.wingedsheep.sdk.core.CounterType? = null,
+        replacementSourceState: GameState? = null
     ): EffectResult {
         val destPlayerId = resolvePlayer(destination.player, context, state)
             ?: return EffectResult.error(state, "Could not resolve destination player for MoveCollection")
@@ -515,7 +516,7 @@ class MoveCollectionExecutor(
             cards to state
         }
 
-        val result = moveCardsToZone(stateForMove, context, orderedCards, destination, destPlayerId, revealed, moveType, faceDown, noRegenerate, storeMovedAs, underOwnersControl, revealToSelf, entryCounterType)
+        val result = moveCardsToZone(stateForMove, context, orderedCards, destination, destPlayerId, revealed, moveType, faceDown, noRegenerate, storeMovedAs, underOwnersControl, revealToSelf, entryCounterType, replacementSourceState)
 
         // Random library placement: the mover doesn't know where the cards landed, so strip
         // their reveal markers. moveCardsToZone marks moved cards as revealed to the controller
@@ -614,7 +615,8 @@ class MoveCollectionExecutor(
         storeMovedAs: String? = null,
         underOwnersControl: Boolean = false,
         revealToSelf: Boolean = true,
-        entryCounterType: com.wingedsheep.sdk.core.CounterType? = null
+        entryCounterType: com.wingedsheep.sdk.core.CounterType? = null,
+        replacementSourceState: GameState? = null
     ): EffectResult {
         val destZone = destination.zone
 
@@ -640,7 +642,7 @@ class MoveCollectionExecutor(
 
                 if (nonAuraCards.isNotEmpty()) {
                     val nonAuraResult = moveCardsToZoneInternal(
-                        newState, context, nonAuraCards, destination, destPlayerId, revealed, moveType, faceDown, noRegenerate, storeMovedAs, underOwnersControl, revealToSelf, entryCounterType
+                        newState, context, nonAuraCards, destination, destPlayerId, revealed, moveType, faceDown, noRegenerate, storeMovedAs, underOwnersControl, revealToSelf, entryCounterType, replacementSourceState
                     )
                     newState = nonAuraResult.state
                     events.addAll(nonAuraResult.events)
@@ -670,7 +672,7 @@ class MoveCollectionExecutor(
             }
         }
 
-        return moveCardsToZoneInternal(state, context, cards, destination, destPlayerId, revealed, moveType, faceDown, noRegenerate, storeMovedAs, underOwnersControl, revealToSelf, entryCounterType)
+        return moveCardsToZoneInternal(state, context, cards, destination, destPlayerId, revealed, moveType, faceDown, noRegenerate, storeMovedAs, underOwnersControl, revealToSelf, entryCounterType, replacementSourceState)
     }
 
     /**
@@ -800,15 +802,17 @@ class MoveCollectionExecutor(
         targetId: EntityId,
         destPlayerId: EntityId,
         entryCounterType: com.wingedsheep.sdk.core.CounterType? = null,
-        context: EffectContext? = null
+        context: EffectContext? = null,
+        replacementSourceState: GameState? = null
     ): Pair<GameState, List<GameEvent>> {
         val transition = zones.moveToZone(state, auraId, Zone.BATTLEFIELD,
             com.wingedsheep.engine.handlers.effects.ZoneEntryOptions(
                 controllerId = destPlayerId, auraHostId = targetId, entryCounterType = entryCounterType,
+                entryCounterReplacementState = replacementSourceState,
                 entryChoices = context?.entryChoices?.get(auraId)?.values.orEmpty(),
                 grantedRiotModes = context?.entryChoices?.get(auraId)?.riotModes.orEmpty(),
                 lookBackGrants = context?.lookBackGrants?.get(auraId)))
-        if (transition.actualDestination != Zone.BATTLEFIELD) return transition.state to transition.events
+        if (transition.actualDestination != Zone.BATTLEFIELD || entryCounterType != null) return transition.state to transition.events
         val (entered, counterEvents) = EntersWithReplacements.applyOnEntry(
             transition.state, auraId, destPlayerId, cardRegistry, predicateEvaluator = predicateEvaluator,
             preEntryZone = state.zones.entries.firstOrNull { auraId in it.value }?.key)
@@ -828,7 +832,8 @@ class MoveCollectionExecutor(
         storeMovedAs: String? = null,
         underOwnersControl: Boolean = false,
         revealToSelf: Boolean = true,
-        entryCounterType: com.wingedsheep.sdk.core.CounterType? = null
+        entryCounterType: com.wingedsheep.sdk.core.CounterType? = null,
+        replacementSourceState: GameState? = null
     ): EffectResult {
         val destZone = destination.zone
         val events = mutableListOf<GameEvent>()
@@ -966,6 +971,7 @@ class MoveCollectionExecutor(
             val entryOptions = com.wingedsheep.engine.handlers.effects.ZoneEntryOptions(
                 controllerId = actualDestPlayerId,
                 entryCounterType = entryCounterType.takeIf { destZone == Zone.BATTLEFIELD },
+                entryCounterReplacementState = replacementSourceState ?: state,
                 entryCopy = context.entryCopies[cardId],
                 entryChoices = context.entryChoices[cardId]?.values.orEmpty(),
                 grantedRiotModes = context.entryChoices[cardId]?.riotModes.orEmpty(),
@@ -1009,7 +1015,7 @@ class MoveCollectionExecutor(
             // needs more than the two-line call: this is a loop, the replacement can pause for a
             // decision, and pausing mid-loop requires a continuation that resumes the remaining
             // cards. See docs/card-sdk-language-reference.md, OnEnterRun "Scope today".
-            if (transitionResult.actualDestination == Zone.BATTLEFIELD && faceDown == null) {
+            if (transitionResult.actualDestination == Zone.BATTLEFIELD && faceDown == null && entryCounterType == null) {
                 val (counterState, counterEvents) = EntersWithReplacements.applyOnEntry(
                     newState, cardId, actualDestPlayerId, cardRegistry,
                     predicateEvaluator = predicateEvaluator, preEntryZone = fromZoneKey
