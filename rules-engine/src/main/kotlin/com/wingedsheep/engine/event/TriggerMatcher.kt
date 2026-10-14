@@ -1434,7 +1434,9 @@ class TriggerMatcher(
                             predicate, cardComponent, projected, event.entityId, isFaceDown,
                             lastKnownPower = event.lastKnown?.power,
                             lastKnownToughness = event.lastKnown?.toughness,
-                            lastKnownWasToken = event.lastKnown?.wasToken == true
+                            lastKnownWasToken = event.lastKnown?.wasToken == true,
+                            lastKnownBasePower = event.lastKnown?.basePower,
+                            lastKnownBaseToughness = event.lastKnown?.baseToughness
                         )
                     }
                 }
@@ -1528,7 +1530,14 @@ class TriggerMatcher(
          * so `IsNontoken` / `IsToken` can still resolve. When `null`, the token bit is read
          * from the base state via the projected snapshot (entity must still exist).
          */
-        lastKnownWasToken: Boolean? = null
+        lastKnownWasToken: Boolean? = null,
+        /**
+         * Last-known base power/toughness (layer 7b) for zone-change triggers whose entity has left
+         * the battlefield — its projection entry is gone, so without these a base-P/T read would
+         * fall back to the printed value and miss a copy or "base power is N" effect (CR 608.2h).
+         */
+        lastKnownBasePower: Int? = null,
+        lastKnownBaseToughness: Int? = null
     ): Boolean {
         fun isToken(): Boolean {
             if (lastKnownWasToken != null) return lastKnownWasToken
@@ -1662,12 +1671,12 @@ class TriggerMatcher(
             is com.wingedsheep.sdk.scripting.predicates.CardPredicate.BasePowerEquals -> {
                 // Face-down: a 2/2 set by CR 708.2a, so its base power is 2.
                 val basePower = if (isFaceDown) 2
-                    else projected.getBasePower(entityId) ?: unprojectedStat(isPower = true)
+                    else lastKnownBasePower ?: projected.getBasePower(entityId) ?: unprojectedStat(isPower = true)
                 basePower == predicate.value
             }
             is com.wingedsheep.sdk.scripting.predicates.CardPredicate.BaseToughnessEquals -> {
                 val baseToughness = if (isFaceDown) 2
-                    else projected.getBaseToughness(entityId) ?: unprojectedStat(isPower = false)
+                    else lastKnownBaseToughness ?: projected.getBaseToughness(entityId) ?: unprojectedStat(isPower = false)
                 baseToughness == predicate.value
             }
             is com.wingedsheep.sdk.scripting.predicates.CardPredicate.PowerGreaterThanBase -> {
@@ -1676,7 +1685,7 @@ class TriggerMatcher(
                 // Face-down (base 2/2, power 2) never exceeds its base.
                 if (isFaceDown) false
                 else {
-                    val basePower = projected.getBasePower(entityId) ?: cardComponent.baseStats?.basePower
+                    val basePower = lastKnownBasePower ?: projected.getBasePower(entityId) ?: cardComponent.baseStats?.basePower
                     val power = lastKnownPower ?: projected.getPower(entityId) ?: basePower
                     basePower != null && power != null && power > basePower
                 }
@@ -1692,11 +1701,11 @@ class TriggerMatcher(
             is com.wingedsheep.sdk.scripting.predicates.CardPredicate.IsDoubleFaced ->
                 cardComponent.isDoubleFaced
             is com.wingedsheep.sdk.scripting.predicates.CardPredicate.Or ->
-                predicate.predicates.any { matchesCardPredicate(it, cardComponent, projected, entityId, isFaceDown, lastKnownPower, lastKnownToughness, lastKnownWasToken) }
+                predicate.predicates.any { matchesCardPredicate(it, cardComponent, projected, entityId, isFaceDown, lastKnownPower, lastKnownToughness, lastKnownWasToken, lastKnownBasePower, lastKnownBaseToughness) }
             is com.wingedsheep.sdk.scripting.predicates.CardPredicate.And ->
-                predicate.predicates.all { matchesCardPredicate(it, cardComponent, projected, entityId, isFaceDown, lastKnownPower, lastKnownToughness, lastKnownWasToken) }
+                predicate.predicates.all { matchesCardPredicate(it, cardComponent, projected, entityId, isFaceDown, lastKnownPower, lastKnownToughness, lastKnownWasToken, lastKnownBasePower, lastKnownBaseToughness) }
             is com.wingedsheep.sdk.scripting.predicates.CardPredicate.Not ->
-                !matchesCardPredicate(predicate.predicate, cardComponent, projected, entityId, isFaceDown, lastKnownPower, lastKnownToughness, lastKnownWasToken)
+                !matchesCardPredicate(predicate.predicate, cardComponent, projected, entityId, isFaceDown, lastKnownPower, lastKnownToughness, lastKnownWasToken, lastKnownBasePower, lastKnownBaseToughness)
             else -> error(
                 "TriggerMatcher.matchesCardPredicate has no branch for ${predicate::class.simpleName}. " +
                 "Add an explicit branch — silent pass-through hid the IsNontoken bug for months."

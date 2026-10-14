@@ -6096,7 +6096,8 @@ This is the player-arm prerequisite for the planned composable mixed `TargetUnio
   and a creature under "has base power and toughness 1/1" (Perfected Theory) has base power 1 whatever it printed.
   On the battlefield it reads `ProjectedState.getBasePower` / `getBaseToughness`, which `StateProjector` snapshots
   just before the first 7c effect (so a 7c static counting "base power 1" creatures — Sword of the Squeak's
-  `GrantDynamicStats` — sees it); elsewhere it reads the printed value. Rapid Augmenter ("another creature you
+  `GrantDynamicStats` — sees it); a dies/leaves trigger's filter reads the departed creature's last-known base
+  P/T (as `.powerGreaterThanBase()` does); elsewhere it reads the printed value. Rapid Augmenter ("another creature you
   control with base power 1 enters"), Sword of the Squeak ("for each creature you control with base power or
   toughness 1"). `.powerGreaterThanBase()` above compares current power against this same base.
 - `.manaValueAtMostEntityManaSpent(ref)` — mana value ≤ the mana **actually spent** to cast a referenced
@@ -14703,13 +14704,18 @@ read is available to other snapshot-backed entity references once their captured
 - `EntityProperty(entity, EntityNumericProperty.BasePower)` / `EntityNumericProperty.BaseToughness` — the
   entity's **base** power/toughness: its P/T after copy effects, CDAs and effects that *set* P/T (layers 1–7b),
   before counters, Auras, Equipment, anthems and any other modification. On the battlefield it reads the
-  `ProjectedState.getBasePower`/`getBaseToughness` snapshot; elsewhere the printed (or CDA-evaluated) stat. Uses the *same* base as the `CardPredicate.PowerGreaterThanBase` filter, so
+  `ProjectedState.getBasePower`/`getBaseToughness` snapshot. A departed object read through a last-known reference
+  (`TriggeringEntity`, `Self`, a sacrificed or tapped cost permanent) reads its base P/T as it last existed on the
+  battlefield (CR 608.2h), the same way `Power` does — **Jason Bright, Glowing Prophet**'s "if its power was
+  different from its base power" is `CompareAmounts(propertyOf(TriggeringEntity, Power), NEQ,
+  propertyOf(TriggeringEntity, BasePower))`. Any other object off the battlefield reads its printed (or
+  CDA-evaluated) stat. Uses the *same* base as the `CardPredicate.PowerGreaterThanBase` filter, so
   `Subtract(EntityProperty(e, Power), EntityProperty(e, BasePower))` gives exactly the "difference" (current
   power − base power) that filter's qualifying creatures have — the per-creature +1/+1 counter amount for
   **Sovereign Okinec Ahau** ("Whenever ~ attacks, for each creature you control with power greater than that
   creature's base power, put a number of +1/+1 counters on that creature equal to the difference."), composed
   as a `ForEachInGroup` over `Creature.youControl().powerGreaterThanBase()` reading the amount off
-  `EffectTarget.IterationEntity`. Not projected — always the printed base.
+  `EffectTarget.IterationEntity`.
 - `CardNumericProperty(card, property)` — generic numeric property accessor.
 
 ### Board-count shortcuts (`DynamicAmounts.*` facades)

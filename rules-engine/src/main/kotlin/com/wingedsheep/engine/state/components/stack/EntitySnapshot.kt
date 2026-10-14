@@ -265,6 +265,20 @@ data class EntitySnapshot(
     @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val manaValue: Int? = null,
+    /**
+     * Base power at capture — the layer-7b value after copy effects, characteristic-defining
+     * abilities and "base power is N" effects, before counters and modifiers (CR 613.4b). Frozen
+     * because off the battlefield only the printed value is readable, yet "if its power was
+     * different from its base power" (Jason Bright, Glowing Prophet) compares the departed
+     * creature's last-known power against its last-known base power (CR 608.2h).
+     */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val basePower: Int? = null,
+    /** Base toughness at capture — the toughness sibling of [basePower]. */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val baseToughness: Int? = null,
 ) : EntityView {
     companion object {
         /**
@@ -284,6 +298,8 @@ data class EntitySnapshot(
                 manaValue = permanentManaValue(state, entityId),
                 power = projected.getPower(entityId),
                 toughness = projected.getToughness(entityId),
+                basePower = projected.getBasePower(entityId),
+                baseToughness = projected.getBaseToughness(entityId),
                 subtypes = projected.getSubtypes(entityId),
                 supertypes = projected.getSupertypes(entityId),
                 controllerId = projected.getController(entityId),

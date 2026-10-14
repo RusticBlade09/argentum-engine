@@ -1936,6 +1936,129 @@
     }
 }
 
+// Jason Bright, Glowing Prophet
+{
+    "name": "Jason Bright, Glowing Prophet",
+    "manaCost": "{2}{U}",
+    "typeLine": "Legendary Creature — Zombie Mutant Advisor",
+    "oracleText": "Whenever a Zombie or Mutant you control dies, if its power was different from its base power, draw a card.\nCome Fly With Me — {2}, Sacrifice a creature: Put a +1/+1 counter on target creature you control. It gains flying until end of turn.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 3
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Jason Bright, Glowing Prophet:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "filter": "creature Zombie|Mutant ctrl:you",
+                    "from": "Battlefield",
+                    "to": "Graveyard"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "DrawCards",
+                    "count": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                },
+                "interveningIf": {
+                    "type": "Compare",
+                    "left": {
+                        "type": "EntityProperty",
+                        "entity": "TriggeringEntity",
+                        "numericProperty": "Power"
+                    },
+                    "operator": "NEQ",
+                    "right": {
+                        "type": "EntityProperty",
+                        "entity": "TriggeringEntity",
+                        "numericProperty": "BasePower"
+                    }
+                }
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Jason Bright, Glowing Prophet:2",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{2}"
+                            }
+                        },
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomSacrifice",
+                                "filter": "creature"
+                            }
+                        }
+                    ]
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "AddCounters",
+                            "counterType": "PLUS_ONE_PLUS_ONE",
+                            "count": 1,
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        },
+                        {
+                            "type": "GrantKeyword",
+                            "keyword": "FLYING",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        }
+                    ]
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "creature ctrl:you"
+                        },
+                        "id": "t0"
+                    }
+                ],
+                "descriptionOverride": "Come Fly With Me — Put a +1/+1 counter on target creature you control. It gains flying until end of turn."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "32",
+        "rarity": "RARE",
+        "artist": "Tomas Duchek",
+        "imageUri": "https://cards.scryfall.io/normal/front/4/8/48313997-fd94-486a-bf30-e9143a155814.jpg?1783912413",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "Normally, a creature’s base power is the power printed on the card, or, for a token, the power set by the effect that created it. If another effect sets a creature’s power to a specific number or value, that becomes its base power. If an effect modifies a creature’s power without setting it, that is not included when determining its base power."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If a creature has a characteristic-defining ability that sets its power, indicated with a * or similar in the power and toughness box, that ability is taken into account when determining its base power."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Some creatures have base power 0 and an ability that gives them a bonus based on some criteria. Those are not characteristic-defining abilities, and that ability doesn’t change its base power. Such a creature will have power different from its base power if that ability causes its power to be anything other than 0."
+            }
+        ]
+    }
+}
+
 // Kellogg, Dangerous Mind
 {
     "name": "Kellogg, Dangerous Mind",

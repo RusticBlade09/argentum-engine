@@ -54,7 +54,9 @@ sealed interface EntityNumericProperty {
     /**
      * The entity's **base** power — its power after copy effects, characteristic-defining abilities
      * and effects that set power (layers 1–7b), before counters, Auras, Equipment, anthems and any
-     * other modification. Off the battlefield it is the printed (or CDA-evaluated) power.
+     * other modification. Off the battlefield it is the printed (or CDA-evaluated) power, except
+     * that a departed object read through a last-known reference (the triggering entity of a dies
+     * trigger, a sacrificed cost) reads its base power as it last existed on the battlefield.
      *
      * This is the *same* notion of "base power" that [com.wingedsheep.sdk.scripting.predicates
      * .CardPredicate.PowerGreaterThanBase] tests against, so pairing the two stays consistent:

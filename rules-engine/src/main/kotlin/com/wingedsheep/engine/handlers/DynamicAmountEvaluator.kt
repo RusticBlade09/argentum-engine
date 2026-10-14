@@ -667,6 +667,14 @@ class DynamicAmountEvaluator(
                             if (snapshot?.typeLine?.isCreature == false) return 0
                             snapshot?.toughness?.let { return it }
                         }
+                        is EntityNumericProperty.BasePower -> {
+                            if (snapshot?.typeLine?.isCreature == false) return 0
+                            snapshot?.basePower?.let { return it }
+                        }
+                        is EntityNumericProperty.BaseToughness -> {
+                            if (snapshot?.typeLine?.isCreature == false) return 0
+                            snapshot?.baseToughness?.let { return it }
+                        }
                         is EntityNumericProperty.ManaValue -> snapshot?.manaValue?.let { return it }
                         is EntityNumericProperty.CounterCount -> snapshot?.let {
                             return property.counterType?.let { type -> it.counters[type] ?: 0 } ?: it.totalCounters
