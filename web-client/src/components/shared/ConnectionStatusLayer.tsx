@@ -6,7 +6,7 @@
  *   that can't work without the server — a game, a mulligan, a draft, a spectated game — a card
  *   over the dimmed table says the game is saved and will pick up where it left off. The table
  *   stays visible behind it, so it's clear nothing was lost. Anywhere else (home, deckbuilder,
- *   library…) a slim banner at the top says the same without blocking what still works offline.
+ *   library…) a slim banner at the bottom says the same without blocking what still works offline.
  * - **Connection lost mid-game** (no restart announced): after a short grace, the same card in a
  *   "reconnecting" voice, with a "Try now" once the backoff has grown.
  * - **Back**: when the server answers after a restart, a brief "update complete" note confirms it.
