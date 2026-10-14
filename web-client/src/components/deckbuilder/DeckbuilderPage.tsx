@@ -9,7 +9,7 @@
  * Decoupled from gameStore — runs offline. Persistence is via useDeckLibrary
  * (localStorage). Server validation reuses POST /api/decks/validate.
  */
-import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   useDeckLibrary,
@@ -43,6 +43,7 @@ import {
   type OutsideTheGameSummary,
 } from './outsideTheGame'
 import { extractSetFilter } from './query'
+import { balanceDeckColumns, deckColumnCount } from './deckColumns'
 import {
   CardGrid,
   COLOR_TOKENS,
@@ -3716,10 +3717,10 @@ function AddCardSearch({
 // ---------------------------------------------------------------------------
 // Deck-centric view (Moxfield-style).
 //
-// Renders the deck as multiple columns, one bucket per card type. Uses CSS
-// columns so the bucket count auto-fits the available width (3 columns on a
-// typical desktop, 2 on a narrow window). Each group is a self-contained block
-// with `break-inside: avoid` so a Creatures group doesn't get split mid-list.
+// Renders the deck as balanced columns, one group per card type. The column count follows the
+// pane's width; a tall group continues into the next column under a "continued" header so the
+// columns come out level instead of the tallest group setting every column's height (see
+// `deckColumns.ts`).
 // ---------------------------------------------------------------------------
 
 function DeckCentricView({
@@ -3772,6 +3773,17 @@ function DeckCentricView({
     onAdd(card)
   })
 
+  // Column layout: re-measured only when the pane resizes; the partition only when the deck or
+  // the column count changes, so adding a card never triggers a measure.
+  const [columnsEl, setColumnsEl] = useState<HTMLDivElement | null>(null)
+  const width = useElementWidth(columnsEl)
+  const columnGroups = useMemo(
+    () => grouped.map((g) => ({ label: g.label, total: g.entries.reduce((a, e) => a + e.count, 0), entries: g.entries })),
+    [grouped],
+  )
+  const columnCount = width > 0 ? deckColumnCount(width, columnGroups, DECK_COLUMN_SIZING) : 1
+  const columns = useMemo(() => balanceDeckColumns(columnGroups, columnCount), [columnGroups, columnCount])
+
   // Use the raw deck size (not the grouped-bucket count) because the Lands group now always
   // synthesizes the 5 basic-land rows even at count 0 — so an empty deck would otherwise still
   // produce one non-empty group and we'd never show the empty state.
@@ -3792,37 +3804,68 @@ function DeckCentricView({
 
   return (
     <div className={`${styles.deckCentric} ${dragActive ? styles.deckListDrop : ''}`} {...dropHandlers}>
-      <div className={styles.deckCentricColumns}>
-        {grouped.map((group) => (
-          <div key={group.label} className={styles.deckCentricGroup}>
-            <h3 className={styles.deckCentricGroupLabel}>
-              {group.label} ({group.entries.reduce((a, e) => a + e.count, 0)})
-            </h3>
-            {group.entries.map((entry) => (
-              <DeckRow
-                key={entry.name}
-                entry={entry}
-                activeFormat={activeFormat}
-                commanders={commanders}
-                commanderCards={commanderCards}
-                showCommanderControls={showCommanderControls}
-                isCommanderFormat={isCommanderFormat}
-                rowViolations={rowViolations}
-                onAdd={onAdd}
-                onRemove={onRemove}
-                onToggleCommander={onToggleCommander}
-                onEnter={onHoverEnter}
-                onLeave={onHoverLeave}
-                pinnedPrinting={pinnedPrintings[entry.name]}
-                onOpenPicker={onOpenPicker}
-                dragSource="deck"
-              />
+      <div
+        ref={setColumnsEl}
+        className={styles.deckCentricColumns}
+        style={{ gridTemplateColumns: `repeat(${columns.length || 1}, minmax(0, ${DECK_COLUMN_SIZING.maxWidth}px))` }}
+      >
+        {columns.map((column, i) => (
+          <div key={i} className={styles.deckCentricColumn}>
+            {column.map((slice) => (
+              <section key={`${slice.label}${slice.continued ? ':cont' : ''}`} className={styles.deckCentricGroup}>
+                <h3 className={styles.deckCentricGroupLabel}>
+                  <span>
+                    {slice.label}
+                    {slice.continued && <span className={styles.deckCentricGroupCont}> · continued</span>}
+                  </span>
+                  <span className={styles.deckCentricGroupCount}>{slice.total}</span>
+                </h3>
+                {slice.entries.map((entry) => (
+                  <DeckRow
+                    key={entry.name}
+                    entry={entry}
+                    activeFormat={activeFormat}
+                    commanders={commanders}
+                    commanderCards={commanderCards}
+                    showCommanderControls={showCommanderControls}
+                    isCommanderFormat={isCommanderFormat}
+                    rowViolations={rowViolations}
+                    onAdd={onAdd}
+                    onRemove={onRemove}
+                    onToggleCommander={onToggleCommander}
+                    onEnter={onHoverEnter}
+                    onLeave={onHoverLeave}
+                    pinnedPrinting={pinnedPrintings[entry.name]}
+                    onOpenPicker={onOpenPicker}
+                    dragSource="deck"
+                  />
+                ))}
+              </section>
             ))}
           </div>
         ))}
       </div>
     </div>
   )
+}
+
+/** Deck-list columns: at least this wide to fit a name and its cost, at most this wide to stay readable. */
+const DECK_COLUMN_SIZING = { minWidth: 300, maxWidth: 420, gap: 24 }
+
+/** The element's content width, kept current by a ResizeObserver; 0 until it mounts. */
+function useElementWidth(el: HTMLElement | null): number {
+  const [width, setWidth] = useState(0)
+  useLayoutEffect(() => {
+    if (!el) return
+    setWidth(el.clientWidth)
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setWidth(Math.round(entry.contentRect.width))
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [el])
+  return width
 }
 
 // ---------------------------------------------------------------------------
@@ -3995,12 +4038,13 @@ function groupForDeckList(
   }
   spells.sort(byCmcThenName)
   lands.sort(byCmcThenName)
+  const offered = hideEmptyBasics ? null : offeredBasics(deck, catalog, commanders)
   const basicEntries: DeckGroup['entries'] = []
   for (const basicName of BASIC_LAND_ORDER) {
     const card = catalog[basicName]
     if (!card) continue
     const count = deck[basicName] ?? 0
-    if (hideEmptyBasics && count <= 0) continue
+    if (count <= 0 && !offered?.has(basicName)) continue
     basicEntries.push({ name: basicName, count, card })
   }
   const allLands = [...lands, ...basicEntries]
@@ -4085,19 +4129,22 @@ function groupByCardType(
     'Other',
   ]
   // Sort each bucket. Lands gets two-stage sort: non-basics by cmc/name, then basics in W/U/B/R/G
-  // order at the end — basics with count=0 still appear so the user can ramp them up directly
-  // from the deck list.
+  // order at the end — the deck's own colours' basics appear even at count 0 (see offeredBasics)
+  // so the user can ramp them up directly from the deck list.
   for (const key of order) {
     if (key === 'Lands') {
       buckets.Lands.sort(byCmcThenName)
       // Filter out basics that may have been collected above (count > 0 ones); we re-add them
       // in canonical order from the catalog so 0-count basics sit alongside the >0 ones.
       const nonBasicLands = buckets.Lands.filter((e) => !e.card?.basicLand)
+      const offered = offeredBasics(deck, catalog, commanders)
       const basicEntries: DeckGroup['entries'] = []
       for (const basicName of BASIC_LAND_ORDER) {
         const card = catalog[basicName]
         if (!card) continue
-        basicEntries.push({ name: basicName, count: deck[basicName] ?? 0, card })
+        const count = deck[basicName] ?? 0
+        if (count <= 0 && !offered.has(basicName)) continue
+        basicEntries.push({ name: basicName, count, card })
       }
       buckets.Lands = [...nonBasicLands, ...basicEntries]
     } else {
@@ -4112,6 +4159,37 @@ function groupByCardType(
     groups.push({ label: key, entries })
   }
   return groups
+}
+
+const BASIC_FOR_COLOR: Record<string, string> = {
+  WHITE: 'Plains',
+  BLUE: 'Island',
+  BLACK: 'Swamp',
+  RED: 'Mountain',
+  GREEN: 'Forest',
+}
+
+/**
+ * The basics the deck list offers as 0-count rows: those of the deck's colours (its spells'
+ * colours, plus its commanders' colour identity), so a two-colour deck isn't padded with three
+ * basics it will never play. A deck with no coloured card yet offers all five. Any basic the deck
+ * actually runs is listed regardless.
+ */
+function offeredBasics(
+  deck: Record<string, number>,
+  catalog: Record<string, CardSummary>,
+  commanders: readonly string[],
+): Set<string> {
+  const colors = new Set<string>()
+  for (const [name, count] of Object.entries(deck)) {
+    if (count <= 0) continue
+    const card = catalog[name]
+    if (!card || card.basicLand) continue
+    for (const c of card.colors) colors.add(c)
+  }
+  for (const name of commanders) for (const c of catalog[name]?.colorIdentity ?? []) colors.add(c)
+  const basics = [...colors].flatMap((c) => BASIC_FOR_COLOR[c] ?? [])
+  return new Set(basics.length > 0 ? basics : BASIC_LAND_ORDER)
 }
 
 function byCmcThenName(a: { name: string; card: CardSummary | undefined }, b: { name: string; card: CardSummary | undefined }) {
