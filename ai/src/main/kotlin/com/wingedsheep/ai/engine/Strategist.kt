@@ -164,6 +164,11 @@ class Strategist(
      */
     private val fuelLoyaltyIsNotBoardValue: Boolean = false,
     /**
+     * [AiProfile.defendPlaneswalkers] — here, only that [fuelLoyaltyCredit] refunds nothing to a
+     * walker the activation leaves dead to the next attack.
+     */
+    private val defendPlaneswalkers: Boolean = false,
+    /**
      * [AiProfile.landDropUnlocksSpells] — a land drop scores as the best spell it makes castable.
      * See [landDropFollowUps].
      */
@@ -1096,7 +1101,11 @@ class Strategist(
      *
      * Only while the walker survives the activation: one that spends its last counter dies, and
      * losing the permanent is still charged — a −1 at one loyalty must buy the walker's worth.
-     * Never negative.
+     * Under [defendPlaneswalkers], only while it survives the next attack too
+     * ([PlaneswalkerThreat.doomed]): counters a doomed walker keeps are about to be lost, so
+     * spending them cost nothing and there is nothing to refund — while refunding them as if the
+     * walker kept them would make the −1 that leaves it dead score like the −1 that leaves it safe,
+     * and outbid the −3 that cashes the whole walker in before it goes. Never negative.
      */
     private fun fuelLoyaltyCredit(
         root: GameState,
@@ -1115,6 +1124,7 @@ class Strategist(
         val counters = leaf.getEntity(sourceId)?.get<CountersComponent>() ?: return 0.0
         val spent = before - counters.getCount(CounterType.LOYALTY)
         if (spent <= 0) return 0.0
+        if (defendPlaneswalkers && PlaneswalkerThreat.doomed(leaf, leaf.projectedState, sourceId)) return 0.0
         val restored = leaf.updateEntity(sourceId) { it.with(counters.withAdded(CounterType.LOYALTY, spent)) }
         val charge = evaluator.evaluate(restored, restored.projectedState, playerId) -
             evaluator.evaluate(leaf, leaf.projectedState, playerId)

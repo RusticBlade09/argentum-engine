@@ -229,6 +229,10 @@ object ArenaAgents {
         // Each attacker picks its defender: opposing planeswalkers priced as ongoing engines.
         ArenaAgent("production-walkerattacks", AiProfile.PRODUCTION_WALKERATTACKS),
         ArenaAgent("production-candidate-walkerattacks", AiProfile.PRODUCTION_CANDIDATE_WALKERATTACKS),
+        // Our own planeswalkers defended and spent before they die: loyalty priced net of the next
+        // attack, blocks priced by the walker they save.
+        ArenaAgent("production-walkerdefence", AiProfile.PRODUCTION_WALKERDEFENCE),
+        ArenaAgent("production-candidate-walkerdefence", AiProfile.PRODUCTION_CANDIDATE_WALKERDEFENCE),
         ArenaAgent("production-targeted", AiProfile.PRODUCTION_TARGETED),
         // Explicit ECL candidates. Their resource-backed weights fail closed to production's
         // evaluator until a validated artifact is installed; automatic selection is set-gated.

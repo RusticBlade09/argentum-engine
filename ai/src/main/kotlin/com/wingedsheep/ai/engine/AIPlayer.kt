@@ -274,7 +274,9 @@ class AIPlayer(
                 landDropIsNotCardLoss = profile.landDropIsNotCardLoss,
                 sequenceLandsByUsableMana = profile.sequenceLandsByUsableMana,
                 discountedRaceClock = profile.discountedRaceClock,
-                creatureValuation = profile.creatureValuation,
+                creatureValuation = profile.creatureValuation.copy(
+                    walkersFaceTheNextAttack = profile.defendPlaneswalkers,
+                ),
                 priceLandsInHandAsMana = profile.priceLandsInHandAsMana,
                 evasionAfterAttacking = profile.evasionAfterAttacking,
                 pendingLandDropIsMana = profile.pendingLandDropIsMana,
@@ -287,6 +289,7 @@ class AIPlayer(
                 lifeWeight = EvalWeights.resolve(profile.evalWeightsId).life,
                 chumpOnlyWhenInDanger = profile.chumpOnlyWhenInDanger,
                 attackPlaneswalkers = profile.attackPlaneswalkers,
+                defendPlaneswalkers = profile.defendPlaneswalkers,
                 chumpForTheClock = profile.chumpForTheClock,
             )
             val responder = DecisionResponder(
@@ -336,6 +339,7 @@ class AIPlayer(
                     targetPolarityFromEffect = profile.targetPolarityFromEffect,
                     permanentCastIsNotCardLoss = profile.permanentCastIsNotCardLoss,
                     fuelLoyaltyIsNotBoardValue = profile.fuelLoyaltyIsNotBoardValue,
+                    defendPlaneswalkers = profile.defendPlaneswalkers,
                     landDropUnlocksSpells = profile.landDropUnlocksSpells,
                     activatedPumpsNeedAPlannedAttack = profile.activatedPumpsNeedAPlannedAttack,
                     // Same seam as `CombatAdvisor`'s `lifeWeight`: a raw Phase 9 profile resolves

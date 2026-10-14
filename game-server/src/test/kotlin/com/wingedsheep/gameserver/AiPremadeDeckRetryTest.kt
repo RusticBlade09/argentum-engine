@@ -40,7 +40,9 @@ class AiPremadeDeckRetryTest : GameServerTestBase() {
             sealed: SealedDeckGenerator,
             constructed: ConstructedDeckGenerator,
             commander: CommanderDeckGenerator,
-        ): RandomDeckResolver = spyk(RandomDeckResolver(sealed, constructed, commander)).also { resolver ->
+            setInference: com.wingedsheep.gameserver.ai.DeckSetInference,
+            premadePicker: com.wingedsheep.gameserver.ai.PremadeOpponentPicker,
+        ): RandomDeckResolver = spyk(RandomDeckResolver(sealed, constructed, commander, setInference, premadePicker)).also { resolver ->
             every { resolver.resolve(any(), any(), any<List<String>>(), any()) } returnsMany listOf(
                 GeneratedDeck(mapOf("Hulking Goblin" to 6, "Mountain" to 34)),
                 GeneratedDeck(mapOf("Hulking Goblin" to 4, "Mountain" to 36)),

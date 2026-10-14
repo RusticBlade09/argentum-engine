@@ -2,6 +2,7 @@ package com.wingedsheep.ai.engine.evaluation
 
 import com.wingedsheep.engine.mechanics.layers.ProjectedState
 import com.wingedsheep.ai.engine.OpponentAggregate
+import com.wingedsheep.ai.engine.PlaneswalkerThreat
 import com.wingedsheep.ai.engine.knowledge.CardIntent
 import com.wingedsheep.ai.engine.knowledge.IntentCatalog
 import com.wingedsheep.ai.engine.lifePoolsOf
@@ -125,6 +126,18 @@ data class CreatureValuation(
      * firebreathing once blockers are declared). Off is the historical reading.
      */
     val expiringStatsNeedAFight: Boolean = false,
+    /**
+     * Price a planeswalker continuously in its loyalty, net of the attack it faces before its
+     * controller acts again ([PlaneswalkerThreat.boardValue] / [PlaneswalkerThreat.expectedDamage]),
+     * instead of `max(4.0, prior + 0.8 × loyalty)`.
+     *
+     * Not a creature correction — it rides this carrier because it travels exactly the same
+     * evaluator-only path to `permanentValue`. The flat floor hid every loyalty change below it,
+     * so a walker about to die looked as healthy as a fresh one: nothing told the AI to spend its
+     * loyalty first, to keep a blocker home for it, or that a −1 left it dead to the next attack.
+     * [com.wingedsheep.ai.engine.AiProfile.defendPlaneswalkers] sets it.
+     */
+    val walkersFaceTheNextAttack: Boolean = false,
 ) {
     companion object {
         /** Neither correction: what every number published before 2026-08-10 was measured on. */
@@ -361,6 +374,13 @@ object BoardPresence : BoardFeature {
         // number that has to be in here; the intent prior carries what its abilities *do*.
         if (card.isPlaneswalker) {
             val loyalty = container.get<CountersComponent>()?.getCount(CounterType.LOYALTY) ?: 0
+            if (creatureValuation.walkersFaceTheNextAttack) {
+                // Continuous in loyalty, net of the attack it faces before its controller acts
+                // again — see [PlaneswalkerThreat.boardValue].
+                val damage = projected.getController(entityId)
+                    ?.let { PlaneswalkerThreat.expectedDamage(state, projected, it) } ?: 0
+                return PlaneswalkerThreat.boardValue(!intents.loyaltyIsOnlyFuel(card.name), prior, loyalty, damage)
+            }
             return maxOf(4.0, prior + loyalty * LOYALTY_VALUE)
         }
 
