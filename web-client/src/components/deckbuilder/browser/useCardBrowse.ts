@@ -3,8 +3,9 @@
  * slice on screen, and the reprint art an `s:` filter calls for.
  *
  * {@link CardBrowser} lays it out as one pane; the cube builder spreads the same state across the
- * deckbuilder's three columns (filters left, grid centre). Keeping it here means both browse cards
- * identically — same query language, same sort, same set-filter art.
+ * deckbuilder's three columns (filters left, grid centre), and the card browser page keeps the query
+ * and sort in its URL by passing them in as `controlled`. Keeping it here means all of them browse
+ * cards identically — same query language, same sort, same set-filter art.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { isAdvancedQuery, parseQuery, type CardSummary } from '../cardFilter'
@@ -14,9 +15,21 @@ import { useArtOverrides, useCardsWithSetArt, useSetPrintingOverride } from './u
 
 const PAGE_SIZE = 120
 
-export function useCardBrowse(catalog: readonly CardSummary[], initialQuery = '') {
-  const [query, setQuery] = useState(initialQuery)
-  const [sortMode, setSortMode] = useState<SortMode>('name')
+/** Query and sort owned by the caller (e.g. kept in the URL) instead of by the hook. */
+export interface ControlledBrowse {
+  query: string
+  setQuery: (next: string) => void
+  sortMode: SortMode
+  setSortMode: (next: SortMode) => void
+}
+
+export function useCardBrowse(catalog: readonly CardSummary[], initialQuery = '', controlled?: ControlledBrowse) {
+  const [ownQuery, setOwnQuery] = useState(initialQuery)
+  const [ownSortMode, setOwnSortMode] = useState<SortMode>('name')
+  const query = controlled ? controlled.query : ownQuery
+  const setQuery = controlled ? controlled.setQuery : setOwnQuery
+  const sortMode = controlled ? controlled.sortMode : ownSortMode
+  const setSortMode = controlled ? controlled.setSortMode : setOwnSortMode
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   const parseResult = useMemo(() => parseQuery(query, { withErrors: true }), [query])

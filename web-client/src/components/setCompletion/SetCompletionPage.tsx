@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { SetIcon } from '../ui/SetIcon'
 import { HelpTip } from '../help/HelpTip'
 import { PageShell, pageStyles } from '../ui/PageShell'
@@ -681,6 +682,15 @@ function SetDetailOverlay({ code, onClose }: { code: string; onClose: () => void
                 )}
               </span>
             </div>
+          )}
+          {detail && detail.implemented > 0 && (
+            <Link
+              className={styles.overlayBrowse}
+              to={`/cards?q=${encodeURIComponent(`s:${code.toLowerCase()}`)}`}
+              title={`Look through ${detail.name}'s playable cards in the card browser`}
+            >
+              Browse cards
+            </Link>
           )}
           <button className={styles.overlayClose} onClick={onClose} aria-label="Close">
             ✕

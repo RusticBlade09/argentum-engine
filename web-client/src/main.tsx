@@ -36,6 +36,9 @@ const AiSandboxPage = lazy(() =>
 const LibraryPage = lazy(() =>
   import('./pages/LibraryPage').then(({ LibraryPage }) => ({ default: LibraryPage }))
 )
+const CardsPage = lazy(() =>
+  import('./pages/CardsPage').then(({ CardsPage }) => ({ default: CardsPage }))
+)
 const CubeBuilderPage = lazy(() =>
   import('./components/cube/CubeBuilderPage').then(({ CubeBuilderPage }) => ({ default: CubeBuilderPage }))
 )
@@ -99,6 +102,7 @@ createRoot(rootElement).render(
           <Route path="/deckbuilder" element={<DeckbuilderPage />} />
           <Route path="/deckbuilder/:deckId" element={<DeckbuilderPage />} />
           <Route path="/library" element={<LibraryPage />} />
+          <Route path="/cards" element={<CardsPage />} />
           <Route path="/cubes" element={<Navigate to="/library?tab=cubes" replace />} />
           <Route path="/cubes/new" element={<CubeBuilderPage />} />
           <Route path="/cubes/edit/:cubeId" element={<CubeBuilderPage />} />

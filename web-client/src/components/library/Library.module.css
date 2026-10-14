@@ -12,8 +12,14 @@
   flex-wrap: wrap;
 }
 
-.hero > div {
+.hero > div:first-child {
   max-width: 64ch;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .heroAction {

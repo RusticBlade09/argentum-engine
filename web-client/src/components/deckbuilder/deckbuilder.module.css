@@ -1036,6 +1036,16 @@
   grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
 }
 
+/* Bigger tiles for the card browser page, where looking at the cards is the whole job. */
+.gridLarge {
+  composes: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-3);
+}
+@media (max-width: 560px) {
+  .gridLarge { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-2); }
+}
+
 .showMoreRow {
   display: flex;
   justify-content: center;
@@ -1055,6 +1065,11 @@
      keeps scrollbar / scroll position stable while tiles are skipped. */
   content-visibility: auto;
   contain-intrinsic-size: 210px 294px;
+}
+
+.cardTile:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
 .cardTile:hover {

@@ -30,6 +30,14 @@ export interface Announcement {
 
 export const ANNOUNCEMENTS: readonly Announcement[] = [
   {
+    id: 'feature-card-browser',
+    date: '2026-10-14',
+    kind: 'feature',
+    title: 'Browse every card',
+    body:
+      'Cards, in the top bar, is a card browser with nothing to build: every card you can play, with the deckbuilder’s search and filters and bigger tiles. Click a card to see it up close — its Oracle text, every printing’s art, the formats it is legal in — and step through the results with the arrow keys. Click its type or set to search for more like it, or start a deck (or a Commander deck) around it in one click.',
+  },
+  {
     id: 'set-dmu',
     date: '2026-10-13',
     kind: 'set',
