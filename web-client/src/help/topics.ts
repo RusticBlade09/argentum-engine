@@ -1306,6 +1306,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         'In a lobby or between bracket rounds, the grace period is five minutes; other players can add a minute, or kick them after two.',
         'Opening the same game in a second tab moves your session there; the first tab offers “Use here” to take it back.',
         'Jump In remembers your pack choices if you reconnect mid-pick.',
+        'When the server is updated, a notice says so and your game waits on the table; it reconnects on its own within a minute or two and carries on where it stopped. No one is conceded for the update.',
       ] },
       { kind: 'tip', text: 'Your seat is tied to this browser, so reconnect from the same browser you joined with.' },
     ],

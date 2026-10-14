@@ -29,6 +29,7 @@ class GameWebSocketHandler(
     private val llmTournamentService: com.wingedsheep.gameserver.tournament.llm.LlmTournamentService,
     private val sessionRegistry: com.wingedsheep.gameserver.session.SessionRegistry,
     private val activityTracker: com.wingedsheep.gameserver.activity.PlayerActivityTracker,
+    private val restartNotice: com.wingedsheep.gameserver.session.ServerRestartNotice,
 ) : TextWebSocketHandler() {
 
     private val logger = LoggerFactory.getLogger(GameWebSocketHandler::class.java)
@@ -69,6 +70,11 @@ class GameWebSocketHandler(
 
     override fun afterConnectionEstablished(session: WebSocketSession) {
         logger.info("WebSocket connection established: ${session.id}")
+        // A client that reconnects into the shutdown window would be restored on a server about
+        // to die. Turn it away with the same restart signal so it waits for the new one.
+        if (restartNotice.isShuttingDown) {
+            session.close(CloseStatus.SERVICE_RESTARTED)
+        }
     }
 
     override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {

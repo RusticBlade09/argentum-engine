@@ -126,6 +126,8 @@ export default function App() {
   const connect = useGameStore((state) => state.connect)
   const spectateGame = useGameStore((state) => state.spectateGame)
   const sessionReplaced = useGameStore((state) => state.sessionReplaced)
+  const connectionLostAt = useGameStore((state) => state.connectionLostAt)
+  const serverRestart = useGameStore((state) => state.serverRestart)
   const { name: connectName } = useConnectName()
   const hasConnectedRef = useRef(false)
 
@@ -375,8 +377,11 @@ export default function App() {
     }
   }, [hasDeclareAttackersAction, hasDeclareBlockersAction, gameState, viewingPlayer, combatState, startCombat, clearCombat, battlefieldCards, legalActions])
 
-  // Show connection/game creation UI when not in a game
-  const showLobby = connectionStatus !== 'connected' || !gameState
+  // Show connection/game creation UI when not in a game. A game whose connection dropped — or whose
+  // server is restarting — keeps its board up under ConnectionStatusLayer's notice instead of
+  // falling back to the lobby, so the player can see it's still there.
+  const holdBoard = connectionLostAt != null || serverRestart != null
+  const showLobby = !gameState || (connectionStatus !== 'connected' && !holdBoard)
   const showGame = !showLobby && !mulliganState
   // Show deck builder during building phase, or during submitted phase if no tournament yet
   // When tournament exists and deck is submitted, TournamentOverlay (in GameUI) handles UI

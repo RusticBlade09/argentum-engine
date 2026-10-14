@@ -37,6 +37,7 @@ class ConnectionHandler(
     private val authSupport: ObjectProvider<AuthSupport>,
     private val magicLinkService: ObjectProvider<MagicLinkService>,
     private val friendPresenceBroadcaster: ObjectProvider<FriendPresenceBroadcaster>,
+    private val restartNotice: com.wingedsheep.gameserver.session.ServerRestartNotice,
 ) {
     private val logger = LoggerFactory.getLogger(ConnectionHandler::class.java)
 
@@ -325,6 +326,10 @@ class ConnectionHandler(
     }
 
     fun handleDisconnect(session: WebSocketSession) {
+        // A restart closes every socket at once. Those players are coming back to the same games
+        // once the server is up, so don't start abandonment timers or tell opponents they left.
+        if (restartNotice.isShuttingDown) return
+
         val (token, playerSession) = sessionRegistry.removeByWsId(session.id)
 
         if (token != null) {

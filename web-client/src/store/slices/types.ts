@@ -2,6 +2,7 @@
  * Shared types for store slices.
  */
 import type { StateCreator } from 'zustand'
+import type { ServerRestartState } from './serverRestart'
 import type {
   EntityId,
   ClientGameState,
@@ -946,8 +947,15 @@ export type GameStore = {
   onlinePlayers: number | null
   /** True when another tab/device took over this identity; auto-reconnect is stopped. */
   sessionReplaced: boolean
+  /** Set while the server is restarting (see `serverRestart.ts`). */
+  serverRestart: ServerRestartState | null
+  /** Epoch ms the server came back after a restart; drives the brief "back online" notice. */
+  serverBackAt: number | null
+  /** Epoch ms an established connection dropped, until it is re-established. */
+  connectionLostAt: number | null
   connect: (playerName: string, options?: { spectator?: boolean }) => void
   disconnect: () => void
+  retryConnection: () => void
   setPendingTournamentId: (lobbyId: string | null) => void
   setPendingSpectateGameId: (gameSessionId: string | null) => void
 
