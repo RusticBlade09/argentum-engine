@@ -94,6 +94,8 @@ export type ServerMessage =
   | PongMessage
   // Session takeover
   | SessionReplacedMessage
+  // Server lifecycle
+  | ServerRestartingMessage
 
 /**
  * Connection confirmed with assigned player ID.
@@ -3404,6 +3406,17 @@ export interface PongMessage {
  */
 export interface SessionReplacedMessage {
   readonly type: 'sessionReplaced'
+}
+
+/**
+ * The server is shutting down to restart (a deploy, normally) and closes this socket right
+ * after. Games and lobbies survive the restart; the client keeps the player's screen, says so,
+ * and reconnects on a short fixed interval until the new server answers.
+ */
+export interface ServerRestartingMessage {
+  readonly type: 'serverRestarting'
+  /** Rough downtime to quote to the player — a hint for the copy, not a deadline. */
+  readonly expectedDowntimeSeconds: number
 }
 
 export interface CreateQuickGameLobbyMessage {

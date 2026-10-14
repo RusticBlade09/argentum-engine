@@ -1630,7 +1630,10 @@
                                 "count": 1,
                                 "target": "Self"
                             },
-                            "EmitTrainedEvent"
+                            {
+                                "type": "EmitKeywordCounterEvent",
+                                "keyword": "TRAINING"
+                            }
                         ]
                     },
                     "descriptionOverride": "Training (Whenever this creature attacks with another creature with greater power, put a +1/+1 counter on this creature.)"
@@ -2960,6 +2963,101 @@
     "colorIdentityOverride": [
         "BLUE"
     ]
+}
+
+// Nuka-Nuke Launcher
+{
+    "name": "Nuka-Nuke Launcher",
+    "manaCost": "{2}",
+    "typeLine": "Artifact — Equipment",
+    "oracleText": "Equipped creature gets +3/+0 and has intimidate. (It can't be blocked except by artifact creatures and/or creatures that share a color with it.)\nWhenever equipped creature attacks, until the end of defending player's next turn, that player gets two rad counters whenever they cast a spell.\nEquip {3}",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Nuka-Nuke Launcher:1",
+                "trigger": "AttackEvent",
+                "binding": "ATTACHED",
+                "effect": {
+                    "type": "CreateDelayedTrigger",
+                    "effect": {
+                        "type": "AddCounters",
+                        "counterType": "RAD",
+                        "count": 2,
+                        "target": {
+                            "type": "PlayerRef",
+                            "player": "TriggeringPlayer"
+                        }
+                    },
+                    "trigger": {
+                        "event": {
+                            "type": "SpellCastEvent",
+                            "player": "Each"
+                        },
+                        "binding": "ANY"
+                    },
+                    "watchedTarget": {
+                        "type": "PlayerRef",
+                        "player": "DefendingPlayer"
+                    },
+                    "expiry": {
+                        "type": "DelayedTriggerExpiry.EndOfPlayersNextTurn",
+                        "player": {
+                            "type": "PlayerRef",
+                            "player": "DefendingPlayer"
+                        }
+                    }
+                }
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Nuka-Nuke Launcher:2",
+                "cost": {
+                    "type": "CostAtomWrapper",
+                    "atom": {
+                        "type": "AtomMana",
+                        "cost": "{3}"
+                    }
+                },
+                "effect": {
+                    "type": "AttachEquipment",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "creature you control"
+                    }
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "creature ctrl:you"
+                        },
+                        "id": "creature you control"
+                    }
+                ],
+                "timing": "SorcerySpeed",
+                "isEquipAbility": true
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "ModifyStats",
+                "powerBonus": 3,
+                "toughnessBonus": 0
+            },
+            {
+                "type": "GrantKeyword",
+                "keyword": "INTIMIDATE"
+            }
+        ]
+    },
+    "equipCost": "{3}",
+    "metadata": {
+        "collectorNumber": "138",
+        "rarity": "RARE",
+        "artist": "Uriah Voth",
+        "imageUri": "https://cards.scryfall.io/normal/front/6/8/68d5835b-c206-4884-bdcf-38c7cdc703f4.jpg?1783912377"
+    }
 }
 
 // Overflowing Basin
@@ -4857,6 +4955,113 @@
             {
                 "date": "2024-03-08",
                 "text": "If, for some reason, the creature doesn’t have the squad ability when it’s on the battlefield, the ability won’t trigger, even if you’ve paid the squad cost one or more times."
+            }
+        ]
+    }
+}
+
+// Watchful Radstag
+{
+    "name": "Watchful Radstag",
+    "manaCost": "{2}{G}",
+    "typeLine": "Creature — Elk Mutant",
+    "oracleText": "Evolve (Whenever a creature you control enters, if that creature has greater power or toughness than this creature, put a +1/+1 counter on this creature.)\nWhenever this creature evolves, create a token that's a copy of it.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 2
+    },
+    "keywords": [
+        "EVOLVE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Watchful Radstag:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "filter": "creature ctrl:you",
+                    "to": "Battlefield"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "AddCounters",
+                            "counterType": "PLUS_ONE_PLUS_ONE",
+                            "count": 1,
+                            "target": "Self"
+                        },
+                        {
+                            "type": "EmitKeywordCounterEvent",
+                            "keyword": "EVOLVE"
+                        }
+                    ]
+                },
+                "interveningIf": {
+                    "type": "Any",
+                    "conditions": [
+                        {
+                            "type": "Compare",
+                            "left": {
+                                "type": "EntityProperty",
+                                "entity": "TriggeringEntity",
+                                "numericProperty": "Power"
+                            },
+                            "operator": "GT",
+                            "right": {
+                                "type": "EntityProperty",
+                                "entity": "Self",
+                                "numericProperty": "Power"
+                            }
+                        },
+                        {
+                            "type": "Compare",
+                            "left": {
+                                "type": "EntityProperty",
+                                "entity": "TriggeringEntity",
+                                "numericProperty": "Toughness"
+                            },
+                            "operator": "GT",
+                            "right": {
+                                "type": "EntityProperty",
+                                "entity": "Self",
+                                "numericProperty": "Toughness"
+                            }
+                        }
+                    ]
+                },
+                "descriptionOverride": "Evolve (Whenever a creature you control enters, if that creature has greater power or toughness than this creature, put a +1/+1 counter on this creature.)"
+            },
+            {
+                "id": "Watchful Radstag:2",
+                "trigger": "EvolvedEvent",
+                "effect": "CreateTokenCopyOfSource"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "87",
+        "rarity": "RARE",
+        "artist": "Alexander Ostrowski",
+        "flavorText": "Don't mistake timidness for defenselessness.",
+        "imageUri": "https://cards.scryfall.io/normal/front/b/e/be4151d4-4d35-48d2-9e72-c87014f79137.jpg?1783912393",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "Watchful Radstag “evolves” when its evolve ability resolves and a +1/+1 counter is put on it. If a replacement effect causes the evolve ability to put more than one +1/+1 counter on Watchful Radstag, its last ability triggers only once. If no +1/+1 counter is put on it (perhaps because it left the battlefield while its evolve ability was still on the stack), then its last ability doesn’t trigger."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Watchful Radstag’s last ability won’t trigger if a +1/+1 counter is put on it for any reason other than its evolve ability resolving."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "The token copy will have Watchful Radstag’s abilities. It will also be able to create copies of itself."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "The token copy won’t copy counters or damage marked on Watchful Radstag, nor will it copy other effects that have changed Watchful Radstag’s power, toughness, types, color, and so on."
             }
         ]
     }

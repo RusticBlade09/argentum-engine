@@ -133,8 +133,10 @@ export function createSpectatingHandlers(set: SetState, get: GetState): Pick<Mes
 
     onSpectatingStopped: () => {
       set({ spectatingState: null })
-      // Leaving the stream: drop the stamped team map so a later non-team spectate starts clean.
+      // Leaving the stream: drop the stamped team map and portraits so the next spectate (stamped
+      // only while the map is empty) starts clean.
       get().setSeatTeams({})
+      get().setSeatAvatars([])
     },
 
     onSpectatorCountChanged: (msg) => {

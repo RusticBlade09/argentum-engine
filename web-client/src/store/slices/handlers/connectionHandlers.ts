@@ -7,6 +7,7 @@ import { useTableTalkStore } from '@/store/tableTalkStore'
 import { useFriendsStore } from '@/store/friendsStore'
 import { useMessagesStore } from '@/store/messagesStore'
 import { getWebSocket, clearLobbyId, loadLobbyId } from '../shared'
+import { beginServerRestart, endServerRestart } from '../serverRestart'
 import type { SetState, GetState } from './types'
 
 type ConnectionHandlerKeys =
@@ -21,11 +22,13 @@ type ConnectionHandlerKeys =
   | 'onPostGame'
   | 'onPong'
   | 'onSessionReplaced'
+  | 'onServerRestarting'
 
 export function createConnectionHandlers(set: SetState, get: GetState): Pick<MessageHandlers, ConnectionHandlerKeys> {
   return {
     onConnected: (msg) => {
       localStorage.setItem('argentum-token', msg.token)
+      endServerRestart(set, get)
       // A plain Connected (not Reconnected) after an auto-reconnect means the server has
       // no memory of this identity (e.g. it restarted while the tab was backgrounded) —
       // any session state from before is stale. Drop it so the user lands in the lobby
@@ -69,6 +72,7 @@ export function createConnectionHandlers(set: SetState, get: GetState): Pick<Mes
 
     onReconnected: (msg) => {
       localStorage.setItem('argentum-token', msg.token)
+      endServerRestart(set, get)
       const updates: Partial<import('../types').GameStore> = {
         connectionStatus: 'connected',
         // The server drops a disconnected player from matchmaking, so a search from before is gone.
@@ -132,6 +136,11 @@ export function createConnectionHandlers(set: SetState, get: GetState): Pick<Mes
       set({ sessionReplaced: true })
       getWebSocket()?.disconnect()
       set({ connectionStatus: 'disconnected' })
+    },
+
+    onServerRestarting: (msg) => {
+      // The socket closes right after this; the restart notice covers the wait.
+      beginServerRestart(set, get, msg.expectedDowntimeSeconds)
     },
   }
 }

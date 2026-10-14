@@ -260,7 +260,7 @@ export function heroArtUrl(hero: DeckTileCard | null): string | null {
 }
 
 /** Mana-pip symbol per colour key, matching the deckbuilder's colour token order. */
-const COLOR_PIP_SYMBOL: Record<string, string> = {
+export const COLOR_PIP_SYMBOL: Record<string, string> = {
   WHITE: 'W',
   BLUE: 'U',
   BLACK: 'B',
@@ -329,7 +329,7 @@ export function deckColors(
 }
 
 /** Colour-identity gradient used when a deck has no catalogued non-land card to show art for. */
-function deckBannerGradient(colors: string[]): string {
+export function deckBannerGradient(colors: string[]): string {
   if (colors.length === 0) {
     return 'linear-gradient(135deg, rgba(120,120,140,0.5), rgba(60,60,80,0.6))'
   }
@@ -368,7 +368,7 @@ const FORMAT_ACCENT: Record<string, string> = {
   CUSTOM_DECKS: '#7be0a8',
 }
 
-function formatAccent(format: string): string {
+export function formatAccent(format: string): string {
   return FORMAT_ACCENT[format.toUpperCase()] ?? '#9aa6b8'
 }
 

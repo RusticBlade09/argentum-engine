@@ -1,5 +1,6 @@
 package com.wingedsheep.ai.engine
 
+import com.wingedsheep.ai.insight.AiDecisionInsight
 import com.wingedsheep.ai.puzzles.advanceToPriority
 import com.wingedsheep.engine.core.CastSpell
 import com.wingedsheep.engine.core.GameAction
@@ -8,6 +9,7 @@ import com.wingedsheep.engine.core.SubmitDecision
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.support.ScenarioTestBase
 import com.wingedsheep.sdk.core.Step
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
 /**
@@ -72,7 +74,17 @@ class EnablersFirstTest : ScenarioTestBase() {
                 .build()
                 .advanceToPriority(1, Step.PRECOMBAT_MAIN)
 
-            game.castName(game.choice()) shouldBe "Tam's Resistance"
+            // Asserted on the scored options rather than on the pick. Whether casting it *beats*
+            // passing is the rollouts' call, and their seeds derive from the position's entity ids
+            // — so the same board scored the cast anywhere from 0.1 to 14 depending on which tests
+            // had run first in the JVM, and CI kept landing on a pass. Reaching scoring at all is
+            // what the filter fix changed, and what this test pins.
+            val insights = mutableListOf<AiDecisionInsight>()
+            AIPlayer.create(cardRegistry, game.player1Id, AiProfile.LIVE, insightSink = { _, it -> insights += it })
+                .chooseAction(game.state)
+
+            val option = insights.single().options.find { it.cardName == "Tam's Resistance" }
+            option.shouldNotBeNull().score.shouldNotBeNull()
         }
 
         test("the same four mana then casts both") {

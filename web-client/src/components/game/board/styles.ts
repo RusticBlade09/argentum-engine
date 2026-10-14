@@ -1487,18 +1487,19 @@ export const styles: Record<string, React.CSSProperties> = {
     whiteSpace: 'nowrap',
   } as React.CSSProperties,
   effectTooltip: {
-    position: 'absolute',
-    bottom: '100%',
-    left: '50%',
+    // Positioned by ActiveEffectsBadges (fixed, portalled under the hovered badge).
+    position: 'fixed',
     transform: 'translateX(-50%)',
     backgroundColor: 'rgba(0, 0, 0, 0.9)',
     color: '#ffffff',
     padding: '6px 10px',
     borderRadius: 4,
     fontSize: 12,
-    whiteSpace: 'nowrap',
-    zIndex: 1000,
-    marginBottom: 4,
+    // Long trigger descriptions wrap rather than run off the board.
+    width: 'max-content',
+    whiteSpace: 'normal',
+    // Above the board like the sibling portalled tooltips (The Ring, speed).
+    zIndex: 2500,
     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
     pointerEvents: 'none',
   } as React.CSSProperties,

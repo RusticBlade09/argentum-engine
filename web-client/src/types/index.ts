@@ -357,6 +357,7 @@ export type {
   PingMessage,
   PongMessage,
   SessionReplacedMessage,
+  ServerRestartingMessage,
   DeckFormat,
 } from './messages'
 export {

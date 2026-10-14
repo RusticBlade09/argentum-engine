@@ -61,6 +61,7 @@ import type {
   DirectMessagesChangedMessage,
   EmoteMessage,
   PostGameMessage,
+  ServerRestartingMessage,
 } from '@/types'
 
 /**
@@ -148,6 +149,8 @@ export interface MessageHandlers {
   onPong: () => void
   // Session takeover handlers
   onSessionReplaced: () => void
+  // Server lifecycle handlers
+  onServerRestarting: (message: ServerRestartingMessage) => void
 }
 
 /**
@@ -355,6 +358,9 @@ export function handleServerMessage(message: ServerMessage, handlers: MessageHan
       break
     case 'sessionReplaced':
       handlers.onSessionReplaced()
+      break
+    case 'serverRestarting':
+      handlers.onServerRestarting(message)
       break
     default: {
       // TypeScript exhaustiveness check

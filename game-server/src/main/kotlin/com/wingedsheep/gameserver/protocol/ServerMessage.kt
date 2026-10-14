@@ -1436,6 +1436,18 @@ sealed interface ServerMessage {
     @Serializable
     @SerialName("sessionReplaced")
     data object SessionReplaced : ServerMessage
+
+    /**
+     * The server is shutting down for a restart (normally a deploy); the socket closes right
+     * after this. Games and lobbies survive the restart, so the client keeps the player's screen,
+     * tells them to wait, and reconnects on a short fixed interval until the new server answers.
+     */
+    @Serializable
+    @SerialName("serverRestarting")
+    data class ServerRestarting(
+        /** Rough downtime to quote to the player — a hint for the copy, not a deadline. */
+        val expectedDowntimeSeconds: Int,
+    ) : ServerMessage
 }
 
 @Serializable

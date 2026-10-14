@@ -2,13 +2,12 @@
  * `/replay/:gameId` — the shareable, deep-linkable replay URL.
  *
  * This route owns only "which replay, and did it load": the id from the URL, the public-replay
- * fetch, loading/error states, and stamping the seat→team map. Everything after that — transport,
- * scrubber, share/export, the board — is {@link ReplayPlayer}, shared with the in-app overlay so
+ * fetch and loading/error states. Everything after that — including stamping the seat roster,
+ * transport, scrubber, share/export, the board — is {@link ReplayPlayer}, shared with the in-app overlay so
  * the two cannot drift apart again.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useGameStore } from '@/store/gameStore.ts'
 import {
   reconstructSnapshots,
   type PublicReplayData,
@@ -26,7 +25,6 @@ export function ReplayPage() {
   const [metadata, setMetadata] = useState<ReplayMetadata | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const setSeatTeams = useGameStore((s) => s.setSeatTeams)
 
   useEffect(() => {
     if (!gameId) return
@@ -50,16 +48,6 @@ export function ReplayPage() {
         if (cancelled) return
         setMetadata(data.metadata)
         setSnapshots(reconstructSnapshots(data.initialSnapshot, data.deltas))
-        // Stamp the seat → team map from the replay roster so a team-game replay lights up the
-        // team-grouped rail, ally treatment, and team-split layout (replay frames are fed
-        // straight into the store, bypassing the state-update handler that re-derives this in
-        // live play).
-        const roster = data.initialSnapshot.players
-        if (roster?.some((p) => p.teamIndex != null)) {
-          const teams: Record<string, number> = {}
-          for (const p of roster) if (p.teamIndex != null) teams[p.playerId] = p.teamIndex
-          setSeatTeams(teams, roster.some((p) => p.teamSharedLife))
-        }
       } catch {
         if (!cancelled) setError('Failed to load replay.')
       }
@@ -68,11 +56,7 @@ export function ReplayPage() {
 
     loadReplay()
     return () => { cancelled = true }
-  }, [gameId, setSeatTeams])
-
-  useEffect(() => {
-    return () => { setSeatTeams({}) }
-  }, [setSeatTeams])
+  }, [gameId])
 
   const goHome = useCallback(() => { navigate('/') }, [navigate])
 

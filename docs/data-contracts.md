@@ -223,6 +223,14 @@ Related recovery contracts:
   device. The server closes that socket right after sending; the receiving client stops all
   auto-reconnect (reconnecting would steal the session straight back) and shows a takeover
   overlay whose "Use here" button reclaims the session explicitly.
+- `{"type": "serverRestarting", "expectedDowntimeSeconds": 90}` (server) is sent to every connected
+  socket when the server shuts down (SIGTERM, i.e. a deploy), and each socket is then closed with
+  code **1012** (Service Restart). While shutting down the server skips its disconnect reactions —
+  no `opponentDisconnected` countdowns, no abandonment timers — and turns away new sockets with the
+  same 1012. Games and lobbies are persisted, so the client keeps the player's screen, shows the
+  update notice, and reconnects every 3s (instead of the exponential backoff) until the new server
+  answers `connected`/`reconnected`. A 1012 close without the message opens the same window. The
+  quoted downtime is `app.restart-expected-downtime-seconds` (`RESTART_EXPECTED_DOWNTIME_SECONDS`).
 
 ---
 

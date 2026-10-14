@@ -13,6 +13,7 @@ import com.wingedsheep.ai.engine.knowledge.ExpiringGrantWindow
 import com.wingedsheep.ai.engine.knowledge.IntentTag
 import com.wingedsheep.ai.engine.knowledge.HoldPolicy
 import com.wingedsheep.ai.engine.knowledge.IntentCatalog
+import com.wingedsheep.ai.engine.knowledge.TargetPolarity
 import com.wingedsheep.ai.engine.knowledge.TimingVerdict
 import com.wingedsheep.ai.engine.rollout.CandidateEvaluator
 import com.wingedsheep.ai.engine.rollout.PlayoutPolicy
@@ -1412,17 +1413,25 @@ class Strategist(
             return heuristicTargets(state, action, playerId)
         }
         val rankTarget = TargetSelection.ranker(state, action, playerId, intents, targetPolarityFromEffect)
+        val slotPolarities =
+            if (targetPolarityFromEffect) TargetSelection.polarities(state, action, intents) else emptyList()
+        fun worth(index: Int, candidates: List<EntityId>) = TargetSelection.worthTargeting(
+            state, targetInfos[index], candidates, playerId, slotPolarities.getOrNull(index),
+        )
         // Heuristic baseline for every requirement, then refine each one by simulation.
         val chosenTargets = mutableListOf<com.wingedsheep.engine.state.components.stack.ChosenTarget>()
         val chosenIds = mutableSetOf<EntityId>()
         val chosenTargetIds = mutableListOf<EntityId>()
-        for (info in targetInfos) {
+        for ((index, info) in targetInfos.withIndex()) {
             val available = if (info.mustDifferFromEarlier) {
                 info.validTargets.filterNot(chosenIds::contains)
             } else {
                 info.validTargets
             }
-            val picks = TargetSelection.pick(state, info, available, rankTarget)
+            // An optional slot left empty by choice: the heuristic path knows how to announce it.
+            val worthy = worth(index, available)
+            if (worthy.isEmpty()) return heuristicTargets(state, action, playerId)
+            val picks = TargetSelection.pick(state, info, worthy, rankTarget)
             if (picks.isEmpty() || picks.size < info.minTargets) return heuristicTargets(state, action, playerId)
             picks.forEach { chosenTargets += TargetSelection.toChosenTarget(state, info, it, playerId) }
             chosenIds += picks
@@ -1447,8 +1456,7 @@ class Strategist(
             if (budget.expired() && !forceTargetRefinement) break
             val info = targetInfos[i]
             val priorIds = chosenTargetIds.take(i).toSet()
-            val candidates = info.validTargets
-                .filterNot { info.mustDifferFromEarlier && it in priorIds }
+            val candidates = worth(i, info.validTargets.filterNot { info.mustDifferFromEarlier && it in priorIds })
                 .sortedByDescending(rankTarget)
                 .take(targetCandidates)
             if (candidates.size <= 1) continue
@@ -1471,6 +1479,23 @@ class Strategist(
             } ?: continue
             chosenTargets[i] = TargetSelection.toChosenTarget(state, info, best, playerId)
             chosenTargetIds[i] = best
+        }
+        // A lone optional slot ("up to one target creature") is a choice that includes *none*. When
+        // the effect's side of the table can't be read, ask the simulation whether the best target
+        // beats leaving the slot empty — and only drop it on a strict loss, so a target whose value
+        // the evaluator can't see (a "can't block") still gets aimed.
+        if (targetPolarityFromEffect && targetInfos.size == 1 && targetInfos[0].minTargets == 0 &&
+            slotPolarities.getOrNull(0).let { it == null || it == TargetPolarity.UNKNOWN } &&
+            !budget.expired()
+        ) {
+            val score = { targets: List<com.wingedsheep.engine.state.components.stack.ChosenTarget> ->
+                simulator.simulate(state, TargetSelection.applyTargets(baseAction, targets))
+                    .scoreOrRankLast { leaf -> evaluator.evaluate(leaf, leaf.projectedState, playerId) }
+            }
+            val skip = score(emptyList())
+            if (skip != Double.NEGATIVE_INFINITY && skip > score(chosenTargets)) {
+                return withSumGatedExilePayment(state, action, TargetSelection.applyTargets(baseAction, emptyList()))
+            }
         }
         return withSumGatedExilePayment(
             state, action, TargetSelection.applyTargets(baseAction, chosenTargets)

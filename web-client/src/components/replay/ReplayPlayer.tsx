@@ -26,9 +26,13 @@ import { useViewportSize } from '@/hooks/useResponsive.ts'
 import { replayExportUrl } from '@/replay/replayFile.ts'
 import styles from './Replay.module.css'
 import { BrandMark, PLAIN_BACKDROP } from '../ui/PageShell'
+import { SeatPortrait } from '../game/SeatPortrait'
 
 const HEADER_HEIGHT = 55
 const AUTOPLAY_INTERVAL_MS = 1000
+
+/** The HUD life orbs' 1v1 colours: player 1 (bottom, blue), player 2 (top, orange). */
+const DUEL_RINGS = ['rgba(74, 154, 234, 0.85)', 'rgba(255, 158, 70, 0.85)'] as const
 
 export type ReplayMetadata = PublicReplayData['metadata']
 
@@ -68,6 +72,8 @@ export function ReplayPlayer({
    */
   const [primed, setPrimed] = useState(false)
   const setSpectatingState = useGameStore((s) => s.setSpectatingState)
+  const setSeatTeams = useGameStore((s) => s.setSeatTeams)
+  const setSeatAvatars = useGameStore((s) => s.setSeatAvatars)
 
   const writeSnapshotToStore = useCallback(
     (snapshot: SpectatorStateUpdate) => {
@@ -99,13 +105,26 @@ export function ReplayPlayer({
     setCurrentStep(0)
     setAutoPlay(false)
     const hasFrames = snapshots.length > 0
+    // Stamp the per-seat facts that only ride in the seat roster — team membership and each
+    // seat's avatar. Live play and spectating stamp them in their message handlers; replay frames
+    // go straight into the store and bypass those, so without this a replay showed every seat as
+    // a bare life orb and a team game as a free-for-all.
+    const roster = snapshots[0]?.players ?? []
+    const teams: Record<string, number> = {}
+    for (const p of roster) if (p.teamIndex != null) teams[p.playerId] = p.teamIndex
+    setSeatTeams(teams, roster.some((p) => p.teamSharedLife), roster.some((p) => p.teamSharedTurns))
+    setSeatAvatars(roster)
     if (hasFrames) writeSnapshotToStore(snapshots[0]!)
     setPrimed(hasFrames)
-  }, [snapshots, writeSnapshotToStore])
+  }, [snapshots, writeSnapshotToStore, setSeatTeams, setSeatAvatars])
 
   useEffect(() => {
-    return () => { setSpectatingState(null) }
-  }, [setSpectatingState])
+    return () => {
+      setSpectatingState(null)
+      setSeatTeams({})
+      setSeatAvatars([])
+    }
+  }, [setSpectatingState, setSeatTeams, setSeatAvatars])
 
   const goToStep = useCallback(
     (step: number) => {
@@ -266,6 +285,12 @@ export function ReplayPlayer({
               {currentStep + 1}<span className={styles.stepTotal}> / {snapshots.length}</span>
             </span>
           </div>
+          <div className={styles.identity}>
+            <SeatFaces
+              playerIds={isMultiplayerReplay
+                ? allSeats.map((p) => p.playerId)
+                : [snapshot.player1Id, snapshot.player2Id].filter((id): id is string => id != null)}
+            />
           <div className={styles.info}>
             <span className={styles.kicker}>
               {isMultiplayerReplay ? `Replay · ${allSeats.length} players` : 'Replay'}
@@ -273,6 +298,7 @@ export function ReplayPlayer({
               {metadata?.winnerName && <span className={styles.winner}> · {metadata.winnerName} won</span>}
             </span>
             <span className={styles.matchup} title={matchupLabel}>{matchupLabel}</span>
+          </div>
           </div>
           {/*
             Something about these frames isn't the plain case, and the badge says which. DIVERGED:
@@ -335,5 +361,30 @@ export function ReplayPlayer({
       </div>
       <CombatArrows />
     </SpectatorContext.Provider>
+  )
+}
+
+/**
+ * The players' faces, overlapping like a hand of cards, ahead of the "A vs B" line — so a replay
+ * says *who* played before it says anything else. Seats without a portrait simply drop out; with
+ * none at all the row renders nothing and the header is the text it always was.
+ */
+function SeatFaces({ playerIds }: { playerIds: readonly string[] }) {
+  // A duel's two faces wear their life orbs' colours (player 1 sits at the bottom, blue); a pod's
+  // overlap on a dark ring that keeps neighbours apart.
+  const duel = playerIds.length === 2
+  return (
+    <span className={styles.faces}>
+      {playerIds.map((id, i) => (
+        <SeatPortrait
+          key={id}
+          playerId={id}
+          size={30}
+          ringColor={duel ? DUEL_RINGS[i]! : 'rgba(12, 14, 22, 0.95)'}
+          ringWidth={2}
+          style={{ zIndex: playerIds.length - i }}
+        />
+      ))}
+    </span>
   )
 }

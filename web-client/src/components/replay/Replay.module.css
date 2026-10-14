@@ -144,6 +144,22 @@
 }
 .stepTotal { color: #8f98ac; }
 
+.identity {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+/* Overlapping faces; empty (and gap-free) when no seat has a portrait. */
+.faces {
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+.faces:empty { display: none; }
+.faces > * + * { margin-left: -6px; }
+
 .info {
   flex: 0 1 auto;
   min-width: 0;
@@ -231,7 +247,8 @@
   .back { padding: 0 8px; }
   .backLabel { display: none; }
   .brand { width: 32px; }
-  .info { order: 1; flex: 1 1 0; max-width: none; text-align: right; }
+  .identity { order: 1; flex: 1 1 0; justify-content: flex-end; }
+  .info { max-width: none; text-align: right; }
   .scrubberWrap { order: 2; flex: 1 0 100%; }
   .badge { order: 3; }
 }

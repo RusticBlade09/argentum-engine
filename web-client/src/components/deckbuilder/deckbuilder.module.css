@@ -175,13 +175,29 @@
   display: block;
 }
 
+/* Card-shaped, so the rail keeps its layout when a hovered card's image replaces it. */
 .deckHoverPreviewEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  padding: var(--space-4);
   color: var(--text-muted);
   font-size: 0.82rem;
+  line-height: 1.45;
   text-align: center;
-  padding: var(--space-4) var(--space-2);
-  border: 1px dashed rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-md);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(255, 255, 255, 0.04), transparent 70%),
+    rgba(0, 0, 0, 0.18);
+}
+
+.deckHoverPreviewEmptyIcon {
+  opacity: 0.5;
 }
 
 .section {
@@ -1496,7 +1512,43 @@
 }
 
 .deckRow:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* The row's own controls stay quiet until the row is in use: on a pointer device the steppers
+   fade in from a faint outline, and the unpinned printing glyph and an inactive commander crown
+   appear on hover. They keep their place in the grid, so nothing shifts. Touch has no hover, so
+   there everything stays visible. */
+@media (hover: hover) {
+  .deckRow .deckRowStep {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.32);
+  }
+  .deckRow:hover .deckRowStep,
+  .deckRow:focus-within .deckRowStep {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: var(--text-muted);
+  }
+  .deckRow .deckRowStep:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.14);
+    color: var(--text-primary);
+  }
+  .deckRow .deckRowPrintingChip:not(.deckRowPrintingChipActive),
+  .deckRow .deckRowCrown:not(.deckRowCrownActive) {
+    opacity: 0;
+    transition: opacity 0.1s ease;
+  }
+  .deckRow:hover .deckRowPrintingChip,
+  .deckRow:focus-within .deckRowPrintingChip,
+  .deckRow:hover .deckRowCrown:not(:disabled),
+  .deckRow:focus-within .deckRowCrown:not(:disabled) {
+    opacity: 1;
+  }
+  .deckRow:hover .deckRowCrown:disabled {
+    opacity: 0.25;
+  }
 }
 
 .deckRowIllegal .deckRowName,
@@ -1720,14 +1772,19 @@
 }
 
 .deckRowPrintingChipActive {
-  color: #6cd2ff;
-  background: rgba(108, 210, 255, 0.1);
+  color: rgba(142, 205, 235, 0.72);
+  background: transparent;
+  border-color: transparent;
+}
+
+.deckRow:hover .deckRowPrintingChipActive {
+  color: #8edcff;
   border-color: rgba(108, 210, 255, 0.3);
 }
 
 .deckRowPrintingChipActive:hover {
   color: #8edcff;
-  background: rgba(108, 210, 255, 0.18);
+  background: rgba(108, 210, 255, 0.14);
 }
 
 /* Sticky 0-count placeholder row — used for the basic-land rows synthesized into the Lands
@@ -2384,29 +2441,54 @@
   line-height: 1.5;
 }
 
+/* Balanced columns, laid out by `deckColumns.ts`: the column count and each column's contents are
+   computed from the pane width, so this is a plain grid. Columns cap at a readable width and sit
+   left, rather than stretching a card name a screen away from its mana cost. */
 .deckCentricColumns {
-  column-count: auto;
-  column-width: 280px;
-  column-gap: var(--space-4);
+  display: grid;
+  column-gap: 24px;
+  align-items: start;
+}
+
+.deckCentricColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
 }
 
 .deckCentricGroup {
-  break-inside: avoid;
-  margin-bottom: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .deckCentricGroupLabel {
-  font-size: 0.78rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.09em;
   color: var(--text-secondary);
   margin: 0 0 4px 0;
-  padding-bottom: 4px;
+  padding: 0 4px 5px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.deckCentricGroupCont {
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--text-muted);
+}
+
+.deckCentricGroupCount {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  font-weight: 600;
 }
 
 /* Footer strip below the deck columns: deck size + status + colour pips, the colored mana
@@ -2584,7 +2666,9 @@
   .workspace:not(.workspaceDeckMode)[data-pane='filters'] > .right { display: none; }
 
   /* The pane tabs below take over the view toggle's job (BuilderViewToggle, tagged with this class). */
-  .viewToggle { display: none; }
+  /* Scoped under .toolbar: BuilderViewToggle's own sheet loads after this one, and its
+     `display: inline-flex` would otherwise win at equal specificity. */
+  .toolbar .viewToggle { display: none; }
 
   /* The tabs share the toolbar row with More / New deck. */
   .toolbarSpacer { display: none; }

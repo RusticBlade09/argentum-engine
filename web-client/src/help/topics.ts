@@ -135,7 +135,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     body: [
       { kind: 'h', text: 'Top bar' },
       { kind: 'ul', items: [
-        'Decks & Cubes — everything you have built, on one shelf with a Decks tab and a Cubes tab. Open a deck or cube in the builder, start a new one, or play a cube straight from its tile.',
+        'Decks & Cubes — everything you have built, on one shelf with a Decks tab and a Cubes tab. Show them as art tiles or as a compact list (the toggle beside the sort). Open a deck or cube in the builder, start a new one, or play a cube straight from the shelf.',
         'Cards — the card browser: every card you can play, to look through without building anything.',
         'Replays — every finished game you played, ready to rewatch (shown once you are connected).',
         'Sets — Set Completion: which sets and cards are playable.',
@@ -594,7 +594,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         'Recent tournaments, each opening its final standings and replays.',
         'Shortcuts to Full stats, My decks, Friends and Preferences.',
       ] },
-      { kind: 'p', text: 'Click your avatar to choose one. Portraits offers 56 painted characters — the creature types of each colour, from Kithkin and Loxodon to Phyrexians and Eldrazi. Card art lets you search for any card, pick the printing whose art you like, and drag and zoom the circle to frame the part you want. Your avatar shows in the account menu, on your public profile, to friends and in messages, on the match intro, and as your portrait at the table, with your life total beneath it. “Use my initial” goes back to the letter. Avatars need an account; guests show their initial, and AI opponents sit behind a portrait of their own.' },
+      { kind: 'p', text: 'Click your avatar to choose one. Portraits offers 56 painted characters — the creature types of each colour, from Kithkin and Loxodon to Phyrexians and Eldrazi. Card art lets you search for any card, pick the printing whose art you like, and drag and zoom the circle to frame the part you want. Your avatar shows in the account menu, on your public profile, to friends and in messages, on the match intro, and as your portrait at the table, with your life total beneath it. At a table of three or more it leads your name on the player rail and board labels, and anyone spectating or watching the replay sees it beside your name too. “Use my initial” goes back to the letter. Avatars need an account; guests show their initial, and AI opponents sit behind a portrait of their own.' },
       { kind: 'p', text: 'Everyone also has a public profile at `/u/<id>` that anyone can open without signing in. It shows the same statistics and recent games but never your decklists. “This is how others see your profile” marks your own.' },
     ],
     related: ['stats', 'friends', 'guest-vs-account'],
@@ -1306,6 +1306,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         'In a lobby or between bracket rounds, the grace period is five minutes; other players can add a minute, or kick them after two.',
         'Opening the same game in a second tab moves your session there; the first tab offers “Use here” to take it back.',
         'Jump In remembers your pack choices if you reconnect mid-pick.',
+        'When the server is updated, a notice says so and your game waits on the table; it reconnects on its own within a minute or two and carries on where it stopped. No one is conceded for the update.',
       ] },
       { kind: 'tip', text: 'Your seat is tied to this browser, so reconnect from the same browser you joined with.' },
     ],
@@ -1502,6 +1503,9 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       { kind: 'ul', items: [
         'The banner counts distinct cards implemented, printings, complete sets and cards not planned; View progress charts implementation over time.',
         'Filter sets by name or code, and by All, Standard, In progress or Complete.',
+        'Narrow by set type: Main sets, Commander, Supplemental (Masters, Modern Horizons, Jumpstart, starter sets), Decks & boxes (Duel Decks, Planechase, From the Vault) or Un-sets. Each chip counts the sets it would show with your other filters applied.',
+        'Sets outside the main line carry a coloured badge naming their exact type and a matching stripe down the left edge, so a Commander product stands out in the grid.',
+        'Once you narrow the list, a line above the grid totals the sets in view. The filters, sort and the open set live in the address bar, so a filtered view can be bookmarked or shared.',
         'Sort by Newest, Most complete, Most cards done, Most Assay-ready or A–Z.',
         'Inside a set, filter its cards by Implemented, Missing, ⚡ Assay-ready or Not planned.',
       ] },

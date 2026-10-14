@@ -21,7 +21,12 @@ export function DeckHoverPreview({
   if (!name) {
     return (
       <div className={styles.deckHoverPreviewEmpty}>
-        Hover a card to preview it here.
+        <svg className={styles.deckHoverPreviewEmptyIcon} width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden focusable="false">
+          <rect x="5" y="2.5" width="14" height="19" rx="2" />
+          <path d="M8 6.5h8M8 15h8M8 18h5" />
+          <rect x="8" y="8.5" width="8" height="4.5" rx="0.6" />
+        </svg>
+        Hover a card in the list to see it here.
       </div>
     )
   }

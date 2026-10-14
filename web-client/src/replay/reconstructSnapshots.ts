@@ -1,3 +1,5 @@
+import type { PlayerSeatInfo } from '@/types/messages.ts'
+
 /**
  * One replay frame, as the server sends it. Lives here rather than in a component because it is
  * the wire shape every replay surface reads — it used to be declared inside the admin overlay,
@@ -6,8 +8,8 @@
 export interface SpectatorStateUpdate {
   gameSessionId: string
   gameState: unknown
-  /** N-player seat roster (turn order), carrying team membership for team variants. */
-  players?: ReadonlyArray<{ playerId: string; teamIndex?: number | null; teamSharedLife?: boolean }>
+  /** N-player seat roster (turn order), carrying team membership for team variants and each seat's avatar. */
+  players?: ReadonlyArray<PlayerSeatInfo>
   player1Id: string | null
   player2Id: string | null
   player1Name: string | null

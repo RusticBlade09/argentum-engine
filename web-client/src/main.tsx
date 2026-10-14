@@ -82,6 +82,8 @@ const MatchmakingLayer = lazy(() => import('./components/matchmaking/Matchmaking
 const ActivityReporter = lazy(() => import('./components/shared/ActivityReporter'))
 // Same reason: direct messages from any screen, a conversation staying open across a navigation.
 const ChatDock = lazy(() => import('./components/messages/ChatDock'))
+// Same reason: a server restart is explained on whatever screen the player is on.
+const ConnectionStatusLayer = lazy(() => import('./components/shared/ConnectionStatusLayer'))
 
 initAnalytics()
 
@@ -132,6 +134,7 @@ createRoot(rootElement).render(
         <MatchmakingLayer />
         <ActivityReporter />
         <ChatDock />
+        <ConnectionStatusLayer />
       </Suspense>
     </BrowserRouter>
   </StrictMode>

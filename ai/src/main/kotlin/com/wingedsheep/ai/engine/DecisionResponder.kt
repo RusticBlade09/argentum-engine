@@ -264,7 +264,9 @@ class DecisionResponder(
             }
             val legal = decision.legalTargets[req.index] ?: return cancelOrFirst(decision)
             if (legal.isEmpty()) return cancelOrFirst(decision)
-            val targets = polarityPool(state, legal, playerId, polarities[req.index])
+            val targets = polarityPool(state, legal, playerId, polarities[req.index], optional = req.minTargets == 0)
+            // An optional slot whose every legal target is on the wrong side stays empty.
+            if (targets.isEmpty()) return TargetsResponse(decision.id, mapOf(req.index to emptyList()))
             val heuristic = heuristicFor(req)
 
             // For small target pools, simulate each; for large pools, use heuristics then simulate top candidates
@@ -325,7 +327,10 @@ class DecisionResponder(
         fun probe(index: Int, picks: List<EntityId>) =
             TargetsResponse(decision.id, decision.repairSlotsAfter(index, selected + (index to picks)))
         for (req in decision.targetRequirements) {
-            val targets = polarityPool(state, decision.legalTargetsFor(req.index, selected), playerId, polarities[req.index])
+            val targets = polarityPool(
+                state, decision.legalTargetsFor(req.index, selected), playerId, polarities[req.index],
+                optional = req.minTargets == 0,
+            )
             val heuristic = heuristicFor(req)
             val groups = req.selectionGroups
             val answer = if (req.exclusiveGroups != null) {
@@ -421,13 +426,27 @@ class DecisionResponder(
      * triggered ability's target is scored with the ability still on the stack, so a shield counter
      * on our creature and on theirs evaluate the same, and the removal-oriented tie-break then
      * hands it to them.
+     *
+     * An [optional] slot ("up to one target …") has no "a mandatory slot still needs an answer" to
+     * fall back on: it draws only from the right side — anything but an opponent's for a
+     * BENEFICIAL slot, anything but ours for a HARMFUL one — and may come back empty, which leaves
+     * the slot empty.
      */
     private fun polarityPool(
         state: GameState,
         legal: List<EntityId>,
         playerId: EntityId,
         polarity: TargetPolarity?,
+        optional: Boolean,
     ): List<EntityId> {
+        if (optional) {
+            return when (polarity) {
+                TargetPolarity.BENEFICIAL -> legal.filter { TargetSelection.isOurs(state, it, playerId) }
+                    .ifEmpty { legal.filterNot { TargetSelection.isTheirs(state, it, playerId) } }
+                TargetPolarity.HARMFUL -> legal.filterNot { TargetSelection.isOurs(state, it, playerId) }
+                TargetPolarity.UNKNOWN, null -> legal
+            }
+        }
         if (polarity != TargetPolarity.BENEFICIAL) return legal
         return legal.filter { TargetSelection.isOurs(state, it, playerId) }
             .ifEmpty { legal.filterNot { TargetSelection.isTheirs(state, it, playerId) } }

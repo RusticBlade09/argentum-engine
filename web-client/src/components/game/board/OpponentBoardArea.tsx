@@ -15,6 +15,7 @@ import { isLoneTargetRequirement } from '@/utils/targeting.ts'
 import { defendingPlayerOf } from '@/utils/combatTargets'
 import { AttackRelationTag, useAttackRelation } from '../AttackRelationTag'
 import { EmoteBubble } from '../../tableTalk/EmoteBubble'
+import { SeatPortrait, useHasSeatPortrait } from '../SeatPortrait'
 
 /** Height of a shared-strip cell's name-plate band (the pill plus its top margin). */
 export const CELL_PLATE_BAND = 34
@@ -690,6 +691,7 @@ export function BoardNamePlate({
   // so repeating it on every teammate's plate would print the same number up to four times.
   // The plate keeps the name (which is the thing a plate is for) and drops the life.
   const sharedLifeTeam = useIsSharedLifeTeamGame()
+  const hasPortrait = useHasSeatPortrait(playerId)
 
   const combatState = useGameStore((state) => state.combatState)
   const assignDefender = useGameStore((state) => state.assignDefenderToSelectedAttackers)
@@ -808,7 +810,7 @@ export function BoardNamePlate({
         alignItems: 'center',
         gap: 6,
         height: 24,
-        padding: '0 11px',
+        padding: hasPortrait ? '0 11px 0 4px' : '0 11px',
         borderRadius: 999,
         border: `${interactive ? 2 : 1}px solid ${borderColor}`,
         background: 'rgba(10, 12, 20, 0.9)',
@@ -834,17 +836,22 @@ export function BoardNamePlate({
           🚫
         </span>
       )}
-      <span
-        aria-hidden
-        style={{
-          width: 9,
-          height: 9,
-          borderRadius: '50%',
-          background: seat.base,
-          boxShadow: `0 0 5px ${seat.base}`,
-          flexShrink: 0,
-        }}
-      />
+      {/* The seat's face where it has one — ringed in the seat colour, it is the seat dot too. */}
+      {hasPortrait ? (
+        <SeatPortrait playerId={playerId} size={18} ringColor={seat.base} ringWidth={1.5} />
+      ) : (
+        <span
+          aria-hidden
+          style={{
+            width: 9,
+            height: 9,
+            borderRadius: '50%',
+            background: seat.base,
+            boxShadow: `0 0 5px ${seat.base}`,
+            flexShrink: 0,
+          }}
+        />
+      )}
       <span
         style={{
           maxWidth: 140,
