@@ -157,6 +157,9 @@ class PuzzleComparisonBenchmark : ScenarioTestBase() {
                 // Each attacker picks its defender: opposing planeswalkers priced as engines.
                 AiProfile.PRODUCTION_WALKERATTACKS,
                 AiProfile.PRODUCTION_CANDIDATE_WALKERATTACKS,
+                // Our own planeswalkers defended, and spent before they die.
+                AiProfile.PRODUCTION_WALKERDEFENCE,
+                AiProfile.PRODUCTION_CANDIDATE_WALKERDEFENCE,
                 // A beginning-of-combat pump bought only for creatures the attack plan sends.
                 AiProfile.PRODUCTION_PLANNEDPUMPS,
                 AiProfile.PRODUCTION_CANDIDATE_PLANNEDPUMPS,

@@ -77,13 +77,20 @@ class CombatAdvisor(
      * targets. [AiProfile.attackPlaneswalkers] carries the argument; the seed aims connecting
      * attackers at walkers ([CombatSeed.aimAtPlaneswalkers]) and the local search retargets.
      */
-    private val attackPlaneswalkers: Boolean = false,
+    internal val attackPlaneswalkers: Boolean = false,
+    /**
      * Value life by the opponent's clock rather than by a lethal-this-turn cliff: after the blocks
      * are chosen, add a chump block whenever the creature it costs is less than the bodies it
      * saves on the opponent's *next* attack ([clockChumps]). [AiProfile.chumpForTheClock] carries
      * the argument.
      */
     private val chumpForTheClock: Boolean = false,
+    /**
+     * Defend our own planeswalkers: damage aimed at one is the walker's, not ours, and a block on an
+     * attacker aimed at one is worth the walker value it saves ([protectPlaneswalkers]).
+     * [AiProfile.defendPlaneswalkers] carries the argument.
+     */
+    private val defendPlaneswalkers: Boolean = false,
 ) {
     /**
      * The engine's own block-legality rules, asked alongside [CombatMath.canBeBlockedBy]'s
@@ -334,6 +341,9 @@ class CombatAdvisor(
             state, projected, sortedAttackers, validBlockers,
             seedAssigned, seedMap, myLife
         )
+        if (defendPlaneswalkers) {
+            protectPlaneswalkers(state, projected, playerId, attackers, validBlockers, seedAssigned, seedMap)
+        }
 
         // ── Phase 2: Improve via local search (if not nested) ──
         var bestMap = if (useSimulation) {
@@ -556,7 +566,10 @@ class CombatAdvisor(
                 if (simulationsLeft <= 0 || System.nanoTime() > deadline) break
                 simulationsLeft--
                 val outcome = evaluateBlockingPlan(state, playerId, mutation) ?: continue
-                if (!chumpsAllowed && !seedLosers.containsAll(outcome.losingBlockers)) continue
+                // A blocker lost protecting one of our planeswalkers buys the walker, not life;
+                // the simulated score prices that trade, so the life gate does not apply to it.
+                val newLosers = outcome.losingBlockers - seedLosers
+                if (!chumpsAllowed && newLosers.any { !(defendPlaneswalkers && blocksForAWalker(state, mutation[it])) }) continue
                 val score = outcome.score
                 trace?.recordBlock(mutation, score)
                 if (score > bestScore) {
@@ -1277,6 +1290,8 @@ class CombatAdvisor(
         for (attacker in attackers) {
             val aPower = projected.getPower(attacker) ?: 0
             if (aPower <= 0) continue
+            // Damage aimed at a planeswalker or a battle is not damage to us (CR 510.1b).
+            if (defendPlaneswalkers && !attacksAPlayer(state, attacker)) continue
             if (attacker !in blockedAttackerIds) {
                 incomingDamage += aPower
             } else {
@@ -1540,6 +1555,113 @@ class CombatAdvisor(
      */
     private fun needsTwoBlockers(projected: ProjectedState, attacker: EntityId): Boolean =
         Keyword.MENACE.name in projected.getKeywords(attacker)
+
+    /**
+     * Block for our planeswalkers: while an attacker aimed at one would hurt it, add the block that
+     * saves the most walker value net of the creatures it costs — [PlaneswalkerThreat.damageValue]
+     * for the loyalty damage it stops (all of the walker when that damage would kill it), less the
+     * blocker's value if the attacker kills it, plus the attacker's if the block kills that. A
+     * blocker that survives costs nothing; a chump costs its body.
+     *
+     * So a valuable walker gets a chump or a trade, and a near-dead token is let go rather than
+     * bought with a good creature — the token is worth a point or two, the body more. Runs on
+     * blockers the heuristic left free, before the life passes: a plan that then lets lethal
+     * through to us is rebuilt by the survival pass, which prices damage to the player only.
+     * Both the AI's own blocks and the opponent model the attack search simulates against start
+     * here, so an attack at a defended walker is no longer scored as if nobody would stand in front
+     * of it.
+     */
+    private fun protectPlaneswalkers(
+        state: GameState,
+        projected: ProjectedState,
+        playerId: EntityId,
+        attackers: List<EntityId>,
+        validBlockers: List<EntityId>,
+        assignedBlockers: MutableSet<EntityId>,
+        blockerMap: MutableMap<EntityId, List<EntityId>>,
+    ) {
+        val byWalker = attackers.groupBy { defenderOf(state, it) }.filterKeys { walker ->
+            walker != null && projected.isPlaneswalker(walker) && projected.getController(walker) == playerId
+        }
+        for ((walker, walkerAttackers) in byWalker) {
+            walker ?: continue
+            repeat(walkerAttackers.size) {
+                val damage = damageThrough(projected, walkerAttackers, blockerMap)
+                if (damage <= 0) return@repeat
+                val lostNow = PlaneswalkerThreat.damageValue(state, walker, damage, cardRegistry)
+                val blocked = blockerMap.values.flatten().toSet()
+                var best: Triple<EntityId, List<EntityId>, Double>? = null
+                for (attacker in walkerAttackers) {
+                    if (attacker in blocked || (projected.getPower(attacker) ?: 0) <= 0) continue
+                    val needed = if (needsTwoBlockers(projected, attacker)) 2 else 1
+                    val bodies = availableBlockersFor(state, projected, attacker, validBlockers, assignedBlockers)
+                        .sortedBy { blockCost(state, projected, attacker, listOf(it)) }
+                        .take(needed)
+                    if (bodies.size < needed) continue
+                    val after = blockerMap.toMutableMap().apply { bodies.forEach { put(it, listOf(attacker)) } }
+                    val saved = lostNow - PlaneswalkerThreat.damageValue(
+                        state, walker, damageThrough(projected, walkerAttackers, after), cardRegistry,
+                    )
+                    val net = saved - blockCost(state, projected, attacker, bodies)
+                    if (net > 0.0 && (best == null || net > best.third)) best = Triple(attacker, bodies, net)
+                }
+                val (attacker, bodies, _) = best ?: return@repeat
+                bodies.forEach { blockerMap[it] = listOf(attacker); assignedBlockers.add(it) }
+            }
+        }
+    }
+
+    /**
+     * What standing [bodies] in front of [attacker] costs in creatures: each body the attacker kills,
+     * less the attacker when the bodies kill it. Board units, like [PlaneswalkerThreat.damageValue].
+     */
+    private fun blockCost(state: GameState, projected: ProjectedState, attacker: EntityId, bodies: List<EntityId>): Double {
+        val lost = bodies.filter { CombatMath.wouldKillInCombat(state, projected, attacker, it) }
+            .sumOf { CombatMath.creatureValue(state, projected, it).coerceAtLeast(MIN_BODY_VALUE) }
+        val dealing = bodies.filter { CombatMath.blockerDealsDamage(state, projected, attacker, it) }
+        val kills = Keyword.INDESTRUCTIBLE.name !in projected.getKeywords(attacker) && (
+            dealing.any { CombatMath.wouldKillInCombat(state, projected, it, attacker) } ||
+                (dealing.isNotEmpty() && dealing.sumOf { projected.getPower(it) ?: 0 } >= (projected.getToughness(attacker) ?: 0))
+            )
+        return lost - if (kills) CombatMath.creatureValue(state, projected, attacker) else 0.0
+    }
+
+    /** Damage [attackers] deal past the blocks in [blockerMap], trample overflow included. */
+    private fun damageThrough(
+        projected: ProjectedState,
+        attackers: List<EntityId>,
+        blockerMap: Map<EntityId, List<EntityId>>,
+    ): Int {
+        val blocked = blockerMap.values.flatten().toSet()
+        return attackers.sumOf { attacker ->
+            val power = projected.getPower(attacker) ?: 0
+            when {
+                power <= 0 -> 0
+                attacker !in blocked -> power
+                Keyword.TRAMPLE.name !in projected.getKeywords(attacker) -> 0
+                else -> {
+                    val blockers = blockerMap.filterValues { attacker in it }.keys
+                    val absorbed = if (Keyword.DEATHTOUCH.name in projected.getKeywords(attacker)) blockers.size
+                    else blockers.sumOf { projected.getToughness(it) ?: 0 }
+                    (power - absorbed).coerceAtLeast(0)
+                }
+            }
+        }
+    }
+
+    /** What [attacker] is attacking — a player, planeswalker or battle — or null when it is not attacking. */
+    private fun defenderOf(state: GameState, attacker: EntityId): EntityId? =
+        state.getEntity(attacker)?.get<com.wingedsheep.engine.state.components.combat.AttackingComponent>()?.defenderId
+
+    /** Whether [attacker] is attacking a player, so its unblocked damage is life lost. */
+    private fun attacksAPlayer(state: GameState, attacker: EntityId): Boolean =
+        defenderOf(state, attacker)?.let { it in state.turnOrder } ?: true
+
+    /** Whether a blocker assigned to [blocked] is standing in front of an attacker aimed at a planeswalker. */
+    private fun blocksForAWalker(state: GameState, blocked: List<EntityId>?): Boolean =
+        blocked.orEmpty().any { attacker ->
+            defenderOf(state, attacker)?.let { it !in state.turnOrder && state.projectedState.isPlaneswalker(it) } == true
+        }
 
     // ── Helpers ──────────────────────────────────────────────────────────
 

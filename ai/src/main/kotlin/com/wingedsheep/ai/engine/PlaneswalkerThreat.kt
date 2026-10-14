@@ -1,10 +1,14 @@
 package com.wingedsheep.ai.engine
 
+import com.wingedsheep.engine.mechanics.layers.ProjectedState
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.battlefield.CountersComponent
+import com.wingedsheep.engine.state.components.battlefield.TappedComponent
 import com.wingedsheep.engine.state.components.identity.CardComponent
+import com.wingedsheep.engine.core.doesntUntapDuringUntapStep
 import com.wingedsheep.sdk.core.CounterType
+import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.AbilityCost
 
@@ -31,6 +35,11 @@ import com.wingedsheep.sdk.scripting.AbilityCost
  *
  * Printed abilities only, like `IntentCatalog.loyaltyIsOnlyFuel`; without a registry (or for a
  * card it cannot read) a walker is assumed to be an engine — the dangerous reading.
+ *
+ * **The defending side** ([AiProfile.defendPlaneswalkers]) asks two more questions of it: what a
+ * walker is worth on the board *before its controller acts again* ([boardValue], read by the
+ * evaluator with [expectedDamage]), and what blocking an attacker aimed at it saves (`CombatAdvisor`
+ * prices a block on a walker attacker by [damageValue]).
  */
 object PlaneswalkerThreat {
 
@@ -101,5 +110,67 @@ object PlaneswalkerThreat {
         val shape = shape(state, walkerId, cardRegistry)
         val deniesTop = shape.topInReach(loyalty) && !shape.topInReach(loyalty - damage)
         return damage * LOYALTY_VALUE + if (deniesTop) TOP_ABILITY_THREAT else 0.0
+    }
+
+    /**
+     * The evaluator's base for a walker that refuels, beyond its loyalty, when its card prior is
+     * lower. 1.6 + 0.8 × 3 is the old flat 4.0 floor at a typical starting loyalty — so a fresh
+     * engine is priced as before, and only a walker worn below it is priced lower than before.
+     */
+    const val ENGINE_BOARD_BASE = 1.6
+
+    /**
+     * What a walker is worth on the board — continuous in loyalty, so every counter gained or lost
+     * moves the score — once [expectedDamage] has been taken off its loyalty.
+     *
+     * A walker that refuels is worth its card prior (what its abilities do) or [ENGINE_BOARD_BASE],
+     * whichever is more; one that can only spend loyalty is worth [FUEL_VALUE] — its prior reads
+     * "repeatable draw" off a −3 that fires once, which priced a one-loyalty Jace token like a
+     * four-loyalty one. On top, [LOYALTY_VALUE] per counter it will still have. A walker the
+     * damage kills is worth nothing: whatever it has left is about to be lost, which is what makes
+     * spending it now ("use it or lose it") and blocking for it visible to the search.
+     */
+    fun boardValue(refuels: Boolean, prior: Double, loyalty: Int, expectedDamage: Int): Double {
+        val left = loyalty - expectedDamage
+        if (left <= 0) return 0.0
+        return (if (refuels) maxOf(prior, ENGINE_BOARD_BASE) else FUEL_VALUE) + left * LOYALTY_VALUE
+    }
+
+    /**
+     * Loyalty damage [controllerId]'s planeswalkers should expect before [controllerId] acts again:
+     * on its own turn, what the strongest opposing side's next attack pushes through its blockers;
+     * on anyone else's turn, nothing.
+     *
+     * Only the side whose turn it is has a next attack still to face: the other side's walkers are
+     * facing *this* turn's attack, which the search plays out rather than predicts. The attackers
+     * are every opposing creature that will untap for it — summoning sickness is gone by then — and
+     * the blockers every untapped creature of ours that can block, chumps included
+     * ([CombatMath.calculateDamageThroughOptimalBlocking]): a creature tapped to attack this turn is
+     * no defence of a walker next turn, which is what lets the attack search see the walker it
+     * leaves open. The whole push-through is charged to every walker on its own; whichever one the
+     * attack picks, that is the damage it takes.
+     */
+    fun expectedDamage(state: GameState, projected: ProjectedState, controllerId: EntityId): Int {
+        if (state.activePlayerId != controllerId) return 0
+        val sides = state.sidesFor(controllerId) ?: return 0
+        val blockers = sides.mine.flatMap { projected.getBattlefieldControlledBy(it) }.filter {
+            projected.isCreature(it) && !projected.cantBlock(it) && state.getEntity(it)?.has<TappedComponent>() != true
+        }
+        return sides.opponents.maxOfOrNull { team ->
+            val attackers = team.flatMap { projected.getBattlefieldControlledBy(it) }.filter {
+                projected.isCreature(it) && !projected.cantAttack(it) &&
+                    Keyword.DEFENDER.name !in projected.getKeywords(it) &&
+                    (state.getEntity(it)?.has<TappedComponent>() != true || !projected.doesntUntapDuringUntapStep(it))
+            }
+            if (attackers.isEmpty()) 0
+            else CombatMath.calculateDamageThroughOptimalBlocking(state, projected, attackers, blockers)
+        } ?: 0
+    }
+
+    /** Whether [walkerId] will not survive [expectedDamage] — anything it still has is spend-or-lose. */
+    fun doomed(state: GameState, projected: ProjectedState, walkerId: EntityId): Boolean {
+        val controller = projected.getController(walkerId) ?: return false
+        val loyalty = loyalty(state, walkerId)
+        return loyalty > 0 && expectedDamage(state, projected, controller) >= loyalty
     }
 }

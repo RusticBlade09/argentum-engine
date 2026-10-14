@@ -665,6 +665,37 @@ data class AiProfile(
      */
     val attackPlaneswalkers: Boolean = false,
     /**
+     * Treat our own planeswalkers as things worth defending — and worth spending before they die —
+     * pricing each by [PlaneswalkerThreat], the same primitive [attackPlaneswalkers] aims with.
+     *
+     * Off a production game (`2e28f192`, 2026-10-14, Reality Fracture draft): turn 6 the AI cast
+     * Jace's Machinations and made a Jace token at 8, −3 to 5; an opposing 2/1 attacked it on turns
+     * 7 and 9 and the AI never contested. On turn 8, Jace at 3 facing that 2/1 plus a lifelinker
+     * that would be ready next turn, it surveilled (−1, leaving 2) rather than drawing (−3), and
+     * the token died with its last two counters unspent. Game `5ae3888c` left a Jace token at 1
+     * loyalty for the opponent to pick off the same way. Three blind spots, each closed here:
+     *
+     * - **The evaluator could not see loyalty below its floor.** `max(4, prior + 0.8 × loyalty)`
+     *   priced a Jace token at 1 like a fresh one. With this on a walker is priced continuously
+     *   in loyalty, net of the damage the next opposing attack pushes through its controller's
+     *   untapped blockers ([PlaneswalkerThreat.boardValue] / [PlaneswalkerThreat.expectedDamage]):
+     *   a walker that attack kills is worth nothing, so spending its loyalty now beats keeping it
+     *   ("use it or lose it"), a blocker kept home for it counts, and an attack that taps the
+     *   walker's defenders pays for it.
+     * - **The minus-only refund ([fuelLoyaltyIsNotBoardValue]) paid for the walker's death.** It
+     *   handed back the spent counters as if the walker kept them — so a −1 that left the token
+     *   dead to the next attack scored like one that left it safe. It no longer refunds a walker
+     *   the activation leaves doomed ([PlaneswalkerThreat.doomed]).
+     * - **No block was ever made for a walker.** The block heuristic (also the opponent model the
+     *   attack search simulates against) priced blocks by creatures and life only, counted damage
+     *   aimed at a walker as damage to the player, and [chumpOnlyWhenInDanger] vetoed any chump
+     *   while life was safe. With this on, damage at a walker is the walker's, a block on an
+     *   attacker aimed at one is worth the [PlaneswalkerThreat.damageValue] it saves — a chump or
+     *   trade when the walker is worth more than the body, nothing for a near-dead token — and the
+     *   chump veto lets such a block through. Pinned by `DefendPlaneswalkersTest`.
+     */
+    val defendPlaneswalkers: Boolean = false,
+    /**
      * Count the land drop still to come as mana when [sequenceLandsByUsableMana] decides whether
      * tapped lands were idle — so playing an untapped land can never score below passing.
      *
@@ -1780,6 +1811,7 @@ data class AiProfile(
             creatureValuation = PRODUCTION_CANDIDATE_EXPIRING.creatureValuation.copy(expiringStatsNeedAFight = true),
             activatedPumpsNeedAPlannedAttack = true,
             attackPlaneswalkers = true,
+            defendPlaneswalkers = true,
         )
 
         /**
@@ -1799,6 +1831,27 @@ data class AiProfile(
         val PRODUCTION_CANDIDATE_WALKERATTACKS = PRODUCTION_CANDIDATE_EXPIRING.copy(
             id = "production-candidate-walkerattacks",
             attackPlaneswalkers = true,
+        )
+
+        /**
+         * [defendPlaneswalkers] alone on top of [PRODUCTION], so a puzzle or an arena point that
+         * moves is attributable to it.
+         */
+        val PRODUCTION_WALKERDEFENCE = PRODUCTION.copy(
+            id = "production-walkerdefence",
+            defendPlaneswalkers = true,
+        )
+
+        /**
+         * [defendPlaneswalkers] on top of [PRODUCTION_CANDIDATE_EXPIRING] — the last pinned candidate
+         * [LIVE] builds on — with [fuelLoyaltyIsNotBoardValue], whose refund it corrects, so `just
+         * arena production-candidate-fuelloyalty production-candidate-walkerdefence` measures it and
+         * nothing else. [LIVE] ships it.
+         */
+        val PRODUCTION_CANDIDATE_WALKERDEFENCE = PRODUCTION_CANDIDATE_EXPIRING.copy(
+            id = "production-candidate-walkerdefence",
+            fuelLoyaltyIsNotBoardValue = true,
+            defendPlaneswalkers = true,
         )
 
         /**
