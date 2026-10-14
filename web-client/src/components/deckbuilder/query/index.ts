@@ -79,6 +79,19 @@ export function parseQuery(query: string): ParseResult {
   }
 }
 
+/**
+ * How [query] splits at the top: the spans of its top-level AND terms (`t:goblin`, a bracketed
+ * group, a negation), and whether a new term appended to it would AND with all of it — false when
+ * `or` sits at the top. The filter panel's chips work on these.
+ */
+export function queryStructure(query: string): { isConjunction: boolean; terms: Span[] } {
+  const compiled = search.compileQuery(query)
+  const flat = compiled.topLevelTermSpans
+  const terms: Span[] = []
+  for (let i = 0; i + 1 < flat.length; i += 2) terms.push({ start: flat[i]!, end: flat[i + 1]! })
+  return { isConjunction: compiled.isConjunction, terms }
+}
+
 /** See {@link ParseResult.advanced}; cheaper when only this is needed. */
 export function isAdvancedQuery(query: string): boolean {
   return search.isAdvancedQuery(query)

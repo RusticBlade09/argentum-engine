@@ -88,16 +88,16 @@ initMetadataForClass(IteratorImpl, 'IteratorImpl');
 initMetadataForClass(AbstractMutableList, 'AbstractMutableList', VOID, AbstractMutableCollection, [Collection, KtList]);
 initMetadataForClass(AbstractMap, 'AbstractMap', VOID, VOID, [KtMap]);
 initMetadataForClass(AbstractMutableMap, 'AbstractMutableMap', VOID, AbstractMap, [KtMap]);
-initMetadataForClass(AbstractMutableSet, 'AbstractMutableSet', VOID, AbstractMutableCollection, [KtSet, Collection]);
+initMetadataForClass(AbstractMutableSet, 'AbstractMutableSet', VOID, AbstractMutableCollection, [Collection, KtSet]);
 initMetadataForCompanion(Companion_2);
 initMetadataForClass(ArrayList, 'ArrayList', ArrayList_init_$Create$, AbstractMutableList, [Collection, KtList]);
 initMetadataForClass(HashMap, 'HashMap', HashMap_init_$Create$, AbstractMutableMap, [KtMap]);
 initMetadataForClass(HashMapValues, 'HashMapValues', VOID, AbstractMutableCollection, [Collection]);
-initMetadataForClass(HashMapEntrySetBase, 'HashMapEntrySetBase', VOID, AbstractMutableSet, [KtSet, Collection]);
+initMetadataForClass(HashMapEntrySetBase, 'HashMapEntrySetBase', VOID, AbstractMutableSet, [Collection, KtSet]);
 initMetadataForClass(HashMapEntrySet, 'HashMapEntrySet', VOID, HashMapEntrySetBase);
 initMetadataForClass(HashMapValuesDefault$iterator$1);
 initMetadataForClass(HashMapValuesDefault, 'HashMapValuesDefault', VOID, AbstractMutableCollection);
-initMetadataForClass(HashSet, 'HashSet', HashSet_init_$Create$, AbstractMutableSet, [KtSet, Collection]);
+initMetadataForClass(HashSet, 'HashSet', HashSet_init_$Create$, AbstractMutableSet, [Collection, KtSet]);
 initMetadataForCompanion(Companion_3);
 initMetadataForClass(Itr, 'Itr');
 initMetadataForClass(KeysItr, 'KeysItr', VOID, Itr);
@@ -143,7 +143,7 @@ initMetadataForInterface(InternalMap, 'InternalMap');
 initMetadataForClass(InternalHashMap, 'InternalHashMap', InternalHashMap_init_$Create$, VOID, [InternalMap]);
 initMetadataForObject(EmptyHolder, 'EmptyHolder');
 initMetadataForClass(LinkedHashMap, 'LinkedHashMap', LinkedHashMap_init_$Create$, HashMap, [KtMap]);
-initMetadataForClass(LinkedHashSet, 'LinkedHashSet', LinkedHashSet_init_$Create$, HashSet, [KtSet, Collection]);
+initMetadataForClass(LinkedHashSet, 'LinkedHashSet', LinkedHashSet_init_$Create$, HashSet, [Collection, KtSet]);
 initMetadataForClass(Exception, 'Exception', Exception_init_$Create$, Error);
 initMetadataForClass(RuntimeException, 'RuntimeException', RuntimeException_init_$Create$, Exception);
 initMetadataForClass(UnsupportedOperationException, 'UnsupportedOperationException', UnsupportedOperationException_init_$Create$, RuntimeException);
@@ -492,6 +492,18 @@ function plus(_this__u8e3s4, elements) {
     addAll(result_0, elements);
     return result_0;
   }
+}
+function toIntArray(_this__u8e3s4) {
+  var result = new Int32Array(_this__u8e3s4.j());
+  var index = 0;
+  var _iterator__ex2g4s = _this__u8e3s4.g();
+  while (_iterator__ex2g4s.h()) {
+    var element = _iterator__ex2g4s.i();
+    var _unary__edvuaz = index;
+    index = _unary__edvuaz + 1 | 0;
+    result[_unary__edvuaz] = element;
+  }
+  return result;
 }
 function toCollection_0(_this__u8e3s4, destination) {
   var _iterator__ex2g4s = _this__u8e3s4.g();
@@ -9730,9 +9742,41 @@ protoOf(SearchQuery).fh = function () {
   return tmp0.k1();
 };
 protoOf(SearchQuery).ih = function () {
+  var root = this.ug_1;
+  var tmp;
+  if (root == null) {
+    tmp = emptyList();
+  } else {
+    if (root instanceof AndNode) {
+      // Inline function 'kotlin.collections.map' call
+      var this_0 = root.eb_1;
+      // Inline function 'kotlin.collections.mapTo' call
+      var destination = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_0, 10));
+      var _iterator__ex2g4s = this_0.g();
+      while (_iterator__ex2g4s.h()) {
+        var item = _iterator__ex2g4s.i();
+        var tmp$ret$2 = item.gb();
+        destination.e(tmp$ret$2);
+      }
+      tmp = destination;
+    } else {
+      if (root instanceof OrNode) {
+        tmp = emptyList();
+      } else {
+        tmp = listOf(root.gb());
+      }
+    }
+  }
+  return tmp;
+};
+protoOf(SearchQuery).jh = function () {
+  var tmp = this.ug_1;
+  return !(tmp instanceof OrNode);
+};
+protoOf(SearchQuery).kh = function () {
   return !(_get_nameTest__qak30y(this) == null);
 };
-protoOf(SearchQuery).jh = function (card) {
+protoOf(SearchQuery).lh = function (card) {
   var tmp0_elvis_lhs = _get_nameTest__qak30y(this);
   var tmp;
   if (tmp0_elvis_lhs == null) {
@@ -9845,10 +9889,10 @@ protoOf(SearchKey).jg = function () {
   return this.description;
 };
 function CompiledQuery(query) {
-  this.kh_1 = query;
+  this.mh_1 = query;
   var tmp = this;
   // Inline function 'kotlin.collections.map' call
-  var this_0 = this.kh_1.vg_1;
+  var this_0 = this.mh_1.vg_1;
   // Inline function 'kotlin.collections.mapTo' call
   var destination = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_0, 10));
   var _iterator__ex2g4s = this_0.g();
@@ -9868,29 +9912,45 @@ function CompiledQuery(query) {
   // Inline function 'kotlin.collections.toTypedArray' call
   tmp.errors = copyToArray(destination);
 }
-protoOf(CompiledQuery).lh = function () {
+protoOf(CompiledQuery).nh = function () {
   return this.errors;
 };
 protoOf(CompiledQuery).hh = function () {
-  return this.kh_1.hh();
+  return this.mh_1.hh();
 };
 protoOf(CompiledQuery).dh = function () {
-  return this.kh_1.dh();
+  return this.mh_1.dh();
 };
 protoOf(CompiledQuery).eh = function () {
-  return this.kh_1.eh();
+  return this.mh_1.eh();
 };
 protoOf(CompiledQuery).fh = function () {
-  return this.kh_1.fh();
+  return this.mh_1.fh();
 };
-protoOf(CompiledQuery).ih = function () {
-  return this.kh_1.ih();
+protoOf(CompiledQuery).kh = function () {
+  return this.mh_1.kh();
+};
+protoOf(CompiledQuery).jh = function () {
+  return this.mh_1.jh();
+};
+protoOf(CompiledQuery).oh = function () {
+  // Inline function 'kotlin.collections.flatMap' call
+  var tmp0 = this.mh_1.ih();
+  // Inline function 'kotlin.collections.flatMapTo' call
+  var destination = ArrayList_init_$Create$();
+  var _iterator__ex2g4s = tmp0.g();
+  while (_iterator__ex2g4s.h()) {
+    var element = _iterator__ex2g4s.i();
+    var list = listOf_0([element.oa_1, element.pa_1]);
+    addAll(destination, list);
+  }
+  return toIntArray(destination);
 };
 protoOf(CompiledQuery).matches = function (card) {
-  return this.kh_1.gh(adapt(card));
+  return this.mh_1.gh(adapt(card));
 };
 protoOf(CompiledQuery).matchedPrintedName = function (card) {
-  return this.kh_1.jh(adapt(card));
+  return this.mh_1.lh(adapt(card));
 };
 function QueryError(message, start, end, suggestion, fix) {
   this.message = message;
@@ -9905,13 +9965,13 @@ protoOf(QueryError).f6 = function () {
 protoOf(QueryError).j7 = function () {
   return this.start;
 };
-protoOf(QueryError).mh = function () {
+protoOf(QueryError).ph = function () {
   return this.end;
 };
-protoOf(QueryError).nh = function () {
+protoOf(QueryError).qh = function () {
   return this.suggestion;
 };
-protoOf(QueryError).oh = function () {
+protoOf(QueryError).rh = function () {
   return this.fix;
 };
 function QueryFix(start, end, text) {
@@ -9922,10 +9982,10 @@ function QueryFix(start, end, text) {
 protoOf(QueryFix).j7 = function () {
   return this.start;
 };
-protoOf(QueryFix).mh = function () {
+protoOf(QueryFix).ph = function () {
   return this.end;
 };
-protoOf(QueryFix).ph = function () {
+protoOf(QueryFix).sh = function () {
   return this.text;
 };
 function adapt(card) {
@@ -9942,47 +10002,47 @@ function adapt(card) {
 function JsSearchCard(o) {
   var tmp = this;
   // Inline function 'kotlin.js.unsafeCast' call
-  tmp.qh_1 = o.name;
+  tmp.th_1 = o.name;
   var tmp_0 = this;
   // Inline function 'kotlin.js.unsafeCast' call
   var tmp0_elvis_lhs = o.manaCost;
-  tmp_0.rh_1 = tmp0_elvis_lhs == null ? '' : tmp0_elvis_lhs;
+  tmp_0.uh_1 = tmp0_elvis_lhs == null ? '' : tmp0_elvis_lhs;
   var tmp_1 = this;
   // Inline function 'kotlin.js.unsafeCast' call
   var tmp0_elvis_lhs_0 = o.cmc;
-  tmp_1.sh_1 = tmp0_elvis_lhs_0 == null ? 0 : tmp0_elvis_lhs_0;
-  this.th_1 = strings(o.colors);
-  this.uh_1 = strings(o.colorIdentity);
-  this.vh_1 = strings(o.cardTypes);
-  this.wh_1 = strings(o.supertypes);
-  this.xh_1 = strings(o.subtypes);
-  this.yh_1 = o.basicLand == true;
+  tmp_1.vh_1 = tmp0_elvis_lhs_0 == null ? 0 : tmp0_elvis_lhs_0;
+  this.wh_1 = strings(o.colors);
+  this.xh_1 = strings(o.colorIdentity);
+  this.yh_1 = strings(o.cardTypes);
+  this.zh_1 = strings(o.supertypes);
+  this.ai_1 = strings(o.subtypes);
+  this.bi_1 = o.basicLand == true;
   var tmp_2 = this;
   // Inline function 'kotlin.js.unsafeCast' call
   var tmp0_elvis_lhs_1 = o.rarity;
-  tmp_2.zh_1 = tmp0_elvis_lhs_1 == null ? '' : tmp0_elvis_lhs_1;
+  tmp_2.ci_1 = tmp0_elvis_lhs_1 == null ? '' : tmp0_elvis_lhs_1;
   var tmp_3 = this;
   // Inline function 'kotlin.js.unsafeCast' call
-  tmp_3.ai_1 = o.setCode;
+  tmp_3.di_1 = o.setCode;
   var tmp_4 = this;
   // Inline function 'kotlin.js.unsafeCast' call
-  tmp_4.bi_1 = o.collectorNumber;
+  tmp_4.ei_1 = o.collectorNumber;
   var tmp_5 = this;
   // Inline function 'kotlin.js.unsafeCast' call
-  tmp_5.ci_1 = o.oracleText;
+  tmp_5.fi_1 = o.oracleText;
   var tmp_6 = this;
   // Inline function 'kotlin.js.unsafeCast' call
-  tmp_6.di_1 = o.power;
+  tmp_6.gi_1 = o.power;
   var tmp_7 = this;
   // Inline function 'kotlin.js.unsafeCast' call
-  tmp_7.ei_1 = o.toughness;
+  tmp_7.hi_1 = o.toughness;
   var tmp_8 = this;
   // Inline function 'kotlin.js.unsafeCast' call
-  tmp_8.fi_1 = o.loyalty;
-  this.gi_1 = strings(o.keywords);
-  this.hi_1 = strings(o.legalFormats);
-  this.ii_1 = o.isDoubleFaced == true;
-  this.ji_1 = strings(o.printingSetCodes);
+  tmp_8.ii_1 = o.loyalty;
+  this.ji_1 = strings(o.keywords);
+  this.ki_1 = strings(o.legalFormats);
+  this.li_1 = o.isDoubleFaced == true;
+  this.mi_1 = strings(o.printingSetCodes);
   var tmp_9 = this;
   // Inline function 'kotlin.js.unsafeCast' call
   var tmp0_safe_receiver = o.printedNamePrintings;
@@ -10005,71 +10065,71 @@ function JsSearchCard(o) {
     tmp_10 = destination;
   }
   var tmp1_elvis_lhs = tmp_10;
-  tmp_9.ki_1 = tmp1_elvis_lhs == null ? emptyList() : tmp1_elvis_lhs;
-  this.li_1 = new SearchView(this);
+  tmp_9.ni_1 = tmp1_elvis_lhs == null ? emptyList() : tmp1_elvis_lhs;
+  this.oi_1 = new SearchView(this);
 }
 protoOf(JsSearchCard).se = function () {
-  return this.qh_1;
-};
-protoOf(JsSearchCard).sg = function () {
-  return this.rh_1;
-};
-protoOf(JsSearchCard).ue = function () {
-  return this.sh_1;
-};
-protoOf(JsSearchCard).cg = function () {
   return this.th_1;
 };
-protoOf(JsSearchCard).zf = function () {
+protoOf(JsSearchCard).sg = function () {
   return this.uh_1;
 };
-protoOf(JsSearchCard).wf = function () {
+protoOf(JsSearchCard).ue = function () {
   return this.vh_1;
 };
-protoOf(JsSearchCard).xf = function () {
+protoOf(JsSearchCard).cg = function () {
   return this.wh_1;
 };
-protoOf(JsSearchCard).ag = function () {
+protoOf(JsSearchCard).zf = function () {
   return this.xh_1;
 };
-protoOf(JsSearchCard).yf = function () {
+protoOf(JsSearchCard).wf = function () {
   return this.yh_1;
 };
-protoOf(JsSearchCard).qf = function () {
+protoOf(JsSearchCard).xf = function () {
   return this.zh_1;
 };
-protoOf(JsSearchCard).rf = function () {
+protoOf(JsSearchCard).ag = function () {
   return this.ai_1;
 };
-protoOf(JsSearchCard).mf = function () {
+protoOf(JsSearchCard).yf = function () {
+  return this.bi_1;
+};
+protoOf(JsSearchCard).qf = function () {
   return this.ci_1;
 };
-protoOf(JsSearchCard).ve = function () {
+protoOf(JsSearchCard).rf = function () {
   return this.di_1;
 };
-protoOf(JsSearchCard).xe = function () {
-  return this.ei_1;
-};
-protoOf(JsSearchCard).ye = function () {
+protoOf(JsSearchCard).mf = function () {
   return this.fi_1;
 };
-protoOf(JsSearchCard).uf = function () {
+protoOf(JsSearchCard).ve = function () {
   return this.gi_1;
 };
-protoOf(JsSearchCard).tf = function () {
+protoOf(JsSearchCard).xe = function () {
   return this.hi_1;
 };
-protoOf(JsSearchCard).vf = function () {
+protoOf(JsSearchCard).ye = function () {
   return this.ii_1;
 };
-protoOf(JsSearchCard).sf = function () {
+protoOf(JsSearchCard).uf = function () {
   return this.ji_1;
 };
-protoOf(JsSearchCard).te = function () {
+protoOf(JsSearchCard).tf = function () {
   return this.ki_1;
 };
-protoOf(JsSearchCard).af = function () {
+protoOf(JsSearchCard).vf = function () {
   return this.li_1;
+};
+protoOf(JsSearchCard).sf = function () {
+  return this.mi_1;
+};
+protoOf(JsSearchCard).te = function () {
+  return this.ni_1;
+};
+protoOf(JsSearchCard).af = function () {
+  return this.oi_1;
 };
 function strings(value) {
   _init_properties_WebSearch_kt__m35l1y();
@@ -10090,7 +10150,9 @@ defineProp(protoOf(CompiledQuery), 'isEmpty', protoOf(CompiledQuery).hh);
 defineProp(protoOf(CompiledQuery), 'isAdvanced', protoOf(CompiledQuery).dh);
 defineProp(protoOf(CompiledQuery), 'setFilter', protoOf(CompiledQuery).eh);
 defineProp(protoOf(CompiledQuery), 'explanation', protoOf(CompiledQuery).fh);
-defineProp(protoOf(CompiledQuery), 'constrainsName', protoOf(CompiledQuery).ih);
+defineProp(protoOf(CompiledQuery), 'constrainsName', protoOf(CompiledQuery).kh);
+defineProp(protoOf(CompiledQuery), 'isConjunction', protoOf(CompiledQuery).jh);
+defineProp(protoOf(CompiledQuery), 'topLevelTermSpans', protoOf(CompiledQuery).oh);
 //endregion
 //region block: init
 Companion_instance_0 = new Companion_0();

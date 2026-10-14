@@ -22,6 +22,15 @@ class SearchQueryTest : StringSpec({
         error.fix shouldBe Fix(Span(10, 14), "pow")
     }
 
+    "top-level terms are the AND's children; an or at the top has none" {
+        val q = "t:goblin (c:r or c:g) -kw:haste"
+        SearchQuery.compile(q).topLevelTerms.map { q.substring(it.start, it.end) } shouldBe
+            listOf("t:goblin", "(c:r or c:g)", "-kw:haste")
+        SearchQuery.compile("t:elf or t:goblin").topLevelTerms shouldBe emptyList()
+        SearchQuery.compile("t:elf or t:goblin").isConjunction shouldBe false
+        SearchQuery.compile("t:elf").isConjunction shouldBe true
+    }
+
     "setFilter is the s: code on an AND-only path" {
         SearchQuery.compile("s:eoe banishing").setFilter shouldBe "EOE"
         SearchQuery.compile("s:eoe or t:creature").setFilter shouldBe null

@@ -23,6 +23,8 @@ export declare class CompiledQuery {
     get setFilter(): Nullable<string>;
     get explanation(): Nullable<string>;
     get constrainsName(): boolean;
+    get isConjunction(): boolean;
+    get topLevelTermSpans(): Int32Array;
     matches(card: any): boolean;
     matchedPrintedName(card: any): Nullable<string>;
 }

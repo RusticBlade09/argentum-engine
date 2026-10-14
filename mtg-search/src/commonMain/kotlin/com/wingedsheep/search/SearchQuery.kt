@@ -41,6 +41,26 @@ class SearchQuery private constructor(
         if (ast == null || errors.isNotEmpty()) null else explain(ast, parent = null)
     }
 
+    /**
+     * The spans of the query's top-level AND terms — the pieces a filter panel can toggle one by
+     * one. `t:goblin (c:r or c:g) -kw:haste` has three: the atom, the bracketed group, the negation.
+     * A query whose root isn't a plain AND (an `or` at the top) has none: see [isConjunction].
+     */
+    val topLevelTerms: List<Span>
+        get() = when (val root = ast) {
+            null -> emptyList()
+            is AndNode -> root.children.map { it.span }
+            is OrNode -> emptyList()
+            else -> listOf(root.span)
+        }
+
+    /**
+     * Whether appending a term ANDs it with the whole query. False when `or` sits at the top
+     * (`t:elf or t:goblin`), where a new term would bind only to the last branch, so a caller must
+     * bracket the query first.
+     */
+    val isConjunction: Boolean get() = ast !is OrNode
+
     private val nameTest: ((String) -> Boolean)? by lazy { ast?.let(::nameConstraint) }
 
     /** Whether any card could have a [matchedPrintedName] — false lets callers skip the scan. */

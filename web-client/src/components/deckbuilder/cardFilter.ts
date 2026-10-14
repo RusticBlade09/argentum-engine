@@ -5,13 +5,9 @@
  * `./query`). This file:
  *   - re-exports the user-facing entry points,
  *   - declares the `CardSummary` shape (mirrors `CardsController.CardSummaryDTO`),
- *   - keeps the chip helpers (`addToken`/`removeToken`/`hasToken`/`toggleToken`) that the
- *     menu-style filter panel uses to round-trip top-level atoms with the free-text bar.
- *
- * The chip helpers operate on whitespace-separated terms in the raw string. They are
- * not aware of `or` / parens — when the query becomes "advanced" (uses any feature
- * the chips can't represent), the filter panel switches to read-only and stops
- * calling these helpers. See `isAdvancedQuery` in `./query`.
+ *   - keeps the chip helpers (`addToken`/`removeToken`/`hasToken`/`toggleToken`/`appendTerm`)
+ *     the filter panel uses to round-trip its chips with the free-text bar. They work on the
+ *     query's top-level terms as the parser reads them, so they stay correct for any query.
  */
 
 // ---------------------------------------------------------------------------
@@ -99,55 +95,59 @@ export interface CardSummary {
   companionCondition?: string
 }
 
+import { queryStructure } from './query'
+
 export type { CardPredicate, ParseResult, ParseError } from './query'
 export { isAdvancedQuery, parseQuery } from './query'
 
 // ---------------------------------------------------------------------------
 // Menu ↔ query helpers
 //
-// The FilterPanel toggles call these to keep the text query in sync with the
-// chips. They operate on the raw string so a user typing "t:creature -t:goblin"
-// can still see the menu reflect the dominant choices.
-//
-// Token comparison is whole-term, whitespace-separated. These helpers do not
-// understand `or` / parens — when the query is advanced (per `isAdvancedQuery`),
-// the FilterPanel switches to read-only and stops calling them.
+// The filter panel toggles call these to keep the text query in sync with the chips. They work
+// on the query's *top-level* terms, as the shared parser reads them: in
+// `t:goblin (c:r or c:g)` the terms are `t:goblin` and `(c:r or c:g)`, so a chip never reaches
+// inside a group the user wrote. Adding a term to a query with `or` at the top brackets it first
+// — `t:elf or t:goblin` + `c:g` is `(t:elf or t:goblin) c:g` — so a chip always narrows the
+// whole search, and the panel works whatever was typed.
 // ---------------------------------------------------------------------------
 
-function splitTerms(query: string): string[] {
-  const out: string[] = []
-  let buf = ''
-  let inQuote = false
-  for (let i = 0; i < query.length; i++) {
-    const ch = query[i]!
-    if (ch === '"') {
-      inQuote = !inQuote
-      buf += ch
-      continue
-    }
-    if (!inQuote && /\s/.test(ch)) {
-      if (buf) { out.push(buf); buf = '' }
-      continue
-    }
-    buf += ch
-  }
-  if (buf) out.push(buf)
-  return out
+interface TermSpan { start: number; end: number; text: string }
+
+function topLevelTerms(query: string): TermSpan[] {
+  return queryStructure(query).terms.map((t) => ({ ...t, text: query.slice(t.start, t.end) }))
+}
+
+/** The query's top-level AND terms, as typed. */
+export function queryTerms(query: string): string[] {
+  return topLevelTerms(query).map((t) => t.text)
+}
+
+/** AND [term] onto the whole query, bracketing it first when `or` sits at the top. */
+export function appendTerm(query: string, term: string): string {
+  const q = query.trim()
+  if (!q) return term
+  return queryStructure(q).isConjunction ? `${q} ${term}` : `(${q}) ${term}`
 }
 
 export function addToken(query: string, token: string): string {
-  const terms = splitTerms(query)
-  if (terms.includes(token)) return query
-  return terms.length === 0 ? token : `${terms.join(' ')} ${token}`
+  return hasToken(query, token) ? query : appendTerm(query, token)
+}
+
+/** Remove every top-level term matching [matches] (default: equal to a token). */
+export function removeTerms(query: string, matches: (term: string) => boolean): string {
+  let next = query
+  for (const t of topLevelTerms(query).reverse()) {
+    if (matches(t.text)) next = next.slice(0, t.start) + next.slice(t.end)
+  }
+  return next.replace(/\s+/g, ' ').trim()
 }
 
 export function removeToken(query: string, token: string): string {
-  const terms = splitTerms(query).filter((t) => t !== token)
-  return terms.join(' ')
+  return removeTerms(query, (t) => t === token)
 }
 
 export function hasToken(query: string, token: string): boolean {
-  return splitTerms(query).includes(token)
+  return queryTerms(query).includes(token)
 }
 
 export function toggleToken(query: string, token: string): string {

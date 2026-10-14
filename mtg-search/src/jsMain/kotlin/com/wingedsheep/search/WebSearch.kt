@@ -38,6 +38,10 @@ class CompiledQuery internal constructor(private val query: SearchQuery) {
     val setFilter: String? get() = query.setFilter
     val explanation: String? get() = query.explanation
     val constrainsName: Boolean get() = query.constrainsName
+    val isConjunction: Boolean get() = query.isConjunction
+
+    /** [SearchQuery.topLevelTerms] flattened to `[start0, end0, start1, end1, …]`. */
+    val topLevelTermSpans: IntArray get() = query.topLevelTerms.flatMap { listOf(it.start, it.end) }.toIntArray()
 
     /** [card] is a deckbuilder `CardSummary` — the server's `CardSummaryDTO` JSON. */
     fun matches(card: dynamic): Boolean = query.matches(adapt(card))
