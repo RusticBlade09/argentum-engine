@@ -1,5 +1,6 @@
 package com.wingedsheep.ai.engine
 
+import com.wingedsheep.ai.engine.evaluation.LifeDifferential
 import com.wingedsheep.engine.legalactions.LegalAction
 import com.wingedsheep.engine.mechanics.combat.CombatDefenders
 import com.wingedsheep.engine.mechanics.layers.ProjectedState
@@ -40,6 +41,9 @@ object CombatSeed {
      * @param attackPenalty per-creature discouragement from a `CardAdvisor`, summed by the caller.
      *   A discouraged creature is left out of the seed; `CombatAdvisor`'s local search can still add
      *   it back when it pays. Defaults to "no advisor has an opinion", which is every card today.
+     * @param aimAtPlaneswalkers send attackers that will connect at opposing planeswalkers when
+     *   the loyalty damage is worth more than the life — see [aimAtPlaneswalkers]. Off, every
+     *   attacker goes at the primary seat, the behaviour before `AiProfile.attackPlaneswalkers`.
      */
     fun attackers(
         state: GameState,
@@ -48,6 +52,7 @@ object CombatSeed {
         playerId: EntityId,
         cardRegistry: CardRegistry? = null,
         attackPenalty: (EntityId) -> Double = { 0.0 },
+        aimAtPlaneswalkers: Boolean = false,
     ): AttackSeed {
         val defendingPlayers = legalAction.validAttackTargets ?: emptyList()
         if (defendingPlayers.isEmpty()) {
@@ -201,6 +206,10 @@ object CombatSeed {
             }
         }
 
+        if (aimAtPlaneswalkers) {
+            aimAtPlaneswalkers(state, projected, legalAction, cardRegistry, seedMap)
+        }
+
         // A plan whose attack tax we cannot pay is one we would be asked to pay for and could only
         // decline, ending up back at this same choice — see [CombatTaxBudget].
         return AttackSeed(
@@ -211,6 +220,113 @@ object CombatSeed {
             lethal = false,
         )
     }
+
+    /**
+     * The opposing planeswalkers [attackerId] may legally attack (CR 508.1b), in the engine's order.
+     * Battles are left out: a battle is attacked to defeat it, not to stop an engine.
+     */
+    fun planeswalkerTargetsFor(
+        state: GameState,
+        projected: ProjectedState,
+        legalAction: LegalAction,
+        attackerId: EntityId,
+    ): List<EntityId> =
+        legalAction.attackTargetsFor(attackerId).filter { it !in state.turnOrder && projected.isPlaneswalker(it) }
+
+    /**
+     * Re-aim the attackers in [plan] that will connect at the opposing planeswalker their damage
+     * hurts most, when that beats the life it would have taken.
+     *
+     * An opposing walker is an ongoing value engine ([PlaneswalkerThreat]); a hit that kills it, or
+     * knocks its biggest ability out of reach, is usually worth far more than the same points off a
+     * healthy life total. Each attacker no untapped creature of the walker's seat can block is a
+     * candidate: its damage at the player is priced by the evaluator's life curve
+     * ([LifeDifferential.lifeValue], which grows steeply near zero — so a race that is nearly won
+     * keeps its damage), its damage at each walker it may attack by [PlaneswalkerThreat.damageValue]
+     * at the default board-presence weight. The move with the largest net gain is made first, until
+     * none is left: so a small attacker that exactly finishes a walker goes at it while the big one
+     * stays on the player. Overkill is not credited: damage past a walker's remaining loyalty is
+     * wasted.
+     *
+     * Attackers that can be blocked keep their defender. Whether a blocker would rather protect the
+     * walker than take the hit is a question for a simulation, which `CombatAdvisor`'s local search
+     * asks by retargeting them one at a time.
+     */
+    internal fun aimAtPlaneswalkers(
+        state: GameState,
+        projected: ProjectedState,
+        legalAction: LegalAction,
+        cardRegistry: CardRegistry?,
+        plan: MutableMap<EntityId, EntityId>,
+    ) {
+        val blockersBySeat = mutableMapOf<EntityId, List<EntityId>>()
+        fun blockersOf(seat: EntityId) =
+            blockersBySeat.getOrPut(seat) { CombatMath.getOpponentUntappedCreatures(state, projected, seat) }
+        fun connects(attacker: EntityId, defender: EntityId) =
+            CombatMath.isEvasive(state, projected, attacker, blockersOf(CombatDefenders.defendingPlayerOf(state, defender)))
+
+        val candidates = plan.entries
+            .filter { (attacker, defender) ->
+                defender in state.turnOrder &&
+                    (projected.getPower(attacker) ?: 0) > 0 &&
+                    connects(attacker, defender) &&
+                    planeswalkerTargetsFor(state, projected, legalAction, attacker).isNotEmpty()
+            }
+            .map { it.key }
+            .sortedByDescending { projected.getPower(it) ?: 0 }
+        if (candidates.isEmpty()) return
+
+        // Damage each player is still taking from the connecting attackers, and loyalty each
+        // walker has left after the ones already re-aimed at it.
+        val faceDamage = mutableMapOf<EntityId, Int>()
+        for (attacker in candidates) {
+            faceDamage.merge(plan.getValue(attacker), projected.getPower(attacker) ?: 0, Int::plus)
+        }
+        val loyaltyLeft = mutableMapOf<EntityId, Int>()
+        val unassigned = candidates.toMutableList()
+
+        // Best single move first, until no move beats leaving the damage at the player: the pair
+        // whose loyalty gain most exceeds the life it gives up. Picking by net gain rather than by
+        // attacker keeps the biggest attacker on the player when a smaller one can finish the
+        // walker on its own.
+        while (unassigned.isNotEmpty()) {
+            var bestMove: Triple<EntityId, EntityId, Double>? = null
+            for (attacker in unassigned) {
+                val power = projected.getPower(attacker) ?: 0
+                val player = plan.getValue(attacker)
+                val life = state.lifeTotal(player)
+                val damageAtPlayer = faceDamage.getValue(player)
+                val faceGain = LifeDifferential.lifeValue(life - (damageAtPlayer - power)) -
+                    LifeDifferential.lifeValue(life - damageAtPlayer)
+                for (walker in planeswalkerTargetsFor(state, projected, legalAction, attacker)) {
+                    if (!connects(attacker, walker)) continue
+                    val loyalty = PlaneswalkerThreat.loyalty(state, walker)
+                    val left = loyaltyLeft.getOrElse(walker) { loyalty }
+                    if (left <= 0) continue
+                    // What attackers re-aimed at it earlier already took is not this one's to claim.
+                    val dealt = loyalty - left
+                    val gain = BOARD_PRESENCE_WEIGHT * (
+                        PlaneswalkerThreat.damageValue(state, walker, dealt + minOf(power, left), cardRegistry) -
+                            PlaneswalkerThreat.damageValue(state, walker, dealt, cardRegistry)
+                        )
+                    val net = gain - faceGain
+                    if (net > 0.0 && (bestMove == null || net > bestMove.third)) {
+                        bestMove = Triple(attacker, walker, net)
+                    }
+                }
+            }
+            val (attacker, walker) = bestMove ?: break
+            val power = projected.getPower(attacker) ?: 0
+            val player = plan.getValue(attacker)
+            faceDamage[player] = faceDamage.getValue(player) - power
+            loyaltyLeft[walker] = loyaltyLeft.getOrElse(walker) { PlaneswalkerThreat.loyalty(state, walker) } - power
+            plan[attacker] = walker
+            unassigned.remove(attacker)
+        }
+    }
+
+    /** The default evaluator's board-presence weight over its life weight (`EvaluationWeights`). */
+    private const val BOARD_PRESENCE_WEIGHT = 1.5
 
     /**
      * The seat a plan aims at: the lowest-life opponent *player* at least one valid attacker may

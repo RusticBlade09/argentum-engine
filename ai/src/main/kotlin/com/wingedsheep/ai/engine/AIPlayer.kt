@@ -286,6 +286,7 @@ class AIPlayer(
                 crackBackWithoutChumps = profile.crackBackWithoutChumps,
                 lifeWeight = EvalWeights.resolve(profile.evalWeightsId).life,
                 chumpOnlyWhenInDanger = profile.chumpOnlyWhenInDanger,
+                attackPlaneswalkers = profile.attackPlaneswalkers,
                 chumpForTheClock = profile.chumpForTheClock,
             )
             val responder = DecisionResponder(

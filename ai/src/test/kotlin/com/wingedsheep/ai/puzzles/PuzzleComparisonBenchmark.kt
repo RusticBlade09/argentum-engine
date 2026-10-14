@@ -154,6 +154,9 @@ class PuzzleComparisonBenchmark : ScenarioTestBase() {
                 // An until-end-of-turn P/T change read only on a creature already in a fight.
                 AiProfile.PRODUCTION_EXPIRINGSTATS,
                 AiProfile.PRODUCTION_CANDIDATE_EXPIRINGSTATS,
+                // Each attacker picks its defender: opposing planeswalkers priced as engines.
+                AiProfile.PRODUCTION_WALKERATTACKS,
+                AiProfile.PRODUCTION_CANDIDATE_WALKERATTACKS,
                 // A beginning-of-combat pump bought only for creatures the attack plan sends.
                 AiProfile.PRODUCTION_PLANNEDPUMPS,
                 AiProfile.PRODUCTION_CANDIDATE_PLANNEDPUMPS,
