@@ -1,11 +1,16 @@
 package com.wingedsheep.ai.engine.knowledge
 
 import com.wingedsheep.engine.state.GameState
+import com.wingedsheep.engine.state.components.battlefield.CountersComponent
+import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.identity.ControllerComponent
 import com.wingedsheep.engine.state.components.stack.ActivatedAbilityOnStackComponent
 import com.wingedsheep.engine.state.components.stack.SpellOnStackComponent
 import com.wingedsheep.engine.state.components.stack.TriggeredAbilityOnStackComponent
+import com.wingedsheep.sdk.core.CounterType
+import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.core.Step
+import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.model.EntityId
 
 /**
@@ -83,7 +88,21 @@ internal object AmbushWindow {
      *
      * @param intent the *candidate's* intent. Only a [CardIntent.flashPermanent] reaches any of it.
      */
-    fun holds(state: GameState, playerId: EntityId, intent: CardIntent): Boolean {
+    fun holds(
+        state: GameState,
+        playerId: EntityId,
+        intent: CardIntent,
+        /**
+         * [com.wingedsheep.ai.engine.AiProfile.holdInstantSpeedDeploys]: judge the payoffs by
+         * [CardIntent.tagsOnArrival] instead of every tag the card carries, and release the hold
+         * on our own turn when holding would make it fight another instant for the same mana —
+         * see [manaIdleNowButContestedLater].
+         */
+        readArrival: Boolean = false,
+        /** The card being cast, for [manaIdleNowButContestedLater]. Null skips that release. */
+        castCardId: EntityId? = null,
+        intents: IntentCatalog? = null,
+    ): Boolean {
         if (!intent.flashPermanent) return false
 
         // It can attack, or tap for something, the moment it lands. That is a real payoff this turn
@@ -96,22 +115,145 @@ internal object AmbushWindow {
         // [opponentObjectOnTheStack].
         if (opponentObjectOnTheStack(state, playerId)) return false
 
-        if (intent.tags.any { it in PAYS_OFF_BEFORE_THE_AMBUSH }) return false
+        // Under [readArrival], only what the card can cash in this turn: a loot on attacking is
+        // no reason to land a no-haste body early — see [CardIntent.arrivalTags].
+        val tags = if (readArrival) intent.tagsOnArrival else intent.tags
+        if (tags.any { it in PAYS_OFF_BEFORE_THE_AMBUSH }) return false
 
         // An ETB that answers *their* board wants to happen before we attack. One that points only
         // at our own — a blink, a self-bounce — is worth exactly the same a step later, which is
         // Restoration Angel and is the position that started this. The tag alone cannot tell them
         // apart; see [CardIntent.targetsOnlyOurPermanents] for why.
-        if (intent.tags.any { it in ANSWERS_THEIR_BOARD } && !intent.targetsOnlyOurPermanents) {
+        if (tags.any { it in ANSWERS_THEIR_BOARD } && !intent.targetsOnlyOurPermanents) {
             return false
         }
 
         if (!laterWindowIsStillAhead(state, playerId)) return false
 
+        if (readArrival && castCardId != null && intents != null &&
+            manaIdleNowButContestedLater(state, playerId, castCardId, intents)
+        ) {
+            return false
+        }
+
         // Lethal on board, a full hand, or a game gone long — see [Patience], which owns all three
         // and is shared with the two patience bars so there is one definition of each rather than
         // three that can drift.
         return Patience.factorFor(state, state.projectedState, playerId) > 0.0
+    }
+
+    /**
+     * The same floor for an **instant that deploys** — a token maker, or a spell that empowers a
+     * planeswalker — under [com.wingedsheep.ai.engine.AiProfile.holdInstantSpeedDeploys].
+     *
+     * The argument is [holds]'s, moved from a flash permanent to the permanent an instant leaves
+     * behind: a token body cast on our own turn does nothing until we untap, and cast on theirs it
+     * is the same body plus an ambush and a turn of their decisions in hand. The misplay that asked
+     * for it (2026-10-14, Reality Fracture draft, turn 6): Jace's Machinations — whose whole first
+     * sentence is "activate Jace's loyalty abilities at instant speed" — cast in our own main phase
+     * with nothing else to spend the mana on, its Jace activated at once and then attacked down to
+     * three loyalty on the opponent's turn. Cast at their end step it is the same draw, a Jace they
+     * never get to attack, and a second activation on our turn.
+     *
+     * Read off the card only as far as the card can say it: an instant whose every tag is a body
+     * ([BODY_ONLY]) — anything that draws, pumps, removes or counters has its own branch in
+     * [HoldPolicy] and is never reached here. What the body can do on arrival is read off the
+     * [leaf] instead, because a token's characteristics are not on the card that makes it: see
+     * [deployActsBeforeTheWindow].
+     *
+     * The releases are [holds]'s: an opposing stack object, their declared attack, [Patience], and
+     * mana the hold would make contested.
+     *
+     * @param leaf the position the cast resolves to. Null — nothing to read — declines.
+     */
+    fun holdsInstantDeploy(
+        state: GameState,
+        leaf: GameState?,
+        playerId: EntityId,
+        intent: CardIntent,
+        castCardId: EntityId,
+        intents: IntentCatalog,
+    ): Boolean {
+        if (leaf == null) return false
+        if (intent.flashPermanent || intent.speed != Speed.INSTANT) return false
+        if (IntentTag.TOKEN_MAKER !in intent.tags || !intent.tags.all { it in BODY_ONLY }) return false
+        if (opponentObjectOnTheStack(state, playerId)) return false
+        if (!laterWindowIsStillAhead(state, playerId)) return false
+        if (deployActsBeforeTheWindow(state, leaf, playerId, intent)) return false
+        if (manaIdleNowButContestedLater(state, playerId, castCardId, intents)) return false
+        return Patience.factorFor(state, state.projectedState, playerId) > 0.0
+    }
+
+    /**
+     * Whether anything the cast put under our control — a new permanent, or a planeswalker whose
+     * loyalty it raised — can **act** before the window we would hold the spell for.
+     *
+     *  - A creature acts only with haste; a no-haste token waits for our untap like any flash body.
+     *  - A planeswalker acts at once: its loyalty abilities are ours to use in this main phase
+     *    (CR 606.3). Unless the spell also lets us use them at instant speed
+     *    ([CardIntent.grantsInstantSpeedLoyalty]) — then they are just as usable at the opponent's
+     *    end step, and a walker cast there is one they never get to attack.
+     *  - Anything else (a Treasure, a Clue, a Food) can be spent the moment it lands, and holding
+     *    it buys nothing provable, so it declines.
+     *
+     * A token maker whose leaf shows nothing new deployed nothing to hold for, and declines too.
+     */
+    private fun deployActsBeforeTheWindow(
+        state: GameState,
+        leaf: GameState,
+        playerId: EntityId,
+        intent: CardIntent,
+    ): Boolean {
+        val ours = state.projectedState.getBattlefieldControlledBy(playerId).toSet()
+        val projected = leaf.projectedState
+        var deployed = false
+        for (id in projected.getBattlefieldControlledBy(playerId)) {
+            val fresh = id !in ours
+            val empowered = !fresh && projected.isPlaneswalker(id) && loyalty(leaf, id) > loyalty(state, id)
+            if (!fresh && !empowered) continue
+            deployed = true
+            when {
+                projected.isPlaneswalker(id) -> if (!intent.grantsInstantSpeedLoyalty) return true
+                projected.isCreature(id) -> if (projected.hasKeyword(id, Keyword.HASTE)) return true
+                else -> return true
+            }
+        }
+        return !deployed
+    }
+
+    private fun loyalty(state: GameState, id: EntityId): Int =
+        state.getEntity(id)?.get<CountersComponent>()?.getCount(CounterType.LOYALTY) ?: 0
+
+    /**
+     * Whether holding the card past our own turn would leave it competing for mana that casting it
+     * now would not — [holds]' `readArrival` release, and [holdsInstantDeploy]'s.
+     *
+     * The ambush argument assumes the mana held up is free. It is not when another instant-speed
+     * card in hand wants the same mana on the opponent's turn: with four lands, a held Sphinx and a
+     * held Murder are one play between them, while the Sphinx cast now spends mana nothing else this
+     * turn was going to use and keeps the Murder up. So on our own turn the floor stands only while
+     * the mana we have can pay for this card and the cheapest other instant-speed card together.
+     * It compares mana values, not colours, and errs toward releasing: a release hands the choice
+     * back to the evaluator, it never forces the cast.
+     */
+    private fun manaIdleNowButContestedLater(
+        state: GameState,
+        playerId: EntityId,
+        castCardId: EntityId,
+        intents: IntentCatalog,
+    ): Boolean {
+        if (state.activePlayerId != playerId) return false
+        val cost = state.getEntity(castCardId)?.get<CardComponent>()?.manaCost?.cmc ?: return false
+        val cheapestOther = state.getZone(playerId, Zone.HAND)
+            .filter { it != castCardId }
+            .mapNotNull { id ->
+                val card = state.getEntity(id)?.get<CardComponent>() ?: return@mapNotNull null
+                if (intents.forName(card.name)?.speed != Speed.INSTANT) return@mapNotNull null
+                card.manaCost.cmc
+            }
+            .minOrNull() ?: return false
+        val available = intents.availableMana(state, playerId) ?: return false
+        return available < cost + cheapestOther
     }
 
     /**
@@ -197,6 +339,12 @@ internal object AmbushWindow {
         IntentTag.REMOVAL, IntentTag.EXILE_REMOVAL, IntentTag.SWEEPER, IntentTag.NEUTRALIZE,
         IntentTag.TAPPER, IntentTag.FIGHT,
     )
+
+    /**
+     * The tags of an instant whose whole payoff is what it leaves on the battlefield — see
+     * [holdsInstantDeploy]. Life gained is worth the same a window later, as [holds] argues.
+     */
+    private val BODY_ONLY = setOf(IntentTag.TOKEN_MAKER, IntentTag.LIFEGAIN)
 
     /** Their turn, from the moment attackers are known — see [laterWindowIsStillAhead]. */
     private val RELEASED_ON_THEIR_TURN = setOf(

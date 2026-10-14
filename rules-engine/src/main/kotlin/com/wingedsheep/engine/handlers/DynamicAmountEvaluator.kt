@@ -180,6 +180,7 @@ class DynamicAmountEvaluator(
         DynamicAmount.CraftedMaterialsTotalManaValue,
         DynamicAmount.CraftedMaterialsTotalPower,
         DynamicAmount.CreaturesThatCrewedOrSaddledThisTurn,
+        is DynamicAmount.CommanderColorIdentityCount,
         is DynamicAmount.DevotionTo,
         is DynamicAmount.DistinctCardTypesInCollections,
         DynamicAmount.DistinctColorsManaSpent,
@@ -546,6 +547,16 @@ class DynamicAmountEvaluator(
                 resolveUnifiedPlayerIds(state, amount.players, context, projectedState).minOfOrNull { playerId ->
                     evaluate(state, amount.inner, context.copy(controllerId = playerId), projectedState)
                 } ?: 0
+
+            // The number of colors in a player's commanders' color identity (CR 903.4) — the union
+            // across a Partner / Background pair. No commander (or a registry-free evaluator, with no
+            // definitions to read identity off) reads 0: CR 903.4f's "won't do anything". A *cost*
+            // priced from it is unpayable instead — see CostAtomAmounts.
+            is DynamicAmount.CommanderColorIdentityCount -> {
+                val playerId = resolveUnifiedPlayerIds(state, amount.player, context, projectedState).firstOrNull()
+                    ?: return 0
+                predicates.commanderColorIdentity(state, playerId)?.size ?: 0
+            }
 
             // Devotion (CR 700.5): the number of mana symbols of the named colors among the mana
             // costs of permanents the player controls. Hybrid ({W/U}), monocolored hybrid ({2/B}),

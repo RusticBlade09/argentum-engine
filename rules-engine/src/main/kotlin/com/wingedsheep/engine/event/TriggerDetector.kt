@@ -1406,6 +1406,12 @@ class TriggerDetector(
             val entityId = entry.entityId
             val cardComponent = entry.cardComponent
             val controllerId = entry.controllerId
+            // A permanent that left and returned within this batch (a flicker) is on the battlefield
+            // again as a new object (CR 400.7) that never saw its old self leave. That departure's
+            // look-back triggers belong to [DeathAndLeaveTriggerDetector]; firing here as well would
+            // trigger "whenever this or another creature leaves" twice for one departure.
+            if (event is ZoneChangeEvent && event.isBattlefieldDeparture &&
+                event.toZone != Zone.BATTLEFIELD && event.entityId == entityId) continue
 
             for (ability in entry.abilities) {
                 if (Zone.BATTLEFIELD !in ability.activeZones) continue

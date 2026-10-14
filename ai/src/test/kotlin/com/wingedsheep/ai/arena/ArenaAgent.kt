@@ -236,6 +236,10 @@ object ArenaAgents {
         // A precombat pump priced by the attack it buys, when it changes who attacks.
         ArenaAgent("production-planpumps", AiProfile.PRODUCTION_PLANPUMPS),
         ArenaAgent("production-candidate-planpumps", AiProfile.PRODUCTION_CANDIDATE_PLANPUMPS),
+        // Instant-speed deploys held for the opponent's turn: flash bodies judged by what they do on
+        // arrival, token and walker instants given the same hold.
+        ArenaAgent("production-deployhold", AiProfile.PRODUCTION_DEPLOYHOLD),
+        ArenaAgent("production-candidate-deployhold", AiProfile.PRODUCTION_CANDIDATE_DEPLOYHOLD),
         ArenaAgent("production-targeted", AiProfile.PRODUCTION_TARGETED),
         // Explicit ECL candidates. Their resource-backed weights fail closed to production's
         // evaluator until a validated artifact is installed; automatic selection is set-gated.

@@ -163,6 +163,9 @@ class PuzzleComparisonBenchmark : ScenarioTestBase() {
                 // A precombat pump priced by the attack it buys.
                 AiProfile.PRODUCTION_PLANPUMPS,
                 AiProfile.PRODUCTION_CANDIDATE_PLANPUMPS,
+                // Instant-speed deploys held for the opponent's turn.
+                AiProfile.PRODUCTION_DEPLOYHOLD,
+                AiProfile.PRODUCTION_CANDIDATE_DEPLOYHOLD,
                 // A beginning-of-combat pump bought only for creatures the attack plan sends.
                 AiProfile.PRODUCTION_PLANNEDPUMPS,
                 AiProfile.PRODUCTION_CANDIDATE_PLANNEDPUMPS,

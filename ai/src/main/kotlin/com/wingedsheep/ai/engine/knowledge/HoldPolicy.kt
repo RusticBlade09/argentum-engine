@@ -108,6 +108,12 @@ class HoldPolicy(
      */
     private val drawWithIdleMana: Boolean = false,
     /**
+     * [AiProfile.holdInstantSpeedDeploys][com.wingedsheep.ai.engine.AiProfile.holdInstantSpeedDeploys]
+     * — read a flash permanent's payoffs by what it can cash in on arrival, and give an instant
+     * that only deploys ([AmbushWindow.holdsInstantDeploy]) the same hold.
+     */
+    private val holdInstantSpeedDeploys: Boolean = false,
+    /**
      * The profile's `EvaluationWeights.boardPresence`, so [RemovalPatience] can quote its discount
      * in the same currency as the board value it compares against. The default is the compiled
      * fallback's, which is what every profile that does not opt in would have used anyway.
@@ -140,6 +146,11 @@ class HoldPolicy(
         cardName: String,
         cast: CastSpell? = null,
         activation: ActivateAbility? = null,
+        /**
+         * The position the action resolves to, for the readings a card cannot answer — what a
+         * token it makes can do ([AmbushWindow.holdsInstantDeploy]). Null where there is none.
+         */
+        leaf: GameState? = null,
     ): TimingVerdict {
         // Asked first. It returns [TimingVerdict.Neutral] with every flag off and on any action
         // that is not an activation, so everything below is reached exactly as it was.
@@ -149,7 +160,7 @@ class HoldPolicy(
 
         val intent = intents.forName(cardName) ?: return TimingVerdict.Neutral
 
-        val window = windowVerdictFor(state, playerId, intent, cast)
+        val window = windowVerdictFor(state, playerId, intent, cast, leaf)
         // A card that accomplishes nothing here is already floored below passing; there is no
         // target trade left to price on top of that.
         if (window is TimingVerdict.NoWindow) return window
@@ -342,6 +353,7 @@ class HoldPolicy(
         playerId: EntityId,
         intent: CardIntent,
         cast: CastSpell?,
+        leaf: GameState? = null,
     ): TimingVerdict {
         // The one sorcery-speed exception: a draw spell in our last main phase, where the mana is
         // otherwise about to empty unused. See [idleDrawWindow].
@@ -402,7 +414,18 @@ class HoldPolicy(
             // targeting points at. A flash creature that really does answer their board fails that
             // guard, this branch's condition goes false, and the removal branch below picks it up
             // unchanged. Nothing without flash reaches here at all.
-            holdFlashPermanentsForAmbush && AmbushWindow.holds(state, playerId, intent) ->
+            holdFlashPermanentsForAmbush && AmbushWindow.holds(
+                state, playerId, intent,
+                readArrival = holdInstantSpeedDeploys,
+                castCardId = cast?.cardId,
+                intents = intents,
+            ) -> TimingVerdict.NoWindow
+
+            // The same hold for an instant whose whole payoff is the body or walker it leaves
+            // behind. Its own guard declines anything that draws, removes, pumps or counters, so it
+            // takes nothing from the branches below.
+            holdInstantSpeedDeploys && cast != null &&
+                AmbushWindow.holdsInstantDeploy(state, leaf, playerId, intent, cast.cardId, intents) ->
                 TimingVerdict.NoWindow
 
             // Instant-speed removal: reward the windows that are strictly better than now, and
