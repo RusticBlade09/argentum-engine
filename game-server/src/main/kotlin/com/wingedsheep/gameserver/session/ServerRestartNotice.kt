@@ -28,7 +28,7 @@ import org.springframework.web.socket.CloseStatus
 class ServerRestartNotice(
     private val sessionRegistry: SessionRegistry,
     private val sender: MessageSender,
-    @param:Value("\${app.restart-expected-downtime-seconds:90}")
+    @param:Value("\${app.restart-expected-downtime-seconds:60}")
     private val expectedDowntimeSeconds: Int,
 ) {
     private val logger = LoggerFactory.getLogger(ServerRestartNotice::class.java)

@@ -16,7 +16,7 @@ app:
   version: ${APP_VERSION:dev}
   # Downtime quoted to connected players when the server shuts down for a restart (ServerRestartNotice).
   # A deploy takes about this long from SIGTERM to the new container accepting connections.
-  restart-expected-downtime-seconds: ${RESTART_EXPECTED_DOWNTIME_SECONDS:90}
+  restart-expected-downtime-seconds: ${RESTART_EXPECTED_DOWNTIME_SECONDS:60}
 
 spring:
   application:

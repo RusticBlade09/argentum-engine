@@ -19,7 +19,7 @@ export interface ServerRestartState {
 export const RESTART_RETRY_MS = 3_000
 
 /** Quoted when the restart was inferred from a close code alone. Matches the server's default. */
-export const DEFAULT_RESTART_SECONDS = 90
+export const DEFAULT_RESTART_SECONDS = 60
 
 const STORAGE_KEY = 'argentum-server-restart'
 

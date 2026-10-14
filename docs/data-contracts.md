@@ -223,7 +223,7 @@ Related recovery contracts:
   device. The server closes that socket right after sending; the receiving client stops all
   auto-reconnect (reconnecting would steal the session straight back) and shows a takeover
   overlay whose "Use here" button reclaims the session explicitly.
-- `{"type": "serverRestarting", "expectedDowntimeSeconds": 90}` (server) is sent to every connected
+- `{"type": "serverRestarting", "expectedDowntimeSeconds": 60}` (server) is sent to every connected
   socket when the server shuts down (SIGTERM, i.e. a deploy), and each socket is then closed with
   code **1012** (Service Restart). While shutting down the server skips its disconnect reactions —
   no `opponentDisconnected` countdowns, no abandonment timers — and turns away new sockets with the
