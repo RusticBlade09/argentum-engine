@@ -328,7 +328,14 @@ function DeckShelf({
   }, [rows])
   const legality = useDeckLegalFormats(legalityInput)
 
-  const open = (deck: UnifiedDeck) => navigate(`/deckbuilder/${encodeURIComponent(deck.id)}`)
+  // A cloud deck's id (`cloud:<n>`) names nothing in the deckbuilder's local library, so it opens
+  // through the account-deck deep link instead; local decks open by their stored id.
+  const open = (deck: UnifiedDeck) =>
+    navigate(
+      deck.cloudId != null
+        ? `/deckbuilder?accountDeck=${deck.cloudId}`
+        : `/deckbuilder/${encodeURIComponent(deck.id)}`,
+    )
 
   async function duplicate(deck: UnifiedDeck) {
     setError(null)
