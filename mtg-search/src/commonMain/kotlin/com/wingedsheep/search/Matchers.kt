@@ -177,7 +177,7 @@ object Matchers {
     }
 
     private val nameMatcher = entry(
-        listOf("name", "n"), STRING_OPS, "Card name (substring or regex)",
+        listOf("name", "n"), STRING_OPS, "Card name",
         build = { atom ->
             val (test, error) = textTest(atom)
             when {
@@ -199,7 +199,7 @@ object Matchers {
     )
 
     private val oracleMatcher = entry(
-        listOf("oracle", "o"), STRING_OPS, "Oracle text contains",
+        listOf("oracle", "o"), STRING_OPS, "Rules text",
         build = { atom ->
             // `!` only means "exact" on a name; on oracle text it is ignored.
             val (test, error) = textTest(atom.copy(exact = false))
@@ -226,7 +226,7 @@ object Matchers {
     private fun typeWords(atom: AtomNode) = atom.value.lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
 
     private val typeMatcher = entry(
-        listOf("type", "t"), STRING_OPS, "Type line (AND of words)",
+        listOf("type", "t"), STRING_OPS, "Type line — every word must appear",
         build = { atom ->
             val words = typeWords(atom)
             if (words.isEmpty()) ok(ALWAYS_TRUE)
@@ -559,9 +559,9 @@ object Matchers {
         nameMatcher,
         oracleMatcher,
         typeMatcher,
-        color(listOf("c", "color", "colour", "id", "identity"), "Color identity (CR 903.4)", "colour identity", atMostByCastability = true) { it.colorIdentity },
-        color(listOf("cost"), "Printed mana-cost colors", "mana cost colour", atMostByCastability = false) { it.colors },
-        entry(listOf("mana", "m"), NUMERIC_OPS, "Mana cost symbols (multiset compare)", mana) { atom ->
+        color(listOf("c", "color", "colour", "id", "identity"), "Colour identity", "colour identity", atMostByCastability = true) { it.colorIdentity },
+        color(listOf("cost"), "Colours in the mana cost", "mana cost colour", atMostByCastability = false) { it.colors },
+        entry(listOf("mana", "m"), NUMERIC_OPS, "Mana cost, e.g. {2}{U}", mana) { atom ->
             val cost = ManaCostMatch.parseQueryManaSymbols(atom.value).joinToString("") { "{$it}" }
             when (atom.op) {
                 Op.EQ, Op.EXACT -> "mana cost is $cost"
@@ -573,22 +573,22 @@ object Matchers {
             }
         },
         numeric(listOf("cmc", "mv", "manavalue"), "Mana value"),
-        numeric(listOf("pow", "power"), "Power (numeric; * counts as no number)"),
-        numeric(listOf("tou", "toughness"), "Toughness (numeric; * counts as no number)"),
+        numeric(listOf("pow", "power"), "Power"),
+        numeric(listOf("tou", "toughness"), "Toughness"),
         numeric(listOf("loy", "loyalty"), "Starting loyalty"),
-        entry(listOf("r", "rarity"), NUMERIC_OPS, "Rarity (ordinal: common < uncommon < rare < mythic)", rarity) { atom ->
+        entry(listOf("r", "rarity"), NUMERIC_OPS, "Rarity: common, uncommon, rare, mythic", rarity) { atom ->
             val target = RARITY_ALIAS[atom.value.lowercase()] ?: atom.value.uppercase()
             "rarity ${symbol(atom.op)} ${RARITY_WORD[target] ?: atom.value}"
         },
-        entry(listOf("s", "set", "e", "edition"), STRING_OPS, "Set code", set) { atom -> "printed in ${atom.value.trim().uppercase()}" },
-        entry(listOf("f", "format", "legal"), STRING_OPS, "Format legality", format) { atom ->
+        entry(listOf("s", "set", "e", "edition"), STRING_OPS, "Set code, e.g. blb", set) { atom -> "printed in ${atom.value.trim().uppercase()}" },
+        entry(listOf("f", "format", "legal"), STRING_OPS, "Legal in a format, e.g. standard", format) { atom ->
             "legal in ${atom.value.trim().lowercase().replaceFirstChar { it.uppercase() }}"
         },
-        entry(listOf("kw", "keyword"), STRING_OPS, "Keyword ability", keyword) { atom -> "has ${atom.value.lowercase()}" },
-        entry(listOf("layout"), STRING_OPS, "Card layout (transform / mdfc / normal)", layout) { atom ->
+        entry(listOf("kw", "keyword"), STRING_OPS, "Keyword ability, e.g. flying", keyword) { atom -> "has ${atom.value.lowercase()}" },
+        entry(listOf("layout"), STRING_OPS, "Layout: normal or double-faced", layout) { atom ->
             if (atom.value.lowercase() == "normal") "is single-faced" else "is double-faced"
         },
-        entry(listOf("is"), STRING_OPS, "Boolean flag (land / creature / vanilla / dfc / …)", isMatcher) { atom ->
+        entry(listOf("is"), STRING_OPS, "Shortcuts: land, creature, permanent, legendary, vanilla, dfc, …", isMatcher) { atom ->
             val v = atom.value.lowercase()
             IS_PHRASES[v] ?: "has $v"
         },

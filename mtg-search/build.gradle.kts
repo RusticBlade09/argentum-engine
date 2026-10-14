@@ -75,6 +75,7 @@ val verifyWebClientSearch by tasks.registering {
     group = "verification"
     description = "Fails when web-client/src/generated/mtg-search is stale. Fix: just search-js."
     dependsOn(jsLibrary)
+    mustRunAfter(syncWebClientSearch) // `just search-js test` checks the fresh copy
     val built = jsLibraryDir
     val checkedIn = webClientSearchDir.asFile
     inputs.dir(checkedIn)
