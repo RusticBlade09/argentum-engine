@@ -359,6 +359,8 @@ export type DecisionPhase =
  */
 export interface SelectCardsDecision extends PendingDecisionBase {
   readonly type: 'SelectCardsDecision'
+  /** Server-approved unit capacity per option; repeated IDs allocate multiple units. */
+  readonly selectionLimits?: Readonly<Record<EntityId, number>> | null
   readonly options: readonly EntityId[]
   readonly minSelections: number
   readonly maxSelections: number

@@ -109,7 +109,11 @@ class FastDecisionResponder(private val intents: IntentCatalog = IntentCatalog.N
             // evidence N, CR 701.59a): that gate is a *sum*, so "the minimum count" is an illegal
             // submission the validator rejects — pay it with the fewest cards instead.
             is SelectCardsDecision ->
-                if (decision.minTotalManaValue != null) {
+                if (decision.selectionLimits != null) {
+                    // Rollouts keep optional costs declined; mandatory allocations pay in full.
+                    CardsSelectedResponse(decision.id, if (decision.minSelections == 0) emptyList() else
+                        com.wingedsheep.ai.engine.CounterAllocation.fullPayment(decision).orEmpty())
+                } else if (decision.minTotalManaValue != null) {
                     CardsSelectedResponse(decision.id, manaFloorSelection(state, decision))
                 } else {
                     CardsSelectedResponse(

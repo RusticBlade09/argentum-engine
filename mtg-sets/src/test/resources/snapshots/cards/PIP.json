@@ -2075,6 +2075,175 @@
     ]
 }
 
+// Overseer of Vault 76
+{
+    "name": "Overseer of Vault 76",
+    "manaCost": "{2}{W}",
+    "typeLine": "Legendary Creature — Human Advisor",
+    "oracleText": "First Contact — Whenever Overseer of Vault 76 or another creature you control with power 3 or less enters, put a quest counter on Overseer of Vault 76.\nAt the beginning of combat on your turn, you may remove three quest counters from among permanents you control. When you do, put a +1/+1 counter on each creature you control and they gain vigilance until end of turn.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 3
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Overseer of Vault 76:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "filter": {
+                        "anyOf": [
+                            {
+                                "statePredicates": [
+                                    "IsSource"
+                                ]
+                            },
+                            {
+                                "cardPredicates": [
+                                    "IsCreature",
+                                    {
+                                        "type": "PowerAtMost",
+                                        "max": 3
+                                    }
+                                ],
+                                "controllerPredicate": "ControlledByYou"
+                            }
+                        ]
+                    },
+                    "to": "Battlefield"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "AddCounters",
+                    "counterType": "QUEST",
+                    "count": 1,
+                    "target": "Self"
+                }
+            },
+            {
+                "id": "Overseer of Vault 76:2",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "BEGIN_COMBAT"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "StoreNumber",
+                            "name": "number0",
+                            "amount": {
+                                "type": "AggregateBattlefield",
+                                "player": "You",
+                                "aggregation": "SUM",
+                                "counterType": "QUEST"
+                            }
+                        },
+                        {
+                            "type": "PayOrSuffer",
+                            "cost": {
+                                "type": "PayAtom",
+                                "atom": {
+                                    "type": "AtomRemoveCounters",
+                                    "counterType": "QUEST",
+                                    "count": {
+                                        "type": "Fixed",
+                                        "amount": 3
+                                    }
+                                }
+                            },
+                            "suffer": {
+                                "type": "Composite",
+                                "effects": []
+                            },
+                            "consequenceDescription": "do nothing"
+                        },
+                        {
+                            "type": "Gated",
+                            "gate": {
+                                "type": "Gate.WhenCondition",
+                                "condition": {
+                                    "type": "Compare",
+                                    "left": {
+                                        "type": "Subtract",
+                                        "left": {
+                                            "type": "VariableReference",
+                                            "variableName": "number0"
+                                        },
+                                        "right": {
+                                            "type": "AggregateBattlefield",
+                                            "player": "You",
+                                            "aggregation": "SUM",
+                                            "counterType": "QUEST"
+                                        }
+                                    },
+                                    "operator": "EQ",
+                                    "right": {
+                                        "type": "Fixed",
+                                        "amount": 3
+                                    }
+                                }
+                            },
+                            "then": {
+                                "type": "ReflexiveTrigger",
+                                "action": {
+                                    "type": "Composite",
+                                    "effects": []
+                                },
+                                "optional": false,
+                                "reflexiveEffect": {
+                                    "type": "ForEach",
+                                    "space": {
+                                        "type": "IterationSpace.Group",
+                                        "filter": {
+                                            "baseFilter": "creature ctrl:you"
+                                        }
+                                    },
+                                    "body": {
+                                        "type": "Composite",
+                                        "effects": [
+                                            {
+                                                "type": "AddCounters",
+                                                "counterType": "PLUS_ONE_PLUS_ONE",
+                                                "count": 1,
+                                                "target": "IterationEntity"
+                                            },
+                                            {
+                                                "type": "GrantKeyword",
+                                                "keyword": "VIGILANCE",
+                                                "target": "IterationEntity"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "descriptionOverride": "Put a +1/+1 counter on each creature you control and they gain vigilance until end of turn"
+                            }
+                        }
+                    ],
+                    "descriptionOverride": "You may remove three quest counters from among permanents you control. When you do, put a +1/+1 counter on each creature you control and they gain vigilance until end of turn."
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "19",
+        "rarity": "RARE",
+        "artist": "Kieran Yanner",
+        "imageUri": "https://cards.scryfall.io/normal/front/3/5/35848917-d658-4c3b-b675-4f0185f76dc4.jpg?1783912418",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "If Overseer of Vault 76 and one or more other creatures with power 3 or less enter the battlefield under your control at the same time, Overseer of Vault 76’s first ability will trigger for each of them."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Overseer of Vault 76’s last ability lets you choose to remove exactly three quest counters from among permanents you control when it resolves. You can’t remove more quest counters to multiply the effect."
+            }
+        ]
+    }
+}
+
 // Paladin Elizabeth Taggerdy
 {
     "name": "Paladin Elizabeth Taggerdy",

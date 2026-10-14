@@ -1226,6 +1226,11 @@ self-exclusive one is never offered the source in the first place.
   from among permanents matching `filter` you control. When `counterType` is set (e.g. `"+1/+1"`),
   only counters of that type are removed; when `null`, counters of any type may be removed in any
   combination.
+  Typed distributed payments use battlefield allocation controls: each permanent has a server-provided
+  `SelectCardsDecision.selectionLimits` capacity, and repeated entity IDs assign several counters to
+  that permanent. Submit the full required total or an empty selection to decline; zero-capacity
+  permanents are excluded. Both per-permanent capacities and the total are validated by the engine.
+
 - `Costs.pay.PutCountersOnPermanent(counterType, count = 1, filter = Permanent)` — put counters on a
   permanent **the payer controls**; the selected-permanent sibling of `PutCountersOnSelf`. Unlike that
   one — always payable, because it needs no selection — this is **unpayable when the payer controls no
@@ -6373,6 +6378,11 @@ Named constants keep card code readable: `Any` (default — any player or object
 `AnyPlayerOrPlaneswalker`, `AnyPlayerOrBattle` ("deals combat damage to a player or battle" — Beamtown
 Beatstick), `OpponentOrBattle` ("deals damage to an opponent or battle" — Bloodfeather Phoenix), `CreatureOrPlayer`, `OpponentOrPermanentTheyControl`. Anything else is
 spelled with the constructors: `Recipient.Object(GameObjectFilter.Creature.withSubtype("Vampire"))`.
+
+Zone-change trigger filters also honor `sourceItself()` and its negation against the observing
+source identity, including branches of a heterogeneous filter union. This permits a single
+ANY-bound trigger for “this permanent or another matching permanent enters” without treating
+the source branch as a match for every entrant.
 
 Every reading is relative to the observing permanent: "you" is its controller, `sourceItself()` /
 `attachedToBySource()` / `EnchantedPlayer` read *it*. One engine matcher answers it everywhere —

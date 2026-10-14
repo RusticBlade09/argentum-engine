@@ -1,3 +1,4 @@
+import { CounterAllocationControls } from './CounterAllocationControls'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useGameStore } from '@/store/gameStore.ts'
 import { useHasLegalActions } from '@/store/selectors.ts'
@@ -2734,6 +2735,8 @@ function GameCardImpl({
           </button>
         </div>
       )}
+
+      {battlefield && <CounterAllocationControls cardId={card.id} cardName={card.name} />}
 
       {/* "Casting" badge for the spell being cast during cost selection */}
       {isBeingCast && (

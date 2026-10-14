@@ -479,6 +479,17 @@ class DecisionResponder(
         decision: SelectCardsDecision,
         playerId: EntityId
     ): DecisionResponse {
+        if (decision.selectionLimits != null) {
+            val allocation = CounterAllocation.fullPayment(decision)
+            val decline = CardsSelectedResponse(decision.id, emptyList())
+            if (allocation == null) return decline
+            val payment = CardsSelectedResponse(decision.id, allocation)
+            if (decision.minSelections > 0) return payment
+            val payScore = evaluateChoice(state, simulator.simulateDecision(state, payment), playerId)
+            val declineScore = evaluateChoice(state, simulator.simulateDecision(state, decline), playerId)
+            return if (payScore >= declineScore) payment else decline
+        }
+
         val options = decision.options
         val min = decision.minSelections
         val max = decision.maxSelections

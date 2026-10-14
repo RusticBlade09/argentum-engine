@@ -87,6 +87,7 @@ export interface SelectionSliceActions {
   cancelManaColorSelection: (interactionEpoch: string | null) => void
   startDecisionSelection: (state: DecisionSelectionState) => void
   toggleDecisionSelection: (cardId: EntityId) => void
+  decrementDecisionSelection: (cardId: EntityId) => void
   cancelDecisionSelection: (decisionId: string) => void
   confirmDecisionSelection: (decisionId: string) => void
   startManaSelection: (actionInfo: LegalActionInfo) => void
@@ -527,6 +528,14 @@ export const createSelectionSlice: SliceCreator<SelectionSlice> = (set, get) => 
     set((state) => {
       if (!state.decisionSelectionState) return state
       const { selectedOptions, maxSelections } = state.decisionSelectionState
+      const limits = state.decisionSelectionState.selectionLimits
+      if (limits != null) {
+        const allocated = selectedOptions.filter((id) => id === cardId).length
+        if (!state.decisionSelectionState.validOptions.includes(cardId) ||
+            allocated >= (limits[cardId] ?? 0) || selectedOptions.length >= maxSelections) return state
+        return { decisionSelectionState: { ...state.decisionSelectionState,
+          selectedOptions: [...selectedOptions, cardId], warning: null } }
+      }
       const isSelected = selectedOptions.includes(cardId)
       if (isSelected) {
         return {
@@ -575,6 +584,17 @@ export const createSelectionSlice: SliceCreator<SelectionSlice> = (set, get) => 
     })
   },
 
+  decrementDecisionSelection: (cardId) => {
+    set((state) => {
+      const selection = state.decisionSelectionState
+      if (!selection?.selectionLimits) return state
+      const index = selection.selectedOptions.lastIndexOf(cardId)
+      if (index < 0) return state
+      return { decisionSelectionState: { ...selection,
+        selectedOptions: selection.selectedOptions.filter((_, i) => i !== index), warning: null } }
+    })
+  },
+
   cancelDecisionSelection: (decisionId) => {
     if (get().decisionSelectionState?.decisionId !== decisionId) return
     set({ decisionSelectionState: null })
@@ -584,6 +604,9 @@ export const createSelectionSlice: SliceCreator<SelectionSlice> = (set, get) => 
     const { decisionSelectionState, pendingDecision, playerId } = get()
     if (!decisionSelectionState || !pendingDecision || !playerId) return
     if (decisionSelectionState.decisionId !== decisionId || pendingDecision.id !== decisionId) return
+    if (decisionSelectionState.selectionLimits != null &&
+        decisionSelectionState.selectedOptions.length > 0 &&
+        decisionSelectionState.selectedOptions.length !== decisionSelectionState.maxSelections) return
 
     const action = {
       type: 'SubmitDecision' as const,

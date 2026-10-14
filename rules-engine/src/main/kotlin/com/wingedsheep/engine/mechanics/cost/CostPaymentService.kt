@@ -206,8 +206,16 @@ class CostPaymentService(private val services: EngineServices) {
                         // A typed counter cost is player-distributed: selecting the same entity
                         // multiple times assigns multiple counters to it. Any-type costs remain
                         // auto-resolved because their counter type must be chosen per removal.
-                        if (atom.counterType != null && count > 0) {
-                            selectionPrompt(state, payerId, resolved, sourceId, sourceName, ctx, candidates, count, useTargetingUI = true)
+                        val counterType = atom.counterType
+                        if (counterType != null && count > 0) {
+                            val limits = candidates.associateWith { id ->
+                                state.getEntity(id)?.get<CountersComponent>()?.getCount(counterType) ?: 0
+                            }.filterValues { it > 0 }
+                            selectionPrompt(
+                                state, payerId, resolved, sourceId, sourceName, ctx,
+                                limits.keys.toList(), count, useTargetingUI = true,
+                                selectionLimits = limits
+                            )
                         } else {
                             val prompt = "Remove $atom?"
                             yesNoPrompt(state, payerId, resolved, sourceId, sourceName, ctx, prompt, prompt.removeSuffix("?"))
@@ -274,7 +282,8 @@ class CostPaymentService(private val services: EngineServices) {
          * `minSelections` stays 0 regardless: this whole context is "pay or decline", and an empty
          * selection is the decline.
          */
-        minTotalManaValue: Int? = null
+        minTotalManaValue: Int? = null,
+        selectionLimits: Map<EntityId, Int>? = null
     ): PaymentResult {
         val result = decisionHandler.createCardSelectionDecision(
             state = state,
@@ -289,6 +298,7 @@ class CostPaymentService(private val services: EngineServices) {
             phase = DecisionPhase.RESOLUTION,
             useTargetingUI = useTargetingUI,
             minTotalManaValue = minTotalManaValue,
+            selectionLimits = selectionLimits,
             answer = continuation(payerId, sourceId, sourceName, cost, ctx)
         )
         val decision = result.pendingDecision!!

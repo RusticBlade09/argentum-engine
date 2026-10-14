@@ -1147,6 +1147,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         'Choose mode — pick the required number of modes; escalate and similar costs are shown as you go.',
         'Choose X — a slider with − and + buttons, capped at the most you can pay.',
         'Targets — click a highlighted card or a player’s life total, then Confirm. Optional targets can be declined.',
+        'Remove counters as a cost — use the − and + controls on highlighted battlefield permanents. You may remove several counters from one permanent or spread the payment across them; Confirm becomes available when the required total is allocated.',
         'Divide damage — assign amounts to each target; “Lethal” marks the point where a creature dies.',
         'Combat damage — with trample, deathtouch or several blockers, you assign attacking damage yourself, split among the blockers however you like (only trample needs every blocker at lethal before damage reaches the player).',
         'Order — cards going to the top of a library get arrow buttons.',

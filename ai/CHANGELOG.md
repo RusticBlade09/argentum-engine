@@ -28,6 +28,8 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- Allocates the full required counter payment across permanents, including several counters on one, and compares paying against declining.
+
 - The AI spreads required graveyard targets across owners instead of selecting several cards from one graveyard.
 
 - #3182 AI puts shield counters, pumps and protection from triggered abilities and from modal or tiered spells (Proud Pack-Rhino, Restoration Magic) on its own permanents instead of an opponent's

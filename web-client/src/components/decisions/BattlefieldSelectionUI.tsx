@@ -29,6 +29,7 @@ export function BattlefieldSelectionUI({
       minSelections: decision.minSelections,
       maxSelections: decision.maxSelections,
       prompt: decision.prompt,
+      selectionLimits: decision.selectionLimits ?? null,
     }
     startDecisionSelection(selectionState)
 
@@ -50,7 +51,8 @@ export function BattlefieldSelectionUI({
   const requiredMinimum = conditionalMinimums.length > 0
     ? Math.max(...conditionalMinimums.map((minimum) => minimum.requiredSelections))
     : minSelections
-  const canConfirm = selectedCount >= minSelections &&
+  const canConfirm = (decision.selectionLimits == null || selectedCount === maxSelections) &&
+    selectedCount >= minSelections &&
     selectedCount <= maxSelections &&
     (selectedCount >= requiredMinimum || satisfiesConditionalMinimum)
   const canSkip = minSelections === 0
@@ -77,7 +79,7 @@ export function BattlefieldSelectionUI({
       <div className={styles.hint}>
         {selectedCount > 0
           ? `${selectedCount} / ${maxSelections} selected`
-          : 'Click cards to select'}
+          : decision.selectionLimits != null ? 'Use + and − on permanents to allocate counters' : 'Click cards to select'}
         {conditionalMinimums.length > 0 ? ` (normally ${requiredMinimum})` : minSelections > 0 && ` (min ${minSelections})`}
       </div>
       {conditionalMinimums.map((minimum) => (

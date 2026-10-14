@@ -2374,6 +2374,7 @@ class TriggerMatcher(
         /** The permanent whose triggered ability is being gated — the "source" of `createdBySource()`. */
         sourceId: EntityId
     ): Boolean = when (predicate) {
+        com.wingedsheep.sdk.scripting.predicates.StatePredicate.IsSource -> event.entityId == sourceId
         com.wingedsheep.sdk.scripting.predicates.StatePredicate.SharesNameWithSpellCastThisTurn -> {
             if (event.isBattlefieldDeparture)
                 com.wingedsheep.engine.handlers.predicates.sharesNameWithSpellCastThisTurn(state, event.lastKnown?.name)

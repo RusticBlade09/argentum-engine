@@ -287,6 +287,17 @@ object DecisionValidators {
                 return "Invalid selection: $cardId is not a valid option"
             }
         }
+        if (decision.selectionLimits != null) {
+            for ((cardId, count) in response.selectedCards.groupingBy { it }.eachCount()) {
+                if (count > (decision.selectionLimits[cardId] ?: 0)) {
+                    return "Too many units selected from $cardId"
+                }
+            }
+            // Empty means decline. A nonempty allocation must pay the whole cost.
+            if (response.selectedCards.isNotEmpty() && response.selectedCards.size != decision.maxSelections) {
+                return "Allocate exactly ${decision.maxSelections} units or decline"
+            }
+        }
         if (response.selectedCards.size < decision.minSelections) {
             return "Not enough cards selected: need at least ${decision.minSelections}"
         }

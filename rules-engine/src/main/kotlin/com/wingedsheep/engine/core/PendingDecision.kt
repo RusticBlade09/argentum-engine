@@ -345,7 +345,10 @@ data class SelectCardsDecision(
      * an empty selection is "fail to find" (CR 701.23b). Lets consumers (the AI) read the
      * decision's meaning without parsing [prompt] or [selectedLabel].
      */
-    val librarySearch: Boolean = false
+    val librarySearch: Boolean = false,
+    /** Per-option repeat capacity for allocating units (such as counters) on permanents.
+     * Null means ordinary distinct-card selection. Counts include every repeated occurrence. */
+    val selectionLimits: Map<EntityId, Int>? = null
 ) : PendingDecision
 
 @Serializable

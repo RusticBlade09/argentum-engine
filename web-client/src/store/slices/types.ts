@@ -251,6 +251,7 @@ export interface GameOverState {
  * Decision selection state for SelectCardsDecision with useTargetingUI=true.
  */
 export interface DecisionSelectionState {
+  selectionLimits?: Readonly<Record<EntityId, number>> | null
   /** Original pool, preserved while selections narrow the highlighted choices. */
   selectionPool?: readonly EntityId[]
   /** Server-approved pools whose members may be selected together. */
@@ -1323,6 +1324,7 @@ export type GameStore = {
   cancelManaColorSelection: (interactionEpoch: string | null) => void
   startDecisionSelection: (state: DecisionSelectionState) => void
   toggleDecisionSelection: (cardId: EntityId) => void
+  decrementDecisionSelection: (cardId: EntityId) => void
   cancelDecisionSelection: (decisionId: string) => void
   confirmDecisionSelection: (decisionId: string) => void
   startDamageDistribution: (state: DamageDistributionState) => void
