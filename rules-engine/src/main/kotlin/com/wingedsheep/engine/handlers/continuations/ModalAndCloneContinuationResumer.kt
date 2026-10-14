@@ -907,6 +907,7 @@ class ModalAndCloneContinuationResumer(
                             syntheticRiotRemaining = continuation.syntheticRiotRemaining - 1,
                             entryOldObject = continuation.entryOldObject, entryNewObject = continuation.entryNewObject,
                             copyOfOriginalName = continuation.copyOfOriginalName,
+                            simultaneousEntryGroup = continuation.simultaneousEntryGroup,
                         )
                     if (repause != null) return repause
                 }
@@ -933,6 +934,7 @@ class ModalAndCloneContinuationResumer(
                 } else emptyList(),
                 entryOldObject = continuation.entryOldObject, entryNewObject = continuation.entryNewObject,
                 copyOfOriginalName = continuation.copyOfOriginalName,
+                simultaneousEntryGroup = continuation.simultaneousEntryGroup,
             )?.let { return it }
         }
 
@@ -954,6 +956,7 @@ class ModalAndCloneContinuationResumer(
             Zone.BATTLEFIELD,
             continuation.controllerId,
             copyOfOriginalName = continuation.copyOfOriginalName,
+            simultaneousEntryGroup = continuation.simultaneousEntryGroup,
             oldObject = continuation.entryOldObject, newObject = continuation.entryNewObject,
         )
         return checkForMore(newState, syntheticRiotEvents + zoneChangeEvent + sagaEvents)
@@ -1515,14 +1518,14 @@ class ModalAndCloneContinuationResumer(
             amountEvaluator = dynamicAmountEvaluator,
             targetFinder = services.targetFinder
         )
-        val created = executor.createTokens(
+        val created = com.wingedsheep.engine.handlers.effects.token.TokenEntryGroups.stamp(executor.createTokens(
             state = state,
             effect = continuation.effect,
             context = continuation.context,
             controllerId = continuation.controllerId,
             count = 1,
             auraHostId = hostId,
-        )
+        ), com.wingedsheep.engine.handlers.effects.token.TokenEntryGroups.group(continuation.context))
 
         val remaining = continuation.remaining - 1
         if (remaining <= 0) {

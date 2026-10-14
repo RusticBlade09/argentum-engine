@@ -287,7 +287,9 @@ class CoreAutoResumerModule(
                     )
                 else -> com.wingedsheep.engine.core.EffectResult.success(state)
             }
-            mergeAndContinue(result.toExecutionResult(), events, checkForMore)
+            val grouped = com.wingedsheep.engine.handlers.effects.token.TokenEntryGroups.stamp(
+                result, com.wingedsheep.engine.handlers.effects.token.TokenEntryGroups.group(continuation.context))
+            mergeAndContinue(grouped.toExecutionResult(), events, checkForMore)
         },
 
         // CR 605.3a — the player activated a mana ability while the engine was asking them for a

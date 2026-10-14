@@ -437,7 +437,9 @@ data class EntersWithChoiceOnBattlefieldContinuation(
     val entryOldObject: com.wingedsheep.engine.state.ObjectRef? = null,
     val entryNewObject: com.wingedsheep.engine.state.ObjectRef? = null,
     /** The printed name of a permanent that entered as a copy, for the entry event. */
-    val copyOfOriginalName: String? = null
+    val copyOfOriginalName: String? = null,
+    /** Token instruction identity retained across chained as-enters choices. */
+    val simultaneousEntryGroup: String? = null
 ) : AnswerContinuation
 
 /**

@@ -52,16 +52,10 @@ class TokenExecutors(
             effect: T,
             context: com.wingedsheep.engine.handlers.EffectContext
         ): com.wingedsheep.engine.core.EffectResult {
-            val result = delegate.execute(state, effect, context)
-            val entries = result.events.filterIsInstance<com.wingedsheep.engine.core.ZoneChangeEvent>()
-                .count { it.toZone == com.wingedsheep.sdk.core.Zone.BATTLEFIELD }
-            if (entries < 2) return result
-            val (group, groupedState) = result.state.newRoutingId()
-            return result.copy(state = groupedState, events = result.events.map {
-                if (it is com.wingedsheep.engine.core.ZoneChangeEvent &&
-                    it.toZone == com.wingedsheep.sdk.core.Zone.BATTLEFIELD) it.copy(simultaneousEntryGroup = group)
-                else it
-            })
+            val existingGroup = TokenEntryGroups.group(context)
+            val (group, scopedState) = if (existingGroup != null) existingGroup to state else state.newRoutingId()
+            val scopedContext = TokenEntryGroups.withGroup(context, group)
+            return TokenEntryGroups.stamp(delegate.execute(scopedState, effect, scopedContext), group)
         }
     }
 }

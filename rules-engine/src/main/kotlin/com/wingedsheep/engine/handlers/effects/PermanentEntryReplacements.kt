@@ -355,6 +355,7 @@ object PermanentEntryReplacements {
         entryOldObject: com.wingedsheep.engine.state.ObjectRef? = null,
         entryNewObject: com.wingedsheep.engine.state.ObjectRef? = state.objectRef(entityId),
         copyOfOriginalName: String? = null,
+        simultaneousEntryGroup: String? = null,
     ): ExecutionResult? {
         val prompt = entersChoicePrompt(
             state, entityId, controllerId, cardComponent, choice, fromZone,
@@ -367,6 +368,7 @@ object PermanentEntryReplacements {
             prompt.answer.copy(
                 entryOldObject = entryOldObject, entryNewObject = entryNewObject,
                 copyOfOriginalName = copyOfOriginalName,
+                simultaneousEntryGroup = simultaneousEntryGroup,
             ),
             carryEvents + prompt.events,
         )

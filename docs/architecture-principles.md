@@ -843,7 +843,9 @@ triggering object, or the object a `ForEach` loop is visiting (`IterationEntity`
 Battlefield entry events carry an internal `simultaneousEntryGroup` when a shared mover places several
 cards in one instruction; token-creation executors stamp the same boundary for multiple tokens.
 The group is an opaque game-local routing token, shared by those arrivals
-and distinct from any later instruction. Trigger detection uses it to let a source entering alongside
+and distinct from any later instruction. Token groups are allocated before execution and ride the
+existing pipeline context through replacement decisions and remaining-copy continuations; an
+as-enters answer retains the group on its eventual entry event. Trigger detection uses it to let a source entering alongside
 other permanents observe them and bind its new battlefield object, without treating the concatenated
 events of a whole composite resolution as one simultaneous entry. Single-card moves need no group.
 
