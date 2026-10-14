@@ -10,7 +10,7 @@
  * (localStorage). Server validation reuses POST /api/decks/validate.
  */
 import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   useDeckLibrary,
   commandersOf,
@@ -84,7 +84,7 @@ import {
   type SharedDeck,
 } from './shareDeck'
 import { PageShell } from '@/components/ui/PageShell'
-import { BuilderModeSwitch } from './BuilderModeSwitch'
+import { BuilderModeSwitch, clearWorkingCopy, peekWorkingCopy, stashWorkingCopy } from './BuilderModeSwitch'
 import { DeckHoverPreview } from './DeckHoverPreview'
 import { type HoverStore, useHovered, useHoverStore } from '@/components/ui/hoverStore'
 import { getDeck as getAccountDeck, upsertDeckByName } from '@/api/account'
@@ -204,6 +204,19 @@ function pinnedPrintingsFromEntries(
     if (e.printing) out[e.name] = e.printing
   }
   return { ...out, ...(commanders ? commanderPinsOf(commanders) : {}) }
+}
+
+/** The deck being built, as stashed while the player is in cube mode (see `BuilderModeSwitch`). */
+interface DeckWorkingCopy {
+  readonly activeDeckId: string | null
+  readonly deckName: string
+  readonly deckNote: string
+  readonly coverCard: string | null
+  readonly deckCards: Record<string, number>
+  readonly sideboardCards: Record<string, number>
+  readonly companion: string | null
+  readonly commanders: readonly string[]
+  readonly pinnedPrintings: Record<string, PrintingRef>
 }
 
 /** The commander fields a saved, shared or example deck carries. */
@@ -328,29 +341,35 @@ export function DeckbuilderPage() {
     [nameByPrinting],
   )
 
-  // Working deck state.
-  const [deckName, setDeckName] = useState('Untitled deck')
+  // Working deck state. A deck left here by a switch to cube mode — saved or not — starts out exactly
+  // as it was left rather than reloading from the library (or blank, for a deck never saved).
+  const location = useLocation()
+  const [resume] = useState(() => peekWorkingCopy<DeckWorkingCopy>('deck', location.pathname))
+  useEffect(() => {
+    if (resume) clearWorkingCopy('deck')
+  }, [resume])
+  const [deckName, setDeckName] = useState(resume?.deckName ?? 'Untitled deck')
   // The owner's note and chosen cover card — what the deck galleries show besides the name.
   // A null cover means automatic (the rarest card); see `deckCover`.
-  const [deckNote, setDeckNote] = useState('')
-  const [coverCard, setCoverCard] = useState<string | null>(null)
+  const [deckNote, setDeckNote] = useState(resume?.deckNote ?? '')
+  const [coverCard, setCoverCard] = useState<string | null>(resume?.coverCard ?? null)
   const [coverPickerOpen, setCoverPickerOpen] = useState(false)
-  const [deckCards, setDeckCards] = useState<Record<string, number>>({})
+  const [deckCards, setDeckCards] = useState<Record<string, number>>(resume?.deckCards ?? {})
   // Constructed sideboard ("outside the game", CR 100.4a) — cards reachable in-game only by wish
   // effects (Burning Wish, …). Persisted on the saved deck and sent as `sideboard` when playing.
   // Limited (sealed/draft) decks don't use this: their sideboard is the pool − maindeck complement,
   // derived server-side (CR 100.4b).
-  const [sideboardCards, setSideboardCards] = useState<Record<string, number>>({})
+  const [sideboardCards, setSideboardCards] = useState<Record<string, number>>(resume?.sideboardCards ?? {})
   // The deck's companion (CR 702.139): one sideboard card with a companion ability, revealed before
   // the game and fetchable for {3} once. Marked from the sideboard panel; the server validates the
   // condition (and, in Commander, the colour identity) on the same /validate round trip.
-  const [companion, setCompanion] = useState<string | null>(null)
+  const [companion, setCompanion] = useState<string | null>(resume?.companion ?? null)
   // Only a companion still on the sideboard counts — removing the card un-marks it.
   const companionForSave: string | null = companion && (sideboardCards[companion] ?? 0) > 0 ? companion : null
   const toggleCompanion = useCallback((name: string) => {
     setCompanion((prev) => (prev === name ? null : name))
   }, [])
-  const [activeDeckId, setActiveDeckId] = useState<string | null>(null)
+  const [activeDeckId, setActiveDeckId] = useState<string | null>(resume?.activeDeckId ?? null)
   // When signed in, the unified Save targets the account (cloud); otherwise it writes to the local
   // browser library. `saveFlash` briefly overrides the Save button label to confirm the result.
   const isLoggedIn = useAuthStore((s) => s.status) === 'authenticated'
@@ -365,7 +384,7 @@ export function DeckbuilderPage() {
   // UI rows yet — Phase 7's first ship pins one printing per name; the storage shape supports
   // splitting later without a v3 bump. Counts collapse on name regardless, so the singleton /
   // 4-of cap stays correct either way (CR 100.4).
-  const [pinnedPrintings, setPinnedPrintings] = useState<Record<string, PrintingRef>>({})
+  const [pinnedPrintings, setPinnedPrintings] = useState<Record<string, PrintingRef>>(resume?.pinnedPrintings ?? {})
   // Art for pinned printings, keyed by card name. Populated from two sources: (a) the
   // printing picker, which already has every printing's image URL on hand when the user
   // clicks a thumbnail, so a fresh pin populates here for free; (b) a batched
@@ -379,7 +398,7 @@ export function DeckbuilderPage() {
   // picked yet or the current format doesn't use one; two for a partner pair (CR 702.124), the
   // first being the deck's `commander` and the second its `secondCommander`. The deckbuilder UI
   // exposes a crown toggle on each row to set/clear these — see DeckListPanel below.
-  const [commanders, setCommanders] = useState<readonly string[]>([])
+  const [commanders, setCommanders] = useState<readonly string[]>(resume?.commanders ?? [])
   const commander: string | null = commanders[0] ?? null
   const secondCommander: string | null = commanders[1] ?? null
 
@@ -392,7 +411,8 @@ export function DeckbuilderPage() {
   // this, react-router's `setSearchParams` reference changes on every URL update — which
   // includes typing into the search filter. Each keystroke would otherwise re-trigger
   // hydration and overwrite in-progress edits with whatever's persisted in localStorage.
-  const lastHydratedDeckIdRef = useRef<string | null>(null)
+  // A resumed working copy already is this deck, newer than what's saved: don't hydrate over it.
+  const lastHydratedDeckIdRef = useRef<string | null>(resume ? deckId ?? null : null)
   useEffect(() => {
     if (!hydrated || !deckId) return
     if (lastHydratedDeckIdRef.current === deckId) return
@@ -1324,10 +1344,15 @@ export function DeckbuilderPage() {
 
   const closeTools = () => setToolsOpen(false)
   const isEmptyDeck = Object.keys(deckCards).length === 0
+  // Flipping to cube mode is a tab switch, not an exit: the deck — saved or not — waits for the way back.
+  const stashDeck = () =>
+    stashWorkingCopy<DeckWorkingCopy>('deck', {
+      activeDeckId, deckName, deckNote, coverCard, deckCards, sideboardCards, companion, commanders, pinnedPrintings,
+    })
 
   return (
     <>
-    <PageShell title={<BuilderModeSwitch mode="deck" />} fit width="full" plain>
+    <PageShell title={<BuilderModeSwitch mode="deck" onLeave={stashDeck} />} fit width="full" plain>
       <div className={styles.toolbar}>
         <div className={styles.viewToggle} role="group" aria-label="View mode">
           <button

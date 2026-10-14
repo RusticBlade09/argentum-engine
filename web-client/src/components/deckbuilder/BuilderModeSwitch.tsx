@@ -3,7 +3,9 @@
  *
  * Decks and cubes are built with the same card browser, so they are one tool with two modes rather
  * than two tools; this switch is what says so. Each mode remembers where it was for the rest of the
- * session, so switching away and back returns to the same deck or cube instead of a blank one.
+ * session, so switching away and back returns to the same deck or cube instead of a blank one — and,
+ * through {@link stashWorkingCopy} / {@link peekWorkingCopy}, to the same *unsaved* contents: a tab
+ * flip must never cost the player the deck or cube they were in the middle of building.
  */
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -14,6 +16,11 @@ export type BuilderMode = 'deck' | 'cube'
 const LAST_PATH_KEY: Record<BuilderMode, string> = {
   deck: 'argentum.builder.lastDeckPath',
   cube: 'argentum.builder.lastCubePath',
+}
+
+const WORKING_COPY_KEY: Record<BuilderMode, string> = {
+  deck: 'argentum.builder.workingDeck',
+  cube: 'argentum.builder.workingCube',
 }
 
 const DEFAULT_PATH: Record<BuilderMode, string> = {
@@ -29,16 +36,54 @@ function readLastPath(mode: BuilderMode): string {
   }
 }
 
+/**
+ * Keeps a mode's in-progress (possibly unsaved) contents for this session, tied to the page they
+ * came from. Only a return to that same page picks them up again.
+ */
+export function stashWorkingCopy<T>(mode: BuilderMode, data: T) {
+  try {
+    window.sessionStorage.setItem(
+      WORKING_COPY_KEY[mode],
+      JSON.stringify({ path: window.location.pathname, data }),
+    )
+  } catch {
+    // Storage blocked or full: the switch still works, the working copy just isn't kept.
+  }
+}
+
+/**
+ * The working copy stashed for this page, if any. Non-destructive so it is safe in render (StrictMode
+ * runs initialisers twice); call {@link clearWorkingCopy} once it has been adopted.
+ */
+export function peekWorkingCopy<T>(mode: BuilderMode, pathname: string): T | null {
+  try {
+    const raw = window.sessionStorage.getItem(WORKING_COPY_KEY[mode])
+    if (!raw) return null
+    const stash = JSON.parse(raw) as { path?: string; data?: T }
+    return stash.path === pathname && stash.data !== undefined ? stash.data : null
+  } catch {
+    return null
+  }
+}
+
+export function clearWorkingCopy(mode: BuilderMode) {
+  try {
+    window.sessionStorage.removeItem(WORKING_COPY_KEY[mode])
+  } catch {
+    // Nothing to clear.
+  }
+}
+
 export function BuilderModeSwitch({
   mode,
-  guard,
+  onLeave,
 }: {
   mode: BuilderMode
   /**
-   * Asked before leaving for the other mode; call `proceed` to go. The cube builder uses it to offer
-   * saving unsaved changes first. Without one, the switch navigates straight away.
+   * Called just before switching to the other mode — each builder stashes its working copy here
+   * ({@link stashWorkingCopy}), so switching back restores it, unsaved changes and all.
    */
-  guard?: (proceed: () => void) => void
+  onLeave?: () => void
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -54,9 +99,8 @@ export function BuilderModeSwitch({
 
   function go(target: BuilderMode) {
     if (target === mode) return
-    const proceed = () => navigate(readLastPath(target))
-    if (guard) guard(proceed)
-    else proceed()
+    onLeave?.()
+    navigate(readLastPath(target))
   }
 
   return (

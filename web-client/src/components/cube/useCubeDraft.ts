@@ -31,18 +31,37 @@ export interface CubeDraftOptions {
   readonly catalogReady: boolean
   /** Told about every successful save — a page uses it to move a new cube onto its own URL. */
   readonly onSaved?: (cube: UnifiedCube) => void
+  /** Unsaved edits to pick up where they were left — what `workingCopy()` handed out earlier. */
+  readonly resume?: CubeWorkingCopy | null
 }
 
-export function useCubeDraft({ cube, availableSets, lookup, catalogReady, onSaved }: CubeDraftOptions) {
+/** A draft's edits plus what they are measured against, so a restored draft is exactly as dirty as it was. */
+export interface CubeWorkingCopy {
+  readonly name: string
+  readonly description: string
+  readonly entries: SharedCubeEntry[]
+  readonly packSize: number
+  readonly boosterStyle: CubeBoosterStyle
+  readonly basicLandSetCode: string
+  readonly baseline: string
+}
+
+export function useCubeDraft({ cube, availableSets, lookup, catalogReady, onSaved, resume }: CubeDraftOptions) {
   const { cubes, saveCube, share, unshare, isLoggedIn } = useUnifiedCubes()
 
   const [saved, setSaved] = useState<UnifiedCube | null>(cube)
-  const [name, setName] = useState(cube?.name ?? DEFAULT_CUBE_NAME)
-  const [description, setDescription] = useState(cube?.description ?? '')
-  const [entries, setEntries] = useState<SharedCubeEntry[]>(() => cube?.cards.map((e) => ({ ...e })) ?? [])
-  const [packSize, setPackSize] = useState(cube?.packSize ?? DEFAULT_CUBE_PACK_SIZE)
-  const [boosterStyle, setBoosterStyle] = useState<CubeBoosterStyle>(cube?.boosterStyle ?? 'SHUFFLED')
-  const [basicLandSetCode, setBasicLandSetCode] = useState(cube?.basicLandSetCode ?? availableSets[0]?.code ?? '')
+  const [name, setName] = useState(resume?.name ?? cube?.name ?? DEFAULT_CUBE_NAME)
+  const [description, setDescription] = useState(resume?.description ?? cube?.description ?? '')
+  const [entries, setEntries] = useState<SharedCubeEntry[]>(
+    () => resume?.entries ?? cube?.cards.map((e) => ({ ...e })) ?? [],
+  )
+  const [packSize, setPackSize] = useState(resume?.packSize ?? cube?.packSize ?? DEFAULT_CUBE_PACK_SIZE)
+  const [boosterStyle, setBoosterStyle] = useState<CubeBoosterStyle>(
+    resume?.boosterStyle ?? cube?.boosterStyle ?? 'SHUFFLED',
+  )
+  const [basicLandSetCode, setBasicLandSetCode] = useState(
+    resume?.basicLandSetCode ?? cube?.basicLandSetCode ?? availableSets[0]?.code ?? '',
+  )
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -61,8 +80,12 @@ export function useCubeDraft({ cube, availableSets, lookup, catalogReady, onSave
   )
 
   /** What was last saved (or opened), to tell unsaved edits apart from a clean cube. */
-  const [baseline, setBaseline] = useState(() => JSON.stringify(shared))
+  const [baseline, setBaseline] = useState(() => resume?.baseline ?? JSON.stringify(shared))
   const dirty = JSON.stringify(shared) !== baseline
+
+  /** The unsaved edits, for a page to stash while the player is elsewhere; null when there are none. */
+  const workingCopy = (): CubeWorkingCopy | null =>
+    dirty ? { name, description, entries, packSize, boosterStyle, basicLandSetCode, baseline } : null
 
   // The editor renders before the server's set list has arrived; adopt the first set once it does —
   // into the baseline too, since that is a default arriving, not an edit.
@@ -231,7 +254,7 @@ export function useCubeDraft({ cube, availableSets, lookup, catalogReady, onSave
     // Editing
     setCount, setRarity, addOne, removeOne, addFromSet, importList, dropUnresolved,
     // Saving and sharing
-    saved, dirty, saving, saveError, notice, saveState, isLoggedIn,
+    saved, dirty, saving, saveError, notice, saveState, isLoggedIn, workingCopy,
     save, copyList, shareSaved, unshareSaved,
   }
 }

@@ -916,7 +916,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'limited',
     title: 'Building a cube',
     summary:
-      'Cubes are built in the deckbuilder: flip the Decks | Cubes switch at the top, or open a cube from the Cubes page. Browse and filter cards exactly as for a deck, add a whole set or paste a list, choose how the cube becomes packs, and save it. The lobby’s Cube panel has a compact editor for quick tweaks. Cubes live alongside your decks — in this browser as a guest, in your account when signed in.',
+      'Cubes are built in the deckbuilder: flip the Decks | Cubes switch at the top, or open a cube from the Cubes page. Flipping back and forth keeps what you were working on in each, saved or not, for the rest of the session. Browse and filter cards exactly as for a deck, add a whole set or paste a list, choose how the cube becomes packs, and save it. The lobby’s Cube panel has a compact editor for quick tweaks. Cubes live alongside your decks — in this browser as a guest, in your account when signed in.',
     body: [
       { kind: 'p', text: 'A cube is a list of card names with counts, so it isn’t tied to any set or printing. The builder keeps the deckbuilder’s card grid and filters; what changes in cube mode is the right-hand panel — no sideboard, format or 4-copy limit, but packs, rarities and pack health instead. Three ways to fill a cube:' },
       { kind: 'ul', items: [
