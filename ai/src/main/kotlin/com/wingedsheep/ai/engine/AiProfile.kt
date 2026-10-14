@@ -872,6 +872,20 @@ data class AiProfile(
      *    re-pricing of the hand alone flips it.
      */
     val surplusAwareLands: Boolean = false,
+    /**
+     * Cast **enablers before what they discount**: in our own main phase a spell scores as at
+     * least the best spell it makes cheaper (or castable), judged from the position right after it
+     * — the same credit [landDropUnlocksSpells] gives a land.
+     *
+     * 2026-10-14 Reality Fracture draft logs, `LIVE`, game `8522de5e` turn 10: Traxos, Academy
+     * Guardian ("costs {2} less if you've cast a noncreature spell this turn") cast for its full
+     * {3}{U} with Tam's Resistance ({1}{G/U} sorcery) in hand. Tam's first and Traxos second cost
+     * the same four mana and add a +1/+1 counter and four Jace loyalty. A one-ply search sees
+     * Traxos beat Tam's on its own and never sees the pair. Read off the engine's enumerated price,
+     * so it covers "spells cast this turn" discounts and cost reducers alike, and it only follows
+     * cards already in hand. A follow-up does not lift an enabler the hold policy floored.
+     */
+    val enablersFirst: Boolean = false,
     /** Non-null profiles may only be selected automatically for this set. Arena selection stays explicit. */
     val restrictedToSet: String? = null,
 ) {
@@ -1812,6 +1826,26 @@ data class AiProfile(
             activatedPumpsNeedAPlannedAttack = true,
             attackPlaneswalkers = true,
             defendPlaneswalkers = true,
+            enablersFirst = true,
+        )
+
+        /**
+         * [enablersFirst] alone on top of [PRODUCTION], so a puzzle or an arena point that moves is
+         * attributable to it.
+         */
+        val PRODUCTION_ENABLERS = PRODUCTION.copy(
+            id = "production-enablers",
+            enablersFirst = true,
+        )
+
+        /**
+         * [enablersFirst] on top of [PRODUCTION_CANDIDATE_EXPIRING] — the last pinned candidate
+         * [LIVE] builds on — so `just arena production-candidate-expiring
+         * production-candidate-enablers` measures this flag and nothing else. [LIVE] ships it.
+         */
+        val PRODUCTION_CANDIDATE_ENABLERS = PRODUCTION_CANDIDATE_EXPIRING.copy(
+            id = "production-candidate-enablers",
+            enablersFirst = true,
         )
 
         /**

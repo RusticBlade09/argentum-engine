@@ -180,6 +180,11 @@ class Strategist(
      */
     private val activatedPumpsNeedAPlannedAttack: Boolean = false,
     /**
+     * [AiProfile.enablersFirst] — a spell scores as the best spell it makes cheaper. See
+     * [enablerFollowUps].
+     */
+    private val enablersFirst: Boolean = false,
+    /**
      * The profile's `EvaluationWeights.boardPresence`. Only [HoldPolicy] reads it, to quote a
      * patience discount in the same units the leaf score prices board value in.
      */
@@ -365,9 +370,15 @@ class Strategist(
         // ── Pass 1b: what each land drop makes castable ──
         // Scored in the same batch as the leaves, from the same root, so the follow-ups compete
         // with the other candidates on one scale. See [landDropFollowUps].
-        val followUps = if (landDropUnlocksSpells && !forcedPlay) {
-            landDropFollowUps(evaluationState, legalActions, leaves, leafStates, playerId, budget)
-        } else emptyList()
+        val followUps = buildList {
+            if (landDropUnlocksSpells && !forcedPlay) {
+                addAll(landDropFollowUps(evaluationState, legalActions, leaves, leafStates, playerId, budget))
+            }
+            // ── Pass 1c: what each spell makes cheaper — see [enablerFollowUps] ──
+            if (enablersFirst && !forcedPlay) {
+                addAll(enablerFollowUps(evaluationState, legalActions, leaves, leafStates, playerId, budget))
+            }
+        }
 
         // ── Pass 2: score every leaf at once ──
         val allScores = candidateEvaluator.scoreAll(
@@ -384,22 +395,42 @@ class Strategist(
 
         // ── Pass 3: per-card timing and advisor adjustments, in raw evaluator units ──
         val firstCandidate = if (pass != null) 1 else 0
+        val owns = (0 until leaves.size).map { i ->
+            if (i < firstCandidate) null
+            else if (forcedPlay) AdjustedScore(leafScores[i])
+            else adjustScore(evaluationState, leaves[i], playerId, leafScores[i], passScore, leafStates[i])
+        }
+        val rooted by lazy(LazyThreadSafetyMode.NONE) { evaluator.rootedAt(evaluationState, playerId) }
         val adjusted = (firstCandidate until leaves.size).map { i ->
-            val own = if (forcedPlay) AdjustedScore(leafScores[i])
-                else adjustScore(evaluationState, leaves[i], playerId, leafScores[i], passScore, leafStates[i])
+            val own = owns[i]!!
             // A land drop is worth at least the best spell it unlocks, judged as that spell's own
-            // decision would judge it — from the position right after the land.
-            val unlocked = followUps.indices.filter { followUps[it].landIndex == i }.map { f ->
+            // decision would judge it — from the position right after the land. So is a spell that
+            // makes another cheaper ([enablerFollowUps]), unless its own window floored it: a card
+            // that does nothing here is not made a play by what it discounts.
+            val unlocked = followUps.indices.filter { followUps[it].landIndex == i && !own.floored }.map { f ->
                 val followUp = followUps[f]
-                followUp to adjustScore(
-                    leafStates[i], followUp.action, playerId, followUpScores[f], passScore, followUp.leaf,
-                )
+                val sibling = followUp.sibling
+                followUp to if (sibling != null) {
+                    // The discounted spell is also a candidate on its own. Price the pair as that
+                    // candidate's score plus what the pair's board adds over it, both read by the
+                    // static evaluator from this root: the two leaves differ only by the enabler
+                    // and the mana saved, and a playout estimate of each — sequential halving
+                    // gives the follow-up a fraction of the sibling's playouts — is noise on a
+                    // difference that size.
+                    val siblingScore = owns[sibling]!!
+                    val pairGain = rooted.evaluate(followUp.leaf, followUp.leaf.projectedState, playerId) -
+                        rooted.evaluate(leafStates[sibling], leafStates[sibling].projectedState, playerId)
+                    siblingScore.copy(score = siblingScore.score + pairGain)
+                } else {
+                    adjustScore(leafStates[i], followUp.action, playerId, followUpScores[f], passScore, followUp.leaf)
+                }
             }.maxByOrNull { it.second.score }
             val adjustment = if (unlocked != null && unlocked.second.score > own.score) {
                 val name = resolveCardName(leafStates[i], unlocked.first.action) ?: "a spell"
+                val why = if (leaves[i].action is PlayLand) "land first: unlocks" else "first: discounts"
                 AdjustedScore(
                     unlocked.second.score,
-                    listOfNotNull(own.note, "land first: unlocks $name %.2f".format(unlocked.second.score))
+                    listOfNotNull(own.note, "$why $name %.2f".format(unlocked.second.score))
                         .joinToString("; "),
                     unlocked.second.idleBonus,
                 )
@@ -885,13 +916,13 @@ class Strategist(
         if (timing is TimingVerdict.NoWindow) {
             // The card does nothing here, so nothing the simulation reports should make it beat
             // passing. See [TimingVerdict.NoWindow] for why this is a floor and not a penalty.
-            return AdjustedScore(passScore - 1.0, "hold policy: wrong window — floored below passing")
+            return AdjustedScore(passScore - 1.0, "hold policy: wrong window — floored below passing", floored = true)
         }
         if (activatedPumpsNeedAPlannedAttack && pumpLeftHomeByThePlan(state, action, playerId, cardName, leafState)) {
             // The same floor, for the same reason: what it bought is gone at cleanup, and the attack
             // that could have spent it either leaves every creature it lands on at home or sends
             // them without it.
-            return AdjustedScore(passScore - 1.0, "attack plan does not need the pump — floored below passing")
+            return AdjustedScore(passScore - 1.0, "attack plan does not need the pump — floored below passing", floored = true)
         }
         val timingDelta = (timing as? TimingVerdict.Adjust)?.delta ?: 0.0
         val idleBonus = if ((timing as? TimingVerdict.Adjust)?.onlyWhenIdle == true) timingDelta else 0.0
@@ -1000,7 +1031,16 @@ class Strategist(
     private var lastPlan: Pair<GameState, Set<EntityId>?>? = null
 
     /** A spell a land drop made castable, and the quiet state casting it from the land's leaf reaches. */
-    private class LandFollowUp(val landIndex: Int, val action: LegalAction, val leaf: GameState)
+    private class LandFollowUp(
+        val landIndex: Int,
+        val action: LegalAction,
+        val leaf: GameState,
+        /**
+         * The leaf index of the same card cast on its own from the root, when it was a candidate
+         * there too — set only by [enablerFollowUps], whose pair is then priced against it.
+         */
+        val sibling: Int? = null,
+    )
 
     /**
      * For each land-drop leaf, the spells castable after the land that were not castable before it
@@ -1045,6 +1085,81 @@ class Strategist(
             }
         }
         return followUps
+    }
+
+    /**
+     * For each spell leaf, the spells in our hand it made **cheaper** to cast — or castable at all —
+     * from the position right after it: [AiProfile.enablersFirst].
+     *
+     * The search is one action deep, so it cannot see that casting a noncreature spell first takes
+     * {2} off a "costs {2} less if you've cast a noncreature spell this turn" creature, or that a
+     * cost reducer pays for itself the moment it lands. Greedy single picks then cast the payoff at
+     * full price and strand the enabler. The misplay (2026-10-14, Reality Fracture draft, turn 10):
+     * Traxos, Academy Guardian cast for {3}{U} with Tam's Resistance ({1}{G/U} sorcery) in hand —
+     * the same four mana would have cast both.
+     *
+     * Read off the engine's own price, never off the card: a follow-up counts when its enumerated
+     * cost in the leaf has a lower mana value than at the root, or it was not castable at the root.
+     * Only cards already in our hand at the root, so a spell a cantrip draws is not credited to the
+     * cantrip as if it had been known. Our own main phase with an empty stack, a quiet leaf where we
+     * still hold priority — the shape [landDropFollowUps] uses, whose credit this shares. Stops when
+     * the budget does.
+     */
+    private fun enablerFollowUps(
+        root: GameState,
+        legalActions: List<LegalAction>,
+        leaves: List<LegalAction>,
+        leafStates: List<GameState>,
+        playerId: EntityId,
+        budget: DecisionBudget,
+    ): List<LandFollowUp> {
+        if (!root.isActiveTurnFor(playerId) || root.stack.isNotEmpty()) return emptyList()
+        if (root.step != Step.PRECOMBAT_MAIN && root.step != Step.POSTCOMBAT_MAIN) return emptyList()
+        val hand = root.getZone(ZoneKey(playerId, Zone.HAND)).toSet()
+        val rootPrice = HashMap<EntityId, Int>()
+        for (action in legalActions) {
+            if (!action.affordable) continue
+            val cast = action.action as? CastSpell ?: continue
+            val price = priceOf(action) ?: continue
+            rootPrice.merge(cast.cardId, price, ::minOf)
+        }
+        val followUps = mutableListOf<LandFollowUp>()
+        for (i in leaves.indices) {
+            val enabler = leaves[i].action as? CastSpell ?: continue
+            val after = leafStates[i]
+            if (after.pendingDecision != null || after.stack.isNotEmpty() ||
+                after.step != root.step || after.priorityPlayerId != playerId
+            ) continue
+            val discounted = candidatesFrom(simulator.getLegalActions(after, playerId)).filter { action ->
+                val cast = action.action as? CastSpell ?: return@filter false
+                if (cast.cardId == enabler.cardId || cast.cardId !in hand) return@filter false
+                if (action.hasUnfillableTargetRequirement) return@filter false
+                if (targetPolarityFromEffect && TargetSelection.aimsOnlyAtTheWrongSide(after, action, playerId, intents)) {
+                    return@filter false
+                }
+                val price = priceOf(action) ?: return@filter false
+                val before = rootPrice[cast.cardId]
+                before == null || price < before
+            }
+            if (discounted.isEmpty()) continue
+            val here = StateProgress.digest(after)
+            for (action in discounted) {
+                if (budget.expired()) return followUps
+                val (materialized, simulation) = materialize(after, action, playerId, budget, here)
+                if (simulation is SimulationResult.Illegal || simulation is SimulationResult.StoppedAtLimit) continue
+                val cardId = (action.action as CastSpell).cardId
+                val sibling = leaves.indices.firstOrNull { j -> (leaves[j].action as? CastSpell)?.cardId == cardId }
+                followUps += LandFollowUp(i, action.copy(action = materialized), simulation.state, sibling)
+            }
+        }
+        return followUps
+    }
+
+    /** The mana value of an enumerated cast's price, or null when it has none to compare (X). */
+    private fun priceOf(action: LegalAction): Int? {
+        if (action.hasXCost) return null
+        val cost = action.manaCostString ?: return null
+        return runCatching { ManaCost.parse(cost).cmc }.getOrNull()
     }
 
     /**
@@ -1138,7 +1253,13 @@ class Strategist(
      * board score is only explicable if the panel can say *which* policy floored it.
      */
     /** [idleBonus] is the part of [score] that only stands when nothing else beats passing. */
-    private data class AdjustedScore(val score: Double, val note: String? = null, val idleBonus: Double = 0.0)
+    private data class AdjustedScore(
+        val score: Double,
+        val note: String? = null,
+        val idleBonus: Double = 0.0,
+        /** A floor below passing: the action does nothing in this window, whatever follows it. */
+        val floored: Boolean = false,
+    )
 
     /**
      * Pick the targets the AI actually commits to for a chosen targeted action, by simulation

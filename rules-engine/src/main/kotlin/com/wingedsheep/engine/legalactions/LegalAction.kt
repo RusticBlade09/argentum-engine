@@ -33,7 +33,7 @@ data class LegalAction(
      * enumeration time, so this stays a placeholder the client replaces with the chosen X.
      */
     val targetCount: Int = 1,
-    val minTargets: Int = targetCount,
+    override val minTargets: Int = targetCount,
     val targetDescription: String? = null,
     val targetRequirements: List<TargetInfo>? = null,
     /**

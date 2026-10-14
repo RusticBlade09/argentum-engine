@@ -24,6 +24,12 @@ interface PriorityAction {
     val actionType: String
     val requiresTargets: Boolean
     val validTargets: List<EntityId>?
+
+    /**
+     * How many of [validTargets] the action must pick. `0` is an "up to N" requirement, which is
+     * castable with no legal target at all (Tam's Resistance on an empty board).
+     */
+    val minTargets: Int get() = 1
     val validAttackers: List<EntityId>?
     val validBlockers: List<EntityId>?
     val isManaAbility: Boolean
@@ -185,7 +191,8 @@ object MeaningfulActionFilter {
         // A targeted spell that cannot be legally targeted is invisible — casting it isn't
         // possible. Both shapes count: the single-requirement one whose `validTargets` is empty,
         // and the multi-requirement one with an unfillable mandatory slot.
-        if (action.requiresTargets && action.validTargets.isNullOrEmpty()) return false
+        // An "up to N" requirement (`minTargets == 0`) is the exception: it is cast choosing none.
+        if (action.requiresTargets && action.validTargets.isNullOrEmpty() && action.minTargets > 0) return false
         if (action.hasUnfillableTargetRequirement) return false
 
         // A non-mana activated ability is meaningful.

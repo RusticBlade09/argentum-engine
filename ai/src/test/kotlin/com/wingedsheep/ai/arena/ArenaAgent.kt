@@ -233,6 +233,9 @@ object ArenaAgents {
         // attack, blocks priced by the walker they save.
         ArenaAgent("production-walkerdefence", AiProfile.PRODUCTION_WALKERDEFENCE),
         ArenaAgent("production-candidate-walkerdefence", AiProfile.PRODUCTION_CANDIDATE_WALKERDEFENCE),
+        // A spell scored as the best spell it makes cheaper: enablers cast before their payoffs.
+        ArenaAgent("production-enablers", AiProfile.PRODUCTION_ENABLERS),
+        ArenaAgent("production-candidate-enablers", AiProfile.PRODUCTION_CANDIDATE_ENABLERS),
         ArenaAgent("production-targeted", AiProfile.PRODUCTION_TARGETED),
         // Explicit ECL candidates. Their resource-backed weights fail closed to production's
         // evaluator until a validated artifact is installed; automatic selection is set-gated.
