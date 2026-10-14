@@ -72,6 +72,12 @@ class CombatAdvisor(
      * [AiProfile.chumpOnlyWhenInDanger] carries the argument; this is where it is enforced.
      */
     private val chumpOnlyWhenInDanger: Boolean = false,
+    /**
+     * Choose each attacker's defender, not only whether it attacks: opposing planeswalkers are
+     * targets. [AiProfile.attackPlaneswalkers] carries the argument; the seed aims connecting
+     * attackers at walkers ([CombatSeed.aimAtPlaneswalkers]) and the local search retargets.
+     */
+    private val attackPlaneswalkers: Boolean = false,
 ) {
     /**
      * The engine's own block-legality rules, asked alongside [CombatMath.canBeBlockedBy]'s
@@ -184,6 +190,7 @@ class CombatAdvisor(
             attackPenalty = { entityId ->
                 attackPenaltyFor(state, projected, listOf(entityId), playerId)
             },
+            aimAtPlaneswalkers = attackPlaneswalkers,
         )
         val opponentId = seed.defenderId ?: return DeclareAttackers(playerId, emptyMap())
         // Which defender each attacker may legally take (CR 508.1b–c) — the engine lists it per
@@ -213,10 +220,22 @@ class CombatAdvisor(
         val enemyControlsCreature = state.turnOrder.any { other ->
             other != playerId && projected.getBattlefieldControlledBy(other).any { projected.isCreature(it) }
         }
-        if (state.step == Step.DECLARE_ATTACKERS && enemyControlsCreature) {
+        // Who each attacker may hit: its default seat, plus — under [attackPlaneswalkers] — every
+        // opposing planeswalker it may legally attack. With a walker in reach the choice of
+        // defender is a real one even when nothing can block, so the search runs then too.
+        val defenderOf = { attacker: EntityId -> CombatSeed.defenderFor(state, legalAction, attacker, opponentId) }
+        val defendersOf = { attacker: EntityId ->
+            val primary = listOfNotNull(defenderOf(attacker))
+            if (!attackPlaneswalkers) primary
+            else (primary + CombatSeed.planeswalkerTargetsFor(state, projected, legalAction, attacker)).distinct()
+        }
+        val walkerInReach = attackPlaneswalkers &&
+            validAttackers.any { CombatSeed.planeswalkerTargetsFor(state, projected, legalAction, it).isNotEmpty() }
+        if (state.step == Step.DECLARE_ATTACKERS && (enemyControlsCreature || walkerInReach)) {
             improveAttackViaLocalSearch(
                 state, playerId, opponentId, validAttackers, mandatory.toSet(), seedMap, budget, trace,
-                defenderFor = { attacker -> CombatSeed.defenderFor(state, legalAction, attacker, opponentId) },
+                defenderFor = defenderOf,
+                defendersFor = defendersOf,
             )
         }
 
@@ -1220,6 +1239,12 @@ class CombatAdvisor(
         trace: CombatPlanTrace? = null,
         /** The defender an attacker takes when the search adds it; null when it can attack nobody. */
         defenderFor: (EntityId) -> EntityId? = { opponentId },
+        /**
+         * Every defender the search may give an attacker — [defenderFor]'s, plus opposing
+         * planeswalkers under [attackPlaneswalkers]. With more than one, an added attacker tries
+         * each and an attacking one may be retargeted.
+         */
+        defendersFor: (EntityId) -> List<EntityId> = { listOfNotNull(defenderFor(it)) },
     ) {
         val deadline = budget.combatDeadlineNanos
         // Baseline: use current board evaluation. Attack plans must beat this.
@@ -1245,17 +1270,38 @@ class CombatAdvisor(
             var bestMutation: Map<EntityId, EntityId>? = null
             var bestScore = currentScore
 
-            // Mutation 1: Add each non-attacking creature
+            // Mutation 1: Add each non-attacking creature, at each defender it may take
             for (attacker in validAttackers) {
                 if (System.nanoTime() > deadline) break
                 if (attacker in attackerMap) continue
-                val mutation = attackerMap.toMutableMap()
-                mutation[attacker] = defenderFor(attacker) ?: continue
-                val score = evaluateAttackPlan(state, playerId, opponentId, mutation) ?: continue
-                trace?.recordAttack(mutation, score)
-                if (score > bestScore) {
-                    bestScore = score
-                    bestMutation = mutation
+                for (defender in defendersFor(attacker)) {
+                    if (System.nanoTime() > deadline) break
+                    val mutation = attackerMap.toMutableMap()
+                    mutation[attacker] = defender
+                    val score = evaluateAttackPlan(state, playerId, opponentId, mutation) ?: continue
+                    trace?.recordAttack(mutation, score)
+                    if (score > bestScore) {
+                        bestScore = score
+                        bestMutation = mutation
+                    }
+                }
+            }
+
+            // Mutation 1b: Retarget each attacker at another defender it may take — the player
+            // instead of a walker, a walker instead of the player, or one walker for another.
+            for ((attacker, current) in attackerMap.toList()) {
+                if (System.nanoTime() > deadline) break
+                for (defender in defendersFor(attacker)) {
+                    if (defender == current) continue
+                    if (System.nanoTime() > deadline) break
+                    val mutation = attackerMap.toMutableMap()
+                    mutation[attacker] = defender
+                    val score = evaluateAttackPlan(state, playerId, opponentId, mutation) ?: continue
+                    trace?.recordAttack(mutation, score)
+                    if (score > bestScore) {
+                        bestScore = score
+                        bestMutation = mutation
+                    }
                 }
             }
 

@@ -222,6 +222,9 @@ object ArenaAgents {
         // An until-end-of-turn P/T change read only on a creature already in a fight.
         ArenaAgent("production-expiringstats", AiProfile.PRODUCTION_EXPIRINGSTATS),
         ArenaAgent("production-candidate-expiringstats", AiProfile.PRODUCTION_CANDIDATE_EXPIRINGSTATS),
+        // Each attacker picks its defender: opposing planeswalkers priced as ongoing engines.
+        ArenaAgent("production-walkerattacks", AiProfile.PRODUCTION_WALKERATTACKS),
+        ArenaAgent("production-candidate-walkerattacks", AiProfile.PRODUCTION_CANDIDATE_WALKERATTACKS),
         ArenaAgent("production-targeted", AiProfile.PRODUCTION_TARGETED),
         // Explicit ECL candidates. Their resource-backed weights fail closed to production's
         // evaluator until a validated artifact is installed; automatic selection is set-gated.

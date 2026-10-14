@@ -624,6 +624,26 @@ data class AiProfile(
      */
     val activatedPumpsNeedAPlannedAttack: Boolean = false,
     /**
+     * Choose each attacker's **defender**, not only whether it attacks: an opposing planeswalker is
+     * a target worth hitting, priced as the ongoing engine it is ([PlaneswalkerThreat]).
+     *
+     * Off a production game (`8522de5e`, 2026-10-14, Reality Fracture draft): the opponent's
+     * Garruk, Veiled Butcher sat on the board for eighteen turns, shrinking our only flier with its
+     * +2 every turn and making us discard with its −3. The AI's one real attack, turn 16, sent
+     * Traxos at the player on 22 life while Garruk stood at 4 loyalty and a Jace token at 2. Before
+     * this, `CombatSeed` aimed every attacker at the lowest-life player, and the attack local search
+     * only added or removed attackers — no plan the AI ever scored hit a walker. With nothing able
+     * to block, the search did not run at all.
+     *
+     * With this on, the seed sends attackers that will connect at the walker their damage hurts
+     * most whenever that beats the life they would have taken, by the evaluator's life curve
+     * ([CombatSeed.aimAtPlaneswalkers]) — so a nearly-won race keeps its damage and a lethal alpha
+     * strike is untouched — and the local search can also retarget each attacker or add one at a
+     * walker, scoring every plan through the engine (blockers included). The search now also runs
+     * when a walker is in reach and nothing can block. Pinned by `AttackPlaneswalkersTest`.
+     */
+    val attackPlaneswalkers: Boolean = false,
+    /**
      * Count the land drop still to come as mana when [sequenceLandsByUsableMana] decides whether
      * tapped lands were idle — so playing an untapped land can never score below passing.
      *
@@ -1737,6 +1757,26 @@ data class AiProfile(
             landDropUnlocksSpells = true,
             creatureValuation = PRODUCTION_CANDIDATE_EXPIRING.creatureValuation.copy(expiringStatsNeedAFight = true),
             activatedPumpsNeedAPlannedAttack = true,
+            attackPlaneswalkers = true,
+        )
+
+        /**
+         * [attackPlaneswalkers] alone on top of [PRODUCTION], so a puzzle or an arena point that
+         * moves is attributable to it.
+         */
+        val PRODUCTION_WALKERATTACKS = PRODUCTION.copy(
+            id = "production-walkerattacks",
+            attackPlaneswalkers = true,
+        )
+
+        /**
+         * [attackPlaneswalkers] on top of [PRODUCTION_CANDIDATE_EXPIRING] — the last pinned candidate
+         * [LIVE] builds on — so `just arena production-candidate-expiring
+         * production-candidate-walkerattacks` measures it and nothing else. [LIVE] ships it.
+         */
+        val PRODUCTION_CANDIDATE_WALKERATTACKS = PRODUCTION_CANDIDATE_EXPIRING.copy(
+            id = "production-candidate-walkerattacks",
+            attackPlaneswalkers = true,
         )
 
         /**
