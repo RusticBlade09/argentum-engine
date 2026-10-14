@@ -1230,6 +1230,8 @@ self-exclusive one is never offered the source in the first place.
   `SelectCardsDecision.selectionLimits` capacity, and repeated entity IDs assign several counters to
   that permanent. Submit the full required total or an empty selection to decline; zero-capacity
   permanents are excluded. Both per-permanent capacities and the total are validated by the engine.
+  A resolving trigger can pay counters from other permanents even after its token source has ceased
+  to exist; the payment prompt retains the source’s last-known public name.
 
 - `Costs.pay.PutCountersOnPermanent(counterType, count = 1, filter = Permanent)` — put counters on a
   permanent **the payer controls**; the selected-permanent sibling of `PutCountersOnSelf`. Unlike that

@@ -64,6 +64,9 @@ data class ZoneChangeEvent(
     val lastKnown: com.wingedsheep.engine.state.components.stack.EntitySnapshot? = null,
     /** Battlefield visit created by this entry; distinct from the departed visit in lastKnown. */
     val enteredBattlefieldTimestamp: Long? = null,
+    /** Engine-internal group for one simultaneous entry instruction, never a whole resolution. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val simultaneousEntryGroup: String? = null,
     /** The original card name when this permanent entered as a copy (e.g., "Clever Impersonator") */
     val copyOfOriginalName: String? = null,
     /**

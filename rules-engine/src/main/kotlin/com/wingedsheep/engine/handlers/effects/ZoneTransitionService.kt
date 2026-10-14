@@ -95,6 +95,8 @@ data class ZoneEntryOptions(
     val entryCounterType: com.wingedsheep.sdk.core.CounterType? = null,
     /** Original board for one simultaneous entry event; excludes other entrants' global replacements. */
     val entryCounterReplacementState: GameState? = null,
+    /** Opaque game-local token shared only by cards entering in this instruction. */
+    val simultaneousEntryGroup: String? = null,
     val entryCounterFilter: com.wingedsheep.sdk.scripting.GameObjectFilter? = null,
     val entryCounterSourceId: EntityId? = null,
     val entryCounterEffectControllerId: EntityId? = null,
@@ -478,6 +480,7 @@ class ZoneTransitionService(
             com.wingedsheep.engine.state.components.stack.EntitySnapshot(
                 entityId = entityId,
                 objectRef = oldObject,
+                name = state.projectedState.getName(entityId) ?: cardComponent.name,
                 battlefieldEntryTimestamp = container.get<BattlefieldEntryTimestampComponent>()?.timestamp,
                 power = lastKnownPower,
                 toughness = lastKnownToughness,
@@ -1104,6 +1107,7 @@ class ZoneTransitionService(
                 // The former ~16 lastKnown* scalars are now the snapshot's fields; the counter
                 // counts derive from its `counters` map (plusOnePlusOneCounters / etc.).
                 lastKnown = lastKnownSnapshot,
+                simultaneousEntryGroup = options.simultaneousEntryGroup.takeIf { actualDestZone == Zone.BATTLEFIELD },
                 enteredBattlefieldTimestamp = if (actualDestZone == Zone.BATTLEFIELD)
                     newState.getEntity(entityId)?.get<BattlefieldEntryTimestampComponent>()?.timestamp else null,
                 xValue = lastKnownCastX,
@@ -1428,7 +1432,10 @@ class ZoneTransitionService(
         destinationZone: Zone,
         options: ZoneEntryOptions = ZoneEntryOptions()
     ): ZoneTransitionResult {
-        var currentState = state
+        val (entryGroup, stateForMoves) = if (destinationZone == Zone.BATTLEFIELD && entityIds.size > 1) {
+            state.newRoutingId()
+        } else null to state
+        var currentState = stateForMoves
         val allEvents = mutableListOf<EngineGameEvent>()
         val transitions = mutableListOf<ZoneTransitionOutcome>()
         // One simultaneous event: freeze every look-back grant before the first move.
@@ -1448,7 +1455,8 @@ class ZoneTransitionService(
             val result = moveToZone(
                 currentState, entityId, destinationZone,
                 perCardOptions.copy(
-                    lookBackGrants = perCardOptions.lookBackGrants ?: lookBack[entityId] ?: LookBackGrants()
+                    lookBackGrants = perCardOptions.lookBackGrants ?: lookBack[entityId] ?: LookBackGrants(),
+                    simultaneousEntryGroup = perCardOptions.simultaneousEntryGroup ?: entryGroup
                 )
             )
             currentState = result.state

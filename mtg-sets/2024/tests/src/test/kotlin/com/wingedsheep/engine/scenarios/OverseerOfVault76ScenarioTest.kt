@@ -1,5 +1,6 @@
 package com.wingedsheep.engine.scenarios
 
+import com.wingedsheep.engine.core.OrderObjectsDecision
 import com.wingedsheep.engine.core.SelectCardsDecision
 import com.wingedsheep.engine.state.components.battlefield.CountersComponent
 import com.wingedsheep.engine.support.GameTestDriver
@@ -16,6 +17,16 @@ import com.wingedsheep.sdk.model.EntityId
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+
+import com.wingedsheep.sdk.dsl.card
+import com.wingedsheep.sdk.dsl.Effects
+import com.wingedsheep.sdk.scripting.effects.CardSource
+import com.wingedsheep.sdk.scripting.effects.CardDestination
+import com.wingedsheep.sdk.scripting.GameObjectFilter
+import com.wingedsheep.sdk.scripting.filters.unified.TargetFilter
+import com.wingedsheep.sdk.scripting.references.Player
+import com.wingedsheep.sdk.core.Zone
+import com.wingedsheep.engine.state.components.identity.TokenComponent
 
 class OverseerOfVault76ScenarioTest : FunSpec({
     fun setup() = GameTestDriver().apply {
@@ -56,6 +67,48 @@ class OverseerOfVault76ScenarioTest : FunSpec({
         counters(d, overseer) shouldBe 1
         cast(d, "Grizzly Bears") // Printed two, projected three: included.
         counters(d, overseer) shouldBe 2
+    }
+
+    test("simultaneous Overseer and other entrants use projected power in either entry order") {
+        for (names in listOf(
+            listOf(OverseerOfVault76.name, "Grizzly Bears", "Centaur Courser"),
+            listOf("Centaur Courser", "Grizzly Bears", OverseerOfVault76.name),
+        )) {
+            val d = setup()
+            val reunion = card("Overseer Test Reunion") {
+                manaCost = "{0}"
+                typeLine = "Sorcery"
+                spell {
+                    effect = Effects.Pipeline {
+                        val creatures = gather(CardSource.FromZone(
+                            Zone.HAND,
+                            Player.You,
+                            GameObjectFilter.Creature,
+                        ))
+                        move(creatures, CardDestination.ToZone(
+                            Zone.BATTLEFIELD,
+                            Player.You,
+                        ))
+                    }
+                }
+            }
+            d.registerCards(listOf(reunion))
+            d.putPermanentOnBattlefield(d.player1, GloriousAnthem.name)
+            val ids = names.associateWith { d.putCardInHand(d.player1, it) }
+            val spell = d.putCardInHand(d.player1, reunion.name)
+            d.castSpell(d.player1, spell).error shouldBe null
+            resolve(d)
+            val ordering = d.pendingDecision as? OrderObjectsDecision
+            if (ordering != null) d.submitOrderedResponse(ordering.playerId, ordering.objects).error shouldBe null
+            resolve(d)
+            d.pendingDecision shouldBe null
+            d.state.stack.size shouldBe 0
+            val overseer = ids.getValue(OverseerOfVault76.name)
+            d.state.projectedState.getPower(overseer) shouldBe 4
+            d.state.projectedState.getPower(ids.getValue("Grizzly Bears")) shouldBe 3
+            d.state.projectedState.getPower(ids.getValue("Centaur Courser")) shouldBe 4
+            counters(d, overseer) shouldBe 2
+        }
     }
 
     test("each simultaneous qualifying token entry contributes a quest counter") {
@@ -119,6 +172,48 @@ class OverseerOfVault76ScenarioTest : FunSpec({
         counters(d, land) shouldBe 0
         counters(d, bears, CounterType.PLUS_ONE_PLUS_ONE) shouldBe 1
         d.state.projectedState.hasKeyword(bears, Keyword.VIGILANCE) shouldBe true
+    }
+
+    test("a token copy's combat trigger survives its source ceasing to exist and creates a separate buff") {
+        val d = setup()
+        val copySpell = card("Overseer Test Token Copy") {
+            manaCost = "{0}"
+            typeLine = "Instant"
+            spell {
+                effect = Effects.CreateTokenCopyOfTarget(
+                    target(TargetFilter.Creature))
+            }
+        }
+        d.registerCard(copySpell)
+        val original = d.putCreatureOnBattlefield(d.player2, OverseerOfVault76.name)
+        val copyCard = d.putCardInHand(d.player1, copySpell.name)
+        d.castSpell(d.player1, copyCard, listOf(original)).error shouldBe null
+        resolve(d)
+        val token = d.getPermanents(d.player1).single {
+            d.state.getEntity(it)?.has<TokenComponent>() == true
+        }
+        val bears = d.putCreatureOnBattlefield(d.player1, "Grizzly Bears")
+        val land = d.putLandOnBattlefield(d.player1, "Plains")
+        setQuest(d, land, 3)
+        d.passPriorityUntil(Step.BEGIN_COMBAT)
+        val bolt = d.putCardInHand(d.player1, "Lightning Bolt")
+        d.giveMana(d.player1, Color.RED)
+        d.castSpell(d.player1, bolt, listOf(token)).error shouldBe null
+        d.bothPass()
+        d.state.getEntity(token) shouldBe null
+        resolve(d)
+        val payment = d.pendingDecision.shouldBeInstanceOf<SelectCardsDecision>()
+        payment.options shouldBe listOf(land)
+        payment.selectionLimits shouldBe mapOf(land to 3)
+        payment.context.sourceName shouldBe OverseerOfVault76.name
+        d.submitCardSelection(d.player1, List(3) { land }).error shouldBe null
+        counters(d, land) shouldBe 0
+        counters(d, bears, CounterType.PLUS_ONE_PLUS_ONE) shouldBe 0
+        d.state.stack.size shouldBe 1
+        resolve(d)
+        counters(d, bears, CounterType.PLUS_ONE_PLUS_ONE) shouldBe 1
+        d.state.projectedState.hasKeyword(bears, Keyword.VIGILANCE) shouldBe true
+        counters(d, original, CounterType.PLUS_ONE_PLUS_ONE) shouldBe 0
     }
 
     test("declining preserves quest counters and creates no reflexive trigger") {

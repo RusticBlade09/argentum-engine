@@ -840,6 +840,13 @@ reads, which then apply the policy above, and `resolveTarget` for actions, which
 object that has changed zones since the ability captured it (CR 400.7) — the source (`Self`), the
 triggering object, or the object a `ForEach` loop is visiting (`IterationEntity`).
 
+Battlefield entry events carry an internal `simultaneousEntryGroup` when a shared mover places several
+cards in one instruction; token-creation executors stamp the same boundary for multiple tokens.
+The group is an opaque game-local routing token, shared by those arrivals
+and distinct from any later instruction. Trigger detection uses it to let a source entering alongside
+other permanents observe them and bind its new battlefield object, without treating the concatenated
+events of a whole composite resolution as one simultaneous entry. Single-card moves need no group.
+
 ### 2.6 Strategy-Based Registries
 
 **Principle:** Action handling and effect execution are fully decoupled from the core engine loop.

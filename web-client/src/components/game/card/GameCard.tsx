@@ -2736,8 +2736,6 @@ function GameCardImpl({
         </div>
       )}
 
-      {battlefield && <CounterAllocationControls cardId={card.id} cardName={card.name} />}
-
       {/* "Casting" badge for the spell being cast during cost selection */}
       {isBeingCast && (
         <div style={{
@@ -3012,6 +3010,9 @@ function GameCardImpl({
         {nonLegendaryChip}
         {grantedLegendaryChip}
         {cardElement}
+        {/* Allocation controls stay outside the clipped, rotating card. Narrow cards get a
+            compact count above two full-size buttons, which can extend beyond the art. */}
+        <CounterAllocationControls cardId={card.id} cardName={card.name} cardWidth={width} />
       </div>
       </RenderProfiler>
     )

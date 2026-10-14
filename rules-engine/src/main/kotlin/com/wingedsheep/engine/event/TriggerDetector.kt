@@ -287,7 +287,7 @@ class TriggerDetector(
             } else 0
             val detected = detectTriggersForEvent(state, event, index, samePlayerDrawsLaterInBatch)
                 .let { foldSimultaneousDamage(it, event, triggers, combatDamageSlots) }
-            triggers.addAll(detected.map { pending ->
+            triggers.addAll(detected.mapNotNull { pending ->
                 val selfZoneEvent = event is ZoneChangeEvent && event.entityId == pending.sourceId
                 val attachedDeparture = selfZoneEvent && pending.ability.binding == TriggerBinding.ATTACHED &&
                     pending.triggerContext.triggeringEntityId != pending.sourceId
@@ -316,18 +316,31 @@ class TriggerDetector(
                         )
                     }
                 val sourceEventContext = (event as? ZoneChangeEvent)?.takeIf { selfZoneEvent }?.let(TriggerContext::fromEvent)
-                val sourceAtEvent = events.subList(eventIndex + 1, events.size)
-                    .filterIsInstance<ZoneChangeEvent>().firstOrNull { it.entityId == pending.sourceId }?.oldObject
-                    ?: state.objectRef(pending.sourceId)
+                val nextSourceMove = events.subList(eventIndex + 1, events.size)
+                    .filterIsInstance<ZoneChangeEvent>().firstOrNull { it.entityId == pending.sourceId }
+                if (!selfZoneEvent && event is ZoneChangeEvent && event.toZone == Zone.BATTLEFIELD &&
+                    nextSourceMove?.toZone == Zone.BATTLEFIELD &&
+                    (event.simultaneousEntryGroup == null || event.simultaneousEntryGroup != nextSourceMove.simultaneousEntryGroup)) {
+                    // A source arriving in a later instruction did not observe this earlier entry.
+                    return@mapNotNull null
+                }
+                // Battlefield entrants observe other entrants in their simultaneous batch even
+                // when their own entry was emitted later. Bind that observer's new battlefield
+                // object, rather than its old hand/graveyard object. Subsequent departures still
+                // use oldObject, preserving the exact visit that observed the event.
+                val sourceAtEvent = if (event is ZoneChangeEvent && event.toZone == Zone.BATTLEFIELD &&
+                    nextSourceMove?.toZone == Zone.BATTLEFIELD) nextSourceMove.newObject
+                else nextSourceMove?.oldObject
+                val boundSourceAtEvent = sourceAtEvent ?: state.objectRef(pending.sourceId)
                 pending.copy(triggerContext = eventContext, objectReferences = com.wingedsheep.engine.handlers.ObjectReferenceEnvironment(
                     captured = true,
                     permittedMoves = (com.wingedsheep.engine.handlers.meldArrivalMoves(events, sourceEventContext?.triggeringObject) +
                         com.wingedsheep.engine.handlers.meldArrivalMoves(events, eventContext.triggeringObject)).distinct(),
-                    origin = if (selfZoneEvent) sourceEventContext?.triggeringOrigin else sourceAtEvent,
+                    origin = if (selfZoneEvent) sourceEventContext?.triggeringOrigin else boundSourceAtEvent,
                     // CR 400.7f allows the Aura's immediate graveyard object, including the unattached SBA.
                     source = if (attachedDeparture && (event as ZoneChangeEvent).toZone != Zone.GRAVEYARD)
                         sourceEventContext?.triggeringOrigin
-                    else if (selfZoneEvent) sourceEventContext?.triggeringObject else sourceAtEvent,
+                    else if (selfZoneEvent) sourceEventContext?.triggeringObject else boundSourceAtEvent,
                     triggering = if (triggeringZoneEvent != null) eventContext.triggeringObject
                     else eventContext.triggeringObject ?: pending.triggerContext.triggeringEntityId?.let { id ->
                         events.subList(eventIndex + 1, events.size).filterIsInstance<ZoneChangeEvent>()

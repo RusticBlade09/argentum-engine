@@ -116,7 +116,9 @@ class CostPaymentService(private val services: EngineServices) {
         if (!canAfford(state, payerId, resolved, sourceId)) {
             return PaymentResult.Unaffordable(state)
         }
-        val sourceName = state.getEntity(sourceId)?.get<CardComponent>()?.name ?: "the source"
+        val sourceSnapshot = ctx.effectContext?.lastKnownSourceSnapshot
+        val sourceName = if (sourceSnapshot?.wasFaceDown == true) "Face-down source" else
+            state.getEntity(sourceId)?.get<CardComponent>()?.name ?: sourceSnapshot?.name ?: "the source"
         // The one source-relative candidate domain — the same list affordability counted above and
         // the resumer validates the response against.
         val candidates = selectionCandidates(state, payerId, resolved, sourceId, predicateEvaluator = predicateEvaluator).orEmpty()

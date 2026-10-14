@@ -40,6 +40,28 @@ class TokenExecutors(
             CreateTokenCopyOfChosenPermanentExecutor(cardRegistry, staticAbilityHandler, predicateEvaluator = zones.predicateEvaluator),
             CreateTokenCopyOfTargetExecutor(amountEvaluator, staticAbilityHandler, cardRegistry, targetFinder = targetFinder),
             CreateRandomCreatureTokenWithManaValueExecutor(amountEvaluator, staticAbilityHandler, cardRegistry)
-        )
+        ).map { simultaneous(it) }
+    }
+
+    /** Every token-creation executor is one instruction, including a heterogeneous batch. */
+    private fun <T : com.wingedsheep.sdk.scripting.effects.Effect> simultaneous(
+        delegate: EffectExecutor<T>
+    ): EffectExecutor<T> = object : EffectExecutor<T> by delegate {
+        override fun execute(
+            state: com.wingedsheep.engine.state.GameState,
+            effect: T,
+            context: com.wingedsheep.engine.handlers.EffectContext
+        ): com.wingedsheep.engine.core.EffectResult {
+            val result = delegate.execute(state, effect, context)
+            val entries = result.events.filterIsInstance<com.wingedsheep.engine.core.ZoneChangeEvent>()
+                .count { it.toZone == com.wingedsheep.sdk.core.Zone.BATTLEFIELD }
+            if (entries < 2) return result
+            val (group, groupedState) = result.state.newRoutingId()
+            return result.copy(state = groupedState, events = result.events.map {
+                if (it is com.wingedsheep.engine.core.ZoneChangeEvent &&
+                    it.toZone == com.wingedsheep.sdk.core.Zone.BATTLEFIELD) it.copy(simultaneousEntryGroup = group)
+                else it
+            })
+        }
     }
 }

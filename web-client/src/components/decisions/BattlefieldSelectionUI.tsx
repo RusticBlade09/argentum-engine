@@ -4,6 +4,7 @@ import type { DecisionSelectionState } from '@/store/slices'
 import type { SelectCardsDecision } from '@/types'
 import { DraggableBanner } from './DraggableBanner'
 import { AbilityText } from '../ui/ManaSymbols'
+import { CounterAllocationControls } from '../game/card/CounterAllocationControls'
 import styles from './DecisionUI.module.css'
 
 /**
@@ -19,6 +20,7 @@ export function BattlefieldSelectionUI({
   const decisionSelectionState = useGameStore((s) => s.decisionSelectionState)
   const cancelDecisionSelection = useGameStore((s) => s.cancelDecisionSelection)
   const submitDecision = useGameStore((s) => s.submitDecision)
+  const cards = useGameStore((s) => s.gameState?.cards)
 
   // Start decision selection state when this component mounts
   useEffect(() => {
@@ -87,6 +89,19 @@ export function BattlefieldSelectionUI({
           {minimum.description ?? `You may select ${minimum.minimumSelections} if it matches the requirement.`}
         </div>
       ))}
+
+      {decision.selectionLimits != null && (
+        <details style={{ marginTop: 8 }}>
+          <summary style={{ cursor: 'pointer', fontSize: 12 }}>Adjust allocations</summary>
+          <div style={{ maxHeight: '35vh', overflowY: 'auto', display: 'flex',
+            flexDirection: 'column', gap: 6, marginTop: 6 }}>
+            {decision.options.map((id) => (
+              <CounterAllocationControls key={id} cardId={id} presentation="inline"
+                cardName={cards?.[id]?.name ?? decision.cardInfo?.[id]?.name ?? 'Permanent'} />
+            ))}
+          </div>
+        </details>
+      )}
 
       {/* Confirm/Skip buttons */}
       <div className={styles.buttonContainerSmall}>

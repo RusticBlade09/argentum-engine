@@ -848,6 +848,12 @@ class MoveCollectionExecutor(
             state
         }
 
+        val entryGroup = if (destZone == Zone.BATTLEFIELD && cards.size > 1) {
+            val (group, allocatedState) = newState.newRoutingId()
+            newState = allocatedState
+            group
+        } else null
+
         // Leaves-the-battlefield abilities look back to before this one simultaneous event
         // (CR 603.10a): freeze each card's look-back grants before the first card moves.
         val lookBack = com.wingedsheep.engine.event.LookBackGrants.frozen(
@@ -970,6 +976,7 @@ class MoveCollectionExecutor(
             }
             val entryOptions = com.wingedsheep.engine.handlers.effects.ZoneEntryOptions(
                 controllerId = actualDestPlayerId,
+                simultaneousEntryGroup = entryGroup,
                 entryCounterType = entryCounterType.takeIf { destZone == Zone.BATTLEFIELD },
                 entryCounterReplacementState = replacementSourceState ?: state,
                 entryCopy = context.entryCopies[cardId],

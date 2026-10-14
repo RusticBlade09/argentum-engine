@@ -75,6 +75,18 @@ class PayOrSufferExecutor(
         val payingPlayerId = context.resolvePlayerTarget(effect.player, state)
             ?: context.controllerId
 
+        // Shared counter costs depend on the payer's permanents/counters, not a live source.
+        // A triggered ability still resolves after its token source has ceased to exist.
+        val counterCost = (effect.cost as? PayCost.Atom)?.atom
+        if (counterCost is CostAtom.RemoveCounters || counterCost is CostAtom.PayPlayerCounters) {
+            val snapshot = context.lastKnownSourceSnapshot
+            val sourceName = if (snapshot?.wasFaceDown == true) "Face-down source" else
+                state.getEntity(sourceId)?.get<CardComponent>()?.name ?: snapshot?.name ?: "the source"
+            return handleSharedCounterCost(state, effect, context, counterCost, sourceId, sourceName, payingPlayerId)
+        }
+
+        // Other rails still require their source characteristics (including OwnManaCost).
+        // Missing source metadata must not turn an unknown mana cost into a free payment.
         // Find source card info
         val sourceContainer = state.getEntity(sourceId)
             ?: return EffectResult.error(state, "Source entity not found")

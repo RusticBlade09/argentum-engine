@@ -287,9 +287,11 @@ class LegacySuspensionMigrationTest : ScenarioTestBase() {
             when {
                 // Departure object references postdate these historical traces. EnlistTest
                 // checks that the captured reference preserves the old object's power across a blink.
+                // Snapshot names were captured later; DepartedSourceCounterPaymentTest pins the
+                // actual departure metadata and masked prompts. Keep historical input fixtures intact.
                 key == "snapshot" && value["type"] == JsonPrimitive(
                     "com.wingedsheep.engine.state.components.battlefield.LastKnownPermanentComponent"
-                ) -> normalizeRouting(JsonObject(child.jsonObject - "objectRef"))
+                ) -> normalizeRouting(JsonObject(child.jsonObject - "objectRef" - "name"))
                 root && key == "nextRoutingId" -> JsonPrimitive(0)
                 key == "question" && "answer" in value -> {
                     val question = child.jsonObject
