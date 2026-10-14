@@ -28,6 +28,8 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- Chump-blocks to stay out of the opponent's next-attack range when one body now saves more bodies next turn (menace needs two blockers), instead of only when this hit alone is lethal.
+
 - Casts wishes (Extrapolate the Impossible, Burning Wish) with idle mana in its last main phase instead of holding them all game, unless nothing outside the game is fetchable.
 
 - Allocates the full required counter payment across permanents, including several counters on one, and compares paying against declining.

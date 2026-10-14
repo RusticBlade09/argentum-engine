@@ -513,6 +513,27 @@ data class AiProfile(
      */
     val chumpOnlyWhenInDanger: Boolean = false,
     /**
+     * Price life by the opponent's clock when blocking: after the blocks are chosen, add a chump
+     * block whenever the creature it costs is worth less than the bodies it saves on the
+     * opponent's **next** attack (`CombatAdvisor.clockChumps`).
+     *
+     * Production game `5ae3888c` (2026-10-14, Reality Fracture draft) turn 14: at 12 life the AI
+     * took ten from a 10/9 reach rather than chump it with a 2/1, with a 6/4 menace on the other
+     * side about to join in. At 2 life, surviving the next attack takes three bodies (the 10/9 and
+     * both halves of the menace pair); at 12 it takes one. It went to 2 and lost. The survival
+     * passes only fire when *this* hit is lethal, and [chumpOnlyWhenInDanger]'s next-turn test let
+     * every creature chump next turn and gave a menace attacker one blocker, so it read the 2-life
+     * line as safe and kept local search from adding the chump the evaluator wanted.
+     *
+     * With this on the old proactive chump pass is replaced: each candidate chump is compared by
+     * creature value spent now plus the least value we would have to chump away to survive the
+     * attack after (`CombatMath.survivalChumpCost`, from the life and blockers the plan leaves).
+     * Far from the clock that cost is zero and nothing is added; dead either way, nothing is
+     * added; and when our own next attack is lethal through their remaining blockers the race is
+     * ours and the bodies stay home to swing. Pinned by `ClockChumpBlockTest`.
+     */
+    val chumpForTheClock: Boolean = false,
+    /**
      * Stop charging a permanent cast at sorcery speed as card loss — [landDropIsNotCardLoss]'s
      * argument, one card type further.
      *
@@ -1699,6 +1720,7 @@ data class AiProfile(
             refuseUnspendableGrants = true,
             targetPolarityFromEffect = true,
             chumpOnlyWhenInDanger = true,
+            chumpForTheClock = true,
             permanentCastIsNotCardLoss = true,
             priceCrackBackAsLife = true,
             crackBackWithoutChumps = true,
@@ -1840,6 +1862,15 @@ data class AiProfile(
         val PRODUCTION_CANDIDATE_UPTO = PRODUCTION_CANDIDATE_EXPIRING.copy(
             id = "production-candidate-upto",
             fillUpToMaxTargets = true,
+        )
+
+        /**
+         * [chumpForTheClock] alone on top of [PRODUCTION], so a puzzle or an arena point that
+         * moves is attributable to it.
+         */
+        val PRODUCTION_CLOCKCHUMP = PRODUCTION.copy(
+            id = "production-clockchump",
+            chumpForTheClock = true,
         )
 
         /**

@@ -172,6 +172,10 @@ object ArenaAgents {
         // `just arena production production-unusablepumps 300` prices it alone; `just arena
         // production-candidate-expiring production-candidate-unusablepumps 300` is the promotion gate.
         ArenaAgent("production-unusablepumps", AiProfile.PRODUCTION_UNUSABLEPUMPS),
+        // Chump blocks priced by the opponent's clock: a body thrown away now when it costs less
+        // than the bodies the next attack would need. `just arena production
+        // production-clockchump 300` prices it alone.
+        ArenaAgent("production-clockchump", AiProfile.PRODUCTION_CLOCKCHUMP),
         ArenaAgent("production-candidate-unusablepumps", AiProfile.PRODUCTION_CANDIDATE_UNUSABLEPUMPS),
         // ...and a grant bought at our beginning of combat counts only on a creature the attack
         // plan would send. `just arena production-candidate-unusablepumps
