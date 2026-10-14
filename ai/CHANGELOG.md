@@ -28,6 +28,8 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- Deck building for sets without rating data values planeswalkers as the engines they are instead of as filler (an on-color rare walker no longer loses its slot to a vanilla 3/9), and counts a legend's second copy at a discount for the legend rule, so it stops running doubles of filler legends.
+
 - Attacks opposing planeswalkers: each attacker that will connect goes at the walker its damage hurts most — killing it, or knocking it below its biggest ability — when that is worth more than the life it would take, while a lethal or nearly-won race keeps its damage on the player; attack search also tries retargeting each attacker and runs when a walker is in reach and nothing can block.
 
 - Chump-blocks to stay out of the opponent's next-attack range when one body now saves more bodies next turn (menace needs two blockers), instead of only when this hit alone is lethal.
