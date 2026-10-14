@@ -29,6 +29,7 @@ Format — newest first, one bullet each:
 ## Changes
 
 - Casts enablers before the spells they discount: a spell is scored as at least the best spell in hand it makes cheaper or castable, so a noncreature spell goes down before a "costs {2} less if you've cast a noncreature spell this turn" creature instead of the creature being cast at full price.
+- Casts a pump before combat when it changes who attacks: a combat trick or pump ability that lets a creature make an attack it otherwise wouldn't is priced by what that attack is worth over the unpumped one, instead of being deferred to a beginning-of-combat window the AI never stops in.
 
 - Holds instant-speed deploys for the opponent's turn: a flash creature is judged by what it can do the turn it lands (an attack-trigger loot no longer gets it jammed in its own main phase), an instant that only makes no-haste tokens or empowers a walker it lets act at instant speed waits for their turn too, and either is cast into idle mana when holding it would leave another instant in hand without mana.
 
