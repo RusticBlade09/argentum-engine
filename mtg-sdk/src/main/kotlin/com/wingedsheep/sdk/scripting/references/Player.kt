@@ -298,7 +298,8 @@ sealed interface Player {
      * ability that names its own source without targeting it. This is that missing case:
      * *"[This creature]'s owner shuffles it into their library and draws three cards"*
      * (Gandalf, Wandering Wizard). It matters exactly when control and ownership diverge — a stolen
-     * permanent's ability still acts on the *owner*, per the printed text.
+     * permanent's ability still acts on the *owner*, per the printed text. If the source has
+     * ceased to exist, its captured last-known owner is used (including departed token copies).
      */
     @SerialName("OwnerOfSource")
     @Serializable

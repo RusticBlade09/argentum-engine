@@ -152,9 +152,8 @@ class CostHandler(private val zones: ZoneTransitionService) {
                 state.getZone(ZoneKey(controllerId, Zone.HAND)).contains(tracked)
             }
             is AbilityCost.SacrificeSelf -> {
-                // Source must be on the battlefield
-                val battlefieldZone = ZoneKey(controllerId, Zone.BATTLEFIELD)
-                state.getZone(battlefieldZone).contains(sourceId)
+                sourceId in state.getBattlefield() &&
+                    state.projectedState.getController(sourceId) == controllerId
             }
             is AbilityCost.ExileSelf -> {
                 // Source must exist (can be on battlefield or in graveyard for graveyard abilities)
@@ -392,7 +391,7 @@ class CostHandler(private val zones: ZoneTransitionService) {
                 // Sacrifice the source permanent
                 val sourceContainer = state.getEntity(sourceId)
                     ?: return CostPaymentResult.failure("Source permanent not found")
-                val sourceController = sourceContainer.get<ControllerComponent>()?.playerId
+                val sourceController = state.projectedState.getController(sourceId)
                     ?: return CostPaymentResult.failure("Source permanent has no controller")
                 val sourceName = sourceContainer.get<CardComponent>()?.name ?: "Unknown"
 

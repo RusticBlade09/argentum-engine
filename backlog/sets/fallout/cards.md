@@ -2,7 +2,7 @@
 
 **Set Size:** 336 cards
 **Release Date:** March 8, 2024
-**Implemented:** 159 / 336
+**Implemented:** 160 / 336
 | Section    | Total | Done |
 |------------|-------|------|
 | Extras     | 336   | 158  |
@@ -349,5 +349,5 @@
 - [x] Windbrisk Heights
 - [ ] Winding Constrictor
 - [x] Woodland Cemetery
-- [ ] Yes Man, Personal Securitron
+- [x] Yes Man, Personal Securitron
 - [ ] Young Deathclaws

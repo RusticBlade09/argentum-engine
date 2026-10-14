@@ -305,6 +305,7 @@ data class TriggerContext(
                 )
                 is ZoneChangeEvent -> TriggerContext(
                     triggeringEntityId = event.entityId,
+                    triggeringLastKnownSnapshot = event.lastKnown,
                     triggeringOrigin = if (event.toZone == Zone.BATTLEFIELD) event.newObject else event.oldObject,
                     triggeringObject = if (event.toZone in setOf(Zone.BATTLEFIELD, Zone.GRAVEYARD, Zone.EXILE, Zone.STACK, Zone.COMMAND)) event.newObject else event.oldObject,
                     triggeringBattlefieldTimestamp = event.lastKnown?.battlefieldEntryTimestamp

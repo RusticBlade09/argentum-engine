@@ -490,6 +490,7 @@ class ZoneTransitionService(
                 // which must see continuous-effect-granted types, not just printed ones.
                 subtypes = lastKnownTypeLine?.subtypes?.mapTo(mutableSetOf()) { it.value } ?: emptySet(),
                 controllerId = controllerId,
+                ownerId = cardComponent.ownerId,
                 counters = lastKnownCounters,
                 keywords = lastKnownKeywords,
                 lostAllAbilities = lastKnownLostAllAbilities,

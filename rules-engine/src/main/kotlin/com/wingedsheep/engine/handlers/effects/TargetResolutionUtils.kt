@@ -327,8 +327,12 @@ object TargetResolutionUtils {
             // The owner of the ability's own source, which is NOT context.controllerId once the
             // permanent has been stolen — "its owner shuffles it into their library and draws"
             // still acts on the owner (Gandalf, Wandering Wizard).
-            Player.OwnerOfSource -> context.sourceId
-                ?.let { state.getEntity(it)?.get<CardComponent>()?.ownerId }
+            Player.OwnerOfSource -> context.sourceId?.let { sourceId ->
+                state.getEntity(sourceId)?.get<CardComponent>()?.ownerId
+                    ?: context.lastKnownSourceSnapshot?.takeIf { it.entityId == sourceId }?.ownerId
+                    ?: context.triggerContext?.triggeringLastKnownSnapshot
+                        ?.takeIf { it.entityId == sourceId }?.ownerId
+            }
             // "You", read off the source instead of the context — the one reference that survives
             // a per-player rebind of controllerId (CountPlayersWith / ForEach-over-players).
             // Falls back to the context controller for sources that aren't on the battlefield

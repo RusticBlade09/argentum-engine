@@ -5046,7 +5046,9 @@ A resolving nonpermanent spell retains its stack instance through serialized eff
   an Aura attached to a player. (Grievous Wound.)
 - `Player.ControllerOf(desc)` / `Player.OwnerOf(desc)` — controller/owner of the first chosen target.
 - `Player.OwnerOfSource` — the owner of the effect's **source**, read from the source card's
-  `CardComponent.ownerId`. The source-bound sibling of `Player.OwnerOf(desc)`, which needs a chosen
+  `CardComponent.ownerId`, falling back to its captured source/leave-event snapshot when the
+  source no longer exists (including token copies). Snapshot fallback is restricted to the source
+  entity; an unrelated creature that fired a trigger cannot supply its owner. The source-bound sibling of `Player.OwnerOf(desc)`, which needs a chosen
   target and so can't express an ability that names its own source without targeting it: *"[This
   creature]'s owner shuffles it into their library and draws three cards"* (Gandalf, Wandering
   Wizard). Distinct from `Player.You` precisely when ownership and control diverge — a stolen

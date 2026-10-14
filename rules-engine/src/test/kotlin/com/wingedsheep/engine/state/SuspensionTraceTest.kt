@@ -112,13 +112,14 @@ class SuspensionTraceTest : ScenarioTestBase() {
             // The graveyard turn history (Crawling Sensation) postdates the capture.
             "com.wingedsheep.engine.state.components.player.CardsPutIntoGraveyardThisTurnComponent").mapValues { (key, child) ->
             when {
+                // Captured ownership also postdates these traces; SourceOwnerLastKnownTest pins it.
                 // Departure object references postdate these historical traces. EnlistTest
                 // checks that the captured reference preserves the old object's power across a blink.
                 // Snapshot names were captured later; DepartedSourceCounterPaymentTest pins the
                 // actual departure metadata and masked prompts. Keep historical input fixtures intact.
                 key == "snapshot" && value["type"] == JsonPrimitive(
                     "com.wingedsheep.engine.state.components.battlefield.LastKnownPermanentComponent"
-                ) -> normalizeRouting(JsonObject(child.jsonObject - "objectRef" - "name"))
+                ) -> normalizeRouting(JsonObject(child.jsonObject - "objectRef" - "name" - "ownerId"))
                 root && key == "nextRoutingId" -> JsonPrimitive(0)
                 key == "question" && "answer" in value -> {
                     val question = child.jsonObject

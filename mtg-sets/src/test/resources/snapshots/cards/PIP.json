@@ -3738,3 +3738,125 @@
         ]
     }
 }
+
+// Yes Man, Personal Securitron
+{
+    "name": "Yes Man, Personal Securitron",
+    "manaCost": "{2}{W}",
+    "typeLine": "Legendary Artifact Creature — Robot",
+    "oracleText": "{T}: Target opponent gains control of Yes Man. When they do, you draw two cards and put a quest counter on Yes Man. Activate only during your turn.\nWild Card — When Yes Man leaves the battlefield, its owner creates a tapped 1/1 white Soldier creature token for each quest counter on it.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 2
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Yes Man, Personal Securitron:2",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "from": "Battlefield"
+                },
+                "effect": {
+                    "type": "CreateToken",
+                    "count": {
+                        "type": "LastKnownSourceCounters",
+                        "counterType": "QUEST"
+                    },
+                    "power": 1,
+                    "toughness": 1,
+                    "colors": [
+                        "WHITE"
+                    ],
+                    "creatureTypes": [
+                        "Soldier"
+                    ],
+                    "imageUri": "https://cards.scryfall.io/normal/front/a/f/af191656-5e62-440f-b63a-705cfed314e7.jpg?1783912045",
+                    "controller": {
+                        "type": "PlayerRef",
+                        "player": "OwnerOfSource"
+                    },
+                    "tapped": true
+                }
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Yes Man, Personal Securitron:1",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.DoAction",
+                        "action": {
+                            "type": "GiveControlToTargetPlayer",
+                            "permanent": "Self",
+                            "newController": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        },
+                        "successCriterion": "SuccessCriterion.ControlChanged"
+                    },
+                    "then": {
+                        "type": "ReflexiveTrigger",
+                        "action": {
+                            "type": "Composite",
+                            "effects": []
+                        },
+                        "optional": false,
+                        "reflexiveEffect": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "DrawCards",
+                                    "count": {
+                                        "type": "Fixed",
+                                        "amount": 2
+                                    }
+                                },
+                                {
+                                    "type": "AddCounters",
+                                    "counterType": "QUEST",
+                                    "count": 1,
+                                    "target": "Self"
+                                }
+                            ]
+                        },
+                        "descriptionOverride": "Draw two cards and put a quest counter on Yes Man"
+                    }
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetOpponent",
+                        "id": "t0"
+                    }
+                ],
+                "restrictions": [
+                    "OnlyDuringYourTurn"
+                ],
+                "descriptionOverride": "Target opponent gains control of Yes Man. When they do, you draw two cards and put a quest counter on Yes Man."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "29",
+        "rarity": "RARE",
+        "artist": "Dan Murayama Scott",
+        "imageUri": "https://cards.scryfall.io/normal/front/8/e/8e2fac8c-a574-4414-ac68-632fc822ddbb.jpg?1783912412",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "If Yes Man isn't on the battlefield as its first ability resolves, or if the target opponent is an illegal target as the ability tries to resolve, nothing will happen. You won't draw two cards, because that effect is part of a reflexive triggered ability that triggers only if the target opponent gains control of Yes Man."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "When Yes Man's controller leaves the game, if that player wasn't its owner, the effect giving that player control of Yes Man ends. Yes Man will return to the control of the player still in the game who most recently controlled it, ignoring any control effects whose durations have already expired."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "When Yes Man's owner leaves the game, Yes Man leaves the game along with that player. It's just doing what it's told."
+            }
+        ]
+    }
+}

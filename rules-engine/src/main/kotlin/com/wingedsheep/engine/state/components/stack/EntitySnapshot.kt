@@ -96,6 +96,10 @@ data class EntitySnapshot(
      * card needs control-at-zone-leave fidelity.
      */
     override val controllerId: EntityId? = null,
+    /** Owner captured independently of control, retained after a token ceases to exist. */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val ownerId: EntityId? = null,
     override val counters: Map<CounterType, Int> = emptyMap(),
     override val keywords: Set<String> = emptySet(),
     override val lostAllAbilities: Boolean = false,
@@ -283,6 +287,7 @@ data class EntitySnapshot(
                 subtypes = projected.getSubtypes(entityId),
                 supertypes = projected.getSupertypes(entityId),
                 controllerId = projected.getController(entityId),
+                ownerId = state.getEntity(entityId)?.get<CardComponent>()?.ownerId,
                 counters = countersOf(state, entityId),
                 keywords = projected.getKeywords(entityId),
                 lostAllAbilities = projected.hasLostAllAbilities(entityId),
@@ -318,6 +323,7 @@ fun captureEntitySnapshots(
         subtypes = projected.getSubtypes(id),
         supertypes = projected.getSupertypes(id),
         controllerId = projected.getController(id),
+        ownerId = state?.getEntity(id)?.get<CardComponent>()?.ownerId,
         wasSuspected = projected.isSuspected(id),
         // The projected type line rides along so a "shares a card type with the sacrificed
         // permanent" read sees the types it had on the battlefield — an animated land's Creature,
@@ -362,6 +368,7 @@ fun captureCardInHandSnapshots(state: GameState, ids: List<EntityId>): List<Enti
         entityId = id,
         objectRef = state.objectRef(id),
         name = card?.name,
+        ownerId = card?.ownerId,
         manaValue = card?.manaValue ?: 0,
         power = (card?.baseStats?.power as? CharacteristicValue.Fixed)?.value,
         toughness = (card?.baseStats?.toughness as? CharacteristicValue.Fixed)?.value,
