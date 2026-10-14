@@ -135,7 +135,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     body: [
       { kind: 'h', text: 'Top bar' },
       { kind: 'ul', items: [
-        'Decks & Cubes — everything you have built, on one shelf with a Decks tab and a Cubes tab. Open a deck or cube in the builder, start a new one, or play a cube straight from its tile.',
+        'Decks & Cubes — everything you have built, on one shelf with a Decks tab and a Cubes tab. Show them as art tiles or as a compact list (the toggle beside the sort). Open a deck or cube in the builder, start a new one, or play a cube straight from the shelf.',
         'Cards — the card browser: every card you can play, to look through without building anything.',
         'Replays — every finished game you played, ready to rewatch (shown once you are connected).',
         'Sets — Set Completion: which sets and cards are playable.',

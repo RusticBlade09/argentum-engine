@@ -2,20 +2,31 @@
  * Decks & Cubes — everything the player has built, at `/library` (`?tab=cubes` for the cube shelf).
  *
  * Decks and cubes are built with one tool (the builder and its Deck builder | Cube builder switch), so
- * they live on one shelf too: two tabs over the same gallery, the same full-art tile, the same search,
- * sort and colour filter. A tile opens its deck or cube in the builder; the bar under it carries what
- * that kind of thing is *for* — a cube is played from here, a deck is played from a lobby.
+ * they live on one shelf too: two tabs over the same gallery, the same search, sort and colour filter.
+ * The shelf has two views over the same entries — a grid of full-art tiles for browsing, and a compact
+ * list for a long shelf or a phone. Either way, the whole tile or row opens the deck or cube in the
+ * builder, and the actions beside it are always visible (an overflow menu where there's no room)
+ * rather than hover-revealed, so they work on touch. A cube is played from here; a deck is played
+ * from a lobby.
  *
- * The first tile of each tab is the way to start a new one, so an empty shelf and a full one teach the
- * same thing. `/cubes` redirects here, and the builders' title links back.
+ * The first entry of each shelf is the way to start a new one, so an empty shelf and a full one teach
+ * the same thing. `/cubes` redirects here, and the builders' title links back.
  */
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CubePlayButton } from '@/components/cube/CubePlayButton'
 import { boosterStyleInfo, cubeToText, isBoosterStyle, uniqueCubeName } from '@/components/cube/cubeModel'
 import { ShareCubeDialog } from '@/components/cube/ShareCubeDialog'
 import { DeckDetailsDialog } from '@/components/deck/DeckDetailsDialog'
-import { DeckTile, DeckTileActionButton, deckTileModel } from '@/components/deck/DeckTile'
+import {
+  COLOR_PIP_SYMBOL,
+  DeckTile,
+  deckBannerGradient,
+  deckTileModel,
+  formatAccent,
+  heroArtUrl,
+  type DeckTileCard,
+} from '@/components/deck/DeckTile'
 import { clearWorkingCopy } from '@/components/deckbuilder/BuilderModeSwitch'
 import { COLOR_TOKENS, useCardCatalog } from '@/components/deckbuilder/browser'
 import type { CardSummary } from '@/components/deckbuilder/cardFilter'
@@ -30,9 +41,11 @@ import { labelForFormat, useDeckLegalFormats } from '@/utils/deckLegality'
 import styles from '@/components/library/Library.module.css'
 
 export type LibraryTab = 'decks' | 'cubes'
+export type LibraryView = 'grid' | 'list'
 type Sort = 'updated' | 'name' | 'size' | 'colors'
 
 const LAST_TAB_KEY = 'argentum.library.tab'
+const VIEW_KEY = 'argentum.library.view'
 
 function readLastTab(): LibraryTab {
   try {
@@ -42,7 +55,18 @@ function readLastTab(): LibraryTab {
   }
 }
 
-/** One gallery row, whichever kind it is — what search, sort and the colour filter read. */
+/** The remembered view, else the one that suits the screen: art tiles when there's room, a list on a phone. */
+function readView(): LibraryView {
+  try {
+    const stored = window.localStorage.getItem(VIEW_KEY)
+    if (stored === 'grid' || stored === 'list') return stored
+  } catch {
+    // Storage blocked: fall through to the screen-size default.
+  }
+  return typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches ? 'list' : 'grid'
+}
+
+/** One shelf row, whichever kind it is — what search, sort and the colour filter read. */
 interface Shelved<T> {
   item: T
   name: string
@@ -67,6 +91,7 @@ export function LibraryPage() {
   const [filter, setFilter] = useState('')
   const [sort, setSort] = useState<Sort>('updated')
   const [colorFilter, setColorFilter] = useState<ReadonlySet<string>>(new Set())
+  const [view, setView] = useState<LibraryView>(readView)
 
   useEffect(() => {
     try {
@@ -75,6 +100,15 @@ export function LibraryPage() {
       // Storage blocked: the shelf just opens on Decks next time.
     }
   }, [tab])
+
+  const chooseView = (next: LibraryView) => {
+    setView(next)
+    try {
+      window.localStorage.setItem(VIEW_KEY, next)
+    } catch {
+      // Storage blocked: the choice holds for this visit only.
+    }
+  }
 
   const selectTab = (next: LibraryTab) => {
     if (next === tab) return
@@ -116,31 +150,10 @@ export function LibraryPage() {
     [cubes.cubes, index],
   )
 
-  const shelve = useCallback(
-    <T,>(rows: Shelved<T>[]): Shelved<T>[] => {
-      const needle = filter.trim().toLowerCase()
-      const kept = rows.filter((row) => {
-        if (needle && !row.name.toLowerCase().includes(needle) && !row.blurb.toLowerCase().includes(needle)) return false
-        if (colorFilter.size === 0) return true
-        for (const key of colorFilter) {
-          if (key === 'COLORLESS' ? row.colors.length === 0 : row.colors.includes(key)) return true
-        }
-        return false
-      })
-      return kept.sort((a, b) => {
-        switch (sort) {
-          case 'name':
-            return a.name.localeCompare(b.name)
-          case 'size':
-            return b.total - a.total || a.name.localeCompare(b.name)
-          case 'colors':
-            return colorBucket(a.colors) - colorBucket(b.colors) || a.name.localeCompare(b.name)
-          default:
-            return b.updatedAt - a.updatedAt
-        }
-      })
-    },
-    [filter, colorFilter, sort],
+  // Only the visible tab's rows are filtered and sorted, and only when an input changes.
+  const shownRows = useMemo(
+    () => shelve<UnifiedDeck | UnifiedCube>(tab === 'decks' ? deckRows : cubeRows, filter, colorFilter, sort),
+    [tab, deckRows, cubeRows, filter, colorFilter, sort],
   )
 
   const toggleColor = (key: string) =>
@@ -150,6 +163,11 @@ export function LibraryPage() {
       else next.add(key)
       return next
     })
+
+  const clearFilters = () => {
+    setFilter('')
+    setColorFilter(new Set())
+  }
 
   const newDeck = () => {
     clearWorkingCopy('deck')
@@ -169,23 +187,15 @@ export function LibraryPage() {
       <header className={styles.hero}>
         <div>
           <h1 className={p.h1}>Decks &amp; cubes</h1>
-          <p className={p.lede}>
+          <p className={`${p.lede} ${styles.lede}`}>
             Everything you build, on one shelf. Decks you bring to a game; cubes you draft or open as sealed.
           </p>
         </div>
-        <div className={styles.heroActions}>
-          {/* Looking comes before building: the card browser is one click from the shelf. */}
-          <button type="button" className={`${p.button} ${styles.heroAction}`} onClick={() => navigate('/cards')}>
-            <SearchIcon /> Browse cards
-          </button>
-          <button
-            type="button"
-            className={`${p.buttonPrimary} ${styles.heroAction}`}
-            onClick={() => (tab === 'decks' ? newDeck() : newCube())}
-          >
-            <PlusIcon /> {tab === 'decks' ? 'New deck' : 'New cube'}
-          </button>
-        </div>
+        {/* Looking comes before building: the card browser is one click from the shelf. Starting a
+            new deck or cube is the first entry of the shelf itself. */}
+        <button type="button" className={`${p.button} ${styles.heroAction}`} onClick={() => navigate('/cards')}>
+          <SearchIcon /> Browse cards
+        </button>
       </header>
 
       <div className={styles.bar}>
@@ -208,80 +218,103 @@ export function LibraryPage() {
           ))}
         </div>
 
-        <div className={styles.filters}>
-          <label className={styles.search}>
-            <SearchIcon />
-            <input
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              placeholder={tab === 'decks' ? 'Search decks…' : 'Search cubes…'}
-              aria-label={tab === 'decks' ? 'Search decks by name or note' : 'Search cubes by name or description'}
-            />
-          </label>
-          <div className={styles.colors} role="group" aria-label="Filter by colour">
-            {COLOR_TOKENS.map(({ label, key }) => (
-              <button
-                key={key}
-                type="button"
-                className={styles.colorChip}
-                aria-pressed={colorFilter.has(key)}
-                aria-label={key.toLowerCase()}
-                title={key.charAt(0) + key.slice(1).toLowerCase()}
-                onClick={() => toggleColor(key)}
-              >
-                <ManaSymbol symbol={label} size={18} />
-              </button>
-            ))}
+        <label className={styles.search}>
+          <SearchIcon />
+          <input
+            type="search"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && filter) {
+                e.preventDefault()
+                setFilter('')
+              }
+            }}
+            placeholder={tab === 'decks' ? 'Search decks…' : 'Search cubes…'}
+            aria-label={tab === 'decks' ? 'Search decks by name or note' : 'Search cubes by name or description'}
+          />
+        </label>
+
+        <div className={styles.colors} role="group" aria-label="Filter by colour">
+          {COLOR_TOKENS.map(({ label, key }) => (
             <button
+              key={key}
               type="button"
               className={styles.colorChip}
-              aria-pressed={colorFilter.has('COLORLESS')}
-              aria-label="colourless"
-              title="Colourless"
-              onClick={() => toggleColor('COLORLESS')}
+              aria-pressed={colorFilter.has(key)}
+              aria-label={key.toLowerCase()}
+              title={key.charAt(0) + key.slice(1).toLowerCase()}
+              onClick={() => toggleColor(key)}
             >
-              <ManaSymbol symbol="C" size={18} />
+              <ManaSymbol symbol={label} size={18} />
             </button>
-          </div>
-          <select
-            className={styles.sort}
-            value={sort}
-            onChange={(e) => setSort(e.target.value as Sort)}
-            aria-label="Sort"
+          ))}
+          <button
+            type="button"
+            className={styles.colorChip}
+            aria-pressed={colorFilter.has('COLORLESS')}
+            aria-label="colourless"
+            title="Colourless"
+            onClick={() => toggleColor('COLORLESS')}
           >
-            <option value="updated">Recently updated</option>
+            <ManaSymbol symbol="C" size={18} />
+          </button>
+        </div>
+
+        <div className={styles.barEnd}>
+          <select className={styles.sort} value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort">
+            <option value="updated">Recently edited</option>
             <option value="name">Name (A→Z)</option>
             <option value="size">Card count</option>
             <option value="colors">Colour</option>
           </select>
+          <div className={styles.viewToggle} role="group" aria-label="View">
+            <button
+              type="button"
+              className={styles.viewButton}
+              aria-pressed={view === 'grid'}
+              aria-label="Grid view"
+              title="Grid — art tiles"
+              onClick={() => chooseView('grid')}
+            >
+              <GridIcon />
+            </button>
+            <button
+              type="button"
+              className={styles.viewButton}
+              aria-pressed={view === 'list'}
+              aria-label="List view"
+              title="List — compact rows"
+              onClick={() => chooseView('list')}
+            >
+              <ListIcon />
+            </button>
+          </div>
         </div>
       </div>
 
       <section id="library-panel" role="tabpanel" aria-labelledby={`library-tab-${tab}`} className={styles.panel}>
         {tab === 'decks' ? (
           <DeckShelf
-            rows={shelve(deckRows)}
+            rows={shownRows as Shelved<UnifiedDeck>[]}
             library={decks}
-            ready={decks.settled}
+            view={view}
+            showStorage={isLoggedIn}
             filtering={filtering}
             onNew={newDeck}
-            onClearFilters={() => {
-              setFilter('')
-              setColorFilter(new Set())
-            }}
+            onClearFilters={clearFilters}
           />
         ) : (
           <CubeShelf
-            rows={shelve(cubeRows)}
+            rows={shownRows as Shelved<UnifiedCube>[]}
             library={cubes}
+            view={view}
+            showStorage={isLoggedIn}
             index={index}
             catalogReady={!catalogLoading}
             filtering={filtering}
             onNew={newCube}
-            onClearFilters={() => {
-              setFilter('')
-              setColorFilter(new Set())
-            }}
+            onClearFilters={clearFilters}
           />
         )}
       </section>
@@ -296,6 +329,343 @@ export function LibraryPage() {
   )
 }
 
+function shelve<T>(rows: Shelved<T>[], filter: string, colorFilter: ReadonlySet<string>, sort: Sort): Shelved<T>[] {
+  const needle = filter.trim().toLowerCase()
+  const kept = rows.filter((row) => {
+    if (needle && !row.name.toLowerCase().includes(needle) && !row.blurb.toLowerCase().includes(needle)) return false
+    if (colorFilter.size === 0) return true
+    for (const key of colorFilter) {
+      if (key === 'COLORLESS' ? row.colors.length === 0 : row.colors.includes(key)) return true
+    }
+    return false
+  })
+  return kept.sort((a, b) => {
+    switch (sort) {
+      case 'name':
+        return a.name.localeCompare(b.name)
+      case 'size':
+        return b.total - a.total || a.name.localeCompare(b.name)
+      case 'colors':
+        return colorBucket(a.colors) - colorBucket(b.colors) || a.name.localeCompare(b.name)
+      default:
+        return b.updatedAt - a.updatedAt
+    }
+  })
+}
+
+// ---------------------------------------------------------------------------
+// The view-independent shelf entry
+// ---------------------------------------------------------------------------
+
+interface ShelfAction {
+  label: string
+  icon: ReactNode
+  onClick: () => void
+}
+
+/** Everything a grid tile or a list row shows for one deck or cube. */
+interface ShelfEntry {
+  key: string
+  name: string
+  /** A deck's note (italic) or a cube's description. */
+  note?: string | undefined
+  description?: string | undefined
+  total: number
+  colors: string[]
+  hero: DeckTileCard | null
+  format?: string | null
+  formatTitle?: string | undefined
+  /** Extra chips after the format: a cube's pack style, "Shared", a missing-cards warning. */
+  chips?: ReactNode
+  storage?: 'cloud' | 'local' | undefined
+  updatedAt: number
+  openTitle: string
+  onOpen: () => void
+  /** Secondary actions; Delete is added by the shelf, behind its confirmation. */
+  actions: ShelfAction[]
+  /** The one primary action besides opening it — a cube's Play button. */
+  primary?: ReactNode
+  confirmText: string
+  onDelete: () => void
+}
+
+function Shelf({
+  entries,
+  view,
+  ready,
+  filtering,
+  noun,
+  start,
+  onClearFilters,
+}: {
+  entries: ShelfEntry[]
+  view: LibraryView
+  ready: boolean
+  filtering: boolean
+  noun: 'decks' | 'cubes'
+  start: StartProps
+  onClearFilters: () => void
+}) {
+  const loading = !ready && entries.length === 0
+  return (
+    <>
+      <ul className={view === 'grid' ? styles.grid : styles.list} aria-busy={loading || undefined}>
+        {!filtering && (
+          <li className={view === 'grid' ? styles.startItem : styles.startRowItem}>
+            {view === 'grid' ? <StartTile {...start} /> : <StartRow {...start} />}
+          </li>
+        )}
+        {loading ? (
+          <Skeletons view={view} />
+        ) : (
+          entries.map((entry) =>
+            view === 'grid' ? <GridItem key={entry.key} entry={entry} /> : <ListItem key={entry.key} entry={entry} />,
+          )
+        )}
+      </ul>
+      {ready && entries.length === 0 && filtering && <NoMatches noun={noun} onClear={onClearFilters} />}
+    </>
+  )
+}
+
+/** A full-art tile over its footer bar; the delete confirmation replaces the bar. */
+function GridItem({ entry }: { entry: ShelfEntry }) {
+  const [confirming, setConfirming] = useState(false)
+  return (
+    <li className={styles.item} data-confirming={confirming}>
+      <DeckTile
+        name={entry.name}
+        note={entry.note}
+        description={entry.description}
+        total={entry.total}
+        colors={entry.colors}
+        hero={entry.hero}
+        format={entry.format ?? null}
+        formatTitle={entry.formatTitle}
+        storage={entry.storage}
+        chips={entry.chips}
+        title={entry.openTitle}
+        onClick={entry.onOpen}
+      />
+      {confirming ? (
+        <DeleteConfirm entry={entry} onKeep={() => setConfirming(false)} />
+      ) : (
+        <div className={styles.footer}>
+          <span className={styles.updated}>{updatedLabel(entry.updatedAt)}</span>
+          <EntryActions entry={entry} onDelete={() => setConfirming(true)} />
+          {entry.primary}
+        </div>
+      )}
+    </li>
+  )
+}
+
+/**
+ * A compact row: thumbnail, name and note, chips, colours, count, last edit, actions. The name is
+ * the row's button, stretched over the whole row, so any empty part of the row opens it too.
+ */
+function ListItem({ entry }: { entry: ShelfEntry }) {
+  const [confirming, setConfirming] = useState(false)
+  const artUrl = useMemo(() => heroArtUrl(entry.hero), [entry.hero])
+  const subtitle = entry.note ?? entry.description
+  return (
+    <li className={styles.row} data-confirming={confirming}>
+      <span className={styles.thumb} aria-hidden style={artUrl ? undefined : { background: deckBannerGradient(entry.colors) }}>
+        {artUrl && <img src={artUrl} alt="" loading="lazy" decoding="async" />}
+      </span>
+      <span className={styles.rowMain}>
+        <button type="button" className={styles.rowOpen} onClick={entry.onOpen} title={entry.openTitle}>
+          {entry.name}
+        </button>
+        {subtitle && (
+          <span className={styles.rowSub} data-note={entry.note ? true : undefined}>
+            {subtitle}
+          </span>
+        )}
+        <span className={styles.rowMetaCompact}>
+          <Pips colors={entry.colors} />
+          <span>{entry.total} cards</span>
+        </span>
+      </span>
+      <span className={styles.rowChips}>
+        {entry.format && <FormatChip format={entry.format} title={entry.formatTitle} />}
+        {entry.chips}
+      </span>
+      <span className={styles.rowPips}>
+        <Pips colors={entry.colors} />
+      </span>
+      <span className={styles.rowCount}>
+        {entry.total}
+        <span className={styles.rowCountUnit}> cards</span>
+      </span>
+      <span className={styles.rowUpdated} title={new Date(entry.updatedAt).toLocaleString()}>
+        {shortUpdated(entry.updatedAt)}
+      </span>
+      {entry.storage ? <StorageMark storage={entry.storage} /> : <span className={styles.storageMark} aria-hidden />}
+      {confirming ? (
+        <DeleteConfirm entry={entry} onKeep={() => setConfirming(false)} />
+      ) : (
+        <span className={styles.rowEnd}>
+          <EntryActions entry={entry} onDelete={() => setConfirming(true)} />
+          {entry.primary}
+        </span>
+      )}
+    </li>
+  )
+}
+
+function DeleteConfirm({ entry, onKeep }: { entry: ShelfEntry; onKeep: () => void }) {
+  return (
+    <div className={styles.confirm} role="alert" aria-label={`Delete ${entry.name}`}>
+      <span>{entry.confirmText}</span>
+      <button type="button" className={styles.footerButton} onClick={onKeep} autoFocus>
+        Keep
+      </button>
+      <button type="button" className={styles.dangerButton} onClick={entry.onDelete}>
+        Delete
+      </button>
+    </div>
+  )
+}
+
+/**
+ * An entry's secondary actions: icon buttons where there's room, one "More" menu where there isn't
+ * (CSS picks which by the shelf's width). Never hover-only — a touch screen has no hover.
+ */
+function EntryActions({ entry, onDelete }: { entry: ShelfEntry; onDelete: () => void }) {
+  const all: Array<ShelfAction & { danger?: boolean }> = [
+    ...entry.actions,
+    { label: 'Delete', icon: <TrashIcon />, onClick: onDelete, danger: true },
+  ]
+  return (
+    <>
+      <span className={styles.actions}>
+        {all.map((action) => (
+          <button
+            key={action.label}
+            type="button"
+            className={styles.iconButton}
+            data-danger={action.danger || undefined}
+            onClick={action.onClick}
+            title={action.label}
+            aria-label={`${action.label} ${entry.name}`}
+          >
+            {action.icon}
+          </button>
+        ))}
+      </span>
+      <MoreMenu name={entry.name} actions={all} />
+    </>
+  )
+}
+
+function MoreMenu({ name, actions }: { name: string; actions: Array<ShelfAction & { danger?: boolean }> }) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLSpanElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    menuRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
+    const close = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false)
+        rootRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
+        return
+      }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+      const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('button') ?? [])
+      const at = items.indexOf(document.activeElement as HTMLButtonElement)
+      const next = items[(at + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]
+      next?.focus()
+      e.preventDefault()
+    }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', key)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', key)
+    }
+  }, [open])
+
+  return (
+    <span ref={rootRef} className={styles.more}>
+      <button
+        type="button"
+        className={styles.iconButton}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`More actions for ${name}`}
+        title="More"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <MoreIcon />
+      </button>
+      {open && (
+        <div ref={menuRef} className={styles.menu} role="menu" aria-label={name}>
+          {actions.map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              role="menuitem"
+              className={styles.menuItem}
+              data-danger={action.danger || undefined}
+              onClick={() => {
+                setOpen(false)
+                action.onClick()
+              }}
+            >
+              {action.icon}
+              {action.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </span>
+  )
+}
+
+function FormatChip({ format, title }: { format: string; title?: string | undefined }) {
+  const accent = formatAccent(format)
+  return (
+    <span className={styles.chip} style={{ color: accent }} title={title}>
+      {labelForFormat(format)}
+    </span>
+  )
+}
+
+function Pips({ colors }: { colors: string[] }) {
+  return (
+    <span className={styles.pips}>
+      {colors.length > 0 ? (
+        colors.map((c) => <ManaSymbol key={c} symbol={COLOR_PIP_SYMBOL[c] ?? 'C'} size={14} />)
+      ) : (
+        <ManaSymbol symbol="C" size={14} />
+      )}
+    </span>
+  )
+}
+
+function StorageMark({ storage }: { storage: 'cloud' | 'local' }) {
+  return (
+    <span
+      className={styles.storageMark}
+      data-storage={storage}
+      title={
+        storage === 'cloud'
+          ? 'Saved to your account — available on any device'
+          : 'Saved only in this browser — not backed up to your account'
+      }
+      aria-label={storage === 'cloud' ? 'Saved to your account' : 'Saved in this browser'}
+    >
+      {storage === 'cloud' ? <CloudIcon /> : <MonitorIcon />}
+    </span>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Decks
 // ---------------------------------------------------------------------------
@@ -303,14 +673,16 @@ export function LibraryPage() {
 function DeckShelf({
   rows,
   library,
-  ready,
+  view,
+  showStorage,
   filtering,
   onNew,
   onClearFilters,
 }: {
   rows: Shelved<UnifiedDeck>[]
   library: ReturnType<typeof useUnifiedDecks>
-  ready: boolean
+  view: LibraryView
+  showStorage: boolean
   filtering: boolean
   onNew: () => void
   onClearFilters: () => void
@@ -320,12 +692,13 @@ function DeckShelf({
   const [editing, setEditing] = useState<UnifiedDeck | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Server-authoritative legality, batched into one request; the tile shows one format chip.
+  // Server-authoritative legality for every deck, batched into one request and keyed on the library
+  // rather than the filtered rows, so typing in the search box never re-asks.
   const legalityInput = useMemo(() => {
     const out: Record<string, Record<string, number>> = {}
-    for (const { item } of rows) out[item.id] = mergeCommanderIntoCards(item.cards, item.commander ?? null)
+    for (const deck of library.decks) out[deck.id] = mergeCommanderIntoCards(deck.cards, deck.commander ?? null)
     return out
-  }, [rows])
+  }, [library.decks])
   const legality = useDeckLegalFormats(legalityInput)
 
   // A cloud deck's id (`cloud:<n>`) names nothing in the deckbuilder's local library, so it opens
@@ -358,80 +731,55 @@ function DeckShelf({
     }
   }
 
+  const entries: ShelfEntry[] = rows.map(({ item: deck, total, colors, hero }) => {
+    const legal = legality[deck.id] ?? []
+    const format = deck.format ?? legal[0] ?? null
+    return {
+      key: deck.id,
+      name: deck.name,
+      note: deck.note,
+      total,
+      colors,
+      hero,
+      format,
+      formatTitle: format
+        ? deck.format
+          ? `Saved as ${labelForFormat(format)}`
+          : `Legal in ${labelForFormat(format)}`
+        : undefined,
+      storage: showStorage ? (deck.online ? 'cloud' : 'local') : undefined,
+      updatedAt: deck.updatedAt,
+      openTitle: `Open ${deck.name} in the deck builder`,
+      onOpen: () => open(deck),
+      actions: [
+        { label: 'Rename', icon: <PencilIcon />, onClick: () => setEditing(deck) },
+        { label: 'Duplicate', icon: <CopyIcon />, onClick: () => void duplicate(deck) },
+      ],
+      confirmText: 'Delete this deck?',
+      onDelete: () => void remove(deck),
+    }
+  })
+
   return (
     <>
       {error && <p className={styles.error} role="alert">{error}</p>}
-      <ul className={styles.grid}>
-        {!filtering && (
-          <li>
-            <StartTile
-              title="New deck"
-              body="Search every implemented card, or start from a list or a ready-made deck."
-              onClick={onNew}
-              links={[
-                { label: 'Import a list', onClick: () => navigate('/deckbuilder?open=import') },
-                { label: 'Start from an example', onClick: () => navigate('/deckbuilder?open=examples') },
-              ]}
-            />
-          </li>
-        )}
-        {!ready && rows.length === 0
-          ? <SkeletonTiles />
-          : rows.map(({ item: deck, total, colors, hero }) => {
-              const legal = legality[deck.id] ?? []
-              const shownFormat = deck.format ?? legal[0] ?? null
-              return (
-                <ShelfTile
-                  key={deck.id}
-                  name={deck.name}
-                  confirmText="Delete this deck?"
-                  onConfirmDelete={() => void remove(deck)}
-                  tile={(askDelete) => (
-                    <DeckTile
-                      name={deck.name}
-                      note={deck.note}
-                      total={total}
-                      colors={colors}
-                      hero={hero}
-                      format={shownFormat}
-                      formatTitle={
-                        shownFormat
-                          ? deck.format
-                            ? `Saved as ${labelForFormat(shownFormat)}`
-                            : `Legal in ${labelForFormat(shownFormat)}`
-                          : undefined
-                      }
-                      storage={deck.online ? 'cloud' : 'local'}
-                      title={`Open ${deck.name} in the deck builder`}
-                      onClick={() => open(deck)}
-                      actions={
-                        <>
-                          <DeckTileActionButton onClick={() => setEditing(deck)} title="Rename or edit note" ariaLabel={`Rename ${deck.name}`}>
-                            <PencilIcon />
-                          </DeckTileActionButton>
-                          <DeckTileActionButton onClick={() => void duplicate(deck)} title="Duplicate" ariaLabel={`Duplicate ${deck.name}`}>
-                            <CopyIcon />
-                          </DeckTileActionButton>
-                          <DeckTileActionButton onClick={askDelete} title="Delete" ariaLabel={`Delete ${deck.name}`} danger>
-                            <TrashIcon />
-                          </DeckTileActionButton>
-                        </>
-                      }
-                    />
-                  )}
-                  footer={
-                    <>
-                      <span className={styles.updated}>{updatedLabel(deck.updatedAt)}</span>
-                      <button type="button" className={styles.footerButton} onClick={() => open(deck)}>
-                        Edit deck
-                      </button>
-                    </>
-                  }
-                />
-              )
-            })}
-      </ul>
-      {ready && rows.length === 0 && filtering && <NoMatches noun="decks" onClear={onClearFilters} />}
+      <Shelf
+        entries={entries}
+        view={view}
+        ready={library.settled}
+        filtering={filtering}
+        noun="decks"
+        onClearFilters={onClearFilters}
+        start={{
+          title: 'New deck',
+          body: 'Search every implemented card, or start from a list or a ready-made deck.',
+          onClick: onNew,
+          links: [
+            { label: 'Import a list', onClick: () => navigate('/deckbuilder?open=import') },
+            { label: 'Start from an example', onClick: () => navigate('/deckbuilder?open=examples') },
+          ],
+        }}
+      />
       {editing && (
         <DeckDetailsDialog
           name={editing.name}
@@ -457,6 +805,8 @@ function DeckShelf({
 function CubeShelf({
   rows,
   library,
+  view,
+  showStorage,
   index,
   catalogReady,
   filtering,
@@ -465,6 +815,8 @@ function CubeShelf({
 }: {
   rows: Shelved<UnifiedCube>[]
   library: ReturnType<typeof useUnifiedCubes>
+  view: LibraryView
+  showStorage: boolean
   index: Record<string, CardSummary>
   catalogReady: boolean
   filtering: boolean
@@ -474,7 +826,15 @@ function CubeShelf({
   const navigate = useNavigate()
   const [sharing, setSharing] = useState<UnifiedCube | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const known = useMemo(() => new Set(Object.keys(index).map((n) => n.toLowerCase())), [index])
+
+  // Unimplemented cards per cube, counted once per catalogue/library change rather than per render.
+  const unresolvedById = useMemo(() => {
+    const out = new Map<string, number>()
+    if (!catalogReady) return out
+    const known = new Set(Object.keys(index).map((n) => n.toLowerCase()))
+    for (const cube of library.cubes) out.set(cube.id, cube.cards.filter((e) => !known.has(e.name.toLowerCase())).length)
+    return out
+  }, [catalogReady, index, library.cubes])
 
   const edit = (cube: UnifiedCube) => navigate(`/cubes/edit/${encodeURIComponent(cube.id)}`)
 
@@ -498,95 +858,77 @@ function CubeShelf({
     }
   }
 
+  const entries: ShelfEntry[] = rows.map(({ item: cube, total, colors, hero }) => {
+    const unresolved = unresolvedById.get(cube.id) ?? 0
+    const blockedReason = total === 0
+      ? 'This cube is empty'
+      : unresolved > 0
+        ? `${unresolved} card${unresolved === 1 ? '' : 's'} in this cube aren’t implemented yet — edit it to drop them`
+        : null
+    const booster = isBoosterStyle(cube.boosterStyle)
+    return {
+      key: cube.id,
+      name: cube.name,
+      description: cube.description,
+      total,
+      colors,
+      hero,
+      // A shuffled cube is the default, so only the exception earns a chip.
+      chips: (booster || cube.shareCode || unresolved > 0) && (
+        <>
+          {booster && (
+            <span className={styles.chip} data-kind="booster" title="Packs are printed by rarity, like a real set">
+              {boosterStyleInfo(cube.boosterStyle).label}
+            </span>
+          )}
+          {cube.shareCode && (
+            <span className={styles.chip} data-kind="shared" title="Anyone with the link can view and copy it">
+              Shared
+            </span>
+          )}
+          {unresolved > 0 && (
+            <span className={styles.chip} data-kind="warning" title={blockedReason ?? undefined}>
+              {unresolved} missing
+            </span>
+          )}
+        </>
+      ),
+      storage: showStorage ? (cube.online ? 'cloud' : 'local') : undefined,
+      updatedAt: cube.updatedAt,
+      openTitle: `Open ${cube.name} in the cube builder`,
+      onOpen: () => edit(cube),
+      actions: [
+        { label: 'Share', icon: <ShareIcon />, onClick: () => setSharing(cube) },
+        { label: 'Duplicate', icon: <CopyIcon />, onClick: () => void duplicate(cube) },
+      ],
+      primary: (
+        <CubePlayButton cube={cubeToShared(cube)} blockedReason={blockedReason} className={styles.play} panelAlign="end" />
+      ),
+      confirmText: cube.shareCode ? 'Delete this cube? Its share link stops working.' : 'Delete this cube?',
+      onDelete: () => void remove(cube),
+    }
+  })
+
   return (
     <>
       {error && <p className={styles.error} role="alert">{error}</p>}
-      <ul className={styles.grid}>
-        {!filtering && (
-          <li>
-            <StartTile
-              title="New cube"
-              body="Your own pool to draft or open as sealed — a classic shuffled cube, or a whole set opened as real boosters."
-              onClick={() => onNew()}
-              links={[
-                { label: 'Start from a set', onClick: () => onNew('set') },
-                { label: 'Paste a list', onClick: () => onNew('paste') },
-              ]}
-            />
-          </li>
-        )}
-        {!library.ready && rows.length === 0
-          ? <SkeletonTiles />
-          : rows.map(({ item: cube, total, colors, hero }) => {
-              const unresolved = catalogReady ? cube.cards.filter((e) => !known.has(e.name.toLowerCase())).length : 0
-              const blockedReason = total === 0
-                ? 'This cube is empty'
-                : unresolved > 0
-                  ? `${unresolved} card${unresolved === 1 ? '' : 's'} in this cube aren’t implemented yet — edit it to drop them`
-                  : null
-              const style = boosterStyleInfo(cube.boosterStyle)
-              return (
-                <ShelfTile
-                  key={cube.id}
-                  name={cube.name}
-                  confirmText={cube.shareCode ? 'Delete this cube? Its share link stops working.' : 'Delete this cube?'}
-                  onConfirmDelete={() => void remove(cube)}
-                  tile={(askDelete) => (
-                    <DeckTile
-                      name={cube.name}
-                      description={cube.description}
-                      total={total}
-                      colors={colors}
-                      hero={hero}
-                      storage={cube.online ? 'cloud' : 'local'}
-                      title={`Open ${cube.name} in the cube builder`}
-                      onClick={() => edit(cube)}
-                      chips={
-                        <>
-                          <span
-                            className={styles.chip}
-                            data-kind={isBoosterStyle(cube.boosterStyle) ? 'booster' : 'shuffled'}
-                            title={isBoosterStyle(cube.boosterStyle) ? 'Packs are printed by rarity, like a real set' : 'Packs are dealt from the shuffled cube'}
-                          >
-                            {style.label}
-                          </span>
-                          {cube.shareCode && <span className={styles.chip} data-kind="shared" title="Anyone with the link can view and copy it">Shared</span>}
-                          {unresolved > 0 && (
-                            <span className={styles.chip} data-kind="warning" title={blockedReason ?? undefined}>
-                              {unresolved} missing
-                            </span>
-                          )}
-                        </>
-                      }
-                      actions={
-                        <>
-                          <DeckTileActionButton onClick={() => setSharing(cube)} title="Share" ariaLabel={`Share ${cube.name}`}>
-                            <ShareIcon />
-                          </DeckTileActionButton>
-                          <DeckTileActionButton onClick={() => void duplicate(cube)} title="Duplicate" ariaLabel={`Duplicate ${cube.name}`}>
-                            <CopyIcon />
-                          </DeckTileActionButton>
-                          <DeckTileActionButton onClick={askDelete} title="Delete" ariaLabel={`Delete ${cube.name}`} danger>
-                            <TrashIcon />
-                          </DeckTileActionButton>
-                        </>
-                      }
-                    />
-                  )}
-                  footer={
-                    <>
-                      <span className={styles.updated}>{updatedLabel(cube.updatedAt)}</span>
-                      <button type="button" className={styles.footerButton} onClick={() => edit(cube)}>
-                        Edit
-                      </button>
-                      <CubePlayButton cube={cubeToShared(cube)} blockedReason={blockedReason} className={styles.footerPlay} panelAlign="end" />
-                    </>
-                  }
-                />
-              )
-            })}
-      </ul>
-      {library.ready && rows.length === 0 && filtering && <NoMatches noun="cubes" onClear={onClearFilters} />}
+      <Shelf
+        entries={entries}
+        view={view}
+        ready={library.ready}
+        filtering={filtering}
+        noun="cubes"
+        onClearFilters={onClearFilters}
+        start={{
+          title: 'New cube',
+          body: 'Your own pool to draft or open as sealed — a classic shuffled cube, or a whole set opened as real boosters.',
+          onClick: () => onNew(),
+          links: [
+            { label: 'Start from a set', onClick: () => onNew('set') },
+            { label: 'Paste a list', onClick: () => onNew('paste') },
+          ],
+        }}
+      />
       {sharing && (
         <ShareCubeDialog
           saved={sharing}
@@ -608,53 +950,15 @@ function CubeShelf({
 // Shared pieces
 // ---------------------------------------------------------------------------
 
-/** A gallery tile plus its footer bar, and the inline delete confirmation that replaces the bar. */
-function ShelfTile({
-  name,
-  tile,
-  footer,
-  confirmText,
-  onConfirmDelete,
-}: {
-  name: string
-  tile: (askDelete: () => void) => ReactNode
-  footer: ReactNode
-  confirmText: string
-  onConfirmDelete: () => void
-}) {
-  const [confirming, setConfirming] = useState(false)
-  return (
-    <li className={styles.item} data-confirming={confirming}>
-      {tile(() => setConfirming(true))}
-      {confirming ? (
-        <div className={styles.confirm} role="alert" aria-label={`Delete ${name}`}>
-          <span>{confirmText}</span>
-          <button type="button" className={styles.footerButton} onClick={() => setConfirming(false)} autoFocus>
-            Keep
-          </button>
-          <button type="button" className={styles.dangerButton} onClick={onConfirmDelete}>
-            Delete
-          </button>
-        </div>
-      ) : (
-        <div className={styles.footer}>{footer}</div>
-      )}
-    </li>
-  )
-}
-
-/** The first tile of a shelf: start a new one, with the shortcuts that kind of thing has. */
-function StartTile({
-  title,
-  body,
-  onClick,
-  links,
-}: {
+interface StartProps {
   title: string
   body: string
   onClick: () => void
   links: Array<{ label: string; onClick: () => void }>
-}) {
+}
+
+/** The first tile of the grid: start a new one, with the shortcuts that kind of thing has. */
+function StartTile({ title, body, onClick, links }: StartProps) {
   return (
     <div className={styles.start}>
       <button type="button" className={styles.startMain} onClick={onClick}>
@@ -664,22 +968,43 @@ function StartTile({
         <span className={styles.startTitle}>{title}</span>
         <span className={styles.startBody}>{body}</span>
       </button>
-      <div className={styles.startLinks}>
-        {links.map((link) => (
-          <button key={link.label} type="button" className={styles.startLink} onClick={link.onClick}>
-            {link.label} <span aria-hidden>→</span>
-          </button>
-        ))}
-      </div>
+      <StartLinks links={links} />
     </div>
   )
 }
 
-function SkeletonTiles() {
+/** The list view's first row: the same start, one line tall. */
+function StartRow({ title, onClick, links }: StartProps) {
+  return (
+    <div className={styles.startRow}>
+      <button type="button" className={styles.startRowMain} onClick={onClick}>
+        <span className={styles.startRowIcon} aria-hidden>
+          <PlusIcon size={18} />
+        </span>
+        {title}
+      </button>
+      <StartLinks links={links} />
+    </div>
+  )
+}
+
+function StartLinks({ links }: { links: StartProps['links'] }) {
+  return (
+    <div className={styles.startLinks}>
+      {links.map((link) => (
+        <button key={link.label} type="button" className={styles.startLink} onClick={link.onClick}>
+          {link.label} <span aria-hidden>→</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function Skeletons({ view }: { view: LibraryView }) {
   return (
     <>
       {[0, 1, 2].map((i) => (
-        <li key={i} className={styles.skeleton} aria-hidden />
+        <li key={i} className={view === 'grid' ? styles.skeleton : styles.skeletonRow} aria-hidden />
       ))}
     </>
   )
@@ -704,16 +1029,22 @@ function colorBucket(colors: string[]): number {
 
 /** "Edited 3 days ago" — coarse on purpose; the tile is no place for a timestamp. */
 export function updatedLabel(updatedAt: number, now: number = Date.now()): string {
+  const short = shortUpdated(updatedAt, now)
+  return short ? `Edited ${short}` : ''
+}
+
+/** The age half of {@link updatedLabel} ("3 days ago"), for the list's narrow column. */
+export function shortUpdated(updatedAt: number, now: number = Date.now()): string {
   if (!updatedAt) return ''
   const minutes = Math.max(0, Math.round((now - updatedAt) / 60_000))
-  if (minutes < 1) return 'Edited just now'
-  if (minutes < 60) return `Edited ${minutes} min ago`
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes} min ago`
   const hours = Math.round(minutes / 60)
-  if (hours < 24) return `Edited ${hours} h ago`
+  if (hours < 24) return `${hours} h ago`
   const days = Math.round(hours / 24)
-  if (days === 1) return 'Edited yesterday'
-  if (days < 30) return `Edited ${days} days ago`
-  return `Edited ${new Date(updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
+  if (days === 1) return 'yesterday'
+  if (days < 30) return `${days} days ago`
+  return new Date(updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 // ---------------------------------------------------------------------------
@@ -733,7 +1064,25 @@ const PencilIcon = () => <Svg size={14}><path d="M12 20h9" /><path d="M16.5 3.5a
 const CopyIcon = () => <Svg size={14}><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></Svg>
 const TrashIcon = () => <Svg size={14}><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></Svg>
 const ShareIcon = () => <Svg size={14}><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" /></Svg>
+const MoreIcon = () => <Svg size={16}><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></Svg>
 const MonitorIcon = () => <Svg size={13}><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></Svg>
+const CloudIcon = () => <Svg size={14}><path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.8A6 6 0 0 0 4.3 12.5 3.5 3.5 0 0 0 6.5 19Z" /></Svg>
+const GridIcon = () => (
+  <Svg size={16}>
+    <rect x="3" y="3" width="7.5" height="7.5" rx="1.5" />
+    <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5" />
+    <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5" />
+    <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5" />
+  </Svg>
+)
+const ListIcon = () => (
+  <Svg size={16}>
+    <path d="M9 6h12M9 12h12M9 18h12" />
+    <rect x="3" y="4.5" width="3" height="3" rx="0.5" />
+    <rect x="3" y="10.5" width="3" height="3" rx="0.5" />
+    <rect x="3" y="16.5" width="3" height="3" rx="0.5" />
+  </Svg>
+)
 const DeckIcon = () => (
   <Svg size={16}>
     <rect x="7" y="3" width="12" height="16" rx="2" />
