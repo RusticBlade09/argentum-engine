@@ -28,6 +28,8 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- On Auto against a deck the human brought, plays from that deck's set(s) — another built-in starter from them when one exists (Boros Mice meets another Bloomburrow tribe), else a deck built from those sets in the same 60-card or 40-card shape — instead of a sealed pool from an unrelated set.
+
 - Chump-blocks to stay out of the opponent's next-attack range when one body now saves more bodies next turn (menace needs two blockers), instead of only when this hit alone is lethal.
 
 - Stops paying for until-end-of-turn pumps nothing spends: a temporary +X/+X counts only on a creature already attacking or blocking, a precombat pump activation needs an attack plan that uses it, and an action that merely ties passing no longer wins on rounding.

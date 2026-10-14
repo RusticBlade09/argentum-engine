@@ -773,6 +773,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       ] },
       { kind: 'p', text: 'In a lobby, + Add AI adds a seat and the host removes one with ×. Each AI seat has its own deck chooser: Auto (the server rolls a deck, or the AI builds from its pool), From sets, or Pick a deck — any saved, example or pasted deck. Commander needs a picked Commander deck, so the AI’s commander can start in the command zone.' },
       { kind: 'p', text: 'Want a different timer, pack count or deck size, or AI seats with chosen decks? Under the launch panel’s Play button, “Open a lobby to change them” opens the same game as a lobby instead of starting it. Change what you like, then press Start.' },
+      { kind: 'p', text: 'On Auto, the AI matches the deck you bring. Play a starter deck or your own list and the AI plays from the same set or sets: another starter deck from them when there is one — Boros Mice meets one of the other Bloomburrow tribes — otherwise a deck built from those sets, 60 cards against a 60-card deck and a sealed pool against a 40-card one. The AI seat’s row in the lobby names the sets it will use. Choose From sets or Pick a deck to decide yourself.' },
       { kind: 'p', text: 'There is a single AI strength; it is not adjustable. In a draft or sealed event the AI drafts and builds its own deck from what it is dealt.' },
       { kind: 'tip', text: 'Against the AI, the game-over screen offers Play Again, which rebuilds the same game in one click.' },
     ],
