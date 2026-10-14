@@ -179,6 +179,156 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.sortSelect {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.sortSelect:focus-within {
+  border-color: rgba(242, 180, 92, 0.6);
+}
+.sortLabel {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+}
+.sortSelect select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  outline: none;
+  background: transparent
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23aab2c5' stroke-width='1.5'/%3E%3C/svg%3E")
+    no-repeat right 6px center;
+  color: #fff;
+  font: inherit;
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-semibold);
+  padding: 6px 24px 6px 4px;
+  cursor: pointer;
+}
+.sortSelect option {
+  background: #161a26;
+  color: #eef0f6;
+}
+
+/* ---- set types ---------------------------------------------------------
+   One colour per kind of product, chosen clear of the four tier colours (green, cyan, amber, red)
+   and the Assay amber, so a kind is never mistaken for a completion level. The chip, the per-set
+   badge and the card's edge stripe share it; main sets have none — they are the default. */
+[data-kind='main'] { --kind-color: #c3c9d6; }
+[data-kind='commander'] { --kind-color: #b48cff; }
+[data-kind='supplemental'] { --kind-color: #f48fb1; }
+[data-kind='precon'] { --kind-color: #9fb0cf; }
+[data-kind='funny'] { --kind-color: #ffb38a; }
+
+.kindChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.kindChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text-tertiary);
+  font: inherit;
+  font-size: var(--font-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+.kindChip:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+.kindChip:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.kindChip[aria-pressed='true'] {
+  color: #fff;
+  font-weight: var(--font-weight-semibold);
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+.kindChip[data-kind][aria-pressed='true'] {
+  background: color-mix(in srgb, var(--kind-color) 20%, transparent);
+  border-color: color-mix(in srgb, var(--kind-color) 65%, transparent);
+}
+.kindDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--kind-color);
+  flex-shrink: 0;
+}
+.kindCount {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-normal, 400);
+  color: var(--text-muted);
+}
+.kindChip[aria-pressed='true'] .kindCount {
+  color: var(--text-secondary);
+}
+
+/* Sentence case, unlike the Standard badge: a kind name is longer, and in capitals it pushes the
+   meta row onto a second line on a card whose title is long. */
+.kindBadge {
+  font-size: var(--font-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--kind-color);
+  background: color-mix(in srgb, var(--kind-color) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--kind-color) 40%, transparent);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+/* ---- filtered results -------------------------------------------------- */
+.resultsLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-5);
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+}
+.resultsLine strong {
+  color: var(--text-primary);
+}
+.linkButton {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: #f2b45c;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.linkButton:hover {
+  color: #ffd08a;
+}
+
 /* ---- states ----------------------------------------------------------- */
 .loading,
 .empty,
@@ -241,6 +391,11 @@
 }
 .card[data-tier='done'] {
   --tier-color: var(--color-success-light);
+}
+/* Non-main sets carry their kind on the left edge, so a Commander set reads as one from across the
+   grid before the badge is legible. Inset, so it costs no layout. */
+.card[data-kind]:not([data-kind='main']) {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--kind-color) 80%, transparent);
 }
 .card[data-tier='high'] {
   --tier-color: var(--color-accent);
@@ -347,14 +502,24 @@
 
 .cardFoot {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: 4px var(--space-2);
   font-size: var(--font-sm);
   color: var(--text-tertiary);
   position: relative;
 }
 .cardFoot strong {
   color: var(--text-primary);
+}
+.cardFoot > span {
+  white-space: nowrap;
+}
+/* The tally on the right stays right even when the tags wrap onto a second line. */
+.remaining,
+.doneTag {
+  margin-left: auto;
 }
 .remaining {
   color: var(--text-muted);

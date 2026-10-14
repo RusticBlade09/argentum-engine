@@ -1501,6 +1501,9 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       { kind: 'ul', items: [
         'The banner counts distinct cards implemented, printings, complete sets and cards not planned; View progress charts implementation over time.',
         'Filter sets by name or code, and by All, Standard, In progress or Complete.',
+        'Narrow by set type: Main sets, Commander, Supplemental (Masters, Modern Horizons, Jumpstart, starter sets), Decks & boxes (Duel Decks, Planechase, From the Vault) or Un-sets. Each chip counts the sets it would show with your other filters applied.',
+        'Sets outside the main line carry a coloured badge naming their exact type and a matching stripe down the left edge, so a Commander product stands out in the grid.',
+        'Once you narrow the list, a line above the grid totals the sets in view. The filters, sort and the open set live in the address bar, so a filtered view can be bookmarked or shared.',
         'Sort by Newest, Most complete, Most cards done, Most Assay-ready or A–Z.',
         'Inside a set, filter its cards by Implemented, Missing, ⚡ Assay-ready or Not planned.',
       ] },
