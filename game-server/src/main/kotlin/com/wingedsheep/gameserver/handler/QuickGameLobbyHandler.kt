@@ -800,7 +800,15 @@ class QuickGameLobbyHandler(
         val aiDeck = when {
             !lobby.vsAi -> null
             lobby.momirBasic -> GeneratedDeck(MomirBasicSetup.fixedBasicDeck, sideboard = momirWishboard)
-            else -> randomDeckResolver.resolve(lobby.aiDeckSpec, lobby.format, sharedRandomSet, lobby.usesCommanderRules)
+            // An Auto AI facing a submitted deck plays out of that deck's sets — a sibling starter
+            // when there is one — instead of a pool rolled from an unrelated set.
+            else -> randomDeckResolver.resolveAgainst(
+                lobby.aiDeckSpec,
+                lobby.format,
+                sharedRandomSet,
+                lobby.usesCommanderRules,
+                opponentDeck = lobby.submittedHumanDeck(),
+            )
         }
 
         if (lobby.usesCommanderRules && !lobby.momirBasic) {
@@ -1039,11 +1047,24 @@ class QuickGameLobbyHandler(
      * What "let the server decide" resolves to, named by the axis that decides it. A lobby can run
      * Commander with no deck-legality restriction at all, and "sealed" would be a lie there.
      */
-    private fun autoAiDeckLabel(lobby: QuickGameLobby): String = when {
-        lobby.format != null -> "Auto (${lobby.format!!.displayName})"
-        lobby.usesCommanderRules -> "Auto (Commander)"
-        else -> "Auto (sealed)"
+    private fun autoAiDeckLabel(lobby: QuickGameLobby): String {
+        val shape = when {
+            lobby.format != null -> lobby.format!!.displayName
+            lobby.usesCommanderRules -> "Commander"
+            else -> "sealed"
+        }
+        // Once the human has picked a deck, Auto means "out of that deck's sets" — say which.
+        val matched = randomDeckResolver.matchingSets(lobby.submittedHumanDeck())
+        return when {
+            matched.isEmpty() -> "Auto ($shape)"
+            lobby.format != null || lobby.usesCommanderRules -> "Auto ($shape · ${matched.joinToString(", ")})"
+            else -> "Auto (${matched.joinToString(", ")})"
+        }
     }
+
+    /** The first human seat's submitted decklist — null while it is choosing or on Random. */
+    private fun QuickGameLobby.submittedHumanDeck(): Map<String, Int>? =
+        players.firstNotNullOfOrNull { player -> player.deckList?.takeIf { !player.isAi && it.isNotEmpty() } }
 
     private fun validateAiDeck(
         spec: AiDeckSpec.Fixed,

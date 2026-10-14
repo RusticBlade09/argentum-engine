@@ -46,12 +46,21 @@ import org.springframework.stereotype.Component
  * A premade Commander pod with no legality restriction is the case that separates them, and
  * inferring from the format alone would hand its AI seats a commander-less deck the engine refuses
  * to start. Callers pass what their lobby's Rules axis says.
+ *
+ * **An Auto AI seat facing a submitted deck plays out of that deck's sets** ([resolveAgainst]). A
+ * human who brings a Bloomburrow starter shouldn't meet a sealed pool rolled from an unrelated set;
+ * they get, in order of preference: a *different* built-in starter from the same set(s)
+ * ([PremadeOpponentPicker] — the starter families are tuned against each other), else a deck built
+ * from those sets in the shape of the human's own (a 60-card constructed build against a 60-card
+ * list, a sealed pool against a 40-card one), else the unmatched answer above.
  */
 @Component
 class RandomDeckResolver(
     private val sealedDeckGenerator: SealedDeckGenerator,
     private val constructedDeckGenerator: ConstructedDeckGenerator,
     private val commanderDeckGenerator: CommanderDeckGenerator,
+    private val setInference: DeckSetInference,
+    private val premadePicker: PremadeOpponentPicker,
 ) {
     private val logger = LoggerFactory.getLogger(RandomDeckResolver::class.java)
 
@@ -82,6 +91,72 @@ class RandomDeckResolver(
         val setCodes = (spec as? AiDeckSpec.Sets)?.setCodes?.filter { it.isNotBlank() }.orEmpty()
 
         return randomDeck(format, setCodes, fallbackSetCode, commanderRules)
+    }
+
+    /**
+     * The AI seat's deck in a quick lobby, matched to [opponentDeck] — the human's submitted list —
+     * when the host left the AI on [AiDeckSpec.Auto]. See the class doc for the order of answers.
+     * Any other spec, a human on Random (null or empty [opponentDeck]), or a deck with no clear set
+     * identity resolves exactly as [resolve] does.
+     */
+    fun resolveAgainst(
+        spec: AiDeckSpec,
+        format: DeckFormat?,
+        fallbackSetCode: String,
+        commanderRules: Boolean,
+        opponentDeck: Map<String, Int>?,
+    ): GeneratedDeck {
+        val sets = if (spec is AiDeckSpec.Auto && !opponentDeck.isNullOrEmpty()) {
+            setInference.setsOf(opponentDeck)
+        } else {
+            emptyList()
+        }
+        if (opponentDeck == null || sets.isEmpty()) return resolve(spec, format, fallbackSetCode, commanderRules)
+
+        premadePicker.pick(opponentDeck, sets, format, commanderRules)?.let { starter ->
+            logger.info("AI plays a sibling starter from {} against the human's deck", sets.joinToString(", "))
+            return starter
+        }
+        return matchedDeck(format, sets, commanderRules, opponentDeck.values.sum())
+            ?: resolve(spec, format, fallbackSetCode, commanderRules)
+    }
+
+    /** The sets an Auto AI seat would match [opponentDeck] to; empty when it wouldn't match. */
+    fun matchingSets(opponentDeck: Map<String, Int>?): List<String> =
+        if (opponentDeck.isNullOrEmpty()) emptyList() else setInference.setsOf(opponentDeck)
+
+    /**
+     * A deck generated from [setCodes] in the shape the human brought, or null when those sets
+     * can't fill one — the caller then drops the match rather than seat a broken deck.
+     */
+    private fun matchedDeck(
+        format: DeckFormat?,
+        setCodes: List<String>,
+        commanderRules: Boolean,
+        opponentDeckSize: Int,
+    ): GeneratedDeck? {
+        val commanderFormat = when {
+            format != null && format.isCommanderShape -> format
+            commanderRules -> DeckFormat.COMMANDER
+            else -> null
+        }
+        val where = setCodes.joinToString(", ")
+        return when {
+            commanderFormat != null ->
+                runCatching { commanderDeckGenerator.generate(setCodes, commanderFormat) }
+                    .onFailure { logger.warn("Matched commander deck from {} failed", where, it) }
+                    .getOrNull()
+            // A constructed-sized list deserves a constructed opponent. With no lobby restriction,
+            // Legacy is the widest pool that still keeps a generated deck off four-of power cards.
+            format != null || opponentDeckSize >= CONSTRUCTED_DECK_SIZE ->
+                runCatching { constructedDeckGenerator.generateDeck(setCodes, format ?: DeckFormat.LEGACY) }
+                    .onFailure { logger.warn("Matched constructed deck from {} failed", where, it) }
+                    .getOrNull()
+            else ->
+                runCatching { sealedDeckGenerator.generateDeck(setCodes) }
+                    .onFailure { logger.warn("Matched sealed deck from {} failed", where, it) }
+                    .getOrNull()
+        }
     }
 
     /**
@@ -184,5 +259,10 @@ class RandomDeckResolver(
         } else {
             sealedDeckGenerator.generateDeck(setCodes)
         }
+    }
+
+    private companion object {
+        /** A submitted list at least this big is a constructed deck, not a limited one. */
+        const val CONSTRUCTED_DECK_SIZE = 60
     }
 }

@@ -380,7 +380,8 @@ class DecksController(
             Rarity.COMMON to 0, Rarity.UNCOMMON to 1, Rarity.RARE to 2, Rarity.MYTHIC to 3,
         )
 
-        private val EXAMPLE_DECKS = listOf(
+        /** The built-in starter decks — also what [com.wingedsheep.gameserver.ai.PremadeOpponentPicker] seats the AI with. */
+        internal val EXAMPLE_DECKS = listOf(
             ExampleDeckDTO(
                 id = "boros_mice",
                 name = "Boros Mice",

@@ -30,7 +30,10 @@ Format — newest first, one bullet each:
 
 - Defends its own planeswalkers: a walker is priced by the loyalty the next attack leaves it, so one about to die spends its loyalty first (the biggest useful minus) instead of dying with counters unspent, a blocker kept home for it counts, and blocks on attackers aimed at it are worth the walker they save — a chump or trade for a valuable walker, nothing for a near-dead token.
 
+- On Auto against a deck the human brought, plays from that deck's set(s) — another built-in starter from them when one exists (Boros Mice meets another Bloomburrow tribe), else a deck built from those sets in the same 60-card or 40-card shape — instead of a sealed pool from an unrelated set.
+
 - Attacks opposing planeswalkers: each attacker that will connect goes at the walker its damage hurts most — killing it, or knocking it below its biggest ability — when that is worth more than the life it would take, while a lethal or nearly-won race keeps its damage on the player; attack search also tries retargeting each attacker and runs when a walker is in reach and nothing can block.
+
 - Chump-blocks to stay out of the opponent's next-attack range when one body now saves more bodies next turn (menace needs two blockers), instead of only when this hit alone is lethal.
 
 - Stops paying for until-end-of-turn pumps nothing spends: a temporary +X/+X counts only on a creature already attacking or blocking, a precombat pump activation needs an attack plan that uses it, and an action that merely ties passing no longer wins on rounding.
