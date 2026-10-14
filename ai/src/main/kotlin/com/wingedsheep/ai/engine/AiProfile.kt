@@ -625,6 +625,26 @@ data class AiProfile(
      */
     val pumpsNeedAPlannedAttack: Boolean = false,
     /**
+     * [pumpsNeedAPlannedAttack]'s claim for an **activated ability**: before our attack — our
+     * precombat main or beginning of combat — an activation whose every payoff is an
+     * until-end-of-turn creature grant is floored below passing unless the attack plan, read off
+     * the post-activation board, sends a creature the grant landed on — and, for an instant-speed
+     * ability, one the plan would *not* have sent without it. A creature that attacks either way
+     * can be pumped once it is attacking, with strictly more information.
+     *
+     * Off a production game (2026-10-14, Reality Fracture draft, turn 15): at 2 life, Shatterwing
+     * Pegasus's `{4}{W}: Creatures you control get +1/+1 until end of turn` in our precombat main,
+     * then no attack. The leaf had stopped pricing it ([CreatureValuation.expiringStatsNeedAFight]),
+     * but the rollouts still did: a playout attacks with `CombatSeed`, read off the pumped board,
+     * while the attack actually declared is `CombatAdvisor`'s. This asks `CombatAdvisor`. The deferral
+     * floor ([holdExpiringGrantsForCombat]) normally holds such a pump until beginning of combat;
+     * at lethal on board it is released, which is how this one got through in the main phase.
+     *
+     * The attack search runs once per qualifying candidate, only on our own turn before attackers
+     * are declared, never inside a nested simulation. See `Strategist.pumpLeftHomeByThePlan`.
+     */
+    val activatedPumpsNeedAPlannedAttack: Boolean = false,
+    /**
      * Count the land drop still to come as mana when [sequenceLandsByUsableMana] decides whether
      * tapped lands were idle — so playing an untapped land can never score below passing.
      *
@@ -1737,6 +1757,30 @@ data class AiProfile(
             surplusAwareLands = true,
             holdFlashPermanentsForAmbush = true,
             landDropUnlocksSpells = true,
+            creatureValuation = PRODUCTION_CANDIDATE_EXPIRING.creatureValuation.copy(expiringStatsNeedAFight = true),
+            activatedPumpsNeedAPlannedAttack = true,
+        )
+
+        /**
+         * [CreatureValuation.expiringStatsNeedAFight] and [activatedPumpsNeedAPlannedAttack] — the
+         * two halves of "an end-of-turn pump is worth something only if a fight spends it" — on top
+         * of [PRODUCTION], so a puzzle or an arena point that moves is attributable to them.
+         */
+        val PRODUCTION_EXPIRINGSTATS = PRODUCTION.copy(
+            id = "production-expiringstats",
+            creatureValuation = CreatureValuation(expiringStatsNeedAFight = true),
+            activatedPumpsNeedAPlannedAttack = true,
+        )
+
+        /**
+         * The same pair on top of [PRODUCTION_CANDIDATE_EXPIRING] — the last pinned candidate [LIVE]
+         * builds on — so `just arena production-candidate-expiring production-candidate-expiringstats`
+         * measures them and nothing else. [LIVE] ships both.
+         */
+        val PRODUCTION_CANDIDATE_EXPIRINGSTATS = PRODUCTION_CANDIDATE_EXPIRING.copy(
+            id = "production-candidate-expiringstats",
+            creatureValuation = PRODUCTION_CANDIDATE_EXPIRING.creatureValuation.copy(expiringStatsNeedAFight = true),
+            activatedPumpsNeedAPlannedAttack = true,
         )
 
         /**

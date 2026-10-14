@@ -26,4 +26,4 @@ export {
   withOverriddenArt,
   type PrintingOverride,
 } from './useSetPrintingOverride'
-export { useCardBrowse } from './useCardBrowse'
+export { useCardBrowse, type ControlledBrowse } from './useCardBrowse'

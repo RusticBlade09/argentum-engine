@@ -173,13 +173,19 @@ export function LibraryPage() {
             Everything you build, on one shelf. Decks you bring to a game; cubes you draft or open as sealed.
           </p>
         </div>
-        <button
-          type="button"
-          className={`${p.buttonPrimary} ${styles.heroAction}`}
-          onClick={() => (tab === 'decks' ? newDeck() : newCube())}
-        >
-          <PlusIcon /> {tab === 'decks' ? 'New deck' : 'New cube'}
-        </button>
+        <div className={styles.heroActions}>
+          {/* Looking comes before building: the card browser is one click from the shelf. */}
+          <button type="button" className={`${p.button} ${styles.heroAction}`} onClick={() => navigate('/cards')}>
+            <SearchIcon /> Browse cards
+          </button>
+          <button
+            type="button"
+            className={`${p.buttonPrimary} ${styles.heroAction}`}
+            onClick={() => (tab === 'decks' ? newDeck() : newCube())}
+          >
+            <PlusIcon /> {tab === 'decks' ? 'New deck' : 'New cube'}
+          </button>
+        </div>
       </header>
 
       <div className={styles.bar}>

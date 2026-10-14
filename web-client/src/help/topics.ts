@@ -100,7 +100,7 @@ export const HELP_SECTIONS: readonly { id: HelpSection; title: string; blurb: st
   {
     id: 'cards',
     title: 'Cards & sets',
-    blurb: 'Which cards and sets are playable, and Argentum Assay — the engine’s reader for Oracle text.',
+    blurb: 'The card browser, which cards and sets are playable, and Argentum Assay — the engine’s reader for Oracle text.',
   },
   {
     id: 'advanced',
@@ -136,6 +136,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       { kind: 'h', text: 'Top bar' },
       { kind: 'ul', items: [
         'Decks & Cubes — everything you have built, on one shelf with a Decks tab and a Cubes tab. Open a deck or cube in the builder, start a new one, or play a cube straight from its tile.',
+        'Cards — the card browser: every card you can play, to look through without building anything.',
         'Replays — every finished game you played, ready to rewatch (shown once you are connected).',
         'Sets — Set Completion: which sets and cards are playable.',
         'Learn — the Learn to Play course. Help — this wiki.',
@@ -1339,7 +1340,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       ] },
     ],
     shortcuts: ['deckbuilder-remove', 'flip-dfc'],
-    related: ['search-syntax', 'card-printings', 'deck-legality', 'commander-decks', 'deck-sharing', 'where-decks-live'],
+    related: ['search-syntax', 'card-browser', 'card-printings', 'deck-legality', 'commander-decks', 'deck-sharing', 'where-decks-live'],
   },
   {
     id: 'card-printings',
@@ -1412,7 +1413,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'decks',
     title: 'Search syntax',
     summary:
-      'The deckbuilder search speaks a Scryfall-style query language — `t:creature`, `c<=rw`, `cmc>=4`, `o:flying`, `f:standard`, `is:legendary`. The `?` button beside the search box lists every operator with examples.',
+      'The deckbuilder and card browser search speak a Scryfall-style query language — `t:creature`, `c<=rw`, `cmc>=4`, `o:flying`, `f:standard`, `is:legendary`. The `?` button beside the search box lists every operator with examples.',
     body: [
       { kind: 'p', text: 'The grammar is Scryfall’s, deliberately: bare words match names, `key:value` filters, `-` negates, `or` and parentheses group, quotes hold phrases together, and the comparison operators `:` `=` `>` `<` `>=` `<=` work wherever a value is ordered.' },
       { kind: 'ul', items: [
@@ -1426,7 +1427,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       ] },
       { kind: 'p', text: 'Not every filter Scryfall documents is implemented. Anything needing data the engine does not carry — prices, artists, printing dates — is rejected rather than silently ignored, and so is anything the card model does not distinguish yet: `is:split` answers “split-card layout not modelled”. A query never quietly means something other than what you typed.' },
     ],
-    related: ['deckbuilder'],
+    related: ['deckbuilder', 'card-browser'],
     links: [{ label: 'Scryfall’s full syntax reference', href: 'https://scryfall.com/docs/syntax' }],
   },
   {
@@ -1465,6 +1466,28 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     related: ['deckbuilder', 'deck-import-export'],
   },
   {
+    id: 'card-browser',
+    section: 'cards',
+    title: 'The card browser',
+    summary:
+      'Cards, in the home screen’s top bar, shows every card you can play in Argentum — search and filter it like the deckbuilder, and click a card to see it up close. Nothing to build first.',
+    body: [
+      { kind: 'p', text: 'Every card listed is implemented, so anything you find here works in a game. The search box, the filter menu and the sort are the deckbuilder’s, query language and all; the tiles are bigger, and the grid button beside the result count switches between big and smaller cards.' },
+      { kind: 'h', text: 'A card up close' },
+      { kind: 'ul', items: [
+        'Click a card for its art, Oracle text and the formats it is legal in. A double-faced card shows both faces.',
+        'Every printing is listed under the text — pick one to see its art.',
+        'The type line, the set and the rarity are searches: click “Goblin” to see every playable Goblin, or a set to see all of it.',
+        '← and → step through the results, Esc or Back closes.',
+        'Start a deck with it opens the deckbuilder on a new deck holding the card, in the printing you were looking at. A card that can be a commander also offers Build a Commander deck, which crowns it in a new Commander deck.',
+        'Copy link copies a link straight to the card.',
+      ] },
+      { kind: 'tip', text: 'The address bar keeps your search and the open card, so a link to a search — `s:dmu r:mythic`, say — opens the same results for whoever you send it to.' },
+      { kind: 'p', text: 'Decks & Cubes links here with Browse cards, and a set opened on Set Completion offers Browse cards for its playable ones.' },
+    ],
+    related: ['search-syntax', 'deckbuilder', 'set-completion', 'card-printings'],
+  },
+  {
     id: 'set-completion',
     section: 'cards',
     title: 'Which cards are implemented',
@@ -1481,7 +1504,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       ] },
       { kind: 'p', text: 'The second tab, Assay Explorer, is a different question about the same corpus: not which cards are written, but how much of Magic’s printed text the engine can read at all.' },
     ],
-    related: ['deckbuilder', 'assay-ready', 'assay-explorer'],
+    related: ['card-browser', 'deckbuilder', 'assay-ready', 'assay-explorer'],
   },
   {
     id: 'assay-ready',

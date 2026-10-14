@@ -111,6 +111,12 @@ class CombatAdvisor(
 
         /** The least a body counts for when it is thrown away: even a 0-value token blocks again. */
         private const val MIN_BODY_VALUE = 0.25
+
+        /**
+         * Priority passes [plannedAttackersFrom] may spend walking a quiet precombat state to
+         * declare attackers — one per seat per step, with room for a straggling trigger.
+         */
+        const val MAX_PASSES_TO_DECLARE_ATTACKERS = 8
     }
 
     /**
@@ -132,6 +138,40 @@ class CombatAdvisor(
             val advisor = advisorRegistry.getAdvisor(name) ?: return@sumOf 0.0
             advisor.attackPenalty(state, projected, entityId, playerId) ?: 0.0
         }
+    }
+
+    /**
+     * The creatures this advisor would attack with if [state] — our own precombat main or
+     * beginning of combat, stack empty — were simply passed through to declare attackers: the plan
+     * the AI would submit a moment later, local search included.
+     *
+     * Read by the "a pump needs a planned attack" checks, which ask whether an end-of-turn grant
+     * lands on a creature the attack will actually use. Null whenever the plan cannot be read
+     * cheaply and exactly — not our turn, a step past beginning of combat, something on the stack
+     * or a decision pending on the way, or more passes than a quiet turn needs — and every caller
+     * reads null as "can attack", the permissive answer.
+     */
+    internal fun plannedAttackersFrom(
+        state: GameState,
+        playerId: EntityId,
+        budgetFor: (GameState) -> DecisionBudget,
+    ): Set<EntityId>? {
+        var current = state
+        var passes = 0
+        while (current.step != Step.DECLARE_ATTACKERS) {
+            if (current.gameOver || current.pendingDecision != null || current.stack.isNotEmpty()) return null
+            if (!current.isActiveTurnFor(playerId)) return null
+            if (current.step != Step.PRECOMBAT_MAIN && current.step != Step.BEGIN_COMBAT) return null
+            if (passes++ >= MAX_PASSES_TO_DECLARE_ATTACKERS) return null
+            val priority = current.priorityPlayerId ?: return null
+            current = (simulator.simulate(current, PassPriority(priority)) as? SimulationResult.Terminal)?.state
+                ?: return null
+        }
+        if (!current.isActiveTurnFor(playerId)) return null
+        val declare = simulator.getLegalActions(current, playerId)
+            .firstOrNull { it.actionType == "DeclareAttackers" } ?: return null
+        val plan = chooseAttackers(current, declare, playerId, budgetFor(current))
+        return (plan as? DeclareAttackers)?.attackers?.keys
     }
 
     /**

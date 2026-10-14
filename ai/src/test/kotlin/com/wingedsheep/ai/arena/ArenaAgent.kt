@@ -223,6 +223,9 @@ object ArenaAgents {
         // modal DFC played as a land costs its spell, and a bounce never strands a land.
         ArenaAgent("production-surpluslands", AiProfile.PRODUCTION_SURPLUSLANDS),
         ArenaAgent("production-candidate-surpluslands", AiProfile.PRODUCTION_CANDIDATE_SURPLUSLANDS),
+        // An until-end-of-turn P/T change read only on a creature already in a fight.
+        ArenaAgent("production-expiringstats", AiProfile.PRODUCTION_EXPIRINGSTATS),
+        ArenaAgent("production-candidate-expiringstats", AiProfile.PRODUCTION_CANDIDATE_EXPIRINGSTATS),
         ArenaAgent("production-targeted", AiProfile.PRODUCTION_TARGETED),
         // Explicit ECL candidates. Their resource-backed weights fail closed to production's
         // evaluator until a validated artifact is installed; automatic selection is set-gated.

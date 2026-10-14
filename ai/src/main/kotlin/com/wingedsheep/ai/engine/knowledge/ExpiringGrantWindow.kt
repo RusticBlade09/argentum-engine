@@ -238,6 +238,14 @@ internal object ExpiringGrantWindow {
     }
 
     /**
+     * Whether everything [ability] buys is an until-end-of-turn grant on creatures — the shape
+     * whose whole value has to be spent in a fight this turn. Read by `Strategist`'s
+     * planned-attack floor ([com.wingedsheep.ai.engine.AiProfile.activatedPumpsNeedAPlannedAttack]).
+     */
+    fun buysOnlyExpiringCreatureGrants(ability: ActivatedAbility): Boolean =
+        !ability.isManaAbility && expiringPayoffs(ability.effect)?.all { it.kind == PayoffKind.CREATURE } == true
+
+    /**
      * [canStillFight] for a grant that does not come from an activation — no source of ours taps
      * to pay for it. The yes/no half of
      * [com.wingedsheep.ai.engine.AiProfile.holdUnusablePumps] reads it.
@@ -398,6 +406,10 @@ internal object ExpiringGrantWindow {
      *  - a **group pump**, which `Patterns.Group.modifyStatsForAll` lowers to a `ForEachEffect` over
      *    a group whose body is the ordinary pump bound to the iteration entity (Esquire of the King);
      *  - an end-of-turn **land-type change** (Dream Thrush);
+     *  - a **trade-off pump on the source itself** — "this creature gets +1/-1 until end of turn"
+     *    (Undulating Witness). The sign test that keeps "-2/-2 until end of turn" out as removal is
+     *    about an effect aimed at someone else; on its own source a lowered toughness is the price,
+     *    not the payoff, and the extra power is spent only in a fight like any other pump;
      *  - and two leaves that are not payoffs at all, skipped rather than failing the test: the
      *    source tapping *itself* ("Tap it." on Vanguard of the Rose — a drawback, which
      *    [tapsItsSource] reads separately) and the option choice a land-type change opens with.
@@ -421,7 +433,8 @@ internal object ExpiringGrantWindow {
                     payoffs += Payoff(PayoffKind.CREATURE, leaf.target, leaf.keyword)
                 leaf is GrantEvasionKeywordEffect && leaf.duration == Duration.EndOfTurn ->
                     payoffs += Payoff(PayoffKind.CREATURE, leaf.target)
-                leaf is ModifyStatsEffect && leaf.duration == Duration.EndOfTurn && isPump(leaf) ->
+                leaf is ModifyStatsEffect && leaf.duration == Duration.EndOfTurn &&
+                    (isPump(leaf) || leaf.target == EffectTarget.Self) ->
                     payoffs += Payoff(PayoffKind.CREATURE, leaf.target)
                 else -> return null
             }

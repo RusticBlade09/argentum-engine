@@ -546,6 +546,47 @@ export function DeckbuilderPage() {
     )
   }, [searchParams, setSearchParams, reloadUnifiedDecks])
 
+  // "Start a deck with this card" from the card browser: `?seed=<name>`, with `&as=commander` to
+  // crown it (the browser stamps `fmt` too) and `&print=<SET>:<number>` to keep the printing the
+  // player was looking at. Starts a fresh, unsaved deck holding that one card, then strips the
+  // params. Waits for the catalogue so the name is checked against it; the ref keeps it one-shot.
+  // Applied in a transition with the URL rewrite for the same reason as the shared-deck load above.
+  const seededRef = useRef(false)
+  useEffect(() => {
+    const seed = searchParams.get('seed')
+    if (!seed || seededRef.current || catalog.length === 0) return
+    seededRef.current = true
+    const card = catalogIndex[seed]
+    const asCommander = searchParams.get('as') === 'commander'
+    const [printSet, printNumber] = (searchParams.get('print') ?? '').split(':')
+    startTransition(() => {
+      setSearchParams(
+        (prev) => {
+          const params = new URLSearchParams(prev)
+          params.delete('seed')
+          params.delete('as')
+          params.delete('print')
+          return params
+        },
+        { replace: true },
+      )
+      if (!card) return
+      setDeckName(`${card.name} deck`)
+      setDeckNote('')
+      setCoverCard(card.name)
+      setDeckCards({ [card.name]: 1 })
+      setSideboardCards({})
+      setCompanion(null)
+      setCommanders(asCommander ? [card.name] : [])
+      setActiveDeckId(null)
+      setPinnedPrintings(
+        printSet && printNumber ? { [card.name]: { setCode: printSet, collectorNumber: printNumber } } : {},
+      )
+    })
+    // setSearchParams is stable; the ref guard makes searchParams churn harmless.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, catalog.length, catalogIndex])
+
   // Server-supplied starter decks. Mirrors the DeckPicker's Examples tab — fetched once and
   // surfaced in the deckbuilder via the topbar "Examples" button.
   const [examples, setExamples] = useState<ExampleDeck[]>([])

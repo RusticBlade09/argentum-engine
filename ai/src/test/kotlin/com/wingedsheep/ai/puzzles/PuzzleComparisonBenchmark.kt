@@ -151,6 +151,9 @@ class PuzzleComparisonBenchmark : ScenarioTestBase() {
                 // Lands in hand priced by the land drop that will reach them.
                 AiProfile.PRODUCTION_SURPLUSLANDS,
                 AiProfile.PRODUCTION_CANDIDATE_SURPLUSLANDS,
+                // An until-end-of-turn P/T change read only on a creature already in a fight.
+                AiProfile.PRODUCTION_EXPIRINGSTATS,
+                AiProfile.PRODUCTION_CANDIDATE_EXPIRINGSTATS,
                 // A beginning-of-combat pump bought only for creatures the attack plan sends.
                 AiProfile.PRODUCTION_PLANNEDPUMPS,
                 AiProfile.PRODUCTION_CANDIDATE_PLANNEDPUMPS,

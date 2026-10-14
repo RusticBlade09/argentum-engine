@@ -509,6 +509,25 @@
 .overlayCounts strong {
   color: var(--text-primary);
 }
+.overlayBrowse {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #d5dae6;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.overlayBrowse:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--text-primary);
+}
 .overlayClose {
   flex-shrink: 0;
   display: inline-flex;
