@@ -23,6 +23,7 @@ import com.wingedsheep.engine.core.doesntUntapDuringUntapStep
 import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.core.Phase
 import com.wingedsheep.sdk.core.Step
+import com.wingedsheep.sdk.scripting.Duration
 import com.wingedsheep.sdk.model.EntityId
 
 /**
@@ -168,6 +169,39 @@ class CombatAdvisor(
         playerId: EntityId,
         budgetFor: (GameState) -> DecisionBudget,
     ): Set<EntityId>? {
+        val current = atOurDeclareAttackers(state, playerId) ?: return null
+        val declare = simulator.getLegalActions(current, playerId)
+            .firstOrNull { it.actionType == "DeclareAttackers" } ?: return null
+        val plan = chooseAttackers(current, declare, playerId, budgetFor(current))
+        return (plan as? DeclareAttackers)?.attackers?.keys
+    }
+
+    /** An attack plan read off a precombat position, and what it is worth — see [plannedAttackFrom]. */
+    internal data class PlannedAttack(val attackers: Set<EntityId>, val value: Double)
+
+    /**
+     * [plannedAttackersFrom], plus the plan's value: the board after it is simulated through
+     * combat (the defender blocking by heuristic) with the crack-back priced in — the same number
+     * the attack search ranks plans by. Comparable across two precombat positions of the same turn,
+     * which is what lets a pump be priced by the attack it buys. Null where [plannedAttackersFrom]
+     * is, or when the plan cannot be simulated.
+     */
+    internal fun plannedAttackFrom(
+        state: GameState,
+        playerId: EntityId,
+        budgetFor: (GameState) -> DecisionBudget,
+    ): PlannedAttack? {
+        val current = atOurDeclareAttackers(state, playerId) ?: return null
+        val declare = simulator.getLegalActions(current, playerId)
+            .firstOrNull { it.actionType == "DeclareAttackers" } ?: return null
+        val plan = chooseAttackers(current, declare, playerId, budgetFor(current)) as? DeclareAttackers ?: return null
+        val opponent = current.turnOrder.firstOrNull { it != playerId } ?: return null
+        val value = evaluateAttackPlan(current, playerId, opponent, plan.attackers, settleExpiring = true) ?: return null
+        return PlannedAttack(plan.attackers.keys, value)
+    }
+
+    /** [state] passed through to our own declare-attackers step, or null — see [plannedAttackersFrom]. */
+    private fun atOurDeclareAttackers(state: GameState, playerId: EntityId): GameState? {
         var current = state
         var passes = 0
         while (current.step != Step.DECLARE_ATTACKERS) {
@@ -180,10 +214,7 @@ class CombatAdvisor(
                 ?: return null
         }
         if (!current.isActiveTurnFor(playerId)) return null
-        val declare = simulator.getLegalActions(current, playerId)
-            .firstOrNull { it.actionType == "DeclareAttackers" } ?: return null
-        val plan = chooseAttackers(current, declare, playerId, budgetFor(current))
-        return (plan as? DeclareAttackers)?.attackers?.keys
+        return current
     }
 
     /**
@@ -1372,10 +1403,22 @@ class CombatAdvisor(
         state: GameState,
         playerId: EntityId,
         opponentId: EntityId,
-        attackerMap: Map<EntityId, EntityId>
+        attackerMap: Map<EntityId, EntityId>,
+        /**
+         * Read the board after combat with every until-end-of-turn floating effect gone, as it
+         * will be when the opponent's crack-back arrives. Set by [plannedAttackFrom], which
+         * compares a pumped board's plan with an unpumped one: unsettled, the pump's toughness is
+         * still standing guard in the crack-back estimate.
+         */
+        settleExpiring: Boolean = false,
     ): Double? {
-        val postCombat = simulateFullAttack(state, playerId, opponentId, attackerMap)
+        val simulated = simulateFullAttack(state, playerId, opponentId, attackerMap)
             ?: return null
+        val postCombat = if (settleExpiring) {
+            simulated.copy(floatingEffects = simulated.floatingEffects.filter { it.duration != Duration.EndOfTurn })
+        } else {
+            simulated
+        }
         val postProjected = postCombat.projectedState
         val baseScore = evaluator.evaluate(postCombat, postProjected, playerId)
 

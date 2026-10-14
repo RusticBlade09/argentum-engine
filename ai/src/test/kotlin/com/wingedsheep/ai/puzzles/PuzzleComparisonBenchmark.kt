@@ -160,6 +160,9 @@ class PuzzleComparisonBenchmark : ScenarioTestBase() {
                 // Our own planeswalkers defended, and spent before they die.
                 AiProfile.PRODUCTION_WALKERDEFENCE,
                 AiProfile.PRODUCTION_CANDIDATE_WALKERDEFENCE,
+                // A precombat pump priced by the attack it buys.
+                AiProfile.PRODUCTION_PLANPUMPS,
+                AiProfile.PRODUCTION_CANDIDATE_PLANPUMPS,
                 // A beginning-of-combat pump bought only for creatures the attack plan sends.
                 AiProfile.PRODUCTION_PLANNEDPUMPS,
                 AiProfile.PRODUCTION_CANDIDATE_PLANNEDPUMPS,

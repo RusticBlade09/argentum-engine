@@ -8,7 +8,9 @@ import com.wingedsheep.ai.engine.budget.LegacyBudgetPolicy
 import com.wingedsheep.ai.engine.evaluation.BoardEvaluator
 import com.wingedsheep.ai.engine.evaluation.BoardPresence
 import com.wingedsheep.ai.engine.evaluation.EvaluationWeights
+import com.wingedsheep.ai.engine.evaluation.ThreatAssessment
 import com.wingedsheep.ai.engine.knowledge.ExpiringGrantWindow
+import com.wingedsheep.ai.engine.knowledge.IntentTag
 import com.wingedsheep.ai.engine.knowledge.HoldPolicy
 import com.wingedsheep.ai.engine.knowledge.IntentCatalog
 import com.wingedsheep.ai.engine.knowledge.TimingVerdict
@@ -179,6 +181,11 @@ class Strategist(
      * a creature it lands on. See [pumpLeftHomeByThePlan].
      */
     private val activatedPumpsNeedAPlannedAttack: Boolean = false,
+    /**
+     * [AiProfile.precombatPumpsForThePlan] — in our precombat main, a pump that changes who the
+     * attack plan sends is priced by the attack it buys. See [pumpThatBuysTheAttack].
+     */
+    private val precombatPumpsForThePlan: Boolean = false,
     /**
      * The profile's `EvaluationWeights.boardPresence`. Only [HoldPolicy] reads it, to quote a
      * patience discount in the same units the leaf score prices board value in.
@@ -870,6 +877,14 @@ class Strategist(
         ).joinToString("; ").ifEmpty { null }
         val cardName = resolveCardName(state, action) ?: return AdjustedScore(leafScore, creditNote)
 
+        // A precombat pump the attack plan needs is priced by the attack it buys, ahead of the
+        // floors below that would otherwise defer it to a window the AI never stops in.
+        if (precombatPumpsForThePlan) {
+            pumpThatBuysTheAttack(state, action, playerId, cardName, leafState)?.let { gain ->
+                return AdjustedScore(passScore + gain, "pump changes the attack plan %+.2f".format(gain))
+            }
+        }
+
         // Phase 6: what the board looks like after this resolves is only half the question; the
         // other half is whether this was the window — and, for removal, whether this was the target
         // worth spending the card on. The materialized action is what carries the committed
@@ -995,6 +1010,89 @@ class Strategist(
         lastPlan = state to plan
         return plan
     }
+
+    /**
+     * What a precombat pump is worth when the attack plan **needs** it — [AiProfile.precombatPumpsForThePlan] —
+     * or null when it is not that shape and the ordinary floors decide.
+     *
+     * The engine AI never stops in its own beginning of combat: `MeaningfulActionFilter` passes it
+     * unconditionally, on the server and in [AIPlayer]'s fast path. So [HoldPolicy]'s "a trick
+     * waits for combat" and `ExpiringGrantWindow`'s "defer to beginning of combat" both defer a
+     * precombat pump to a window that never comes, and the pump that would have let a creature
+     * attack — a 2/2 made a 5/5 against their 3/3 — is never cast before attacks are chosen.
+     * (PR #3211's known gap.) Nor could the leaf price it if it were: under
+     * `expiringStatsNeedAFight` an until-end-of-turn bonus on a creature not yet attacking counts
+     * for nothing, rightly, since most such pumps are spent on no fight at all.
+     *
+     * So this asks the attack planner directly, from both sides of the cast. The pump is the plan's
+     * when a creature it lands on is in the plan read off the pumped board **and not** in the plan
+     * read off the board as it stands — the pump changes who attacks. Then its value is what the
+     * planner itself says that attack is worth over the unpumped one: each plan simulated through
+     * combat, blocks by heuristic, crack-back priced. A pump on a creature the plan sends anyway is
+     * not this — it can still be cast once the creature is attacking, after blocks, with strictly
+     * more information — and neither is one the plan ignores, which is the no-attack pump #3211
+     * floors.
+     *
+     * Our own precombat main, empty stack, never inside a nested simulation; spells read as a
+     * combat trick or team pump, activations whose every payoff is an end-of-turn creature grant.
+     * Two attack searches per qualifying candidate, the unpumped one shared across the decision.
+     */
+    private fun pumpThatBuysTheAttack(
+        state: GameState,
+        action: LegalAction,
+        playerId: EntityId,
+        cardName: String,
+        leafState: GameState,
+    ): Double? {
+        if (!state.isActiveTurnFor(playerId) || state.stack.isNotEmpty()) return null
+        if (state.step != Step.PRECOMBAT_MAIN || simulator.resolvingNestedDecision) return null
+        if (leafState.gameOver || leafState.pendingDecision != null) return null
+        val isPump = when (val gameAction = action.action) {
+            is CastSpell -> intents.forName(cardName)?.let { IntentTag.COMBAT_TRICK in it.tags || it.expiringGroupPump } == true
+            is ActivateAbility -> intents.activatedAbility(cardName, gameAction.abilityId)
+                ?.let(ExpiringGrantWindow::buysOnlyExpiringCreatureGrants) == true
+            else -> false
+        }
+        if (!isPump) return null
+        val pumped = pumpedThisTurn(state, leafState, playerId)
+        if (pumped.isEmpty()) return null
+        val withPump = combatAdvisor.plannedAttackFrom(leafState, playerId) { budgetPolicy.budgetForDecision(it, playerId) }
+            ?: return null
+        val without = plannedAttack(state, playerId) ?: return null
+        if (pumped.none { it in withPump.attackers && it !in without.attackers }) return null
+        // Facing lethal on board, every plan's value is the crack-back cliff plus whatever the
+        // heuristic blocker happens to do, and a pump that "saves" us by baiting a bad block is a
+        // reading of the model, not of the game (#3211's T15). There only a pump that wins now is
+        // priced here; anything else is left to the floors and the survival logic.
+        if (ThreatAssessment.lethalOnBoardAgainst(state, state.projectedState, playerId) &&
+            withPump.value < Double.MAX_VALUE / 4
+        ) {
+            return null
+        }
+        val gain = withPump.value - without.value
+        return gain.takeIf { it > SCORE_EPSILON }
+    }
+
+    /** Our creatures an until-end-of-turn effect created between [root] and [leaf] lands on. */
+    private fun pumpedThisTurn(root: GameState, leaf: GameState, playerId: EntityId): List<EntityId> {
+        val before = root.floatingEffects.mapTo(HashSet()) { it.id }
+        val projected = leaf.projectedState
+        return leaf.floatingEffects
+            .filter { it.id !in before && it.duration == Duration.EndOfTurn }
+            .flatMapTo(HashSet()) { it.effect.affectedEntities }
+            .filter { projected.isCreature(it) && projected.getController(it) == playerId }
+    }
+
+    /** [CombatAdvisor.plannedAttackFrom] for [state], remembered like [plannedAttackers]. */
+    private fun plannedAttack(state: GameState, playerId: EntityId): CombatAdvisor.PlannedAttack? {
+        val memo = lastPlannedAttack
+        if (memo != null && memo.first === state) return memo.second
+        val plan = combatAdvisor.plannedAttackFrom(state, playerId) { budgetPolicy.budgetForDecision(it, playerId) }
+        lastPlannedAttack = state to plan
+        return plan
+    }
+
+    private var lastPlannedAttack: Pair<GameState, CombatAdvisor.PlannedAttack?>? = null
 
     /** The memo behind [plannedAttackers]: the state last asked about, by identity, and its plan. */
     private var lastPlan: Pair<GameState, Set<EntityId>?>? = null

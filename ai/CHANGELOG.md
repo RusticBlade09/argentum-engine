@@ -28,6 +28,8 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- Casts a pump before combat when it changes who attacks: a combat trick or pump ability that lets a creature make an attack it otherwise wouldn't is priced by what that attack is worth over the unpumped one, instead of being deferred to a beginning-of-combat window the AI never stops in.
+
 - Deck building for sets without rating data values planeswalkers as the engines they are instead of as filler (an on-color rare walker no longer loses its slot to a vanilla 3/9), and counts a legend's second copy at a discount for the legend rule, so it stops running doubles of filler legends.
 
 - Defends its own planeswalkers: a walker is priced by the loyalty the next attack leaves it, so one about to die spends its loyalty first (the biggest useful minus) instead of dying with counters unspent, a blocker kept home for it counts, and blocks on attackers aimed at it are worth the walker they save — a chump or trade for a valuable walker, nothing for a near-dead token.

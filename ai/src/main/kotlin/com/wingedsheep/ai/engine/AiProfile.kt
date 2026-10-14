@@ -872,6 +872,26 @@ data class AiProfile(
      *    re-pricing of the hand alone flips it.
      */
     val surplusAwareLands: Boolean = false,
+    /**
+     * In our own precombat main, price a **pump that changes who attacks** by the attack it buys.
+     *
+     * PR #3211's known gap. [HoldPolicy] holds a combat trick out of the main phase and
+     * `ExpiringGrantWindow` defers an activated pump to beginning of combat, but the engine AI
+     * never stops in its own beginning of combat (`MeaningfulActionFilter` passes it
+     * unconditionally, server-side and in `AIPlayer`'s fast path), and under
+     * `expiringStatsNeedAFight` a pump on a creature not yet attacking is worth nothing to the leaf.
+     * So a pump that would let a creature attack — a 2/2 turned 5/5 against an untapped 3/3 — was
+     * never cast before the attack was chosen.
+     *
+     * Now, in precombat main, a combat trick, team pump or end-of-turn grant activation is asked of
+     * the attack planner from both sides of the cast: when a creature it pumps is in the plan read
+     * off the pumped board and not in the plan read off the current one, it scores as passing plus
+     * the value the planner puts on the pumped attack over the unpumped one (each simulated through
+     * combat with heuristic blocks and the crack-back priced). Everything else keeps the floors —
+     * a pump on a creature that attacks anyway still waits for blocks, and a pump no attack uses is
+     * still refused (#3211's fix). Needs [useCardIntent].
+     */
+    val precombatPumpsForThePlan: Boolean = false,
     /** Non-null profiles may only be selected automatically for this set. Arena selection stays explicit. */
     val restrictedToSet: String? = null,
 ) {
@@ -1812,6 +1832,30 @@ data class AiProfile(
             activatedPumpsNeedAPlannedAttack = true,
             attackPlaneswalkers = true,
             defendPlaneswalkers = true,
+            precombatPumpsForThePlan = true,
+        )
+
+        /**
+         * [precombatPumpsForThePlan] alone on top of [PRODUCTION], so a puzzle or an arena point
+         * that moves is attributable to it.
+         */
+        val PRODUCTION_PLANPUMPS = PRODUCTION.copy(
+            id = "production-planpumps",
+            precombatPumpsForThePlan = true,
+        )
+
+        /**
+         * [precombatPumpsForThePlan] on top of [PRODUCTION_CANDIDATE_EXPIRINGSTATS] — the last pinned
+         * candidate plus the end-of-turn-stats valuation whose blind spot it covers — so `just arena
+         * production-candidate-expiringstats production-candidate-planpumps` measures this flag
+         * and nothing else. [LIVE] ships it.
+         */
+        val PRODUCTION_CANDIDATE_PLANPUMPS = PRODUCTION_CANDIDATE_EXPIRING.copy(
+            id = "production-candidate-planpumps",
+            // [PRODUCTION_CANDIDATE_EXPIRINGSTATS]' two fields, spelled out: it is declared below.
+            creatureValuation = PRODUCTION_CANDIDATE_EXPIRING.creatureValuation.copy(expiringStatsNeedAFight = true),
+            activatedPumpsNeedAPlannedAttack = true,
+            precombatPumpsForThePlan = true,
         )
 
         /**

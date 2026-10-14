@@ -233,6 +233,9 @@ object ArenaAgents {
         // attack, blocks priced by the walker they save.
         ArenaAgent("production-walkerdefence", AiProfile.PRODUCTION_WALKERDEFENCE),
         ArenaAgent("production-candidate-walkerdefence", AiProfile.PRODUCTION_CANDIDATE_WALKERDEFENCE),
+        // A precombat pump priced by the attack it buys, when it changes who attacks.
+        ArenaAgent("production-planpumps", AiProfile.PRODUCTION_PLANPUMPS),
+        ArenaAgent("production-candidate-planpumps", AiProfile.PRODUCTION_CANDIDATE_PLANPUMPS),
         ArenaAgent("production-targeted", AiProfile.PRODUCTION_TARGETED),
         // Explicit ECL candidates. Their resource-backed weights fail closed to production's
         // evaluator until a validated artifact is installed; automatic selection is set-gated.
