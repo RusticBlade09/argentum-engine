@@ -737,20 +737,8 @@ class DecisionResponder(
         val advisor = combatAdvisor ?: return null
         if (simulator.resolvingNestedDecision) return null
         if (!state.isActiveTurnFor(playerId) || state.step != Step.BEGIN_COMBAT) return null
-        var current = yesState
-        var passes = 0
-        while (current.step != Step.DECLARE_ATTACKERS) {
-            if (current.gameOver || current.pendingDecision != null || current.step != Step.BEGIN_COMBAT) return null
-            if (passes++ >= MAX_PASSES_TO_DECLARE_ATTACKERS) return null
-            val priority = current.priorityPlayerId ?: return null
-            current = (simulator.simulate(current, PassPriority(priority)) as? SimulationResult.Terminal)?.state
-                ?: return null
-        }
-        if (!current.isActiveTurnFor(playerId)) return null
-        val declare = simulator.getLegalActions(current, playerId)
-            .firstOrNull { it.actionType == "DeclareAttackers" } ?: return null
-        val plan = advisor.chooseAttackers(current, declare, playerId, budgetPolicy.budgetForDecision(current, playerId))
-        return (plan as? DeclareAttackers)?.attackers?.keys
+        if (yesState.step != Step.BEGIN_COMBAT && yesState.step != Step.DECLARE_ATTACKERS) return null
+        return advisor.plannedAttackersFrom(yesState, playerId) { budgetPolicy.budgetForDecision(it, playerId) }
     }
 
     private fun energyOf(state: GameState, playerId: EntityId): Int =
@@ -1606,12 +1594,6 @@ class DecisionResponder(
          * coming (1.5 or less) and a spell several land draws away fall below it.
          */
         const val LOOK_KEEP_THRESHOLD = 2.0
-
-        /**
-         * Priority passes allowed to walk a beginning-of-combat yes state to declare attackers —
-         * one per seat with room for a straggling trigger. Past it the plan is not read.
-         */
-        const val MAX_PASSES_TO_DECLARE_ATTACKERS = 8
 
         val CREATURE_TYPES_LOWER: Set<String> = Subtype.ALL_CREATURE_TYPES.mapTo(HashSet()) { it.lowercase() }
     }

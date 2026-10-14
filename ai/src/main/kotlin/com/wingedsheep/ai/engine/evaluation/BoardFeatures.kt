@@ -1,8 +1,6 @@
 package com.wingedsheep.ai.engine.evaluation
 
-import com.wingedsheep.engine.mechanics.layers.ActiveFloatingEffect
 import com.wingedsheep.engine.mechanics.layers.ProjectedState
-import com.wingedsheep.engine.mechanics.layers.SerializableModification
 import com.wingedsheep.ai.engine.OpponentAggregate
 import com.wingedsheep.ai.engine.knowledge.CardIntent
 import com.wingedsheep.ai.engine.knowledge.IntentCatalog
@@ -10,7 +8,6 @@ import com.wingedsheep.ai.engine.lifePoolsOf
 import com.wingedsheep.ai.engine.sidesFor
 import com.wingedsheep.engine.state.ComponentContainer
 import com.wingedsheep.engine.state.GameState
-import com.wingedsheep.sdk.scripting.Duration
 import com.wingedsheep.engine.state.components.battlefield.CountersComponent
 import com.wingedsheep.engine.state.components.battlefield.DamageComponent
 import com.wingedsheep.engine.state.components.battlefield.SummoningSicknessComponent
@@ -90,7 +87,7 @@ data class CreatureValuation(
      * Stop discounting a creature for damage marked on it.
      *
      * Marked damage wears off at cleanup (CR 514.2), so a 3/3 with one damage on it is a 3/3 next
-     * turn — exactly the case the `temporaryPTModification` subtraction a few lines above it exists
+     * turn — exactly the case the end-of-turn subtraction in `creatureValue` exists
      * to avoid, arrived at from the other direction. The old `0.5 + 0.5 × healthFraction` made
      * *pinging* the opponent's 3/3 look like 0.7 of board progress, which is `activate-04`: one
      * damage at a creature it cannot kill, bought with the Sorcerer's whole turn.
@@ -117,6 +114,17 @@ data class CreatureValuation(
      * actually gets to keep using.
      */
     val cantAttackCostsPower: Boolean = false,
+    /**
+     * Read an "until end of turn" P/T change only on a creature in a fight that has not dealt its
+     * damage yet — everywhere else, read the stats it will have after cleanup.
+     *
+     * `BoardPresence` took the modification off its base stats already, but its power-scaled
+     * keyword bonuses and the whole of `ThreatAssessment` read it whole, so a pump bought for
+     * nothing scored as board progress. See [ExpiringStats] for the production game and for why
+     * the simulation, not this term, covers the uses that matter (a pump in response to burn,
+     * firebreathing once blockers are declared). Off is the historical reading.
+     */
+    val expiringStatsNeedAFight: Boolean = false,
 ) {
     companion object {
         /** Neither correction: what every number published before 2026-08-10 was measured on. */
@@ -496,7 +504,8 @@ object BoardPresence : BoardFeature {
      *
      * The keyword bonuses scale with [power] rather than [settledPower] deliberately: a Giant Growth
      * on a flier really is buying evasive damage right now, even though the stats it buys are gone
-     * at cleanup. Off the battlefield there are no temporary modifications, so the two coincide and
+     * at cleanup — when the flier is in a fight to deal it in, which is the reading
+     * [CreatureValuation.expiringStatsNeedAFight] gives `creatureValue`'s caller. Off the battlefield there are no temporary modifications, so the two coincide and
      * the defaults are the printed numbers.
      */
     private fun creatureBodyValue(
@@ -557,13 +566,22 @@ object BoardPresence : BoardFeature {
         // Discount temporary P/T modifications. "Until end of turn" effects expire
         // at cleanup — evaluate using the permanent stats so killing a 2/2 with -2/-2
         // scores better than merely shrinking a 2/3 (which recovers next turn).
-        val tempMod = temporaryPTModification(state, entityId)
+        val tempMod = ExpiringStats.temporaryModification(state, entityId)
         val settledPower = (power - tempMod.first).coerceAtLeast(0)
         val settledToughness = (toughness - tempMod.second).coerceAtLeast(0)
 
+        // The keyword bonuses scale with the power this creature will actually hit with. Under
+        // [CreatureValuation.expiringStatsNeedAFight] that is the pumped power only while it is in
+        // a fight still ahead — a pumped flier at home deals no evasive damage before cleanup.
+        val strikingPower = if (valuation.expiringStatsNeedAFight && !ExpiringStats.inFightStillAhead(state, entityId)) {
+            settledPower
+        } else {
+            power
+        }
+
         // Everything that is a property of the card's own body — stats, keywords, DEFENDER — is
         // [creatureBodyValue]; everything below is a property of this permanent in this position.
-        var value = creatureBodyValue(power, toughness, keywords, settledPower, settledToughness)
+        var value = creatureBodyValue(strikingPower, toughness, keywords, settledPower, settledToughness)
 
         // ── Drawbacks ──
         // "Can't attack" hung on the creature by a Pacifism takes away the same thing DEFENDER
@@ -623,25 +641,6 @@ object BoardPresence : BoardFeature {
         }
 
         return value.coerceAtLeast(0.1)
-    }
-
-    /**
-     * Sum temporary P/T modifications from "until end of turn" floating effects.
-     * Returns (powerMod, toughnessMod) that will expire at cleanup.
-     */
-    private fun temporaryPTModification(state: GameState, entityId: EntityId): Pair<Int, Int> {
-        var powerMod = 0
-        var toughnessMod = 0
-        for (effect in state.floatingEffects) {
-            if (effect.duration != Duration.EndOfTurn) continue
-            if (entityId !in effect.effect.affectedEntities) continue
-            val mod = effect.effect.modification
-            if (mod is SerializableModification.ModifyPowerToughness) {
-                powerMod += mod.powerMod
-                toughnessMod += mod.toughnessMod
-            }
-        }
-        return powerMod to toughnessMod
     }
 
     /** What a land is worth on the battlefield. Historical constants; [landSequencing] refines them. */
@@ -1102,6 +1101,17 @@ object ThreatAssessment : BoardFeature {
         discountedRaceClock: Boolean,
     ): Double = score(state, projected, playerId, discountedRaceClock, evasionAfterAttacking = false)
 
+    /** The pre-[CreatureValuation.expiringStatsNeedAFight] signature. */
+    fun score(
+        state: GameState,
+        projected: ProjectedState,
+        playerId: EntityId,
+        discountedRaceClock: Boolean,
+        evasionAfterAttacking: Boolean,
+    ): Double = score(
+        state, projected, playerId, discountedRaceClock, evasionAfterAttacking, expiringStatsNeedAFight = false,
+    )
+
     /**
      * @param discountedRaceClock score the race in urgency rather than in turns, so a distant clock
      *   is discounted and an absent one is zero. `EvaluationWeights.toEvaluator` binds this from
@@ -1109,6 +1119,10 @@ object ThreatAssessment : BoardFeature {
      * @param evasionAfterAttacking keep tapped attackers in evasive power and stop counting a
      *   can't-block flier as air cover; see
      *   [com.wingedsheep.ai.engine.AiProfile.evasionAfterAttacking].
+     * @param expiringStatsNeedAFight read an until-end-of-turn P/T change only on a creature in a
+     *   fight still ahead; see [CreatureValuation.expiringStatsNeedAFight]. Every term here is about
+     *   the *next* combat, and for a creature not already in this one, that combat comes after
+     *   cleanup has taken the bonus away.
      */
     fun score(
         state: GameState,
@@ -1116,21 +1130,23 @@ object ThreatAssessment : BoardFeature {
         playerId: EntityId,
         discountedRaceClock: Boolean,
         evasionAfterAttacking: Boolean,
+        expiringStatsNeedAFight: Boolean,
     ): Double {
+        val fight = expiringStatsNeedAFight
         val sides = state.sidesFor(playerId) ?: return 0.0
 
         val myLife = sideLife(state, sides.mine)
 
         // Calculate attack potential (power of untapped, non-sick creatures)
-        val myAttackPower = attackPotential(state, projected, sides.mine)
+        val myAttackPower = attackPotential(state, projected, sides.mine, fight)
 
         // Calculate defense capability (total toughness of untapped creatures that can block)
-        val myDefense = defensePotential(state, projected, sides.mine)
+        val myDefense = defensePotential(state, projected, sides.mine, fight)
 
         return sides.against(OpponentAggregate.THREAT) { opponent ->
             val theirLife = sideLife(state, opponent)
-            val theirAttackPower = attackPotential(state, projected, opponent)
-            val theirDefense = defensePotential(state, projected, opponent)
+            val theirAttackPower = attackPotential(state, projected, opponent, fight)
+            val theirDefense = defensePotential(state, projected, opponent, fight)
 
             // Score: positive if we're the faster clock
             var score = 0.0
@@ -1159,8 +1175,8 @@ object ThreatAssessment : BoardFeature {
             if (hasLethalOnBoard(theirAttackPower, myLife, myDefense)) score -= 10.0
 
             // Evasive damage (flying power they can't block)
-            val theirEvasivePower = evasivePower(state, projected, opponent, sides.mine, evasionAfterAttacking)
-            val myEvasivePower = evasivePower(state, projected, sides.mine, opponent, evasionAfterAttacking)
+            val theirEvasivePower = evasivePower(state, projected, opponent, sides.mine, evasionAfterAttacking, fight)
+            val myEvasivePower = evasivePower(state, projected, sides.mine, opponent, evasionAfterAttacking, fight)
             score += (myEvasivePower - theirEvasivePower) * 0.5
 
             score
@@ -1203,7 +1219,12 @@ object ThreatAssessment : BoardFeature {
     private fun sideLife(state: GameState, side: List<EntityId>): Int =
         state.lifePoolsOf(side).minOrNull() ?: 20
 
-    private fun attackPotential(state: GameState, projected: ProjectedState, side: List<EntityId>): Int {
+    private fun attackPotential(
+        state: GameState,
+        projected: ProjectedState,
+        side: List<EntityId>,
+        needAFight: Boolean = false,
+    ): Int {
         // Don't filter by TappedComponent — tapped creatures untap on the next
         // turn and can attack again. Filtering them out massively penalizes the
         // post-combat state (where our creatures are tapped from attacking),
@@ -1216,11 +1237,16 @@ object ThreatAssessment : BoardFeature {
                         (state.getEntity(entityId)?.has<SummoningSicknessComponent>() != true ||
                             projected.hasKeyword(entityId, Keyword.HASTE) || projected.canAttackAsThoughHasty(entityId))
                 }
-                .sumOf { (projected.getPower(it) ?: 0).coerceAtLeast(0) }
+                .sumOf { ExpiringStats.power(state, projected, it, needAFight) }
         }
     }
 
-    private fun defensePotential(state: GameState, projected: ProjectedState, side: List<EntityId>): Int {
+    private fun defensePotential(
+        state: GameState,
+        projected: ProjectedState,
+        side: List<EntityId>,
+        needAFight: Boolean = false,
+    ): Int {
         return side.sumOf { playerId ->
             projected.getBattlefieldControlledBy(playerId)
                 .filter { entityId ->
@@ -1228,7 +1254,7 @@ object ThreatAssessment : BoardFeature {
                         !projected.cantBlock(entityId) &&
                         state.getEntity(entityId)?.has<TappedComponent>() != true
                 }
-                .sumOf { (projected.getToughness(it) ?: 0).coerceAtLeast(0) }
+                .sumOf { ExpiringStats.toughness(state, projected, it, needAFight) }
         }
     }
 
@@ -1252,6 +1278,7 @@ object ThreatAssessment : BoardFeature {
         attackers: List<EntityId>,
         defenders: List<EntityId>,
         afterAttacking: Boolean,
+        needAFight: Boolean = false,
     ): Int {
         val defenderHasFlyers = defenders.any { defenderId ->
             projected.getBattlefieldControlledBy(defenderId).any { entityId ->
@@ -1274,7 +1301,7 @@ object ThreatAssessment : BoardFeature {
                         (state.getEntity(entityId)?.has<SummoningSicknessComponent>() != true ||
                             projected.hasKeyword(entityId, Keyword.HASTE) || projected.canAttackAsThoughHasty(entityId))
                 }
-                .sumOf { (projected.getPower(it) ?: 0).coerceAtLeast(0) }
+                .sumOf { ExpiringStats.power(state, projected, it, needAFight) }
         }
     }
 }

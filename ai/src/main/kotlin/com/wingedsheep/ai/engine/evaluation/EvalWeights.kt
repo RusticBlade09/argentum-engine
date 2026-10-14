@@ -62,6 +62,7 @@ data class EvaluationWeights(
             threatAssessment to BoardFeature { state, projected, playerId ->
                 ThreatAssessment.score(
                     state, projected, playerId, discountedRaceClock, evasionAfterAttacking,
+                    creatureValuation.expiringStatsNeedAFight,
                 )
             },
             tempo to Tempo,

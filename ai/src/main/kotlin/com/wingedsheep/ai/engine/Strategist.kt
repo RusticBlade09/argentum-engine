@@ -8,6 +8,7 @@ import com.wingedsheep.ai.engine.budget.LegacyBudgetPolicy
 import com.wingedsheep.ai.engine.evaluation.BoardEvaluator
 import com.wingedsheep.ai.engine.evaluation.BoardPresence
 import com.wingedsheep.ai.engine.evaluation.EvaluationWeights
+import com.wingedsheep.ai.engine.knowledge.ExpiringGrantWindow
 import com.wingedsheep.ai.engine.knowledge.HoldPolicy
 import com.wingedsheep.ai.engine.knowledge.IntentCatalog
 import com.wingedsheep.ai.engine.knowledge.TimingVerdict
@@ -51,6 +52,8 @@ import com.wingedsheep.sdk.scripting.AbilityCost
 import com.wingedsheep.sdk.scripting.AdditionalCostPayment
 import com.wingedsheep.sdk.scripting.AlternativePaymentChoice
 import com.wingedsheep.sdk.scripting.ConvokePayment
+import com.wingedsheep.sdk.scripting.Duration
+import com.wingedsheep.sdk.scripting.TimingRule
 
 /**
  * Chooses which [LegalAction] to take when the AI has priority.
@@ -165,6 +168,12 @@ class Strategist(
      * See [landDropFollowUps].
      */
     private val landDropUnlocksSpells: Boolean = false,
+    /**
+     * [AiProfile.activatedPumpsNeedAPlannedAttack] — before our attack, an activation that buys
+     * nothing but end-of-turn creature grants is floored below passing unless the attack plan sends
+     * a creature it lands on. See [pumpLeftHomeByThePlan].
+     */
+    private val activatedPumpsNeedAPlannedAttack: Boolean = false,
     /**
      * The profile's `EvaluationWeights.boardPresence`. Only [HoldPolicy] reads it, to quote a
      * patience discount in the same units the leaf score prices board value in.
@@ -418,7 +427,11 @@ class Strategist(
         }
 
         val best = scored.maxByOrNull { it.second }
-        val takeAction = best != null && (forcedPlay || best.second > adjustedPassScore)
+        // A candidate has to beat passing by more than rounding: two lines that score the same in
+        // exact arithmetic can land an ulp apart depending on summation order, and that ulp is not
+        // a reason to spend mana. Off a production game, a team pump whose stats wore off before
+        // anything used them tied passing to the 14th decimal and won.
+        val takeAction = best != null && (forcedPlay || best.second > adjustedPassScore + SCORE_EPSILON)
         val chosen = if (takeAction) {
             remember(here)
             // Fill in targets on the returned action so the processor can execute it.
@@ -869,6 +882,12 @@ class Strategist(
             // passing. See [TimingVerdict.NoWindow] for why this is a floor and not a penalty.
             return AdjustedScore(passScore - 1.0, "hold policy: wrong window — floored below passing")
         }
+        if (activatedPumpsNeedAPlannedAttack && pumpLeftHomeByThePlan(state, action, playerId, cardName, leafState)) {
+            // The same floor, for the same reason: what it bought is gone at cleanup, and the attack
+            // that could have spent it either leaves every creature it lands on at home or sends
+            // them without it.
+            return AdjustedScore(passScore - 1.0, "attack plan does not need the pump — floored below passing")
+        }
         val timingDelta = (timing as? TimingVerdict.Adjust)?.delta ?: 0.0
         val idleBonus = if ((timing as? TimingVerdict.Adjust)?.onlyWhenIdle == true) timingDelta else 0.0
         val timingReason = (timing as? TimingVerdict.Adjust)?.reason ?: "timing"
@@ -900,6 +919,80 @@ class Strategist(
             idleBonus,
         )
     }
+
+    /**
+     * Whether [action] — an activated ability whose every payoff is an until-end-of-turn creature
+     * grant — is being bought before our attack for creatures the attack plan then keeps home.
+     *
+     * The leaf cannot tell "could attack" from "will attack", and neither can the rollouts: a
+     * playout's attack is `CombatSeed`'s, read off the pumped board, while the attack actually
+     * declared is [combatAdvisor]'s. Off a production game (2026-10-14): at 2 life, Shatterwing
+     * Pegasus's `{4}{W}: Creatures you control get +1/+1 until end of turn` in our precombat main,
+     * scored above passing by the playouts, and then no attack — five mana for a bonus that wore off
+     * before the opponent's lethal crack-back. So this asks the planner itself: walk the leaf to
+     * declare attackers and see whom it sends. A grant that lands on none of them is a payment for
+     * nothing, and is floored like [TimingVerdict.NoWindow]. So is an instant-speed grant on
+     * creatures the plan sends *anyway*: it changes no attack, and the same pump can be bought once
+     * they are attacking.
+     *
+     * The same claim [AiProfile.pumpsNeedAPlannedAttack] makes about a beginning-of-combat yes/no,
+     * applied to an activation, from either precombat window. Only our own precombat main or
+     * beginning of combat with an empty stack, never inside a nested simulation, and only when the
+     * leaf actually created such a grant; anything unreadable answers false and leaves the score
+     * alone. The attack search runs once per qualifying candidate.
+     */
+    private fun pumpLeftHomeByThePlan(
+        state: GameState,
+        action: LegalAction,
+        playerId: EntityId,
+        cardName: String,
+        leafState: GameState,
+    ): Boolean {
+        val activation = action.action as? ActivateAbility ?: return false
+        if (!state.isActiveTurnFor(playerId) || state.stack.isNotEmpty()) return false
+        if (state.step != Step.PRECOMBAT_MAIN && state.step != Step.BEGIN_COMBAT) return false
+        if (simulator.resolvingNestedDecision) return false
+        val ability = intents.activatedAbility(cardName, activation.abilityId) ?: return false
+        if (!ExpiringGrantWindow.buysOnlyExpiringCreatureGrants(ability)) return false
+        if (leafState.gameOver || leafState.pendingDecision != null) return false
+
+        val before = state.floatingEffects.mapTo(HashSet()) { it.id }
+        val projected = leafState.projectedState
+        val pumped = leafState.floatingEffects
+            .filter { it.id !in before && it.duration == Duration.EndOfTurn }
+            .flatMapTo(HashSet()) { it.effect.affectedEntities }
+            .filter { projected.isCreature(it) && projected.getController(it) == playerId }
+        if (pumped.isEmpty()) return false
+
+        val planned = plannedAttackers(leafState, playerId) ?: return false
+        val sentWithThePump = pumped.filter { it in planned }
+        if (sentWithThePump.isEmpty()) return true
+
+        // A creature the plan sends with or without the pump does not need it bought now: an
+        // instant-speed pump can still go on it once it is attacking — before blocks for an evasion
+        // grant, after them for stats — with strictly more information. Only a pump that changes
+        // who attacks has to be in force when the attack is chosen. A sorcery-speed one has no later
+        // window, so for it "the plan uses it" is enough.
+        if (ability.timing != TimingRule.InstantSpeed) return false
+        val plannedAnyway = plannedAttackers(state, playerId) ?: return false
+        return sentWithThePump.all { it in plannedAnyway }
+    }
+
+    /**
+     * [CombatAdvisor.plannedAttackersFrom] for [state], remembered for the last state asked about —
+     * every candidate of one decision shares the root, so [pumpLeftHomeByThePlan]'s "would it
+     * attack anyway" plan is searched once per decision, not once per pump.
+     */
+    private fun plannedAttackers(state: GameState, playerId: EntityId): Set<EntityId>? {
+        val memo = lastPlan
+        if (memo != null && memo.first === state) return memo.second
+        val plan = combatAdvisor.plannedAttackersFrom(state, playerId) { budgetPolicy.budgetForDecision(it, playerId) }
+        lastPlan = state to plan
+        return plan
+    }
+
+    /** The memo behind [plannedAttackers]: the state last asked about, by identity, and its plan. */
+    private var lastPlan: Pair<GameState, Set<EntityId>?>? = null
 
     /** A spell a land drop made castable, and the quiet state casting it from the land's leaf reaches. */
     private class LandFollowUp(val landIndex: Int, val action: LegalAction, val leaf: GameState)
@@ -1721,6 +1814,13 @@ class Strategist(
     private companion object {
         /** How many acted-from positions [remember] keeps. See it for why a short memory suffices. */
         const val POSITION_MEMORY = 32
+
+        /**
+         * How far a candidate must clear passing to be taken — rounding noise, not a margin. Leaf
+         * scores are sums of a few dozen terms of order 1–100, so real differences are orders of
+         * magnitude above this and floating-point summation-order noise orders of magnitude below.
+         */
+        const val SCORE_EPSILON = 1e-9
 
         /**
          * Targets simulated per requirement when rescuing a candidate the cheap pick made inert.

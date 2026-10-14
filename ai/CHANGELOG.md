@@ -28,6 +28,8 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- Stops paying for until-end-of-turn pumps nothing spends: a temporary +X/+X counts only on a creature already attacking or blocking, a precombat pump activation needs an attack plan that uses it, and an action that merely ties passing no longer wins on rounding.
+
 - Casts wishes (Extrapolate the Impossible, Burning Wish) with idle mana in its last main phase instead of holding them all game, unless nothing outside the game is fetchable.
 
 - Allocates the full required counter payment across permanents, including several counters on one, and compares paying against declining.
