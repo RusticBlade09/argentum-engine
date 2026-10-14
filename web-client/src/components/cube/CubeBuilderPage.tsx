@@ -451,6 +451,7 @@ function CubeBuilder({
               sortMode={browse.sortMode}
               onSortChange={browse.setSortMode}
               errors={browse.errors}
+              explanation={browse.explanation}
               resultLabel={loading ? 'Loading…' : `Showing ${browse.displayed.length} of ${browse.filtered.length}`}
             />
             {error ? (

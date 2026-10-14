@@ -71,6 +71,7 @@ export function CardBrowser({
           sortMode={browse.sortMode}
           onSortChange={browse.setSortMode}
           errors={browse.errors}
+          explanation={browse.explanation}
           resultLabel={resultLabel}
           {...(actionHint !== undefined ? { actionHint } : {})}
         />

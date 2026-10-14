@@ -1,23 +1,21 @@
 /**
- * cardFilter — public facade for the deckbuilder's query language and filter chip helpers.
+ * cardFilter — the deckbuilder's card shape plus the query language's entry points.
  *
- * The actual grammar / lexer / parser / evaluator live in `./query/`. This file:
+ * The query language itself is the Kotlin `:mtg-search` module compiled to JavaScript (see
+ * `./query`). This file:
  *   - re-exports the user-facing entry points,
- *   - declares the `CardSummary` shape (mirrors `DecksController.CardSummaryDTO`),
- *   - keeps the legacy chip helpers (`addToken`/`removeToken`/`hasToken`/`toggleToken`)
- *     that the menu-style filter panel uses to round-trip top-level atoms with the
- *     free-text bar.
+ *   - declares the `CardSummary` shape (mirrors `CardsController.CardSummaryDTO`),
+ *   - keeps the chip helpers (`addToken`/`removeToken`/`hasToken`/`toggleToken`) that the
+ *     menu-style filter panel uses to round-trip top-level atoms with the free-text bar.
  *
  * The chip helpers operate on whitespace-separated terms in the raw string. They are
  * not aware of `or` / parens — when the query becomes "advanced" (uses any feature
  * the chips can't represent), the filter panel switches to read-only and stops
  * calling these helpers. See `isAdvancedQuery` in `./query`.
  */
-import { parseQuery as parseQueryFull } from './query'
-import type { CardPredicate, ParseResult } from './query'
 
 // ---------------------------------------------------------------------------
-// Card shape — mirrors `DecksController.CardSummaryDTO` on the backend.
+// Card shape — mirrors `CardsController.CardSummaryDTO` on the backend.
 // ---------------------------------------------------------------------------
 
 export interface PrintedNamePrinting {
@@ -61,8 +59,11 @@ export interface CardSummary {
    */
   printedNamePrintings?: PrintedNamePrinting[]
   oracleText?: string | null
+  /** Printed power as text — `"2"`, `"*"`, `"1+*"`. */
   power?: string | null
   toughness?: string | null
+  /** Printed starting loyalty of a planeswalker; drives `loy:`. */
+  loyalty?: string | null
   imageUri?: string | null
   keywords?: string[]
   /** Server-stamped legal formats (uppercase: STANDARD, MODERN, COMMANDER, …). */
@@ -99,22 +100,7 @@ export interface CardSummary {
 }
 
 export type { CardPredicate, ParseResult, ParseError } from './query'
-export { isAdvancedQuery, ALL_KEYS } from './query'
-
-/**
- * Parse a query string into a card predicate plus diagnostics.
- *
- * Backwards-compatible overload: many call-sites (and the chip-detection regexes)
- * just want the predicate. Pass `{ withErrors: true }` to get the full
- * `ParseResult` including parse errors with character spans.
- */
-export function parseQuery(query: string): CardPredicate
-export function parseQuery(query: string, opts: { withErrors: true }): ParseResult
-export function parseQuery(query: string, opts?: { withErrors: boolean }): CardPredicate | ParseResult {
-  const result = parseQueryFull(query)
-  if (opts?.withErrors) return result
-  return result.predicate
-}
+export { isAdvancedQuery, parseQuery } from './query'
 
 // ---------------------------------------------------------------------------
 // Menu ↔ query helpers

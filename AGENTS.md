@@ -104,7 +104,7 @@ docs it points at; load those when the work needs them.
 | `mtg-sets/<era>/tests` | Card scenario tests for that era's sets | engine, sets |
 | `rules-engine` | Core MTG rules (zero server deps) | sdk |
 | `ai` | Built-in AI player + draft/deckbuild advisors | engine, sdk |
-| `mtg-search` | Scryfall-style search query language over a `SearchCard` projection | — |
+| `mtg-search` | Scryfall-style search query language over a `SearchCard` projection. Kotlin Multiplatform: the server runs it on the JVM, the web-client runs it compiled to JS (`web-client/src/generated/mtg-search/`, refreshed by `just search-js`) — never a TypeScript port | — |
 | `gym` / `gym-server` / `gym-trainer` | RL/MCTS env + HTTP transport + self-play SPI | engine, sdk |
 | `game-server` | Spring Boot orchestration, WebSocket, state masking | engine, sdk |
 | `mtgish-tooling` | Predictive coverage / auto-gen analyzer | — (scans source as text) |

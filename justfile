@@ -601,6 +601,12 @@ client-build:
 client-typecheck:
     cd web-client && npm run typecheck
 
+# Recompile the card search language (:mtg-search) to JavaScript into web-client/src/generated/mtg-search.
+# The web-client runs that copy, so commit it with any change to mtg-search; `:mtg-search:test` fails when stale.
+[group: 'build']
+search-js:
+    scripts/gradle-locked :mtg-search:syncWebClientSearch
+
 # Initialize local environment (copy .env.example to .env)
 [group: 'env']
 init:

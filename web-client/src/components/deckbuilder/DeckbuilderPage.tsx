@@ -9,7 +9,7 @@
  * Decoupled from gameStore — runs offline. Persistence is via useDeckLibrary
  * (localStorage). Server validation reuses POST /api/decks/validate.
  */
-import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, startTransition, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   useDeckLibrary,
@@ -33,7 +33,6 @@ import { DeckDetailsDialog } from '@/components/deck/DeckDetailsDialog'
 import { CoverPicker, DeckIdentity } from './DeckIdentity'
 import {
   parseQuery,
-  isAdvancedQuery,
   type CardSummary,
 } from './cardFilter'
 import {
@@ -42,7 +41,6 @@ import {
   summarizeOutsideTheGame,
   type OutsideTheGameSummary,
 } from './outsideTheGame'
-import { extractSetFilter } from './query'
 import {
   CardGrid,
   COLOR_TOKENS,
@@ -701,14 +699,17 @@ export function DeckbuilderPage() {
     if (commanders.some((c) => !(c in deckCards))) setCommanders(commanders.filter((c) => c in deckCards))
   }, [commanders, deckCards])
 
-  const parseResult = useMemo(() => parseQuery(query, { withErrors: true }), [query])
-  const predicate = parseResult.predicate
+  // Errors and the plain-words reading follow every keystroke; the filtering itself trails at low
+  // priority (`useDeferredValue`), so typing never waits on a full-catalog scan.
+  const parseResult = useMemo(() => parseQuery(query), [query])
+  const results = useDeferredValue(parseResult)
+  const predicate = results.predicate
   const queryErrors = parseResult.errors
-  const advanced = useMemo(() => isAdvancedQuery(query), [query])
-  // Dominant set filter (`s:EOE`, `set:eoe`) extracted from the parsed AST. Drives the
+  const advanced = parseResult.advanced
+  // Dominant set filter (`s:EOE`, `set:eoe`) the query pins every result to. Drives the
   // catalog grid + hover preview to render the *reprint's* art when a card has a printing
   // in that set, instead of always showing the canonical CardDefinition's image.
-  const activeSetFilter = useMemo(() => extractSetFilter(parseResult.ast), [parseResult.ast])
+  const activeSetFilter = results.setFilter
   // When a deck format is selected, scope the catalog to format-legal cards automatically so
   // the user only sees plays they can actually run. The `format:` query token still works as
   // an extra filter (intersected on top), but isn't required for this default behavior.
@@ -765,7 +766,7 @@ export function DeckbuilderPage() {
     [filtered],
   )
   const setPrintingOverride = useArtOverrides(
-    parseResult.ast,
+    results.printedNameMatch,
     filtered,
     useSetPrintingOverride(activeSetFilter, overrideNames),
   )
@@ -1561,6 +1562,7 @@ export function DeckbuilderPage() {
               sortMode={sortMode}
               onSortChange={setSortMode}
               errors={queryErrors}
+              explanation={parseResult.explanation}
               resultLabel={
                 catalog.length === 0
                   ? 'Loading…'

@@ -58,7 +58,7 @@ export function SearchPane({
   const results = useMemo(() => {
     const trimmed = query.trim()
     if (!trimmed || !catalogReady) return []
-    const predicate = parseQuery(trimmed)
+    const { predicate } = parseQuery(trimmed)
     return catalog
       .filter((c) => !c.basicLand && !inCube.has(c.name.toLowerCase()) && predicate(c))
       .sort((a, b) => a.name.localeCompare(b.name))

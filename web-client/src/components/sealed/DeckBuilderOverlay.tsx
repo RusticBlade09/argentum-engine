@@ -18,7 +18,7 @@ import {
   isWithinIdentity,
   toggleCommanderDesignation,
 } from '../deckbuilder/commanderPairing'
-import { parseQuery } from '../deckbuilder/query'
+import { applyFix, parseQuery } from '../deckbuilder/query'
 import { SearchHelp } from '../deckbuilder/browser/SearchBar'
 import type { CardSummary } from '../deckbuilder/cardFilter'
 import {
@@ -416,13 +416,13 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
 
   // Whether the search box is narrowing anything, and the one predicate the pool filter and the
   // deck-list highlight share.
-  const searchActive = searchMode === 'simple' ? searchText.trim() !== '' : searchQuery.ast != null
+  const searchActive = searchMode === 'simple' ? searchText.trim() !== '' : !searchQuery.empty
   const matchesSearch = useCallback((card: SealedCardInfo): boolean => {
     if (searchMode === 'simple') {
       const q = searchText.trim()
       return !q || matchesSimpleSearch(card, q)
     }
-    if (!searchQuery.ast) return true
+    if (searchQuery.empty) return true
     const summary = poolSummaries.get(card.name)
     return summary != null && searchQuery.predicate(summary)
   }, [searchMode, searchText, searchQuery, poolSummaries])
@@ -958,7 +958,9 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                 onChange={(e) => setSearchText(e.target.value)}
                 placeholder={searchMode === 'scryfall' ? 't:creature cmc<=3 o:flying' : 'Search name, type, or text…'}
                 title={searchMode === 'scryfall'
-                  ? 'Scryfall-style search: t:, o:, c:, cmc:, pow:, r:, kw:, is:, or / - / ( ). Click ? for the syntax.'
+                  ? (searchQuery.explanation
+                    ? `Cards where ${searchQuery.explanation}`
+                    : 'Scryfall-style search: t:, o:, c:, cmc:, pow:, r:, kw:, is:, or / - / ( ). Click ? for the syntax.')
                   : 'Matches card name, type line, or rules text'}
                 aria-label="Search pool"
                 aria-invalid={searchQuery.errors.length > 0}
@@ -1024,7 +1026,29 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                       <code style={{ color: '#ffd0c8', flexShrink: 0 }}>
                         {searchText.slice(e.span.start, e.span.end) || '·'}
                       </code>
-                      <span>{e.message}{e.suggestion ? ` ${e.suggestion}` : ''}</span>
+                      <span>{e.message}</span>
+                      {e.fix ? (
+                        <button
+                          type="button"
+                          onClick={() => setSearchText(applyFix(searchText, e.fix!))}
+                          title="Apply this fix"
+                          style={{
+                            marginLeft: 'auto',
+                            flexShrink: 0,
+                            padding: '0 6px',
+                            fontSize: 11,
+                            color: '#eee',
+                            background: 'rgba(255, 255, 255, 0.08)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            borderRadius: 3,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Use <code style={{ color: '#4fc3f7' }}>{e.fix.text}</code>
+                        </button>
+                      ) : e.suggestion ? (
+                        <span>{e.suggestion}</span>
+                      ) : null}
                     </li>
                   ))}
                 </ul>

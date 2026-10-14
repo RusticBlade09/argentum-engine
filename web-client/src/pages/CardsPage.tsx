@@ -185,6 +185,7 @@ export function CardsPage() {
             sortMode={sortMode}
             onSortChange={setSortMode}
             errors={browse.errors}
+            explanation={browse.explanation}
             resultLabel={resultLabel}
             actionHint={
               <>

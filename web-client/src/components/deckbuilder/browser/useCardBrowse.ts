@@ -7,9 +7,8 @@
  * and sort in its URL by passing them in as `controlled`. Keeping it here means all of them browse
  * cards identically — same query language, same sort, same set-filter art.
  */
-import { useEffect, useMemo, useState } from 'react'
-import { isAdvancedQuery, parseQuery, type CardSummary } from '../cardFilter'
-import { extractSetFilter } from '../query'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { parseQuery, type CardSummary } from '../cardFilter'
 import { sortCards, type SortMode } from './cardSort'
 import { useArtOverrides, useCardsWithSetArt, useSetPrintingOverride } from './useSetPrintingOverride'
 
@@ -32,11 +31,13 @@ export function useCardBrowse(catalog: readonly CardSummary[], initialQuery = ''
   const setSortMode = controlled ? controlled.setSortMode : setOwnSortMode
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
-  const parseResult = useMemo(() => parseQuery(query, { withErrors: true }), [query])
-  const advanced = useMemo(() => isAdvancedQuery(query), [query])
-  const activeSetFilter = useMemo(() => extractSetFilter(parseResult.ast), [parseResult.ast])
+  // Errors and the plain-words reading follow every keystroke; the filtering itself trails at low
+  // priority (`useDeferredValue`), so typing never waits on a 15k-card scan.
+  const parseResult = useMemo(() => parseQuery(query), [query])
+  const results = useDeferredValue(parseResult)
+  const activeSetFilter = results.setFilter
 
-  const predicate = parseResult.predicate
+  const predicate = results.predicate
   const filtered = useMemo(
     () => sortCards(catalog.filter(predicate), sortMode),
     [catalog, predicate, sortMode],
@@ -53,7 +54,7 @@ export function useCardBrowse(catalog: readonly CardSummary[], initialQuery = ''
     [filtered, visibleCount],
   )
   const setOverrides = useSetPrintingOverride(activeSetFilter, visibleNames)
-  const overrides = useArtOverrides(parseResult.ast, filtered, setOverrides)
+  const overrides = useArtOverrides(results.printedNameMatch, filtered, setOverrides)
   const withArt = useCardsWithSetArt(filtered, overrides)
   const displayed = useMemo(() => withArt.slice(0, visibleCount), [withArt, visibleCount])
 
@@ -63,7 +64,8 @@ export function useCardBrowse(catalog: readonly CardSummary[], initialQuery = ''
     sortMode,
     setSortMode,
     errors: parseResult.errors,
-    advanced,
+    explanation: parseResult.explanation,
+    advanced: parseResult.advanced,
     filtered,
     displayed,
     /** Reprint art the active `s:` filter picked, by card name. */

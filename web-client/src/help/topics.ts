@@ -1415,18 +1415,19 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'decks',
     title: 'Search syntax',
     summary:
-      'The deckbuilder and card browser search speak a Scryfall-style query language — `t:creature`, `c<=rw`, `cmc>=4`, `o:flying`, `f:standard`, `is:legendary`. The `?` button beside the search box lists every operator with examples.',
+      'The deckbuilder, card browser, cube builder and sealed pool search speak a Scryfall-style query language — `t:creature`, `c<=rw`, `cmc>=4`, `o:flying`, `f:standard`, `is:legendary`. The `?` button beside the search box lists every operator with examples.',
     body: [
       { kind: 'p', text: 'The grammar is Scryfall’s, deliberately: bare words match names, `key:value` filters, `-` negates, `or` and parentheses group, quotes hold phrases together, and the comparison operators `:` `=` `>` `<` `>=` `<=` work wherever a value is ordered.' },
       { kind: 'ul', items: [
         'Colour — `c:rg`, `c:azorius`, `c<=rw`, `c:colorless`, and `id:` for colour identity.',
         'Type and text — `t:goblin`, `t:legendary`, `o:flying` for oracle text, `kw:trample` for keywords.',
         'Cost — `mv>=4` (`cmc` also works), `m:{2/G}` for a specific mana cost.',
-        'Stats — `pow>=4`, `tou<2`, `loy:3`.',
+        'Stats — `pow>=4`, `tou<2`, `loy:3`, and `pow>tou` to compare two of them. A `*` power or toughness has no number, so it matches no comparison.',
         'Printing — `s:fdn` for a set, `r:mythic` for rarity.',
         'Legality — `f:standard`, `f:commander`, `f:pauper`.',
         'Flags — `is:legendary`, `is:permanent`, `is:multicolor`, `is:vanilla`, `is:dfc`.',
       ] },
+      { kind: 'p', text: 'Under the search box a line reads your query back in plain words — “Cards where name contains "bolt" and power ≥ 4” — so you can see how it was understood. A mistyped filter is underlined with what went wrong; when there is an obvious fix, such as `powr` for `pow`, a Use button applies it. The `?` panel also lists every filter with its operators.' },
       { kind: 'p', text: 'Not every filter Scryfall documents is implemented. Anything needing data the engine does not carry — prices, artists, printing dates — is rejected rather than silently ignored, and so is anything the card model does not distinguish yet: `is:split` answers “split-card layout not modelled”. A query never quietly means something other than what you typed.' },
     ],
     related: ['deckbuilder', 'card-browser'],

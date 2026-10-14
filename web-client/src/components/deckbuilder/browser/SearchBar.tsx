@@ -4,6 +4,7 @@
  */
 import { useEffect, useState } from 'react'
 import type { ParseError } from '../cardFilter'
+import { applyFix, SEARCH_KEYS } from '../query'
 import styles from '../deckbuilder.module.css'
 import type { SortMode } from './cardSort'
 
@@ -14,6 +15,7 @@ export function SearchBar({
   onSortChange,
   resultLabel,
   errors,
+  explanation,
   actionHint,
   filterChip,
 }: {
@@ -23,6 +25,8 @@ export function SearchBar({
   onSortChange: (m: SortMode) => void
   resultLabel: string
   errors: ParseError[]
+  /** The query in plain words (`ParseResult.explanation`), shown under the input so the reader can check how it was read. */
+  explanation?: string | null
   /** Overrides the trailing "click adds / right-click removes" hint. */
   actionHint?: React.ReactNode
   /** A filter toggle shown beside the result count — the deckbuilder's commander-identity chip. */
@@ -39,6 +43,11 @@ export function SearchBar({
   useEffect(() => {
     setLocalQuery((prev) => (prev === query ? prev : query))
   }, [query])
+  const setBoth = (next: string) => {
+    setLocalQuery(next)
+    onQueryChange(next)
+  }
+  const typing = localQuery.trim() !== ''
   return (
     <div className={styles.searchBar}>
       <div className={styles.searchInputWrap}>
@@ -47,10 +56,7 @@ export function SearchBar({
           // Short enough not to be cut mid-query in a narrow pane; the ? button holds the full syntax.
           placeholder='Search — e.g. t:goblin c:r'
           value={localQuery}
-          onChange={(e) => {
-            setLocalQuery(e.target.value)
-            onQueryChange(e.target.value)
-          }}
+          onChange={(e) => setBoth(e.target.value)}
           aria-invalid={hasErrors}
           aria-describedby={hasErrors ? 'search-errors' : undefined}
         />
@@ -59,7 +65,19 @@ export function SearchBar({
             {errors.map((e, i) => (
               <li key={i}>
                 <code>{query.slice(e.span.start, e.span.end) || '·'}</code>
-                <span>{e.message}{e.suggestion ? ` ${e.suggestion}` : ''}</span>
+                <span>{e.message}</span>
+                {e.fix ? (
+                  <button
+                    type="button"
+                    className={styles.searchFix}
+                    onClick={() => setBoth(applyFix(query, e.fix!))}
+                    title="Apply this fix"
+                  >
+                    Use <code>{e.fix.text}</code>
+                  </button>
+                ) : e.suggestion ? (
+                  <span>{e.suggestion}</span>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -93,7 +111,18 @@ export function SearchBar({
           </>
         )}
       </span>
-      {helpOpen && <SearchHelp onClose={() => setHelpOpen(false)} onInsert={(t) => onQueryChange(t)} />}
+      {typing && (
+        // Always rendered while there is a query, so the row doesn't jump in and out as the
+        // query passes through invalid states mid-keystroke; the error list covers it then.
+        <p className={styles.searchExplanation} aria-live="polite">
+          {explanation ? (
+            <>
+              <span className={styles.searchExplanationLead}>Cards where</span> {explanation}
+            </>
+          ) : null}
+        </p>
+      )}
+      {helpOpen && <SearchHelp onClose={() => setHelpOpen(false)} onInsert={(t) => setBoth(t)} />}
     </div>
   )
 }
@@ -124,7 +153,7 @@ export function SearchHelp({
     { syntax: 'mana>={r}{r}', desc: 'cost contains at least these symbols' },
     { syntax: 'cmc:3', desc: 'mana value (also <=, >=, <, >, !=)' },
     { syntax: 'pow>tou', desc: 'cross-field compare (power vs. toughness)' },
-    { syntax: 'pow>=4', desc: 'power (numeric only)' },
+    { syntax: 'pow>=4', desc: 'power (also tou: toughness, loy: loyalty)' },
     { syntax: 'r:rare', desc: 'rarity (common / uncommon / rare / mythic)' },
     { syntax: 's:blb', desc: 'set code' },
     { syntax: 'f:standard', desc: 'format legality' },
@@ -150,7 +179,8 @@ export function SearchHelp({
         <p className={styles.helpHint}>
           Tokens combine with implicit AND. Use <code>or</code> for alternation,
           parentheses for grouping, and <code>-</code> or <code>not</code> for negation.
-          Click an example to drop it into the search box.
+          Click an example to drop it into the search box. The line under the search box says how
+          your query was read.
         </p>
         <ul className={styles.helpList}>
           {examples.map((ex) => (
@@ -169,6 +199,27 @@ export function SearchHelp({
             </li>
           ))}
         </ul>
+        <details className={styles.helpAllKeys}>
+          <summary>Every filter</summary>
+          <table>
+            <tbody>
+              {SEARCH_KEYS.map((k) => (
+                <tr key={k.aliases[0]}>
+                  <td>
+                    {k.aliases.map((a, i) => (
+                      <span key={a}>
+                        {i > 0 && ' '}
+                        <code>{a}</code>
+                      </span>
+                    ))}
+                  </td>
+                  <td>{k.ops.join(' ')}</td>
+                  <td>{k.description}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </details>
       </div>
     </>
   )

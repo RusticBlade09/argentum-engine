@@ -27,9 +27,10 @@ import org.springframework.web.bind.annotation.RestController
  * - `GET /api/cards`         — metadata for every implemented card.
  * - `GET /api/cards/search`  — Scryfall-style query language over the catalog.
  *
- * The deckbuilder still loads the full catalog once for instant client-side
- * filtering. The search endpoint exists for non-browser consumers (CLI, tests,
- * future mobile) and shares the [SearchService] grammar with the frontend.
+ * The deckbuilder loads the full catalog once and filters it in the browser with
+ * the same `:mtg-search` code compiled to JavaScript, so a query means the same
+ * thing here and there. The search endpoint serves non-browser consumers (CLI,
+ * tests, future mobile).
  */
 @RestController
 @RequestMapping("/api/cards")
@@ -105,6 +106,8 @@ class CardsController(
         override val oracleText: String? = null,
         override val power: String? = null,
         override val toughness: String? = null,
+        /** Printed starting loyalty of a planeswalker. Drives `loy:`. */
+        override val loyalty: String? = null,
         val imageUri: String? = null,
         override val keywords: List<String> = emptyList(),
         override val legalFormats: List<String> = emptyList(),
@@ -201,8 +204,11 @@ class CardsController(
             setCode = setCode,
             collectorNumber = metadata.collectorNumber,
             oracleText = oracleText.takeIf { it.isNotBlank() },
-            power = creatureStats?.power?.toString(),
-            toughness = creatureStats?.toughness?.toString(),
+            // `description` is the printed form ("2", "*", "*+1"); `toString()` on these data
+            // classes is "Fixed(value=2)", which no numeric search could read.
+            power = creatureStats?.power?.description,
+            toughness = creatureStats?.toughness?.description,
+            loyalty = startingLoyalty?.toString(),
             imageUri = latest?.imageUri ?: metadata.imageUri,
             keywords = keywords.map { it.name }.sorted(),
             legalFormats = legalFormats.map { it.name }.sorted(),

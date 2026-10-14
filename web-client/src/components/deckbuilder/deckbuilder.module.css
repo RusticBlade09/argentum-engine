@@ -730,6 +730,84 @@
   align-items: baseline;
 }
 
+/* "Did you mean pow:?" as a one-click edit — the error's fix, applied to the query. */
+.searchFix {
+  margin-left: auto;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-sm);
+  padding: 0 6px;
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.searchFix:hover,
+.searchFix:focus-visible {
+  border-color: #f2b45c;
+  background: rgba(242, 180, 92, 0.15);
+  outline: none;
+}
+
+.searchFix code {
+  background: none;
+  color: #f2b45c;
+  padding: 0;
+}
+
+/* How the query was read, in words. A full-width row of the wrapping search bar, so it sits
+   under the input without covering the results. */
+.searchExplanation {
+  flex-basis: 100%;
+  margin: 0;
+  min-height: 1.2em;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.searchExplanationLead {
+  color: var(--text-secondary, #9aa3ad);
+  font-weight: 600;
+}
+
+.helpAllKeys {
+  margin-top: var(--space-3);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.helpAllKeys summary {
+  cursor: pointer;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.helpAllKeys table {
+  margin-top: var(--space-2);
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.helpAllKeys td {
+  padding: 2px var(--space-2) 2px 0;
+  vertical-align: top;
+}
+
+.helpAllKeys td:nth-child(2) {
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+}
+
+.helpAllKeys code {
+  font-family: var(--font-mono, monospace);
+  color: var(--text-primary);
+}
+
 .searchErrors code {
   font-family: var(--font-mono, monospace);
   background: rgba(0, 0, 0, 0.4);
