@@ -69,7 +69,13 @@ loop_wait_ci() {
   while [ -z "$(gh pr checks "$pr" --json bucket --jq '.[].bucket' 2>/dev/null)" ] && [ $tries -lt 18 ]; do
     tries=$((tries + 1)); sleep 10
   done
-  gh pr checks "$pr" --watch >/dev/null 2>&1
+  # --watch can return while checks are still pending (an API hiccup, or a new head's checks
+  # registering mid-watch); keep watching until nothing is pending, or a session is spent on WAITING_CI.
+  tries=0
+  while loop_ci_pending "$pr" && [ $tries -lt 60 ]; do
+    tries=$((tries + 1))
+    gh pr checks "$pr" --watch >/dev/null 2>&1 || sleep 30
+  done
   log "CI on PR #$pr: $(gh pr checks "$pr" --json bucket --jq '[.[].bucket] | group_by(.) | map("\(.[0])=\(length)") | join(" ")' 2>/dev/null)"
 }
 
