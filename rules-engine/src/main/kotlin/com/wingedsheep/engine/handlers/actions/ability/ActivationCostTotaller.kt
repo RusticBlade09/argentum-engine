@@ -58,7 +58,7 @@ internal class ActivationCostTotaller(
         }
         val equipTargetIdForCost = action.targets.filterIsInstance<ChosenTarget.Permanent>().firstOrNull()?.entityId
         // A cost naming a mana cost (Merseine's attached permanent's, a granted scavenge's own) is
-        // priced first, so the reductions below see the mana they apply to (CR 601.2f).
+        // priced first, so the reductions below see the mana they apply to (CR 602.2b, 601.2f).
         val costWithDefinedX = castPermissionUtils.applyDefinedXValue(
             castPermissionUtils.lowerReferencedManaCost(state, action.sourceId, rawCost),
             ability, state, action.sourceId, action.playerId

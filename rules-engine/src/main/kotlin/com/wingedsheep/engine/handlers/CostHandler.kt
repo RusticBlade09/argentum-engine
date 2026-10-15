@@ -1951,7 +1951,8 @@ data class CostPaymentChoices(
 /**
  * [sourceId]'s printed mana cost as [AbilityCost.OwnManaCost] prices it, or `null` when the object
  * has no mana cost (CR 202.1b: a land, or a card printed without one) — an unpayable cost
- * (CR 118.6). A printed {0} keeps its generic-zero symbol, so it stays payable.
+ * (CR 118.6). A printed {0} keeps its generic-zero symbol, so it stays payable; an {X} in it is 0
+ * (CR 107.3h).
  */
 internal fun ownManaCostOrNull(state: GameState, sourceId: EntityId): com.wingedsheep.sdk.core.ManaCost? =
-    state.getEntity(sourceId)?.get<CardComponent>()?.manaCost?.takeIf { it.symbols.isNotEmpty() }
+    state.getEntity(sourceId)?.get<CardComponent>()?.manaCost?.takeIf { it.symbols.isNotEmpty() }?.withXAs(0)

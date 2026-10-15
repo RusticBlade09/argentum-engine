@@ -137,5 +137,28 @@ class YoungDeathclawsScenarioTest : ScenarioTestBase() {
 
             game.plusOnes(bears) shouldBe 1
         }
+
+        test("an {X} in the scavenged card's mana cost is 0") {
+            // Endless One costs {X}: scavenged with no mana at all, and no X to announce.
+            val game = scenario()
+                .withPlayers("Player", "Opponent")
+                .withCardOnBattlefield(1, "Young Deathclaws")
+                .withCardOnBattlefield(1, "Grizzly Bears")
+                .withCardInGraveyard(1, "Endless One")
+                .withCardInLibrary(1, "Forest")
+                .withCardInLibrary(2, "Forest")
+                .withActivePlayer(1)
+                .inPhase(Phase.PRECOMBAT_MAIN, Step.PRECOMBAT_MAIN)
+                .build()
+            val bears = game.findPermanent("Grizzly Bears")!!
+
+            val action = game.scavengeActions("Endless One").single()
+            game.execute(action.copy(targets = listOf(ChosenTarget.Permanent(bears)))).error shouldBe null
+            game.hasPendingDecision() shouldBe false
+            game.resolveStack()
+
+            game.isInExile(1, "Endless One") shouldBe true
+            game.plusOnes(bears) shouldBe 0
+        }
     }
 }

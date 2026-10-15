@@ -1180,7 +1180,7 @@ preview — in the turn-face-up handler.)
   activated-ability cost reductions apply to the mana it becomes.
 - `AbilityCost.OwnManaCost` — pay **this object's own** mana cost: the cost of a granted scavenge whose
   "scavenge cost is equal to its mana cost" (Young Deathclaws, Varolz). One ability granted to many cards, each
-  paying its own printed cost, coloured pips included; lowered by the same pass as
+  paying its own printed cost, coloured pips included and any {X} as 0 (CR 107.3h); lowered by the same pass as
   `AttachedPermanentManaCost`. An object with no mana cost (a land, or a card printed without one) can't pay
   it (CR 118.6) and the ability isn't offered; a printed {0} is payable. Built by `scavengeAbility()`.
 - `Costs.pay.PayLife(amount)` — pay N life; offered only when the player's life total is at least N
@@ -13044,8 +13044,8 @@ composite abilities).
   EXILE))` (entry-timestamp tracked, so a blinked permanent is a new object the old trigger ignores) +
   `GrantExileOnLeave(Self)` (a component, not an ability — it survives "loses all abilities", per the unearth rulings).
   Declares `Keyword.UNEARTH` for display.
-- `Scavenge(cost)` — `card { scavenge(cost) }` builder helper (CR 702.97, Return to Ravnica), and the
-  `scavengeAbility(cost: ManaCost? = null)` factory it shares with whole-graveyard grants. "[Cost], Exile this card
+- `scavengeAbility(cost: ManaCost? = null)` — the Scavenge ability (CR 702.97, Return to Ravnica) as an
+  `ActivatedAbility` factory, for printed scavenge and whole-graveyard grants alike. "[Cost], Exile this card
   from your graveyard: Put a number of +1/+1 counters equal to the power of the card you exiled on target creature.
   Activate only as a sorcery." Composed of `AbilityCost.Composite(Mana(cost), ExileSelf)` + `activateFromZone =
   GRAVEYARD` + `SorcerySpeed` + `AddDynamicCounters(+1/+1, sourcePower(), target creature)`. The power is the
