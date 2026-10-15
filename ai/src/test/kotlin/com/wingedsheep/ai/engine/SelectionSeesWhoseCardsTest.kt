@@ -68,7 +68,7 @@ class SelectionSeesWhoseCardsTest : ScenarioTestBase() {
     /** The cards the AI chose in its (only) card selection. */
     private fun List<Pair<PendingDecision, DecisionResponse>>.selected(game: TestGame): List<String> =
         single { it.first is SelectCardsDecision }.second.let { (it as CardsSelectedResponse).selectedCards }
-            .map(game::nameOf)
+            .map { game.nameOf(it) }
 
     /** Run [block] once per profile from the same starting position. */
     private fun TestGame.each(block: TestGame.(AiProfile) -> Unit) {
