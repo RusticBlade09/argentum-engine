@@ -1806,7 +1806,8 @@ class CastPermissionUtils(
                 val manaCost = attachedTo
                     ?.let { state.getEntity(it)?.get<CardComponent>()?.manaCost }
                     ?: com.wingedsheep.sdk.core.ManaCost(emptyList())
-                AbilityCost.Atom(CostAtom.Mana(manaCost))
+                // A permanent's {X} is 0 (CR 107.3h).
+                AbilityCost.Atom(CostAtom.Mana(manaCost.withXAs(0)))
             }
             is AbilityCost.OwnManaCost -> com.wingedsheep.engine.handlers.ownManaCostOrNull(state, sourceId)
                 ?.let { AbilityCost.Atom(CostAtom.Mana(it)) } ?: c
