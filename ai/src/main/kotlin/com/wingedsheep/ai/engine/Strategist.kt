@@ -1405,6 +1405,12 @@ class Strategist(
         val after = if (walkerId in leaf.getBattlefield(owner)) PlaneswalkerThreat.loyalty(leaf, walkerId) else 0
         val spent = before - after
         if (spent <= 0) return null
+        // Drawing past the end of the library loses the game (CR 704.5b), which nothing the board
+        // evaluator reads shows and the drawn-card floor below would price as a card.
+        val drawn = EffectWalker.fold(ability.effect, CardsDrawn)
+        if (drawn > root.getLibrary(playerId).size) {
+            return AdjustedScore(passScore - 1.0, "draws from an empty library — floored below passing", floored = true)
+        }
         val dies = after <= 0
         if (dies && PlaneswalkerThreat.expectedDamage(root, projected, playerId) >= root.lifeTotal(playerId)) {
             return AdjustedScore(
@@ -1422,7 +1428,6 @@ class Strategist(
             rooted.evaluate(spentRoot, spentRoot.projectedState, playerId)
         // The leaf drew the real top card, which the player cannot know: a land the hand curve
         // prices at nothing was still a random card when the loyalty was spent.
-        val drawn = EffectWalker.fold(ability.effect, CardsDrawn)
         val total = maxOf(gain, DRAWN_CARD_FLOOR * drawn) + SELECTION_VALUE * EffectWalker.fold(ability.effect, CardsLookedAt)
         return AdjustedScore(passScore + total, "minus-only walker spent for what it buys %+.2f".format(total))
     }
