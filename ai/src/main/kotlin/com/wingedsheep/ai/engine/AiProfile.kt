@@ -1030,6 +1030,38 @@ data class AiProfile(
      * spell the lands can pay taps no creature at all.
      */
     val convokeLandsFirst: Boolean = false,
+    /**
+     * Read a card choice by **whose card moves and which way** — not by the prompt's words. The
+     * responder simulates choosing one option and watches where it goes: out of a hand into a
+     * graveyard, exile or library is its owner's loss; into a hand or onto the battlefield is a
+     * gain for whoever gets it. The cards are then valued from that player's side
+     * ([CardSelectionValue]): an opponent's discard or exile takes the card most valuable to
+     * *them* (with a spell's wait to cast discounted, since it reaches us either way), our own
+     * takes our least valuable, and a choice that hands us cards takes as many as it may. Needs
+     * [castabilityAwareCardSelection].
+     *
+     * 2026-10-15 logs, `LIVE`. Choosing from the opponent's hand ranked their cards as ours:
+     * `383cddc3` T14 Solve for Disappointment discarded Lich's Relic (no black source) over Guiding
+     * Hydra, cast for X=5 next turn; `3b0479cb` T9 Null Summoner exiled Greenhouse Propagator
+     * over Craftwork Crusher; `8d62c942` T13 Klaw took one of three Murdock's Crusades — the card
+     * *we* couldn't cast. Tinybones' "each opponent discards a card" prompts "Choose 1 card", so
+     * the generic branch kept the best card, i.e. discarded it: `98be3ea5` T5 pitched the only
+     * Plains of a two-land hand of three- to five-drops, `ca15647d` T5 the castable Danitha over
+     * the uncastable Karn. And `d8d3a29c` T2 Seismic Sense (a labelled "up to one") declined the
+     * Forest it showed on two lands.
+     */
+    val selectionSeesWhoseCards: Boolean = false,
+    /**
+     * "Its owner puts it on the top or bottom of their library": keep the card on top only when
+     * it is worth at least an average draw from that library ([CardSelectionValue], as a card
+     * drawn later). The simulation can't see library order, so the two options always tied and
+     * the first — the top — won. Needs [castabilityAwareCardSelection].
+     *
+     * 2026-10-15 logs, `LIVE`. `98be3ea5` T7: Plan for All Outcomes on the AI's Yoshimaru while it
+     * sat on two lands with five spells in hand; it chose the top, so its next draw was a two-drop instead of
+     * a chance at a land.
+     */
+    val topOrBottomWeighsTheDraw: Boolean = false,
     /** Non-null profiles may only be selected automatically for this set. Arena selection stays explicit. */
     val restrictedToSet: String? = null,
 ) {
@@ -1977,6 +2009,8 @@ data class AiProfile(
             walkersPricedAsEngines = true,
             stackChumpsOnTramplers = true,
             convokeLandsFirst = true,
+            selectionSeesWhoseCards = true,
+            topOrBottomWeighsTheDraw = true,
         )
 
         /**

@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- Reads whose cards a choice moves: when it picks an opponent's discard or exile it takes the card most valuable to *them* (not the one it couldn't cast itself), a discard asked as a bare "choose a card" pitches its least useful card instead of its only land, an "up to one" look takes the land a land-short hand needs, and a "top or bottom of your library" choice bottoms a spell to dig for a land when the hand is short of lands.
 - #3248 Stacks several chump blockers behind a trampler when one body would still let lethal spill over, and counts double strike as two hits when adding up incoming damage; pays convoke spells with lands first, tapping only the cheapest creatures for whatever mana can't cover instead of tapping its would-be blockers and attackers.
 - #3245 Prices planeswalkers as engines: attacks and burns the opposing walker climbing to its ultimate rather than a minus-only Jace token, and counts loyalty abilities granted by other permanents
 - #3242 Spends minus-only planeswalkers like the empower-Jace token instead of sitting on them: −3 to draw whenever it can, otherwise −1 to surveil, last counters included — holding the token only when the next attack would be lethal and it is the only other thing to hit — and uses loyalty abilities the "Way of the X" enchantments grant (a granted +1 makes the token an engine worth keeping).
