@@ -1,5 +1,6 @@
 package com.wingedsheep.ai.engine
 
+import com.wingedsheep.ai.engine.knowledge.IntentCatalog
 import com.wingedsheep.ai.engine.advisor.CardAdvisorRegistry
 import com.wingedsheep.ai.engine.budget.DecisionBudget
 import com.wingedsheep.ai.engine.evaluation.BoardEvaluator
@@ -92,6 +93,12 @@ class CombatAdvisor(
      * [AiProfile.defendPlaneswalkers] carries the argument.
      */
     private val defendPlaneswalkers: Boolean = false,
+    /**
+     * Price walkers as engines in the attack seed's aim and the walker blocks, reading their
+     * abilities through this catalog ([PlaneswalkerThreat]). [AiProfile.walkersPricedAsEngines]
+     * carries the argument; null is the legacy reading.
+     */
+    internal val walkerEngines: IntentCatalog? = null,
 ) {
     /**
      * The engine's own block-legality rules, asked alongside [CombatMath.canBeBlockedBy]'s
@@ -245,6 +252,7 @@ class CombatAdvisor(
                 attackPenaltyFor(state, projected, listOf(entityId), playerId)
             },
             aimAtPlaneswalkers = attackPlaneswalkers,
+            walkerEngines = walkerEngines,
         )
         val opponentId = seed.defenderId ?: return DeclareAttackers(playerId, emptyMap())
         // Which defender each attacker may legally take (CR 508.1b–c) — the engine lists it per
@@ -1631,7 +1639,7 @@ class CombatAdvisor(
             repeat(walkerAttackers.size) {
                 val damage = damageThrough(projected, walkerAttackers, blockerMap)
                 if (damage <= 0) return@repeat
-                val lostNow = PlaneswalkerThreat.damageValue(state, walker, damage, cardRegistry)
+                val lostNow = PlaneswalkerThreat.damageValue(state, walker, damage, cardRegistry, walkerEngines)
                 val blocked = blockerMap.values.flatten().toSet()
                 var best: Triple<EntityId, List<EntityId>, Double>? = null
                 for (attacker in walkerAttackers) {
@@ -1643,7 +1651,7 @@ class CombatAdvisor(
                     if (bodies.size < needed) continue
                     val after = blockerMap.toMutableMap().apply { bodies.forEach { put(it, listOf(attacker)) } }
                     val saved = lostNow - PlaneswalkerThreat.damageValue(
-                        state, walker, damageThrough(projected, walkerAttackers, after), cardRegistry,
+                        state, walker, damageThrough(projected, walkerAttackers, after), cardRegistry, walkerEngines,
                     )
                     val net = saved - blockCost(state, projected, attacker, bodies)
                     if (net > 0.0 && (best == null || net > best.third)) best = Triple(attacker, bodies, net)

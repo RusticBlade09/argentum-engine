@@ -92,6 +92,7 @@ class PlayoutPolicy(
             val seed = CombatSeed.attackers(
                 state, state.projectedState, action, playerId, cardRegistry,
                 aimAtPlaneswalkers = combatAdvisor.attackPlaneswalkers,
+                walkerEngines = combatAdvisor.walkerEngines,
             )
             return DeclareAttackers(playerId, seed.attackers) to rng
         }

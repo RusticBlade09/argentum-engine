@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- Prices planeswalkers as engines: attacks and burns the opposing walker climbing to its ultimate rather than a minus-only Jace token, and counts loyalty abilities granted by other permanents
 - #3242 Spends minus-only planeswalkers like the empower-Jace token instead of sitting on them: −3 to draw whenever it can, otherwise −1 to surveil, last counters included — holding the token only when the next attack would be lethal and it is the only other thing to hit — and uses loyalty abilities the "Way of the X" enchantments grant (a granted +1 makes the token an engine worth keeping).
 - Leaves an "up to one/up to N target" slot empty rather than aim it at the wrong side: Tam's Resistance with only an opposing creature is cast for its Empower Jace alone instead of buffing their creature, an "up to two" destroy or an optional harmful trigger never hits our own permanents, and when the effect's side can't be read the AI simulates leaving the slot empty and takes that when it scores strictly better.
 - Casts enablers before the spells they discount: a spell is scored as at least the best spell in hand it makes cheaper or castable, so a noncreature spell goes down before a "costs {2} less if you've cast a noncreature spell this turn" creature instead of the creature being cast at full price.

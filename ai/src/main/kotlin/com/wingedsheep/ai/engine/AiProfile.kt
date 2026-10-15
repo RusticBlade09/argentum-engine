@@ -729,6 +729,36 @@ data class AiProfile(
      */
     val spendFuelWalkers: Boolean = false,
     /**
+     * Price a planeswalker — above all an opponent's — as the engine it is: by what it keeps doing
+     * and how close it is to its ultimate, not by the pile of loyalty on it ([PlaneswalkerThreat]).
+     *
+     * Off the 2026-10-15 production games: `52f175b0` turns 15–21, The Theorist, Jace Beleren
+     * (+1 / −2 / −6) climbed to its ultimate and made 11/11 Illusions while the AI attacked the
+     * player; `4b240f7a` turn 14, No Admittance killed a Jace token rather than set The Theorist
+     * at 4 back to 1 — the same Theorist whose −6 later pumped the team for 58 damage. Three
+     * mis-shaped terms put a minus-only Jace token level with or above a real engine:
+     *
+     * - **An engine's ultimate counted only once it was in reach.** [defendPlaneswalkers]'s board
+     *   value and [attackPlaneswalkers]' aim priced an ultimate as a flat 2.0 at loyalty ≥ its
+     *   cost and nothing a turn short of it, so damage that set The Theorist back four turns was
+     *   worth only the counters it removed. Now its ultimate is a threat worth 0.8 per loyalty it
+     *   costs, divided by one plus the turns its best + ability still needs ([PlaneswalkerThreat.ultimateThreat]).
+     * - **A minus-only walker's counters were priced like an engine's** — 0.8 each, plus the flat
+     *   2.0 for its −3 "ultimate" being in reach — though three of them buy one card. Now 0.4 each
+     *   and no top-ability threat. Killing the token also does not stop the deck that empowers it:
+     *   the next "empower Jace" makes a new one, and the AI reads no hidden hand to guess at it.
+     * - **On the board an engine was worth its loyalty plus a 1.6 floor** — so The Theorist at 1
+     *   was 2.4, below a big Jace token. Now an engine is worth at least the 4.0 [attackPlaneswalkers]
+     *   already priced it at, and every ability is read off the battlefield, granted ones included
+     *   (the FRA "Way of the X" cards — a Way of the Pyromancer "+1: Add {R}" makes the token an engine;
+     *   a granted minus does not).
+     *
+     * One reading for every question: the evaluator's walker value (removal targets, the attack
+     * search, Mabel's "remove up to three counters"), the attack seed's aim, and blocks for our own
+     * walkers. Pinned by `OpposingWalkerThreatTest`.
+     */
+    val walkersPricedAsEngines: Boolean = false,
+    /**
      * Count the land drop still to come as mana when [sequenceLandsByUsableMana] decides whether
      * tapped lands were idle — so playing an untapped land can never score below passing.
      *
@@ -1908,6 +1938,7 @@ data class AiProfile(
             enablersFirst = true,
             precombatPumpsForThePlan = true,
             spendFuelWalkers = true,
+            walkersPricedAsEngines = true,
         )
 
         /**
