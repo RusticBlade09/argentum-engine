@@ -277,6 +277,7 @@ class AIPlayer(
                 creatureValuation = profile.creatureValuation.copy(
                     walkersFaceTheNextAttack = profile.defendPlaneswalkers,
                     grantedLoyaltyAbilities = profile.spendFuelWalkers,
+                    walkersAsEngines = profile.walkersPricedAsEngines,
                 ),
                 priceLandsInHandAsMana = profile.priceLandsInHandAsMana,
                 evasionAfterAttacking = profile.evasionAfterAttacking,
@@ -292,6 +293,7 @@ class AIPlayer(
                 attackPlaneswalkers = profile.attackPlaneswalkers,
                 defendPlaneswalkers = profile.defendPlaneswalkers,
                 chumpForTheClock = profile.chumpForTheClock,
+                walkerEngines = if (profile.walkersPricedAsEngines) IntentCatalog.of(cardRegistry) else null,
             )
             val responder = DecisionResponder(
                 simulator, evaluator,
