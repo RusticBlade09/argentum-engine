@@ -276,6 +276,7 @@ class AIPlayer(
                 discountedRaceClock = profile.discountedRaceClock,
                 creatureValuation = profile.creatureValuation.copy(
                     walkersFaceTheNextAttack = profile.defendPlaneswalkers,
+                    grantedLoyaltyAbilities = profile.spendFuelWalkers,
                 ),
                 priceLandsInHandAsMana = profile.priceLandsInHandAsMana,
                 evasionAfterAttacking = profile.evasionAfterAttacking,
@@ -340,6 +341,7 @@ class AIPlayer(
                     permanentCastIsNotCardLoss = profile.permanentCastIsNotCardLoss,
                     fuelLoyaltyIsNotBoardValue = profile.fuelLoyaltyIsNotBoardValue,
                     defendPlaneswalkers = profile.defendPlaneswalkers,
+                    spendFuelWalkers = profile.spendFuelWalkers,
                     landDropUnlocksSpells = profile.landDropUnlocksSpells,
                     activatedPumpsNeedAPlannedAttack = profile.activatedPumpsNeedAPlannedAttack,
                     enablersFirst = profile.enablersFirst,

@@ -702,6 +702,33 @@ data class AiProfile(
      */
     val defendPlaneswalkers: Boolean = false,
     /**
+     * Spend a planeswalker whose every loyalty ability costs loyalty — the empower-Jace token,
+     * "[−1]: Surveil 1. [−3]: Draw a card." — instead of sitting on it.
+     *
+     * Off the 2026-10-15 production games: across 95 games the AI passed its own main phase 148
+     * times with the token's "−1: Surveil 1" affordable and 15 times with "−3: Draw a card"
+     * affordable (`016656ce` turns 12–28, `0529ed74` turns 5–13, `3b0479cb` turn 13 with both on
+     * offer), while the humans activated theirs ~190 times. [fuelLoyaltyIsNotBoardValue]'s refund
+     * covered only a walker that survives its activation, so a −1 at one loyalty or a −3 at three
+     * was charged the whole walker for one card; a surveil at two or more scored an exact tie with
+     * passing, because nothing the evaluator reads changes when a card is looked at; and a minus
+     * granted by a FRA "Way of the X" card was not recognised as a loyalty ability at all.
+     *
+     * With this on, a loyalty activation of such a walker is priced, from the position it was
+     * made in, as what it buys: the static gain of the leaf over the same position with the loyalty
+     * already spent (the walker gone when that was its last counter), plus a small value per card
+     * surveilled or scried ([Strategist] `fuelWalkerSpend`). Its value *is* its loyalty, so cashing
+     * the last counters in for a card is a card, not a card minus a walker — and with no + ability
+     * there is nothing else to save them for. A draw outbids a surveil whenever both are on offer.
+     * The one reason to hold: when the next opposing attack would be lethal to us and the walker
+     * is the other thing it could hit, an activation that kills the walker is floored below
+     * passing. Loyalty abilities granted by other permanents (`GrantActivatedAbility`) count both as
+     * the walker's own activations and, a granted + ability, as the refuel that makes it no longer
+     * fuel-only — so a Jace token under Way of the Pyromancer keeps its loyalty as before.
+     * Pinned by `LoyaltyActivationAiTest`.
+     */
+    val spendFuelWalkers: Boolean = false,
+    /**
      * Count the land drop still to come as mana when [sequenceLandsByUsableMana] decides whether
      * tapped lands were idle — so playing an untapped land can never score below passing.
      *
@@ -1880,6 +1907,7 @@ data class AiProfile(
             holdInstantSpeedDeploys = true,
             enablersFirst = true,
             precombatPumpsForThePlan = true,
+            spendFuelWalkers = true,
         )
 
         /**
@@ -1982,6 +2010,16 @@ data class AiProfile(
             id = "production-candidate-walkerdefence",
             fuelLoyaltyIsNotBoardValue = true,
             defendPlaneswalkers = true,
+        )
+
+        /**
+         * [spendFuelWalkers] on top of [PRODUCTION_CANDIDATE_WALKERDEFENCE], whose walker pricing it
+         * builds on, so `just arena production-candidate-walkerdefence
+         * production-candidate-fuelwalkers` measures it and nothing else. [LIVE] ships it.
+         */
+        val PRODUCTION_CANDIDATE_FUELWALKERS = PRODUCTION_CANDIDATE_WALKERDEFENCE.copy(
+            id = "production-candidate-fuelwalkers",
+            spendFuelWalkers = true,
         )
 
         /**

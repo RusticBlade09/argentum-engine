@@ -138,6 +138,15 @@ data class CreatureValuation(
      * [com.wingedsheep.ai.engine.AiProfile.defendPlaneswalkers] sets it.
      */
     val walkersFaceTheNextAttack: Boolean = false,
+    /**
+     * Read a planeswalker's loyalty abilities off the battlefield it stands on — its printed ones
+     * plus any another permanent grants it (`GrantActivatedAbility`, the FRA "Way of the X" cards)
+     * — when [walkersFaceTheNextAttack] asks whether it can only spend loyalty
+     * ([com.wingedsheep.ai.engine.knowledge.IntentCatalog.loyaltyIsOnlyFuel]). A Jace token under
+     * Way of the Pyromancer has a +1 and is priced as the engine it now is.
+     * [com.wingedsheep.ai.engine.AiProfile.spendFuelWalkers] sets it.
+     */
+    val grantedLoyaltyAbilities: Boolean = false,
 ) {
     companion object {
         /** Neither correction: what every number published before 2026-08-10 was measured on. */
@@ -379,7 +388,9 @@ object BoardPresence : BoardFeature {
                 // again — see [PlaneswalkerThreat.boardValue].
                 val damage = projected.getController(entityId)
                     ?.let { PlaneswalkerThreat.expectedDamage(state, projected, it) } ?: 0
-                return PlaneswalkerThreat.boardValue(!intents.loyaltyIsOnlyFuel(card.name), prior, loyalty, damage)
+                val fuelOnly = if (creatureValuation.grantedLoyaltyAbilities) intents.loyaltyIsOnlyFuel(state, entityId)
+                else intents.loyaltyIsOnlyFuel(card.name)
+                return PlaneswalkerThreat.boardValue(!fuelOnly, prior, loyalty, damage)
             }
             return maxOf(4.0, prior + loyalty * LOYALTY_VALUE)
         }
