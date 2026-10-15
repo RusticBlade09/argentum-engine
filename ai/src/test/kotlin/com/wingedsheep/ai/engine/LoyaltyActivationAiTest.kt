@@ -16,6 +16,7 @@ import com.wingedsheep.sdk.dsl.card
 import com.wingedsheep.sdk.scripting.AbilityCost
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 
 /**
  * [AiProfile.fuelLoyaltyIsNotBoardValue] and [AiProfile.spendFuelWalkers]. The empower-Jace token ("−1: Surveil 1. −3: Draw a
@@ -56,6 +57,7 @@ class LoyaltyActivationAiTest : ScenarioTestBase() {
         ours: List<String> = listOf("Grizzly Bears"),
         theirs: List<String> = listOf("Grizzly Bears"),
         life: Int = 20,
+        library: Int = 8,
     ): TestGame {
         val game = scenario().withPlayers()
             .withRngSeed(RNG_SEED)
@@ -64,7 +66,7 @@ class LoyaltyActivationAiTest : ScenarioTestBase() {
             .apply { theirs.forEach { withCardOnBattlefield(2, it) } }
             .withLifeTotal(1, life)
             .withLandsOnBattlefield(1, "Plains", 3)
-            .apply { repeat(8) { withCardInLibrary(1, if (it % 2 == 0) "Plains" else "Grizzly Bears") } }
+            .apply { repeat(library) { withCardInLibrary(1, if (it % 2 == 0) "Plains" else "Grizzly Bears") } }
             .apply { repeat(8) { withCardInLibrary(2, "Plains") } }
             .build()
         game.withLoyalty(walker, loyalty)
@@ -154,6 +156,16 @@ class LoyaltyActivationAiTest : ScenarioTestBase() {
                 withClue("chose $action\n${options.joinToString("\n")}") {
                     game.jaceCost(action) shouldBe -3
                 }
+            }
+        }
+
+        test("the Jace token never draws from an empty library") {
+            // "−3: Draw a card" with nothing left to draw loses the game (CR 704.5b), which the
+            // drawn-card floor once priced as a card.
+            val game = walkerBoard("Jace", 3, library = 0)
+            val (action, options) = choose(game, AiProfile.LIVE)
+            withClue("chose $action\n${options.joinToString("\n")}") {
+                game.jaceCost(action) shouldNotBe -3
             }
         }
 
