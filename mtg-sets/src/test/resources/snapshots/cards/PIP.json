@@ -5694,3 +5694,96 @@
         ]
     }
 }
+
+// Young Deathclaws
+{
+    "name": "Young Deathclaws",
+    "manaCost": "{2}{B}{G}",
+    "typeLine": "Creature — Lizard Mutant",
+    "oracleText": "Menace (This creature can't be blocked except by two or more creatures.)\nEach creature card in your graveyard has scavenge. The scavenge cost is equal to its mana cost. (Exile a creature card from your graveyard and pay its mana cost: Put a number of +1/+1 counters equal to that card's power on target creature. Scavenge only as a sorcery.)",
+    "creatureStats": {
+        "power": 4,
+        "toughness": 2
+    },
+    "keywords": [
+        "MENACE"
+    ],
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "GrantActivatedAbility",
+                "ability": {
+                    "id": "scavenge_own",
+                    "cost": {
+                        "type": "CostComposite",
+                        "costs": [
+                            "OwnManaCost",
+                            "CostExileSelf"
+                        ]
+                    },
+                    "effect": {
+                        "type": "AddDynamicCounters",
+                        "counterType": "PLUS_ONE_PLUS_ONE",
+                        "amount": {
+                            "type": "EntityProperty",
+                            "entity": "Self",
+                            "numericProperty": "Power"
+                        },
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t0"
+                        }
+                    },
+                    "targetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "creature"
+                            },
+                            "id": "t0"
+                        }
+                    ],
+                    "timing": "SorcerySpeed",
+                    "activateFromZone": "Graveyard",
+                    "descriptionOverride": "Scavenge — its mana cost (Exile this card from your graveyard and pay its mana cost: Put a number of +1/+1 counters equal to this card's power on target creature. Scavenge only as a sorcery.)"
+                },
+                "filter": {
+                    "baseFilter": "creature own:you"
+                },
+                "recipientZone": "Graveyard"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "125",
+        "rarity": "UNCOMMON",
+        "artist": "Nino Is",
+        "imageUri": "https://cards.scryfall.io/normal/front/6/4/64d5e6bd-de46-4bc2-854b-cc6cae713f98.jpg?1783912381",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "Exiling the creature card with scavenge is part of the cost of activating the scavenge ability. Once the ability is activated and the cost is paid, it's too late to stop the ability from being activated by trying to remove the creature card from the graveyard."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "While Young Deathclaws is on the battlefield, the scavenge cost of a creature card in your graveyard is equal to its mana cost, including any colored mana requirements."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "The number of counters that a card's scavenge ability puts on a creature is based on the card's power as it last existed in the graveyard."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the creature card you scavenge has {X} in its mana cost, X is 0."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If a creature card has multiple instances of scavenge, you can activate either ability (but not both, as the card will be exiled when you activate one of them). Young Deathclaws's ability doesn't affect the scavenge cost of a creature's other scavenge ability."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK",
+        "GREEN"
+    ]
+}

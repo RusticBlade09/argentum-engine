@@ -1176,7 +1176,13 @@ preview — in the turn-face-up handler.)
   Aura." The activated-ability sibling of `Costs.pay.OwnManaCost`, and lowered the same way — into a plain
   mana `Atom` against the attached permanent's printed cost before anything prices or pays it, so every
   downstream path (affordability, enumeration, the mana solver, the prompt) sees a uniform shape. An
-  unattached source, or one attached to a permanent with no mana cost, prices as {0}.
+  unattached source, or one attached to a permanent with no mana cost, prices as {0}. Lowered *first*, so
+  activated-ability cost reductions apply to the mana it becomes.
+- `AbilityCost.OwnManaCost` — pay **this object's own** mana cost: the cost of a granted scavenge whose
+  "scavenge cost is equal to its mana cost" (Young Deathclaws, Varolz). One ability granted to many cards, each
+  paying its own printed cost, coloured pips included; lowered by the same pass as
+  `AttachedPermanentManaCost`. An object with no mana cost (a land, or a card printed without one) can't pay
+  it (CR 118.6) and the ability isn't offered; a printed {0} is payable. Built by `scavengeAbility()`.
 - `Costs.pay.PayLife(amount)` — pay N life; offered only when the player's life total is at least N
 - `Costs.pay.PayDynamicLife(amount: DynamicAmount)` — "pay life equal to **&lt;rule&gt;**", where the
   card names a rule rather than a number (**Wand of Ith**: "…unless they pay life equal to its mana
@@ -13038,6 +13044,16 @@ composite abilities).
   EXILE))` (entry-timestamp tracked, so a blinked permanent is a new object the old trigger ignores) +
   `GrantExileOnLeave(Self)` (a component, not an ability — it survives "loses all abilities", per the unearth rulings).
   Declares `Keyword.UNEARTH` for display.
+- `Scavenge(cost)` — `card { scavenge(cost) }` builder helper (CR 702.97, Return to Ravnica), and the
+  `scavengeAbility(cost: ManaCost? = null)` factory it shares with whole-graveyard grants. "[Cost], Exile this card
+  from your graveyard: Put a number of +1/+1 counters equal to the power of the card you exiled on target creature.
+  Activate only as a sorcery." Composed of `AbilityCost.Composite(Mana(cost), ExileSelf)` + `activateFromZone =
+  GRAVEYARD` + `SorcerySpeed` + `AddDynamicCounters(+1/+1, sourcePower(), target creature)`. The power is the
+  card's as it last existed in the graveyard: an activation that exiles its graveyard source as a cost records
+  the source's power/toughness (characteristic-defining ones evaluated) before the move, so Tarmogoyf counts
+  itself. `cost = null` is "the scavenge cost is equal to its mana cost" (`AbilityCost.OwnManaCost`):
+  Young Deathclaws — `GrantActivatedAbility(scavengeAbility(), GroupFilter(GameObjectFilter.Creature.ownedByYou()),
+  recipientZone = Zone.GRAVEYARD)`. No display keyword.
 - `station()` — `card { station() }` builder helper (CR 702.184, Edge of Eternities; Spacecraft and Planet cards).
   Emits the fixed station keyword ability (CR 702.184a): "Tap another untapped creature you control: Put a number of
   charge counters on this permanent equal to the tapped creature's power. Activate only as a sorcery." The ability is

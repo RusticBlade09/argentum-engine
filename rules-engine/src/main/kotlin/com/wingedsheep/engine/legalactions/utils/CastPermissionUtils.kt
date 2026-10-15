@@ -1781,15 +1781,19 @@ class CastPermissionUtils(
      * pass only widens colored pips into hybrids.
      */
     /**
-     * Lower [AbilityCost.AttachedPermanentManaCost] to a concrete mana cost read off the permanent
-     * the source is attached to (Merseine's "Pay enchanted creature's mana cost"), so every path
-     * that prices, displays or pays the cost sees a plain [CostAtom.Mana]. Mirrors
+     * Lower the costs that name another object's mana cost to a concrete [CostAtom.Mana], so every
+     * path that prices, displays or pays the cost sees a plain mana atom. Mirrors
      * `CostPaymentService.resolve`'s treatment of `PayCost.OwnManaCost`.
      *
-     * An unattached source — or one attached to a permanent with no mana cost, such as a land —
-     * lowers to an empty cost, which is {0} and trivially payable.
+     * - [AbilityCost.AttachedPermanentManaCost] reads the permanent the source is attached to
+     *   (Merseine's "Pay enchanted creature's mana cost"). An unattached source — or one attached
+     *   to a permanent with no mana cost, such as a land — lowers to an empty cost, {0}.
+     * - [AbilityCost.OwnManaCost] reads the source itself (a scavenge ability whose "cost is equal
+     *   to its mana cost", Young Deathclaws). A source with no mana cost — a land, or a card printed
+     *   without one — is left un-lowered: such a cost can't be paid (CR 118.6), and the cost
+     *   handler reports it unpayable. A printed {0} lowers to {0}.
      */
-    fun lowerAttachedManaCost(
+    fun lowerReferencedManaCost(
         state: GameState,
         sourceId: EntityId,
         cost: AbilityCost
@@ -1804,6 +1808,8 @@ class CastPermissionUtils(
                     ?: com.wingedsheep.sdk.core.ManaCost(emptyList())
                 AbilityCost.Atom(CostAtom.Mana(manaCost))
             }
+            is AbilityCost.OwnManaCost -> com.wingedsheep.engine.handlers.ownManaCostOrNull(state, sourceId)
+                ?.let { AbilityCost.Atom(CostAtom.Mana(it)) } ?: c
             is AbilityCost.Composite -> AbilityCost.Composite(c.costs.map { lower(it) })
             else -> c
         }
