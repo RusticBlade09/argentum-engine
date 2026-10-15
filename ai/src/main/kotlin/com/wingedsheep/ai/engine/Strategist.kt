@@ -37,6 +37,8 @@ import com.wingedsheep.engine.core.PlayLand
 import com.wingedsheep.engine.handlers.costs.GraveyardTotalExileResolver
 import com.wingedsheep.engine.legalactions.LegalAction
 import com.wingedsheep.engine.legalactions.MeaningfulActionFilter
+import com.wingedsheep.engine.mechanics.mana.ManaSolver
+import com.wingedsheep.engine.handlers.PredicateEvaluator
 import com.wingedsheep.engine.mechanics.layers.ProjectedState
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.battlefield.CountersComponent
@@ -209,6 +211,11 @@ class Strategist(
      * to [com.wingedsheep.ai.engine.knowledge.AmbushWindow] along with each candidate's leaf.
      */
     private val holdInstantSpeedDeploys: Boolean = false,
+    /**
+     * [AiProfile.convokeLandsFirst] — a convoke spell taps creatures only for what mana cannot
+     * pay, cheapest creatures first. See [withAutomaticConvoke].
+     */
+    private val convokeLandsFirst: Boolean = false,
     /**
      * The profile's `EvaluationWeights.boardPresence`. Only [HoldPolicy] reads it, to quote a
      * patience discount in the same units the leaf score prices board value in.
@@ -1629,7 +1636,7 @@ class Strategist(
      * projected controller/type/counter legality.
      */
     private fun withAutomaticPayments(state: GameState, action: LegalAction): GameAction {
-        val gameAction = withAutomaticTapForGeneric(action, withAutomaticConvoke(action))
+        val gameAction = withAutomaticTapForGeneric(action, withAutomaticConvoke(state, action))
         val info = action.additionalCostInfo ?: return gameAction
         val existing = when (gameAction) {
             is CastSpell -> gameAction.additionalCostPayment
@@ -1886,11 +1893,18 @@ class Strategist(
      * cast handler consumes. Colored pips are satisfied first; remaining creatures pay only the
      * generic part of the cost, so the AI never submits an invalid overpayment.
      */
-    private fun withAutomaticConvoke(action: LegalAction): GameAction {
+    private fun withAutomaticConvoke(state: GameState, action: LegalAction): GameAction {
         val cast = action.action as? CastSpell ?: return action.action
-        val creatures = action.convokeCreatures.orEmpty()
+        val offered = action.convokeCreatures.orEmpty()
         val costString = action.manaCostString
-        if (!action.hasConvoke || creatures.isEmpty() || costString == null) return cast
+        if (!action.hasConvoke || offered.isEmpty() || costString == null) return cast
+        // Under [convokeLandsFirst] the cheapest bodies are first in line, so the greedy pass below
+        // spends them before the creatures we would rather keep untapped.
+        val creatures = if (convokeLandsFirst) {
+            offered.sortedBy { CombatMath.creatureValue(state, state.projectedState, it.entityId) }
+        } else {
+            offered
+        }
 
         val cost = ManaCost.parse(costString)
         val coloredNeeded = cost.symbols
@@ -1916,6 +1930,7 @@ class Strategist(
             payments[creature.entityId] = ConvokePayment()
             genericNeeded--
         }
+        if (convokeLandsFirst) releaseConvokeForMana(state, cast.playerId, cost, payments)
         if (payments.isEmpty()) return cast
 
         val existing = cast.alternativePayment ?: AlternativePaymentChoice.NONE
@@ -1924,6 +1939,43 @@ class Strategist(
                 convokedCreatures = existing.convokedCreatures + payments
             )
         )
+    }
+
+    private val manaSolver: ManaSolver by lazy {
+        ManaSolver(simulator.cardRegistry, PredicateEvaluator(simulator.cardRegistry))
+    }
+
+    /**
+     * [convokeLandsFirst]: untap every convoking creature whose pip the rest of our mana can pay
+     * instead, most valuable first. A creature tapped for convoke is a creature that does not
+     * attack or block; a land tapped for the same pip costs nothing else on most turns. What is
+     * left in [payments] is the shortfall mana genuinely cannot cover. Mutates [payments].
+     */
+    private fun releaseConvokeForMana(
+        state: GameState,
+        playerId: EntityId,
+        cost: ManaCost,
+        payments: LinkedHashMap<EntityId, ConvokePayment>,
+    ) {
+        val projected = state.projectedState
+        val mostValuableFirst = payments.keys.sortedByDescending { CombatMath.creatureValue(state, projected, it) }
+        for (creature in mostValuableFirst) {
+            val without = LinkedHashMap(payments).apply { remove(creature) }
+            if (manaSolver.canPay(state, playerId, costAfterConvoke(cost, without.values), excludeSources = without.keys)) {
+                payments.remove(creature)
+            }
+        }
+    }
+
+    /** [cost] with each convoke payment's pip taken off: its color, or one generic. */
+    private fun costAfterConvoke(cost: ManaCost, payments: Collection<ConvokePayment>): ManaCost {
+        val symbols = cost.symbols.toMutableList()
+        var generic = 0
+        for (payment in payments) {
+            val color = payment.color
+            if (color == null) generic++ else symbols.remove(ManaSymbol.Colored(color))
+        }
+        return ManaCost(symbols).reduceGeneric(generic)
     }
 
     /**

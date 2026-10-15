@@ -294,6 +294,7 @@ class AIPlayer(
                 defendPlaneswalkers = profile.defendPlaneswalkers,
                 chumpForTheClock = profile.chumpForTheClock,
                 walkerEngines = if (profile.walkersPricedAsEngines) IntentCatalog.of(cardRegistry) else null,
+                stackChumpsOnTramplers = profile.stackChumpsOnTramplers,
             )
             val responder = DecisionResponder(
                 simulator, evaluator,
@@ -349,6 +350,7 @@ class AIPlayer(
                     enablersFirst = profile.enablersFirst,
                     precombatPumpsForThePlan = profile.precombatPumpsForThePlan,
                     holdInstantSpeedDeploys = profile.holdInstantSpeedDeploys,
+                    convokeLandsFirst = profile.convokeLandsFirst,
                     // Same seam as `CombatAdvisor`'s `lifeWeight`: a raw Phase 9 profile resolves
                     // to the compiled fallback here, which is the right answer for a policy that
                     // only needs to know what a point of board value trades against.

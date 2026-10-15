@@ -994,6 +994,42 @@ data class AiProfile(
      * other instant up. Needs [useCardIntent].
      */
     val holdInstantSpeedDeploys: Boolean = false,
+    /**
+     * When the blocks still let lethal through, **stack chump blockers on a trampler** until it
+     * stops spilling enough damage to kill us, and count double strike when adding up what gets
+     * through.
+     *
+     * 2026-10-15 logs, `LIVE`. Game `359c26af` turn 19: at 9 life, facing Hortimancer 7/6, a 6/8
+     * flying Angel and an 8/8 trampling Puppetbeast with ten untapped creatures (six 2/2 Cadets),
+     * the AI blocked with two bodies and died to 7 trample + 6. The survival pass (rebuild the
+     * blocks for damage prevented, adopted only when it brings incoming damage below life) gave
+     * every attacker exactly one blocker, so the trampler kept spilling 8 − 4 and the plan stayed
+     * lethal and was thrown away. Three Cadets behind the Puppetbeast soak six, and the AI lives.
+     * Game `ee5a693b` turn 22 is the same shape: at 4 life against the same 8/8 trampler, one 1/1
+     * Thopter blocked while the 2/4 Angel and 2/3 Pegasus stayed home.
+     *
+     * With this on, that pass keeps adding the spare blocker that soaks the most (any body against
+     * deathtouch) to the trampler spilling the most, until we survive or nothing helps. The same
+     * arithmetic also stops ignoring double strike: an unblocked double striker deals twice its
+     * power, and a blocked double-striking trampler spills `2 × power − lethal to its blockers`.
+     */
+    val stackChumpsOnTramplers: Boolean = false,
+    /**
+     * Pay a **convoke** spell with mana first and tap creatures only for the shortfall, cheapest
+     * creatures first.
+     *
+     * 2026-10-15 logs, `LIVE`. Game `ecbad62a` turn 14: Unexpected Assistance convoked with all
+     * three of the AI's would-be blockers while lands sat untapped, and the next turn 11 damage came
+     * in unblocked (16 → 5). Game `42518dd1` turn 19: Merrow Skyswimmer convoked with the whole team
+     * precombat, and the AI then had nothing to attack with. The convoke payment was built greedily —
+     * every offered creature tapped, up to the whole cost — before a land was looked at.
+     *
+     * With this on the payment starts from the full convoke assignment with the creatures ordered
+     * cheapest first, then releases creatures most valuable first while the rest of the cost is
+     * still payable from mana ([com.wingedsheep.engine.mechanics.mana.ManaSolver.canPay]), so a
+     * spell the lands can pay taps no creature at all.
+     */
+    val convokeLandsFirst: Boolean = false,
     /** Non-null profiles may only be selected automatically for this set. Arena selection stays explicit. */
     val restrictedToSet: String? = null,
 ) {
@@ -1939,6 +1975,8 @@ data class AiProfile(
             precombatPumpsForThePlan = true,
             spendFuelWalkers = true,
             walkersPricedAsEngines = true,
+            stackChumpsOnTramplers = true,
+            convokeLandsFirst = true,
         )
 
         /**

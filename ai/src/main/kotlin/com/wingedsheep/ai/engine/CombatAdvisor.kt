@@ -99,6 +99,12 @@ class CombatAdvisor(
      * carries the argument; null is the legacy reading.
      */
     internal val walkerEngines: IntentCatalog? = null,
+    /**
+     * Let the survival pass stack several chump blockers on a trampler, and count double strike in
+     * the damage that gets through ([stackOnTramplers], [calculateIncomingDamage]).
+     * [AiProfile.stackChumpsOnTramplers] carries the argument.
+     */
+    private val stackChumpsOnTramplers: Boolean = false,
 ) {
     /**
      * The engine's own block-legality rules, asked alongside [CombatMath.canBeBlockedBy]'s
@@ -426,6 +432,9 @@ class CombatAdvisor(
             // plan they had.
             if (calculateIncomingDamage(state, projected, attackers, bestMap) >= myLife) {
                 val survival = damageMinimisingPlan(state, projected, attackers, validBlockers, mandatoryMap)
+                if (stackChumpsOnTramplers) {
+                    stackOnTramplers(state, projected, attackers, validBlockers, survival, myLife)
+                }
                 if (calculateIncomingDamage(state, projected, attackers, survival) < myLife) {
                     bestMap = survival
                     assignedBlockers.clear()
@@ -1315,6 +1324,67 @@ class CombatAdvisor(
     }
 
     /**
+     * Add spare blockers behind tramplers until [plan] stops being lethal at [myLife].
+     *
+     * [damageMinimisingPlan] gives each attacker one body (two for menace), which is all a
+     * non-trampler needs — but a trampler spills whatever its blockers cannot soak, so against one
+     * a single chump buys a point or two and the plan stays lethal. Each step puts the spare
+     * blocker that soaks the most (its toughness; any body against deathtouch, where one damage is
+     * lethal) behind the trampler spilling the most, and stops once we survive or no spare blocker
+     * can stand behind a spilling trampler. Mutates [plan].
+     */
+    private fun stackOnTramplers(
+        state: GameState,
+        projected: ProjectedState,
+        attackers: List<EntityId>,
+        validBlockers: List<EntityId>,
+        plan: MutableMap<EntityId, List<EntityId>>,
+        myLife: Int,
+    ) {
+        val assigned = plan.keys.toMutableSet()
+        while (calculateIncomingDamage(state, projected, attackers, plan) >= myLife) {
+            val step = attackers
+                .filter { attacker ->
+                    Keyword.TRAMPLE.name in projected.getKeywords(attacker) &&
+                        // Unblocked tramplers had no blocker to spare in [damageMinimisingPlan];
+                        // stacking only ever deepens a block already made.
+                        plan.values.any { attacker in it } &&
+                        !(defendPlaneswalkers && !attacksAPlayer(state, attacker))
+                }
+                .map { it to trampleSpill(projected, it, plan) }
+                .filter { (_, spill) -> spill > 0 }
+                .sortedByDescending { (_, spill) -> spill }
+                .firstNotNullOfOrNull { (attacker, _) ->
+                    val deathtouch = Keyword.DEATHTOUCH.name in projected.getKeywords(attacker)
+                    availableBlockersFor(state, projected, attacker, validBlockers, assigned)
+                        .filter { (projected.getToughness(it) ?: 0) > 0 }
+                        .sortedWith(
+                            compareByDescending<EntityId> { if (deathtouch) 1 else projected.getToughness(it) ?: 0 }
+                                .thenBy { CombatMath.creatureValue(state, projected, it) }
+                        )
+                        .firstOrNull()
+                        ?.let { attacker to it }
+                } ?: return
+            val (attacker, blocker) = step
+            plan[blocker] = listOf(attacker)
+            assigned.add(blocker)
+        }
+    }
+
+    /** What a blocked trampler still pushes through its blockers in [plan]. */
+    private fun trampleSpill(projected: ProjectedState, attacker: EntityId, plan: Map<EntityId, List<EntityId>>): Int {
+        val keywords = projected.getKeywords(attacker)
+        val blockers = plan.filterValues { attacker in it }.keys
+        val lethalToBlockers = if (Keyword.DEATHTOUCH.name in keywords) {
+            blockers.size
+        } else {
+            blockers.sumOf { projected.getToughness(it) ?: 0 }
+        }
+        val hits = if (stackChumpsOnTramplers && Keyword.DOUBLE_STRIKE.name in keywords) 2 else 1
+        return (hits * (projected.getPower(attacker) ?: 0) - lethalToBlockers).coerceAtLeast(0)
+    }
+
+    /**
      * Calculate damage that will get through given current blocking assignments.
      * Accounts for unblocked creatures and trample overflow.
      */
@@ -1331,19 +1401,13 @@ class CombatAdvisor(
             if (aPower <= 0) continue
             // Damage aimed at a planeswalker or a battle is not damage to us (CR 510.1b).
             if (defendPlaneswalkers && !attacksAPlayer(state, attacker)) continue
+            val aKeywords = projected.getKeywords(attacker)
             if (attacker !in blockedAttackerIds) {
-                incomingDamage += aPower
-            } else {
-                val aKeywords = projected.getKeywords(attacker)
-                if (Keyword.TRAMPLE.name in aKeywords) {
-                    val blockers = blockerMap.entries
-                        .filter { (_, targets) -> attacker in targets }
-                        .map { it.key }
-                    val totalToughness = blockers.sumOf { projected.getToughness(it) ?: 0 }
-                    val hasDeathtouch = Keyword.DEATHTOUCH.name in aKeywords
-                    val lethalToBlockers = if (hasDeathtouch) blockers.size else totalToughness
-                    incomingDamage += (aPower - lethalToBlockers).coerceAtLeast(0)
-                }
+                // A double striker hits twice; counted under [stackChumpsOnTramplers].
+                val hits = if (stackChumpsOnTramplers && Keyword.DOUBLE_STRIKE.name in aKeywords) 2 else 1
+                incomingDamage += hits * aPower
+            } else if (Keyword.TRAMPLE.name in aKeywords) {
+                incomingDamage += trampleSpill(projected, attacker, blockerMap)
             }
         }
         return incomingDamage
