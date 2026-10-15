@@ -9,6 +9,7 @@ import com.wingedsheep.ai.engine.evaluation.BoardEvaluator
 import com.wingedsheep.ai.engine.evaluation.BoardPresence
 import com.wingedsheep.ai.engine.evaluation.EvaluationWeights
 import com.wingedsheep.ai.engine.evaluation.ThreatAssessment
+import com.wingedsheep.ai.engine.knowledge.EffectWalker
 import com.wingedsheep.ai.engine.knowledge.ExpiringGrantWindow
 import com.wingedsheep.ai.engine.knowledge.IntentTag
 import com.wingedsheep.ai.engine.knowledge.HoldPolicy
@@ -57,6 +58,12 @@ import com.wingedsheep.sdk.scripting.AlternativePaymentChoice
 import com.wingedsheep.sdk.scripting.ConvokePayment
 import com.wingedsheep.sdk.scripting.Duration
 import com.wingedsheep.sdk.scripting.TimingRule
+import com.wingedsheep.sdk.scripting.effects.DrawCardsEffect
+import com.wingedsheep.sdk.scripting.effects.Effect
+import com.wingedsheep.sdk.scripting.effects.ScryEffect
+import com.wingedsheep.sdk.scripting.effects.SurveilEffect
+import com.wingedsheep.sdk.scripting.targets.EffectTarget
+import com.wingedsheep.sdk.scripting.values.DynamicAmount
 
 /**
  * Chooses which [LegalAction] to take when the AI has priority.
@@ -171,6 +178,11 @@ class Strategist(
      * walker the activation leaves dead to the next attack.
      */
     private val defendPlaneswalkers: Boolean = false,
+    /**
+     * [AiProfile.spendFuelWalkers] — a minus-only walker's loyalty activation is priced as what it
+     * buys, granted loyalty abilities included. See [fuelWalkerSpend].
+     */
+    private val spendFuelWalkers: Boolean = false,
     /**
      * [AiProfile.landDropUnlocksSpells] — a land drop scores as the best spell it makes castable.
      * See [landDropFollowUps].
@@ -905,6 +917,7 @@ class Strategist(
         passScore: Double,
         leafState: GameState,
     ): AdjustedScore {
+        if (spendFuelWalkers) fuelWalkerSpend(state, action, playerId, passScore, leafState)?.let { return it }
         val deployed = deploymentCredit(state, action, leafState, playerId)
         val fuel = fuelLoyaltyCredit(state, action, leafState, playerId)
         val credit = deployed + fuel
@@ -1350,6 +1363,91 @@ class Strategist(
         val charge = evaluator.evaluate(restored, restored.projectedState, playerId) -
             evaluator.evaluate(leaf, leaf.projectedState, playerId)
         return charge.coerceAtLeast(0.0)
+    }
+
+    /**
+     * A loyalty activation of a walker that can only spend loyalty, priced as what it buys —
+     * [AiProfile.spendFuelWalkers]. Null for anything else, which keeps the ordinary scoring.
+     *
+     * Such a walker's value *is* its loyalty: with no + ability (printed or granted —
+     * [IntentCatalog.loyaltyIsOnlyFuel]) a counter it keeps can only be spent later on the same
+     * abilities, so spending it, even its last one, is not a loss. The price is therefore the static
+     * gain of [leaf] over [root] with the loyalty already spent — the walker gone when that was
+     * its last counter — plus [SELECTION_VALUE] per card the ability surveils or scries, which
+     * nothing the evaluator reads would otherwise see. A draw is a card; a surveil is a small,
+     * positive selection; a granted −2 that makes a 2/2 is a 2/2. Laid on top of [passScore]
+     * rather than the leaf's own score, as [pumpThatBuysTheAttack] does: the difference is a card
+     * or less, and a rollout's estimate of two leaves that differ only by it is noise that size.
+     *
+     * The one reason to hold: an activation that kills the walker while the next opposing attack
+     * would be lethal to us is floored below passing — the walker is the only other thing that
+     * attack can be pointed at.
+     *
+     * The ability is matched among the walker's loyalty abilities as it stands
+     * ([IntentCatalog.loyaltyAbilities]), so a minus granted by a "Way of the X" enchantment —
+     * whose id names the enchantment, not the walker — is a loyalty spend like a printed one.
+     */
+    private fun fuelWalkerSpend(
+        root: GameState,
+        action: LegalAction,
+        playerId: EntityId,
+        passScore: Double,
+        leaf: GameState,
+    ): AdjustedScore? {
+        val activation = action.action as? ActivateAbility ?: return null
+        val walkerId = activation.sourceId
+        val projected = root.projectedState
+        if (!projected.isPlaneswalker(walkerId) || projected.getController(walkerId) != playerId) return null
+        val ability = intents.loyaltyAbilities(root, walkerId).find { it.id == activation.abilityId } ?: return null
+        if (!intents.loyaltyIsOnlyFuel(root, walkerId)) return null
+        val owner = root.turnOrder.firstOrNull { walkerId in root.getBattlefield(it) } ?: return null
+        val before = PlaneswalkerThreat.loyalty(root, walkerId)
+        val after = if (walkerId in leaf.getBattlefield(owner)) PlaneswalkerThreat.loyalty(leaf, walkerId) else 0
+        val spent = before - after
+        if (spent <= 0) return null
+        val dies = after <= 0
+        if (dies && PlaneswalkerThreat.expectedDamage(root, projected, playerId) >= root.lifeTotal(playerId)) {
+            return AdjustedScore(
+                passScore - 1.0,
+                "walker may soak a lethal attack — its last loyalty held, floored below passing",
+                floored = true,
+            )
+        }
+        val spentRoot = if (dies) root.removeFromZone(ZoneKey(owner, Zone.BATTLEFIELD), walkerId)
+        else root.updateEntity(walkerId) { c ->
+            c.with((c.get<CountersComponent>() ?: return@updateEntity c).withRemoved(CounterType.LOYALTY, spent))
+        }
+        val rooted = evaluator.rootedAt(root, playerId)
+        val gain = rooted.evaluate(leaf, leaf.projectedState, playerId) -
+            rooted.evaluate(spentRoot, spentRoot.projectedState, playerId)
+        // The leaf drew the real top card, which the player cannot know: a land the hand curve
+        // prices at nothing was still a random card when the loyalty was spent.
+        val drawn = EffectWalker.fold(ability.effect, CardsDrawn)
+        val total = maxOf(gain, DRAWN_CARD_FLOOR * drawn) + SELECTION_VALUE * EffectWalker.fold(ability.effect, CardsLookedAt)
+        return AdjustedScore(passScore + total, "minus-only walker spent for what it buys %+.2f".format(total))
+    }
+
+    /** Cards an effect surveils or scries, read off its tree; a branch counts its larger arm. */
+    private object CardsLookedAt : EffectWalker.Fold<Int> {
+        override fun leaf(effect: Effect): Int = when (effect) {
+            is SurveilEffect -> effect.count
+            is ScryEffect -> effect.count
+            else -> 0
+        }
+        override fun composite(parts: List<Int>): Int = parts.sum()
+        override fun conditional(thenValue: Int, elseValue: Int?): Int = maxOf(thenValue, elseValue ?: 0)
+        override fun may(thenValue: Int): Int = thenValue
+    }
+
+    /** Cards an effect has its controller draw, read off its tree (fixed counts only). */
+    private object CardsDrawn : EffectWalker.Fold<Int> {
+        override fun leaf(effect: Effect): Int =
+            if (effect is DrawCardsEffect && effect.target == EffectTarget.Controller) {
+                (effect.count as? DynamicAmount.Fixed)?.amount ?: 0
+            } else 0
+        override fun composite(parts: List<Int>): Int = parts.sum()
+        override fun conditional(thenValue: Int, elseValue: Int?): Int = minOf(thenValue, elseValue ?: 0)
+        override fun may(thenValue: Int): Int = thenValue
     }
 
     /**
@@ -2082,6 +2180,22 @@ class Strategist(
          * magnitude above this and floating-point summation-order noise orders of magnitude below.
          */
         const val SCORE_EPSILON = 1e-9
+
+        /**
+         * What looking at one card with a surveil or scry is worth to [fuelWalkerSpend], in evaluator
+         * units — the selection the board score cannot see. Small on purpose: positive, so a −1
+         * surveil beats letting the loyalty sit, and below the least a drawn card is worth (a land
+         * in hand when mana-rich is 0.2 on `CardAdvantage`'s curve, a spell 0.8 and up), so a −3
+         * draw outbids it whenever both are on offer.
+         */
+        const val SELECTION_VALUE = 0.15
+
+        /**
+         * The least a card drawn by [fuelWalkerSpend]'s activation counts for: twice a look, so a
+         * draw outbids a surveil even when the card the leaf happened to draw — the real top card,
+         * which the player cannot know — is one the hand curve prices at nothing.
+         */
+        const val DRAWN_CARD_FLOOR = 0.3
 
         /**
          * Targets simulated per requirement when rescuing a candidate the cheap pick made inert.

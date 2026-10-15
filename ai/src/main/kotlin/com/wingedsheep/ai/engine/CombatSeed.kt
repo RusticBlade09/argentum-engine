@@ -1,5 +1,6 @@
 package com.wingedsheep.ai.engine
 
+import com.wingedsheep.ai.engine.knowledge.IntentCatalog
 import com.wingedsheep.ai.engine.evaluation.LifeDifferential
 import com.wingedsheep.engine.legalactions.LegalAction
 import com.wingedsheep.engine.mechanics.combat.CombatDefenders
@@ -44,6 +45,8 @@ object CombatSeed {
      * @param aimAtPlaneswalkers send attackers that will connect at opposing planeswalkers when
      *   the loyalty damage is worth more than the life — see [aimAtPlaneswalkers]. Off, every
      *   attacker goes at the primary seat, the behaviour before `AiProfile.attackPlaneswalkers`.
+     * @param walkerEngines prices each walker as an engine, reading its abilities through this
+     *   catalog ([PlaneswalkerThreat], `AiProfile.walkersPricedAsEngines`); null is the legacy reading.
      */
     fun attackers(
         state: GameState,
@@ -53,6 +56,7 @@ object CombatSeed {
         cardRegistry: CardRegistry? = null,
         attackPenalty: (EntityId) -> Double = { 0.0 },
         aimAtPlaneswalkers: Boolean = false,
+        walkerEngines: IntentCatalog? = null,
     ): AttackSeed {
         val defendingPlayers = legalAction.validAttackTargets ?: emptyList()
         if (defendingPlayers.isEmpty()) {
@@ -207,7 +211,7 @@ object CombatSeed {
         }
 
         if (aimAtPlaneswalkers) {
-            aimAtPlaneswalkers(state, projected, legalAction, cardRegistry, seedMap)
+            aimAtPlaneswalkers(state, projected, legalAction, cardRegistry, seedMap, walkerEngines)
         }
 
         // A plan whose attack tax we cannot pay is one we would be asked to pay for and could only
@@ -258,6 +262,7 @@ object CombatSeed {
         legalAction: LegalAction,
         cardRegistry: CardRegistry?,
         plan: MutableMap<EntityId, EntityId>,
+        walkerEngines: IntentCatalog? = null,
     ) {
         val blockersBySeat = mutableMapOf<EntityId, List<EntityId>>()
         fun blockersOf(seat: EntityId) =
@@ -306,8 +311,8 @@ object CombatSeed {
                     // What attackers re-aimed at it earlier already took is not this one's to claim.
                     val dealt = loyalty - left
                     val gain = BOARD_PRESENCE_WEIGHT * (
-                        PlaneswalkerThreat.damageValue(state, walker, dealt + minOf(power, left), cardRegistry) -
-                            PlaneswalkerThreat.damageValue(state, walker, dealt, cardRegistry)
+                        PlaneswalkerThreat.damageValue(state, walker, dealt + minOf(power, left), cardRegistry, walkerEngines) -
+                            PlaneswalkerThreat.damageValue(state, walker, dealt, cardRegistry, walkerEngines)
                         )
                     val net = gain - faceGain
                     if (net > 0.0 && (bestMove == null || net > bestMove.third)) {

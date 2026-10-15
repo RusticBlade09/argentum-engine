@@ -233,6 +233,8 @@ object ArenaAgents {
         // attack, blocks priced by the walker they save.
         ArenaAgent("production-walkerdefence", AiProfile.PRODUCTION_WALKERDEFENCE),
         ArenaAgent("production-candidate-walkerdefence", AiProfile.PRODUCTION_CANDIDATE_WALKERDEFENCE),
+        // Minus-only walkers (the empower-Jace token) spent for what they buy, granted abilities included.
+        ArenaAgent("production-candidate-fuelwalkers", AiProfile.PRODUCTION_CANDIDATE_FUELWALKERS),
         // A spell scored as the best spell it makes cheaper: enablers cast before their payoffs.
         ArenaAgent("production-enablers", AiProfile.PRODUCTION_ENABLERS),
         ArenaAgent("production-candidate-enablers", AiProfile.PRODUCTION_CANDIDATE_ENABLERS),
