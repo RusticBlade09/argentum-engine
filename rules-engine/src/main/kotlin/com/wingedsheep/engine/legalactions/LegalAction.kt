@@ -118,6 +118,11 @@ data class LegalAction(
      * the server prices the submitted targets itself and solves.
      */
     val manaCostPerExtraTarget: String? = null,
+    /**
+     * The caster announces an X for this action. Usually that X is generic mana in the cost, but it
+     * can be announced without being paid as mana (casualty X), so mana-side consumers must check
+     * [manaCostString] for `{X}` rather than reading this flag as "X is mana".
+     */
     val hasXCost: Boolean = false,
     val maxAffordableX: Int? = null,
     val minX: Int = 0,
@@ -451,6 +456,12 @@ data class AdditionalCostData(
     val costType: String,
     val validSacrificeTargets: List<EntityId> = emptyList(),
     val sacrificeCount: Int = 1,
+    /**
+     * Casualty X (CR 702.153a): the sacrifice must have power at least the X announced with the
+     * cast, so once X is chosen the picker offers only [validSacrificeTargets] whose power is X or
+     * greater (the server re-validates).
+     */
+    val sacrificeMinPowerIsX: Boolean = false,
     /**
      * The spell's remaining mana cost after sacrificing each candidate in [validSacrificeTargets],
      * keyed by that candidate — emerge (CR 702.119), where the emerge cost is reduced by generic
