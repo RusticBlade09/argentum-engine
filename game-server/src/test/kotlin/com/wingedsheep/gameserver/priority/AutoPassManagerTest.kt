@@ -28,6 +28,7 @@ import com.wingedsheep.sdk.scripting.AbilityIdentity
 import com.wingedsheep.sdk.model.EntityId
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import com.wingedsheep.engine.legalactions.OwnStackStop
 import io.mockk.every
 import io.mockk.mockk
 
@@ -36,6 +37,7 @@ import io.mockk.mockk
  */
 enum class StackItemType {
     ABILITY,
+    TRIGGERED_ABILITY,
     PERMANENT_SPELL,
     AURA_SPELL,
     INSTANT_SORCERY,
@@ -142,6 +144,18 @@ class AutoPassManagerTest : FunSpec({
                     )
                     every { stackEntity.get<com.wingedsheep.engine.state.components.stack.ActivatedAbilityOnStackComponent>() } returns abilityComponent
                     every { stackEntity.get<com.wingedsheep.engine.state.components.stack.TriggeredAbilityOnStackComponent>() } returns null
+                    every { stackEntity.get<com.wingedsheep.engine.state.components.stack.SpellOnStackComponent>() } returns null
+                }
+                StackItemType.TRIGGERED_ABILITY -> {
+                    val triggerComponent = com.wingedsheep.engine.state.components.stack.TriggeredAbilityOnStackComponent(
+                        sourceId = EntityId.generate(),
+                        sourceName = "Jaws of Defeat",
+                        controllerId = controllerId,
+                        effect = mockk(relaxed = true),
+                        description = "Target opponent loses life"
+                    )
+                    every { stackEntity.get<com.wingedsheep.engine.state.components.stack.ActivatedAbilityOnStackComponent>() } returns null
+                    every { stackEntity.get<com.wingedsheep.engine.state.components.stack.TriggeredAbilityOnStackComponent>() } returns triggerComponent
                     every { stackEntity.get<com.wingedsheep.engine.state.components.stack.SpellOnStackComponent>() } returns null
                 }
                 StackItemType.PERMANENT_SPELL -> {
@@ -875,6 +889,56 @@ class AutoPassManagerTest : FunSpec({
 
             // Cast face is non-permanent → always stop for opponent's instant/sorcery face.
             autoPassManager.shouldAutoPass(state, player1, actions) shouldBe false
+        }
+    }
+
+    context("Rule 4: keeping priority over your own stack objects (Preferences)") {
+        fun ownTriggerOnStack() = createMockState(
+            player1, player1, Step.PRECOMBAT_MAIN,
+            stackEmpty = false, stackControllerId = player1, stackItemType = StackItemType.TRIGGERED_ABILITY
+        )
+
+        test("own trigger still auto-passes by default, even holding a response") {
+            val actions = listOf(passPriorityAction(player1), instantSpellAction(player1))
+            autoPassManager.shouldAutoPass(ownTriggerOnStack(), player1, actions) shouldBe true
+        }
+
+        test("STOP on own trigger when the player keeps priority over triggers and can respond") {
+            // Jaws of Defeat's trigger waiting, Overkill in hand: the window to shrink the creature.
+            val actions = listOf(passPriorityAction(player1), instantSpellAction(player1))
+            autoPassManager.shouldAutoPass(
+                ownTriggerOnStack(), player1, actions,
+                ownStackStops = setOf(OwnStackStop.TRIGGERED_ABILITIES)
+            ) shouldBe false
+        }
+
+        test("own trigger auto-passes when the player keeps priority over triggers but has no response") {
+            val actions = listOf(passPriorityAction(player1), manaAbilityAction(player1))
+            autoPassManager.shouldAutoPass(
+                ownTriggerOnStack(), player1, actions,
+                ownStackStops = setOf(OwnStackStop.TRIGGERED_ABILITIES)
+            ) shouldBe true
+        }
+
+        test("each kind is its own setting — a triggers stop does not hold an own spell or activated ability") {
+            val actions = listOf(passPriorityAction(player1), instantSpellAction(player1))
+            val ownSpell = createMockState(
+                player1, player1, Step.PRECOMBAT_MAIN,
+                stackEmpty = false, stackControllerId = player1, stackItemType = StackItemType.INSTANT_SORCERY
+            )
+            val ownAbility = createMockState(
+                player1, player1, Step.PRECOMBAT_MAIN,
+                stackEmpty = false, stackControllerId = player1, stackItemType = StackItemType.ABILITY
+            )
+            val triggersOnly = setOf(OwnStackStop.TRIGGERED_ABILITIES)
+            autoPassManager.shouldAutoPass(ownSpell, player1, actions, ownStackStops = triggersOnly) shouldBe true
+            autoPassManager.shouldAutoPass(ownAbility, player1, actions, ownStackStops = triggersOnly) shouldBe true
+            autoPassManager.shouldAutoPass(
+                ownSpell, player1, actions, ownStackStops = setOf(OwnStackStop.SPELLS)
+            ) shouldBe false
+            autoPassManager.shouldAutoPass(
+                ownAbility, player1, actions, ownStackStops = setOf(OwnStackStop.ACTIVATED_ABILITIES)
+            ) shouldBe false
         }
     }
 

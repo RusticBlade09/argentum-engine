@@ -85,9 +85,10 @@ usePreferences.subscribe((state, prev) => {
   const stopsChanged =
     !sameSteps(game.stopOverrides.myTurnStops, next.myTurnStops) ||
     !sameSteps(game.stopOverrides.opponentTurnStops, next.opponentTurnStops)
-  if (stopsChanged && game.gameState && !game.spectatingState) {
-    patch.stopOverrides = { myTurnStops: next.myTurnStops, opponentTurnStops: next.opponentTurnStops }
-    getWebSocket()?.send(createSetStopOverridesMessage(next.myTurnStops, next.opponentTurnStops))
+  const ownStackStopsChanged = !sameSteps(before.ownStackStops, next.ownStackStops)
+  if ((stopsChanged || ownStackStopsChanged) && game.gameState && !game.spectatingState) {
+    if (stopsChanged) patch.stopOverrides = { myTurnStops: next.myTurnStops, opponentTurnStops: next.opponentTurnStops }
+    getWebSocket()?.send(createSetStopOverridesMessage(next.myTurnStops, next.opponentTurnStops, next.ownStackStops))
   }
   if (Object.keys(patch).length) useGameStore.setState(patch)
 })

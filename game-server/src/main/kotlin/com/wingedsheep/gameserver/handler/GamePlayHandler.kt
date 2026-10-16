@@ -1187,8 +1187,8 @@ class GamePlayHandler(
 
         val gameSession = getGameSession(session, playerSession) ?: return
 
-        gameSession.setStopOverrides(playerSession.playerId, message.myTurnStops, message.opponentTurnStops)
-        logger.info("Player ${playerSession.playerName} set stop overrides: myTurn=${message.myTurnStops}, opponentTurn=${message.opponentTurnStops}")
+        gameSession.setStopOverrides(playerSession.playerId, message.myTurnStops, message.opponentTurnStops, message.ownStackStops)
+        logger.info("Player ${playerSession.playerName} set stop overrides: myTurn=${message.myTurnStops}, opponentTurn=${message.opponentTurnStops}, ownStack=${message.ownStackStops}")
 
         // Broadcast state update so the UI reflects the change (and next stop point updates)
         broadcastStateUpdate(gameSession, emptyList())

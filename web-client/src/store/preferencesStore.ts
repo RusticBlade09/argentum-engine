@@ -15,7 +15,7 @@ import { create } from 'zustand'
 import { fetchPreferences, savePreferences } from '@/api/account'
 import { useAuthStore } from '@/store/authStore'
 import { Step } from '@/types/enums'
-import type { PriorityModeValue } from '@/types/messages'
+import type { OwnStackStop, PriorityModeValue } from '@/types/messages'
 
 const STORAGE_KEY = 'argentum-preferences'
 const LEGACY_AUTO_TAP_KEY = 'argentum-auto-tap'
@@ -48,6 +48,11 @@ export interface Preferences {
     myTurnStops: Step[]
     /** Steps the engine always stops at on an opponent's turn. */
     opponentTurnStops: Step[]
+    /**
+     * Your own stack objects the engine holds priority over when you can respond, instead of passing
+     * them straight to the opponent — for responding to your own triggers (combo turns).
+     */
+    ownStackStops: OwnStackStop[]
     /** Pay mana costs automatically when you cast a spell or activate an ability. */
     autoTap: boolean
     /** Multiplayer: move the camera to the board where the action is. */
@@ -95,6 +100,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
     priorityMode: 'auto',
     myTurnStops: [],
     opponentTurnStops: [],
+    ownStackStops: [],
     autoTap: true,
     followAction: true,
   },
@@ -116,6 +122,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
 // ----- Parsing (defensive: the document may come from an older or newer build) -----
 
 const STEP_SET = new Set<string>(STOPPABLE_STEPS)
+export const OWN_STACK_STOPS: readonly OwnStackStop[] = ['TRIGGERED_ABILITIES', 'ACTIVATED_ABILITIES', 'SPELLS']
+const OWN_STACK_STOP_SET = new Set<string>(OWN_STACK_STOPS)
 const MODES = new Set<string>(['auto', 'stops', 'fullControl'])
 const MOTIONS = new Set<string>(['system', 'reduce'])
 
@@ -131,6 +139,10 @@ function int(v: unknown, fallback: number, min: number, max: number): number {
 function steps(v: unknown): Step[] {
   if (!Array.isArray(v)) return []
   return [...new Set(v.filter((s): s is Step => typeof s === 'string' && STEP_SET.has(s)))]
+}
+function ownStackStops(v: unknown): OwnStackStop[] {
+  if (!Array.isArray(v)) return []
+  return [...new Set(v.filter((k): k is OwnStackStop => typeof k === 'string' && OWN_STACK_STOP_SET.has(k)))]
 }
 function stacking(v: unknown, fallback: StackingRule): StackingRule {
   const o = obj(v)
@@ -160,6 +172,7 @@ export function parsePreferences(raw: unknown): Preferences {
         : D.gameplay.priorityMode,
       myTurnStops: steps(g.myTurnStops),
       opponentTurnStops: steps(g.opponentTurnStops),
+      ownStackStops: ownStackStops(g.ownStackStops),
       autoTap: bool(g.autoTap, D.gameplay.autoTap),
       followAction: bool(g.followAction, D.gameplay.followAction),
     },

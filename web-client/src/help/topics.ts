@@ -1065,8 +1065,9 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     body: [
       { kind: 'p', text: 'The button cycles Auto → Stops → Full Control. Auto is right for most games; switch to Full Control when you need a specific window, such as responding in your own upkeep. Games start in Auto unless you pick another starting mode in Preferences.' },
       { kind: 'p', text: 'Auto never passes when you have a decision that matters — it is a convenience, not a rules shortcut.' },
+      { kind: 'p', text: 'In Auto and Stops your own spells and abilities pass straight to your opponent. To respond to one of your own — Overkill on the creature whose Jaws of Defeat trigger is waiting, say — switch that kind on under Hold priority over my own in Preferences, or play that turn in Full Control.' },
     ],
-    related: ['stops', 'yields', 'preferences'],
+    related: ['stops', 'yields', 'preferences', 'own-stack-stops'],
   },
   {
     id: 'stops',
@@ -1080,6 +1081,23 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     related: ['priority-modes', 'phase-bar', 'preferences'],
   },
   {
+    id: 'own-stack-stops',
+    section: 'playing',
+    title: 'Responding to your own spells and triggers',
+    summary:
+      'By default your own spells and abilities pass straight to your opponent. Preferences → Hold priority over my own gives you the window back, kind by kind, whenever you can respond.',
+    body: [
+      { kind: 'p', text: 'Combo turns often need it. Jaws of Defeat triggers when your creature enters; cast Overkill on that creature while the trigger waits and the opponent loses life equal to the gap between its power and its huge negative toughness.' },
+      { kind: 'ul', items: [
+        'My triggered abilities — stop when one of your triggers is on top of the stack.',
+        'My activated abilities — stop after you activate an ability.',
+        'My spells — stop after you cast a spell.',
+      ] },
+      { kind: 'p', text: 'A stop only happens when you have something to cast or activate in response, so turning these on costs no clicks the rest of the time. The setting applies to the game you are in as soon as you change it, including from the in-game gear.' },
+    ],
+    related: ['priority-modes', 'preferences', 'stops'],
+  },
+  {
     id: 'preferences',
     section: 'playing',
     title: 'Preferences',
@@ -1090,6 +1108,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       { kind: 'ul', items: [
         'Starting priority mode — Auto, Stops or Full Control. Every game begins in it; the mode button still switches it for the game you are in.',
         'Always stop at — your standing stops, for your turn and your opponents’. The phase-bar dots edit the same list.',
+        'Hold priority over my own — triggered abilities, activated abilities, spells: get priority back while one of yours waits on the stack, whenever you can respond to it.',
         'Auto-tap mana, and Follow the action for games with three or more players.',
       ] },
       { kind: 'h', text: 'Battlefield' },
@@ -1105,7 +1124,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       { kind: 'p', text: 'Signed in, Message alerts away from home decides whether new messages put an unread count on the chat button and show a preview while you’re in a game, a draft or on another page. The home screen always shows them.' },
       { kind: 'tip', text: 'Changes save as you make them. As a guest they live in this browser; signed in, they follow you to every device.' },
     ],
-    related: ['stops', 'priority-modes', 'auto-tap', 'card-preview', 'messages', 'guest-vs-account'],
+    related: ['stops', 'priority-modes', 'own-stack-stops', 'auto-tap', 'card-preview', 'messages', 'guest-vs-account'],
   },
   {
     id: 'phase-bar',
@@ -1660,6 +1679,8 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       { kind: 'p', text: 'Right-click (or long-press) it on the stack and choose a yield: Always answer Yes, Always answer No, or Always yield.' },
       { kind: 'h', text: 'I never get to respond in a particular step' },
       { kind: 'p', text: 'Auto passes when it thinks you have nothing worth doing. Set a stop on that step in the phase bar, or switch to Full Control.' },
+      { kind: 'h', text: 'I cannot respond to my own trigger' },
+      { kind: 'p', text: 'Your own spells and abilities pass to your opponent by default. Turn on Hold priority over my own in Preferences for the kinds you want to answer.' },
       { kind: 'h', text: 'My opponent disappeared' },
       { kind: 'p', text: 'You will see a countdown; if they do not come back the game is conceded for them.' },
       { kind: 'h', text: 'There are no Lab links' },

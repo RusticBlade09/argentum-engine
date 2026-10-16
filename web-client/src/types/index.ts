@@ -320,6 +320,7 @@ export type {
   YieldKind,
   StopOverrideInfo,
   PriorityModeValue,
+  OwnStackStop,
   // Quick Game Lobby types
   QuickGameLobbyPlayerView,
   QuickGameLobbyStateMessage,

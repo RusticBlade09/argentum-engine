@@ -56,6 +56,15 @@ describe('parsePreferences', () => {
     expect(p.display).toEqual({ motion: 'system', hoverPreview: false })
   })
 
+  it('keeps known own-stack stops, deduped, and defaults to none', () => {
+    expect(parsePreferences({}).gameplay.ownStackStops).toEqual([])
+    expect(
+      parsePreferences({ gameplay: { ownStackStops: ['TRIGGERED_ABILITIES', 'BOGUS', 'TRIGGERED_ABILITIES', 'SPELLS'] } })
+        .gameplay.ownStackStops,
+    ).toEqual(['TRIGGERED_ABILITIES', 'SPELLS'])
+    expect(parsePreferences({ gameplay: { ownStackStops: 'SPELLS' } }).gameplay.ownStackStops).toEqual([])
+  })
+
   it('normalizes a one-card stack: group-from 1 is 2, stack-size 1 is unlimited', () => {
     expect(parsePreferences({ battlefield: { other: { groupFrom: 1, stackSize: 1 } } }).battlefield.other)
       .toEqual({ groupFrom: 2, stackSize: 0 })

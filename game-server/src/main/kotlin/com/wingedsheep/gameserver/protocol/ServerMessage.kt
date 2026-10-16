@@ -1,5 +1,6 @@
 package com.wingedsheep.gameserver.protocol
 
+import com.wingedsheep.engine.legalactions.OwnStackStop
 import com.wingedsheep.engine.view.ClientCommanderDamage
 import com.wingedsheep.engine.view.ClientEvent
 import com.wingedsheep.engine.view.ClientGameState
@@ -191,7 +192,8 @@ sealed interface ServerMessage {
     @Serializable
     data class StopOverrideInfo(
         val myTurnStops: Set<Step>,
-        val opponentTurnStops: Set<Step>
+        val opponentTurnStops: Set<Step>,
+        val ownStackStops: Set<OwnStackStop> = emptySet()
     )
 
     /**

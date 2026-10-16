@@ -754,15 +754,15 @@ type GameplayHandlerKeys =
  * The server keeps both per game, so this runs once per game start.
  */
 function applyGameplayPreferences(set: SetState) {
-  const { priorityMode, myTurnStops, opponentTurnStops } = getPreferences().gameplay
+  const { priorityMode, myTurnStops, opponentTurnStops, ownStackStops } = getPreferences().gameplay
   set({
     stopOverrides: { myTurnStops, opponentTurnStops },
     priorityMode,
     fullControl: priorityMode === 'fullControl',
   })
   const ws = getWebSocket()
-  if (myTurnStops.length || opponentTurnStops.length) {
-    ws?.send(createSetStopOverridesMessage(myTurnStops, opponentTurnStops))
+  if (myTurnStops.length || opponentTurnStops.length || ownStackStops.length) {
+    ws?.send(createSetStopOverridesMessage(myTurnStops, opponentTurnStops, ownStackStops))
   }
   if (priorityMode !== 'auto') ws?.send(createSetPriorityModeMessage(priorityMode))
 }

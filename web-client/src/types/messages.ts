@@ -202,6 +202,7 @@ export interface OpponentDecisionStatus {
 export interface StopOverrideInfo {
   readonly myTurnStops: readonly string[]
   readonly opponentTurnStops: readonly string[]
+  readonly ownStackStops?: readonly OwnStackStop[]
 }
 
 /**
@@ -2799,13 +2800,21 @@ export interface SetPriorityModeMessage {
 export type PriorityModeValue = 'auto' | 'stops' | 'fullControl'
 
 /**
+ * A kind of the player's own stack object they keep priority over (when they can respond) instead of
+ * auto-passing it. Mirrors the engine's `OwnStackStop`.
+ */
+export type OwnStackStop = 'TRIGGERED_ABILITIES' | 'ACTIVATED_ABILITIES' | 'SPELLS'
+
+/**
  * Set per-step stop overrides for the current game.
- * When a stop is set for a step, auto-pass will not skip that step.
+ * When a stop is set for a step, auto-pass will not skip that step. [ownStackStops] keeps priority
+ * over the player's own objects of those kinds when they can respond.
  */
 export interface SetStopOverridesMessage {
   readonly type: 'setStopOverrides'
   readonly myTurnStops: readonly string[]
   readonly opponentTurnStops: readonly string[]
+  readonly ownStackStops: readonly OwnStackStop[]
 }
 
 /**
@@ -3032,8 +3041,12 @@ export function createSetPriorityModeMessage(mode: PriorityModeValue): SetPriori
   return { type: 'setPriorityMode', mode }
 }
 
-export function createSetStopOverridesMessage(myTurnStops: readonly string[], opponentTurnStops: readonly string[]): SetStopOverridesMessage {
-  return { type: 'setStopOverrides', myTurnStops, opponentTurnStops }
+export function createSetStopOverridesMessage(
+  myTurnStops: readonly string[],
+  opponentTurnStops: readonly string[],
+  ownStackStops: readonly OwnStackStop[],
+): SetStopOverridesMessage {
+  return { type: 'setStopOverrides', myTurnStops, opponentTurnStops, ownStackStops }
 }
 
 export function createSetAbilityYieldMessage(
