@@ -18,6 +18,82 @@
     ]
 }
 
+// Kirk, Enterprising Captain
+{
+    "name": "Kirk, Enterprising Captain",
+    "manaCost": "{3}{R}",
+    "typeLine": "Legendary Creature — Human Officer",
+    "oracleText": "Menace (This creature can't be blocked except by two or more creatures.)\nWhenever Kirk attacks while creatures you control have total power 8 or greater, exile the top card of your library. You may play that card this turn.",
+    "creatureStats": {
+        "power": 4,
+        "toughness": 3
+    },
+    "keywords": [
+        "MENACE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Kirk, Enterprising Captain:1",
+                "trigger": "AttackEvent",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "TopOfLibrary",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            "storeAs": "gathered0"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "gathered0",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Exile"
+                            }
+                        },
+                        {
+                            "type": "GrantMayPlayFromExile",
+                            "from": "gathered0"
+                        }
+                    ]
+                },
+                "triggerRestriction": {
+                    "type": "Compare",
+                    "left": {
+                        "type": "AggregateBattlefield",
+                        "player": "You",
+                        "filter": "creature",
+                        "aggregation": "SUM",
+                        "property": "POWER"
+                    },
+                    "operator": "GTE",
+                    "right": {
+                        "type": "Fixed",
+                        "amount": 8
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "198",
+        "rarity": "MYTHIC",
+        "artist": "Nathaniel Himawan",
+        "flavorText": "\"Risk is our business.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/e/1/e1d339e1-3433-4630-965e-1841e46b40a4.jpg?1784036716"
+    },
+    "colorIdentityOverride": [
+        "RED"
+    ]
+}
+
 // Starfleet Crew
 {
     "name": "Starfleet Crew",
