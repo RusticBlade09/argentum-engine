@@ -191,6 +191,11 @@ export interface OpponentDecisionStatus {
   readonly sourceName?: string | null
   /** The source entity; resolve its card from the (viewer-masked) game state. */
   readonly sourceId?: EntityId | null
+  /**
+   * The source's art, sent for when the viewer's state has no entry for it (a spell still being
+   * cast from its controller's hand). Null when the viewer may not see the source.
+   */
+  readonly sourceImageUri?: string | null
 }
 
 /**
@@ -2067,6 +2072,8 @@ export interface SpectatorDecisionStatus {
   readonly sourceName?: string | null
   /** The source entity; resolve its card from the (viewer-masked) game state. */
   readonly sourceId?: EntityId | null
+  /** The source's art when the spectator state has no entry for it (a spell still being cast). */
+  readonly sourceImageUri?: string | null
 }
 
 export interface SpectatorStateUpdateMessage {

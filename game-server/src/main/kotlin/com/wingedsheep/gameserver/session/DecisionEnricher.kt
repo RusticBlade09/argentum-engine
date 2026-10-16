@@ -74,12 +74,14 @@ class DecisionEnricher(private val cardRegistry: CardRegistry) {
             is BudgetModalDecision -> "Choosing modes"
             is SelectManaSourcesDecision -> "Selecting mana sources"
         }
+        val sourceId = decision.context.sourceId
         return ServerMessage.OpponentDecisionStatus(
             playerId = decision.playerId.value,
             decisionType = decision::class.simpleName ?: "Unknown",
             displayText = displayText,
             sourceName = masker.maskFor(decision, state, viewerId).context.sourceName,
-            sourceId = decision.context.sourceId?.value
+            sourceId = sourceId?.value,
+            sourceImageUri = sourceId?.let { imageUriFor(state, it, viewerId) }
         )
     }
 }

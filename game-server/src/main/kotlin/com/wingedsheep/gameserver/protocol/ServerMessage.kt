@@ -128,7 +128,11 @@ sealed interface ServerMessage {
         val sourceName: String? = null,
         /** The spell/ability source entity, so the client can show its card from its own
          *  (already viewer-masked) game state. */
-        val sourceId: String? = null
+        val sourceId: String? = null,
+        /** The source's art, for when the viewer's game state has no entry for it — a spell
+         *  being cast from its controller's hand is announced (its name is already shown) but
+         *  isn't in the viewer's masked state yet. Null when the viewer may not see the source. */
+        val sourceImageUri: String? = null
     )
 
     /**
@@ -1034,7 +1038,10 @@ sealed interface ServerMessage {
         val displayText: String,
         val sourceName: String? = null,
         /** The spell/ability source entity; the client resolves its card from the masked spectator state. */
-        val sourceId: String? = null
+        val sourceId: String? = null,
+        /** The source's art, for a source the spectator state has no entry for (a spell still
+         *  being cast from hand). Null when spectators may not see the source. */
+        val sourceImageUri: String? = null
     )
 
     /**

@@ -253,7 +253,11 @@ function SpectatorDecisionIndicator({
       ) : (
         <div style={styles.decisionSpinner} />
       )}
-      <DecisionSourceThumbnail sourceId={decisionStatus.sourceId} />
+      <DecisionSourceThumbnail
+        sourceId={decisionStatus.sourceId}
+        fallbackName={decisionStatus.sourceName}
+        fallbackImageUri={decisionStatus.sourceImageUri}
+      />
       <div>
         <div style={styles.decisionText}>
           {decisionStatus.playerName} is {decisionStatus.displayText.toLowerCase()}

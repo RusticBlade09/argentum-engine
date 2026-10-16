@@ -39,9 +39,9 @@ class SpectatorStateBuilder(
     private val cardRegistry: CardRegistry,
     private val stateTransformer: ClientStateTransformer
 ) {
-    private val masker = DecisionMasker(
+    private val visibility =
         Visibility(cardRegistry, conditionEvaluator = PredicateEvaluator(cardRegistry = null).conditions)
-    )
+    private val masker = DecisionMasker(visibility)
 
     /**
      * Build a spectator view of an N-player game. [seats] is every seated player in turn order;
@@ -121,8 +121,16 @@ class SpectatorStateBuilder(
             decisionType = decision::class.simpleName ?: "Unknown",
             displayText = displayText,
             sourceName = masker.maskFor(decision, state, anySeat, isSpectator = true).context.sourceName,
-            sourceId = decision.context.sourceId?.value
+            sourceId = decision.context.sourceId?.value,
+            sourceImageUri = decision.context.sourceId?.let { sourceImageUri(state, it, anySeat) }
         )
+    }
+
+    /** The decision source's art, unless a spectator may not see what it is (a face-down card). */
+    private fun sourceImageUri(state: GameState, sourceId: EntityId, anySeat: EntityId): String? {
+        if (visibility.isCardIdentityHiddenFrom(state, sourceId, anySeat, isSpectator = true)) return null
+        val card = state.getEntity(sourceId)?.get<CardComponent>() ?: return null
+        return card.imageUri ?: cardRegistry.getCard(card.cardDefinitionId)?.metadata?.imageUri
     }
 
     private fun buildClientGameState(
