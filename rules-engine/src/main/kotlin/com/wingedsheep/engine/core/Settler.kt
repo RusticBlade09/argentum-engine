@@ -8,6 +8,7 @@ import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.replacement.ReplacementRiders
 import com.wingedsheep.engine.mechanics.StateBasedActionChecker
 import com.wingedsheep.engine.state.GameState
+import com.wingedsheep.engine.state.nameVisibleToAll
 import com.wingedsheep.engine.state.components.player.EndTheTurnRequestedComponent
 import com.wingedsheep.engine.state.components.player.MulliganStateComponent
 import com.wingedsheep.sdk.scripting.effects.Effect
@@ -237,8 +238,17 @@ class Settler(
         }
     }
 
+    /**
+     * Queue [triggers], naming each by what every player may see of its source. A face-down
+     * permanent's ward (CR 702.168a disguise, 701.58a cloak) is the one ability a hidden card can
+     * trigger, and a trigger carrying the card's real name kept that name in the state on the
+     * stack object — where nothing but the client masking stood between it and the opponent.
+     */
     private fun GameState.enqueue(triggers: List<PendingTrigger>): GameState =
-        if (triggers.isEmpty()) this else copy(pendingTriggers = pendingTriggers + triggers)
+        if (triggers.isEmpty()) this else copy(pendingTriggers = pendingTriggers + triggers.map { trigger ->
+            val publicName = nameVisibleToAll(this, trigger.sourceId, trigger.sourceName)
+            if (publicName == trigger.sourceName) trigger else trigger.copy(sourceName = publicName)
+        })
 
     private fun GameState.withoutPendingTriggers(): GameState =
         if (pendingTriggers.isEmpty()) this else copy(pendingTriggers = emptyList())
