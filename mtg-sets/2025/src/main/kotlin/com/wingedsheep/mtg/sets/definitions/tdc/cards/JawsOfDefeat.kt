@@ -5,9 +5,9 @@ import com.wingedsheep.sdk.dsl.Effects
 import com.wingedsheep.sdk.dsl.Targets
 import com.wingedsheep.sdk.dsl.Triggers
 import com.wingedsheep.sdk.dsl.card
+import com.wingedsheep.sdk.dsl.minus
 import com.wingedsheep.sdk.model.Rarity
 import com.wingedsheep.sdk.scripting.GameObjectFilter
-import com.wingedsheep.sdk.scripting.values.DynamicAmount
 
 /**
  * Jaws of Defeat
@@ -35,10 +35,7 @@ val JawsOfDefeat = card("Jaws of Defeat") {
         val power = DynamicAmounts.triggeringPower()
         val toughness = DynamicAmounts.triggeringToughness()
         effect = Effects.LoseLife(
-            DynamicAmounts.max(
-                DynamicAmount.Subtract(power, toughness),
-                DynamicAmount.Subtract(toughness, power),
-            ),
+            DynamicAmounts.max(power - toughness, toughness - power),
             opponent,
         )
         description = "Target opponent loses life equal to the difference between that creature's power " +
