@@ -86,6 +86,30 @@ echo '{"type":"result","result":"SET_COMPLETE","num_turns":1,"duration_ms":1000}
         self.assertIn("just loop-gate", prompt)
         self.assertIn("loop-reviewed <full sha", prompt)
         self.assertNotIn("$LOOP_PR_PROTOCOL", prompt)
+        self.assertIn("NO E2E", prompt)
+        self.assertIn("just ui-dev", prompt)
+        self.assertNotIn("e2e-loop", prompt)
+
+    def test_claude_session_runs_under_a_goal_without_mcp_servers(self):
+        result = self.run_loop("claude-opus-5-5")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        args = (self.root / "args").read_text().splitlines()
+        self.assertTrue(args[1].startswith("/goal "), args[1])
+        self.assertIn("STEP <n> DONE", args[1])
+        self.assertLessEqual(len(args[1]), 4000)
+        self.assertIn("--strict-mcp-config", args)
+        self.assertIn("PR LIFECYCLE", "\n".join(args[args.index("--append-system-prompt") + 1:]))
+
+    def test_goal_closing_empty_result_does_not_hide_the_answer(self):
+        self.stub("claude", """
+echo '{"type":"result","result":"Launched the implementers; waiting."}'
+echo '{"type":"result","result":"SET_COMPLETE"}'
+echo '{"type":"result","result":""}'
+""")
+        result = self.run_loop("claude-opus-5-5")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("set ecl complete", result.stdout)
+        self.assertFalse((self.root / "sleeps").exists())
 
     def test_picker_without_terminal_does_not_launch(self):
         result = self.run_loop("pick")

@@ -2,12 +2,14 @@ package com.wingedsheep.engine.state.components.battlefield
 
 import com.wingedsheep.engine.mechanics.layers.AffectsFilter
 import com.wingedsheep.engine.state.Component
+import com.wingedsheep.engine.state.ComponentContainer
 import com.wingedsheep.sdk.core.CounterType
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.AbilityId
 import com.wingedsheep.sdk.scripting.ProtectionScope
 import com.wingedsheep.sdk.scripting.ReplacementEffect
 import com.wingedsheep.sdk.scripting.conditions.Condition
+import com.wingedsheep.sdk.scripting.events.DamageType
 import com.wingedsheep.sdk.scripting.filters.unified.GroupFilter
 import kotlinx.serialization.Serializable
 
@@ -149,6 +151,18 @@ data object WarpedComponent : Component
  */
 @Serializable
 data object DashedComponent : Component
+
+/**
+ * Marks a permanent whose blitz cost was paid (CR 702.152a). Added when a blitzed spell resolves.
+ * While present, the permanent has haste (StateProjector seeds it off this marker, like
+ * [DashedComponent]) and the synthesized [com.wingedsheep.sdk.scripting.Blitz.diesDrawAbility]
+ * (TriggerAbilityResolver; frozen onto the exit snapshot as `wasBlitzed` so the dies trigger can look
+ * back, CR 603.10a). Both are abilities of the permanent, so "loses all abilities" switches them off.
+ * A delayed trigger created on entry sacrifices it at the beginning of the next end step. Stripped by
+ * ZoneMovementUtils when the permanent leaves the battlefield (CR 400.7).
+ */
+@Serializable
+data object BlitzedComponent : Component
 
 /**
  * Marks a permanent as having been cast for its evoke cost.
@@ -549,11 +563,15 @@ data class AttachedToComponent(
  * it can't enchant (CR 400.7) — and only while that object matches [filter]. The printed
  * `auraTarget` is no longer consulted. A battlefield-scoped characteristic of this object, so it is
  * stripped when the Aura leaves the battlefield.
+ *
+ * [hosts] null is an enchant ability naming no particular objects — "It's an Aura enchantment with
+ * enchant Forest you control" (`PutOntoBattlefieldAsAuraEffect`, Harold and Bob): any permanent
+ * matching [filter] may be enchanted.
  */
 @Serializable
 data class GainedEnchantRestrictionComponent(
     val filter: com.wingedsheep.sdk.scripting.GameObjectFilter,
-    val hosts: Set<com.wingedsheep.engine.state.ObjectRef>
+    val hosts: Set<com.wingedsheep.engine.state.ObjectRef>? = null
 ) : Component
 
 /**
@@ -1345,12 +1363,31 @@ data class CraftedFromExiledComponent(
 ) : Component
 
 /**
- * Marks a permanent or player as having been dealt damage this turn.
- * Cleared at end of turn by CleanupPhaseManager.
- * Used for StatePredicate.WasDealtDamageThisTurn.
+ * Marks a permanent or player as having been dealt damage this turn, recording which kinds —
+ * [combat], [noncombat] or both — so `StatePredicate.WasDealtDamageThisTurn(damageType)` answers
+ * every window from one marker. Cleared at end of turn by CleanupPhaseManager.
  */
 @Serializable
-data object WasDealtDamageThisTurnComponent : Component
+data class WasDealtDamageThisTurnComponent(
+    val combat: Boolean = false,
+    val noncombat: Boolean = false
+) : Component {
+    fun matches(damageType: DamageType): Boolean = when (damageType) {
+        DamageType.Any -> combat || noncombat
+        DamageType.Combat -> combat
+        DamageType.NonCombat -> noncombat
+    }
+
+    companion object {
+        /** [container] with the marker set, adding [isCombatDamage]'s kind to any already recorded. */
+        fun markedOn(container: ComponentContainer, isCombatDamage: Boolean): ComponentContainer {
+            val existing = container.get<WasDealtDamageThisTurnComponent>() ?: WasDealtDamageThisTurnComponent()
+            return container.with(
+                if (isCombatDamage) existing.copy(combat = true) else existing.copy(noncombat = true)
+            )
+        }
+    }
+}
 
 /**
  * Damage dealt to this permanent for the rest of the turn can't be prevented, and can't be dealt to

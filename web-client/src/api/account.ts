@@ -70,15 +70,18 @@ export interface AppConfig {
 /**
  * Fetch server feature availability. Used on startup to decide whether to show the accounts/sign-in
  * UI at all — on a server with accounts disabled the auth endpoints don't exist, so showing a
- * sign-in form would only produce a confusing error. Fails closed (accounts hidden) on any error.
+ * sign-in form would only produce a confusing error.
+ *
+ * Resolves `null` when the server couldn't be reached (down, restarting, a proxy's 502): that's
+ * "unknown", not "accounts disabled", and the caller retries rather than settling on it.
  */
-export async function fetchAppConfig(): Promise<AppConfig> {
+export async function fetchAppConfig(): Promise<AppConfig | null> {
   try {
     const res = await fetch('/api/config')
-    if (!res.ok) return { accountsEnabled: false }
+    if (!res.ok) return null
     return (await res.json()) as AppConfig
   } catch {
-    return { accountsEnabled: false }
+    return null
   }
 }
 
@@ -138,12 +141,13 @@ export async function updateAvatar(avatar: string | null): Promise<AccountUser> 
   return (await res.json()) as AccountUser
 }
 
-/** Fetch the current account, or null if not signed in / accounts disabled. */
+/** Fetch the current account, or null if not signed in. Throws when the server can't answer. */
 export async function fetchMe(): Promise<AccountUser | null> {
   if (!getAuthToken()) return null
   const res = await fetch('/api/auth/me', { headers: authHeaders() })
   if (res.status === 401) return null
-  if (!res.ok) return null
+  // Any other failure leaves the session unknown, not signed out — throw so the caller can retry.
+  if (!res.ok) throw new Error(`Failed to load the signed-in account (${res.status})`)
   return (await res.json()) as AccountUser
 }
 

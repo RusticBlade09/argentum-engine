@@ -246,6 +246,14 @@ data class EntitySnapshot(
      * way [wasSuspected] does for the suspected designation.
      */
     val wasFaceDown: Boolean = false,
+    /**
+     * True if this permanent's blitz cost was paid (CR 702.152a) as it left. Frozen because the
+     * marker is stripped on departure, yet the blitz "when this permanent dies, draw a card" trigger
+     * looks back to it (CR 603.10a).
+     */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val wasBlitzed: Boolean = false,
     /** Copy-added rules text, frozen before the original identity is restored on departure. */
     val copyTriggeredAbilities: List<com.wingedsheep.sdk.scripting.TriggeredAbility> = emptyList(),
     /**
@@ -279,6 +287,15 @@ data class EntitySnapshot(
     @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val baseToughness: Int? = null,
+    /**
+     * Projected colors at capture (CR 105.2), null when not captured. Frozen because a sacrificed
+     * token ceases to exist and a color-changing effect ends as the permanent leaves, yet "count
+     * the colors of the sacrificed creature" (Evolving Door) reads it as it last existed on the
+     * battlefield (CR 608.2h).
+     */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val colors: Set<String>? = null,
 ) : EntityView {
     companion object {
         /**
@@ -300,6 +317,7 @@ data class EntitySnapshot(
                 toughness = projected.getToughness(entityId),
                 basePower = projected.getBasePower(entityId),
                 baseToughness = projected.getBaseToughness(entityId),
+                colors = projected.getColors(entityId),
                 subtypes = projected.getSubtypes(entityId),
                 supertypes = projected.getSupertypes(entityId),
                 controllerId = projected.getController(entityId),
@@ -338,6 +356,7 @@ fun captureEntitySnapshots(
         toughness = projected.getToughness(id),
         basePower = projected.getBasePower(id),
         baseToughness = projected.getBaseToughness(id),
+        colors = projected.getColors(id),
         subtypes = projected.getSubtypes(id),
         supertypes = projected.getSupertypes(id),
         controllerId = projected.getController(id),
@@ -409,6 +428,10 @@ fun captureLastKnown(state: GameState, entityId: EntityId): EntitySnapshot {
     return captureEntitySnapshots(listOf(entityId), state).single().copy(
         typeLine = projectedTypeLine(state, entityId),
         keywords = state.projectedState.getKeywords(entityId),
+        // A self-sacrifice cost wipes the counters before the effect reads "the number of stash
+        // counters on this artifact" (Glittering Stockpile) — freeze them here like the zone-exit
+        // snapshot does (CR 113.7a).
+        counters = countersOf(state, entityId),
         cardDefinitionId = container?.get<CardComponent>()?.cardDefinitionId,
         copyTriggeredAbilities = captureCopyTriggeredAbilities(state, entityId),
         textChanges = TextChanges.of(state, entityId),

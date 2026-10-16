@@ -4769,14 +4769,8 @@
                     "scope": "Self"
                 },
                 "sourceFilter": "creature ctrl:opponent",
-                "includeManaAbilities": true
-            },
-            {
-                "type": "SpendAnyManaTypeForActivatedAbilities",
-                "filter": {
-                    "baseFilter": "permanent",
-                    "scope": "Self"
-                }
+                "includeManaAbilities": true,
+                "spendAsThoughAnyColor": true
             }
         ]
     },

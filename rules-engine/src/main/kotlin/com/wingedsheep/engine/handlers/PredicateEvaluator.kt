@@ -2,6 +2,7 @@ package com.wingedsheep.engine.handlers
 
 import com.wingedsheep.engine.mechanics.layers.containsKeyword
 import com.wingedsheep.engine.state.components.battlefield.chosenCreatureType
+import com.wingedsheep.engine.state.components.battlefield.chosenCreatureOf
 import com.wingedsheep.sdk.scripting.ChoiceSlot
 import com.wingedsheep.engine.state.components.battlefield.entitiesChoice
 import com.wingedsheep.engine.state.components.battlefield.BattlefieldEntryTimestampComponent
@@ -458,6 +459,7 @@ class PredicateEvaluator(
             CardPredicate.SharesCreatureTypeWithSource,
             CardPredicate.SharesCreatureTypeWithTriggeringEntity,
             CardPredicate.ConvokedSource,
+            CardPredicate.ChosenBySource,
             is CardPredicate.SharesManaValueWith,
             is CardPredicate.SharesNameWith,
             CardPredicate.SharesNameWithLinkedExile,
@@ -519,7 +521,8 @@ class PredicateEvaluator(
             ControllerPredicate.OwnedByYou,
             ControllerPredicate.OwnedByOpponent,
             ControllerPredicate.OwnedByTargetPlayer,
-            ControllerPredicate.OwnedByTriggeringPlayer -> false
+            ControllerPredicate.OwnedByTriggeringPlayer,
+            is ControllerPredicate.OwnedByReferencedPlayer -> false
         }
     }
 
@@ -1054,6 +1057,7 @@ class PredicateEvaluator(
                         if (projectedValues?.isFaceDown == true) 0 else card.manaValue
                     CardNumericProperty.COUNTERS ->
                         container.get<CountersComponent>()?.counters?.values?.sum() ?: 0
+                    CardNumericProperty.COLOR_COUNT -> colors.size
                 }
                 if (predicate.amount == DynamicAmount.XValue) {
                     // X still unbound outside a resolution is legal-action enumeration, which runs
@@ -1138,6 +1142,12 @@ class PredicateEvaluator(
                 val current = state.getEntity(entityId)
                     ?.get<BattlefieldEntryTimestampComponent>()?.timestamp ?: 0L
                 entityId in state.getBattlefield() && current == stamp
+            }
+
+            // "The chosen permanent" — the same object the source picked as it entered (CR 400.7).
+            CardPredicate.ChosenBySource -> {
+                val sourceId = context?.sourceId ?: return false
+                state.chosenCreatureOf(sourceId) == entityId
             }
 
             CardPredicate.SharesCreatureTypeWithSource -> {
@@ -1476,6 +1486,13 @@ class PredicateEvaluator(
                 val triggeringPlayer = context.triggeringPlayerId ?: context.triggeringEntityId
                 card?.ownerId != null && triggeringPlayer != null && card.ownerId == triggeringPlayer
             }
+            // "with the same owner as this" — PlayerRef(OwnerOfSource) for a mutating spell's target.
+            is ControllerPredicate.OwnedByReferencedPlayer -> {
+                val owner = container.get<CardComponent>()?.ownerId
+                val referenced = context.resolvePlayerTarget(predicate.target)
+                    ?: resolveReferencedPlayerFromState(state, projected, predicate.target, context)
+                owner != null && owner == referenced
+            }
             ControllerPredicate.ControlledByYou,
             ControllerPredicate.ControlledByOpponent,
             ControllerPredicate.ControlledByAny,
@@ -1550,7 +1567,8 @@ class PredicateEvaluator(
             }
         }
         ControllerPredicate.OwnedByYou, ControllerPredicate.OwnedByOpponent,
-        ControllerPredicate.OwnedByTargetPlayer, ControllerPredicate.OwnedByTriggeringPlayer -> false
+        ControllerPredicate.OwnedByTargetPlayer, ControllerPredicate.OwnedByTriggeringPlayer,
+        is ControllerPredicate.OwnedByReferencedPlayer -> false
     }
 
     /**
@@ -1610,6 +1628,11 @@ class PredicateEvaluator(
             // ability's controller. Same resolution as StatePredicate.IsAttackingEnchantedPlayer:
             // the `in state.turnOrder` guard is what keeps a permanent host out, so an Aura on a
             // creature can never make this match anything.
+            // "the same owner as this" — the source card's immutable owner, in any zone.
+            Player.OwnerOfSource -> context.sourceId?.let { state.getEntity(it) }?.let {
+                it.get<com.wingedsheep.engine.state.components.identity.OwnerComponent>()?.playerId
+                    ?: it.get<CardComponent>()?.ownerId
+            }
             Player.EnchantedPlayer -> context.sourceId
                 ?.let { state.getEntity(it) }
                 ?.get<com.wingedsheep.engine.state.components.battlefield.AttachedToComponent>()
@@ -1957,9 +1980,8 @@ class PredicateEvaluator(
                 )
 
             // Damage state
-            StatePredicate.WasDealtDamageThisTurn -> {
-                container.has<WasDealtDamageThisTurnComponent>()
-            }
+            is StatePredicate.WasDealtDamageThisTurn ->
+                container.get<WasDealtDamageThisTurnComponent>()?.matches(predicate.damageType) == true
             // Damage history, active voice. One marker, two windows — presence for the lifetime
             // reading, its turn stamp against the current turn for "…this turn".
             is StatePredicate.HasDealtDamage ->
@@ -2621,7 +2643,7 @@ class PredicateEvaluator(
             // Source-relative and context predicates — not applicable
             CardPredicate.NotOfSourceChosenType, CardPredicate.SharesCreatureTypeWithSource,
             CardPredicate.SharesCreatureTypeWithTriggeringEntity,
-            CardPredicate.ConvokedSource, CardPredicate.HasChosenSubtype,
+            CardPredicate.ConvokedSource, CardPredicate.ChosenBySource, CardPredicate.HasChosenSubtype,
             CardPredicate.HasChosenColor, CardPredicate.SharesChosenColorWithSource,
             CardPredicate.SharesColorWithRecipient,
             CardPredicate.SharesColorWithTriggeringMana,

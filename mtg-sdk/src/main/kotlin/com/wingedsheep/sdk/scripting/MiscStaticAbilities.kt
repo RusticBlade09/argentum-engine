@@ -778,7 +778,7 @@ data object OpponentsPlayWithHandsRevealed : StaticAbility {
  * (Detective's Phoenix) is `MayCastSelfFromZones(listOf(Zone.GRAVEYARD), castUsing = Keyword.BESTOW)`.
  * The card is then cast for that ability's price (CR 702.103a: bestow functions in any zone the
  * card could be cast from), never for its normal mana cost. The engine reads only keywords it knows
- * how to cast with (currently [Keyword.BESTOW]); any other keyword authorizes nothing.
+ * how to cast with ([Keyword.BESTOW], [Keyword.BLITZ]); any other keyword authorizes nothing.
  *
  * @property zones The zones from which this card may be cast.
  * @property condition Optional gate; null = always available (the Squee shape).
@@ -978,16 +978,29 @@ data class PreventActivatedAbilities(
  *   projected state).
  * @property includeManaAbilities When false (default), mana abilities are not copied — the
  *   "except mana abilities" clause. Set true to copy every activated ability.
+ * @property includeLoyaltyAbilities When false, loyalty abilities (CR 606) are not copied — the
+ *   "except for loyalty abilities" clause of Scheming Fence. Defaults to true: "all activated
+ *   abilities" includes them.
+ * @property spendAsThoughAnyColor When true, "you may spend mana as though it were mana of any color
+ *   to activate those abilities" (Drana and Linvala, Scheming Fence): the copies' colored, hybrid and
+ *   Phyrexian requirements accept any mana, while a `{C}` pip still demands colorless mana. Scoped to
+ *   the copies — unlike a [SpendAnyManaTypeForActivatedAbilities] on the gainer, it doesn't reach
+ *   abilities an Equipment or Aura grants the same permanent.
  */
 @SerialName("GainActivatedAbilitiesOfPermanents")
 @Serializable
 data class GainActivatedAbilitiesOfPermanents(
     val grantedTo: GroupFilter,
     val sourceFilter: GameObjectFilter,
-    val includeManaAbilities: Boolean = false
+    val includeManaAbilities: Boolean = false,
+    val includeLoyaltyAbilities: Boolean = true,
+    val spendAsThoughAnyColor: Boolean = false
 ) : StaticAbility {
     override val description: String =
-        "${grantedTo.description} ${if (grantedTo.scope is com.wingedsheep.sdk.scripting.filters.unified.Scope.Self) "has" else "have"} all activated abilities of ${sourceFilter.description}${if (!includeManaAbilities) " except mana abilities" else ""}"
+        "${grantedTo.description} ${if (grantedTo.scope is com.wingedsheep.sdk.scripting.filters.unified.Scope.Self) "has" else "have"} all activated abilities of ${sourceFilter.description}" +
+            listOfNotNull("mana".takeIf { !includeManaAbilities }, "loyalty".takeIf { !includeLoyaltyAbilities })
+                .takeIf { it.isNotEmpty() }?.joinToString(" or ", prefix = " except ", postfix = " abilities").orEmpty() +
+            if (spendAsThoughAnyColor) ". You may spend mana as though it were mana of any color to activate those abilities" else ""
     override fun applyTextReplacement(replacer: TextReplacer): StaticAbility {
         val newGrantedTo = grantedTo.applyTextReplacement(replacer)
         val newSource = sourceFilter.applyTextReplacement(replacer)
@@ -1021,15 +1034,29 @@ data class GainActivatedAbilitiesOfPermanents(
  *   [GroupFilter.source] for "this permanent's abilities").
  * @property substituteColor When set, only mana of this color may be spent as though it were mana
  *   of any color. Null (the default) is the stronger "mana of any type can be spent".
+ * @property asThoughAnyColor With no [substituteColor]: true is the printed **"you may spend mana as
+ *   though it were mana of any color"** (Agatha's Soul Cauldron, Scheming Fence) — any mana pays a
+ *   colored, hybrid or Phyrexian requirement, but colorless is a type rather than a color, so a
+ *   `{C}` pip still demands colorless mana ([com.wingedsheep.sdk.core.ManaCost.relaxColoredRequirements],
+ *   the reading spell-side "as though any color" grants already use). False (the default) is
+ *   "mana of any type can be spent" (CR 118.14), which relaxes `{C}` too.
  */
 @SerialName("SpendAnyManaTypeForActivatedAbilities")
 @Serializable
 data class SpendAnyManaTypeForActivatedAbilities(
     val filter: GroupFilter,
-    val substituteColor: com.wingedsheep.sdk.core.Color? = null
+    val substituteColor: com.wingedsheep.sdk.core.Color? = null,
+    val asThoughAnyColor: Boolean = false
 ) : StaticAbility {
+    init {
+        require(substituteColor == null || !asThoughAnyColor) {
+            "asThoughAnyColor already lets every color pay; it can't be combined with substituteColor"
+        }
+    }
     override val description: String =
-        if (substituteColor == null)
+        if (substituteColor == null && asThoughAnyColor)
+            "You may spend mana as though it were mana of any color to activate ${filter.description}'s abilities"
+        else if (substituteColor == null)
             "Mana of any type can be spent to activate ${filter.description}'s abilities"
         else
             "You may spend ${substituteColor.name.lowercase()} mana as though it were mana of any " +
@@ -1860,19 +1887,21 @@ data object FreeFirstEquipEachTurn : StaticAbility {
  * activates, regardless of which permanent bears the equip ability. Gate it with a
  * [ConditionalStaticAbility] for a "during your turn"-style restriction.
  *
- * When [onlyIfTargetIsSource] is true, the reduction applies only to equip abilities that target
- * the permanent bearing this static ability — i.e. "Equip abilities you activate **that target
- * ~** cost {N} less to activate" (Cloud, Planet's Champion). The engine matches the equip's chosen
- * target against the source permanent: at payment time the exact target is known and the reduction
- * applies only when they match; at enumeration time (before the target is chosen) the discounted
- * cost is offered optimistically whenever the source is a creature the controller could equip, so
+ * When [targetFilter] is set, the reduction applies only to equip abilities whose target matches
+ * it, evaluated relative to the permanent bearing this static ability — "Equip abilities you
+ * activate **that target ~** cost {N} less" (Cloud, Planet's Champion:
+ * `GameObjectFilter.Any.sourceItself()`) or "**that target enchanted creature**" (Strong Back:
+ * `GameObjectFilter.Creature.attachedToBySource()`). At payment time the exact target is known and
+ * the reduction applies only when it matches; at enumeration time (before the target is chosen) the
+ * discounted cost is offered optimistically whenever a creature the controller controls matches, so
  * the ability is never withheld for want of the discount.
  */
 @SerialName("ReduceEquipCost")
 @Serializable
 data class ReduceEquipCost(
     val amount: Int,
-    val onlyIfTargetIsSource: Boolean = false,
+    /** Only equip abilities targeting a permanent matching this filter (relative to the bearer); null = any. */
+    val targetFilter: GameObjectFilter? = null,
     /**
      * When true, the reduction applies only to the equip abilities of the permanent bearing this
      * static — "This Equipment's equip abilities cost {amount} less to activate" (Firion, Wild Rose
@@ -1894,9 +1923,14 @@ data class ReduceEquipCost(
     override val description: String = when {
         onlyOwnEquip -> "This permanent's equip abilities cost {$amount} less to activate"
         onlyOtherEquip -> "Equip abilities you activate of other Equipment cost {$amount} less to activate"
-        onlyIfTargetIsSource -> "Equip abilities you activate that target this permanent cost {$amount} less to activate"
+        targetFilter != null ->
+            "Equip abilities you activate that target ${describeTarget(targetFilter)} cost {$amount} less to activate"
         else -> "Equip abilities you activate cost {$amount} less to activate"
     }
+
+    // `sourceItself()` describes as a bare predicate ("this"); name the bearer instead.
+    private fun describeTarget(filter: GameObjectFilter): String =
+        if (filter == GameObjectFilter.Any.sourceItself()) "this permanent" else filter.description
 }
 
 /**

@@ -560,7 +560,11 @@ export const createGameplaySlice: SliceCreator<GameplaySlice> = (set, get) => ({
       : [...current, step]
     const newOverrides = { ...stopOverrides, [key]: newStops }
     set({ stopOverrides: newOverrides })
-    getWebSocket()?.send(createSetStopOverridesMessage(newOverrides.myTurnStops, newOverrides.opponentTurnStops))
+    getWebSocket()?.send(createSetStopOverridesMessage(
+      newOverrides.myTurnStops,
+      newOverrides.opponentTurnStops,
+      getPreferences().gameplay.ownStackStops,
+    ))
     // Remember them: the next game starts with the same stops (see onGameStarted).
     usePreferences.getState().update('gameplay', {
       myTurnStops: newOverrides.myTurnStops,

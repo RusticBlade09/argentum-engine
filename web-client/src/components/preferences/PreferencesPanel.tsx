@@ -7,6 +7,7 @@
 import type React from 'react'
 import {
   DEFAULT_PREFERENCES,
+  OWN_STACK_STOPS,
   STACK_LIMITS,
   STOPPABLE_STEPS,
   usePreferences,
@@ -15,7 +16,7 @@ import {
 } from '@/store/preferencesStore'
 import { useAuthStore } from '@/store/authStore'
 import { Step, StepDisplayNames } from '@/types/enums'
-import type { PriorityModeValue } from '@/types/messages'
+import type { OwnStackStop, PriorityModeValue } from '@/types/messages'
 import s from './Preferences.module.css'
 
 const MODE_OPTIONS: { value: PriorityModeValue; label: string; hint: string }[] = [
@@ -28,6 +29,21 @@ const MOTION_OPTIONS: { value: MotionPreference; label: string }[] = [
   { value: 'system', label: 'Follow system' },
   { value: 'reduce', label: 'Always reduce' },
 ]
+
+const OWN_STACK_STOP_LABELS: Record<OwnStackStop, { label: string; hint: string }> = {
+  TRIGGERED_ABILITIES: {
+    label: 'My triggered abilities',
+    hint: 'Respond to your own trigger before it resolves — say, shrink the creature whose Jaws of Defeat trigger is waiting.',
+  },
+  ACTIVATED_ABILITIES: {
+    label: 'My activated abilities',
+    hint: 'Respond to an ability you just activated, for example by activating another one on top of it.',
+  },
+  SPELLS: {
+    label: 'My spells',
+    hint: 'Respond to a spell you just cast, for example to copy it or to stack another spell above it.',
+  },
+}
 
 /** On your own turn the engine always stops in your main phases — shown checked and locked. */
 const ALWAYS_STOP_MY_TURN = new Set<Step>([Step.PRECOMBAT_MAIN, Step.POSTCOMBAT_MAIN])
@@ -129,6 +145,31 @@ export function PreferencesPanel({ compact = false }: { compact?: boolean }) {
             Clear all extra stops
           </button>
         )}
+
+        <div className={s.field}>
+          <div className={s.fieldText}>
+            <span className={s.label}>Hold priority over my own</span>
+            <span className={s.hint}>
+              Normally your own spells and abilities pass straight to your opponent. Switch a kind on to get priority
+              back while it waits on the stack — only when you have something you can cast or activate in response.
+            </span>
+          </div>
+        </div>
+        {OWN_STACK_STOPS.map((kind) => (
+          <Toggle
+            key={kind}
+            label={OWN_STACK_STOP_LABELS[kind].label}
+            hint={OWN_STACK_STOP_LABELS[kind].hint}
+            checked={gameplay.ownStackStops.includes(kind)}
+            onChange={(on) =>
+              update('gameplay', {
+                ownStackStops: on
+                  ? [...gameplay.ownStackStops, kind]
+                  : gameplay.ownStackStops.filter((k) => k !== kind),
+              })
+            }
+          />
+        ))}
 
         <Toggle
           label="Auto-tap mana"

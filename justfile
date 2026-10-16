@@ -63,7 +63,7 @@ test-class CLASS *ARGS:
 loop-gate *ARGS:
     scripts/loop-gate {{ARGS}}
 
-# Re-bless per-set card snapshot goldens after an intentional change (review the diff: only your cards should move)
+# Re-bless per-set card snapshot goldens after an intentional change (a loop passes --rebless to loop-gate instead) (review the diff: only your cards should move)
 [group: 'build']
 rebless-cards:
     scripts/gradle-locked :mtg-sets:test --tests "*CardDefinitionSnapshotTest" -DupdateSnapshots=true
@@ -561,6 +561,20 @@ dev:
     trap 'kill "$server_pid" "$client_pid" 2>/dev/null || true; wait "$server_pid" "$client_pid" 2>/dev/null || true' EXIT INT TERM
     wait "$server_pid" "$client_pid"
 
+# This worktree's server (dev endpoints on) and client on their own ports, for a manual UI check
+# alongside other checkouts. Occupied ports fail rather than silently showing another checkout's app.
+[group: 'dev']
+ui-dev SERVER_PORT CLIENT_PORT:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    GAME_DEV_ENDPOINTS_ENABLED=true scripts/gradle-locked :game-server:bootRun \
+      --args='--spring.profiles.active=local --server.port={{SERVER_PORT}}' &
+    server_pid=$!
+    (cd web-client && GAME_SERVER_URL=http://localhost:{{SERVER_PORT}} npm run dev -- --port {{CLIENT_PORT}} --strictPort) &
+    client_pid=$!
+    trap 'kill "$server_pid" "$client_pid" 2>/dev/null || true; wait "$server_pid" "$client_pid" 2>/dev/null || true' EXIT INT TERM
+    wait "$server_pid" "$client_pid"
+
 # Start the game server with Onslaught set enabled
 [group: 'dev']
 server-ons:
@@ -720,16 +734,6 @@ e2e-install-browsers:
 [group: 'e2e']
 e2e-test PATTERN:
     cd e2e-scenarios && npx playwright test {{PATTERN}}
-
-# Isolated Chromium verification for agent loops; choose two unused ports per worktree.
-[group: 'e2e']
-e2e-loop PATTERN CLIENT_PORT SERVER_PORT:
-    cd e2e-scenarios && E2E_CLIENT_PORT='{{CLIENT_PORT}}' E2E_SERVER_PORT='{{SERVER_PORT}}' npx playwright test --config=playwright.loop.config.ts '{{PATTERN}}'
-
-# Started and stopped by Playwright's loop config, with the machine-global build semaphore.
-[group: 'e2e']
-e2e-server PORT:
-    GAME_DEV_ENDPOINTS_ENABLED=true scripts/gradle-locked :game-server:bootRun --args='--spring.profiles.active=local --server.port={{PORT}}'
 
 # Run E2E tests under the Playwright Inspector (step through, inspect selectors)
 [group: 'e2e']

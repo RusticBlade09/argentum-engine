@@ -100,7 +100,7 @@ class CostHandler(private val zones: ZoneTransitionService) {
         if (!PlayerCounterPayment.canAffordAbility(state, controllerId, cost)) return false
         return when (cost) {
             is AbilityCost.Free -> true
-            // Lowered to a plain mana atom by CastPermissionUtils.lowerAttachedManaCost before it
+            // Lowered to a plain mana atom by CastPermissionUtils.lowerReferencedManaCost before it
             // reaches any pricing path, so this branch is only hit by a caller that skipped the
             // lowering — read the attached permanent's cost directly rather than failing open.
             is AbilityCost.AttachedPermanentManaCost -> canPayAtom(
@@ -108,6 +108,11 @@ class CostHandler(private val zones: ZoneTransitionService) {
                 (attachedManaCostAtom(state, sourceId)),
                 sourceId, controllerId, manaPool, lifePurpose, abilityContext
             )
+            // Likewise lowered against the source itself; un-lowered only when the source has no
+            // mana cost, which can't be paid (CR 118.6).
+            is AbilityCost.OwnManaCost -> ownManaCostOrNull(state, sourceId)?.let {
+                canPayAtom(state, CostAtom.Mana(it), sourceId, controllerId, manaPool, lifePurpose, abilityContext)
+            } ?: false
             is AbilityCost.Atom -> canPayAtom(state, cost.atom, sourceId, controllerId, manaPool, lifePurpose, abilityContext)
             is AbilityCost.Tap -> {
                 !state.getEntity(sourceId)!!.has<TappedComponent>()
@@ -273,6 +278,9 @@ class CostHandler(private val zones: ZoneTransitionService) {
             is AbilityCost.AttachedPermanentManaCost -> payAtom(
                 state, attachedManaCostAtom(state, sourceId), sourceId, controllerId, manaPool, choices, abilityContext
             )
+            is AbilityCost.OwnManaCost -> ownManaCostOrNull(state, sourceId)?.let {
+                payAtom(state, CostAtom.Mana(it), sourceId, controllerId, manaPool, choices, abilityContext)
+            } ?: CostPaymentResult.failure("It has no mana cost to pay")
             is AbilityCost.Atom -> payAtom(state, cost.atom, sourceId, controllerId, manaPool, choices, abilityContext)
             is AbilityCost.Tap -> {
                 // Route through the tap atom so the "{T}:" cost emits its TappedEvent — every
@@ -1939,3 +1947,12 @@ data class CostPaymentChoices(
      */
     val granterId: EntityId? = null
 )
+
+/**
+ * [sourceId]'s printed mana cost as [AbilityCost.OwnManaCost] prices it, or `null` when the object
+ * has no mana cost (CR 202.1b: a land, or a card printed without one) — an unpayable cost
+ * (CR 118.6). A printed {0} keeps its generic-zero symbol, so it stays payable; an {X} in it is 0
+ * (CR 107.3h).
+ */
+internal fun ownManaCostOrNull(state: GameState, sourceId: EntityId): com.wingedsheep.sdk.core.ManaCost? =
+    state.getEntity(sourceId)?.get<CardComponent>()?.manaCost?.takeIf { it.symbols.isNotEmpty() }?.withXAs(0)

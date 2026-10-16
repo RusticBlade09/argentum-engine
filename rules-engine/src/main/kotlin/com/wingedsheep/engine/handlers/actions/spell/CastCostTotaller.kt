@@ -438,6 +438,10 @@ internal class CastCostTotaller(
                 }
             } else null
         },
+        // Mutate (CR 702.140a) — the mutate cost instead of the mana cost.
+        AlternativeCostType.MUTATE to {
+            com.wingedsheep.engine.mechanics.MutateCasts.mutateOf(cardDef)?.let { priced(it.cost) }
+        },
         AlternativeCostType.EVOKE to {
             cardDef.keywordAbilities.filterIsInstance<KeywordAbility.Evoke>().firstOrNull()?.let { priced(it.cost) }
         },
@@ -457,6 +461,13 @@ internal class CastCostTotaller(
         AlternativeCostType.DASH to {
             cardDef.keywordAbilities.filterIsInstance<KeywordAbility.Dash>().firstOrNull()
                 ?.takeIf { zoneResolver.hasDashPermission(state, playerId, cardId) }
+                ?.let { priced(it.cost) }
+        },
+        // Blitz (CR 702.152a — hand, or a graveyard cast permission restricted to blitz). The bundled
+        // non-mana half (Tenacious Underdog's "Pay 2 life") is paid with the additional costs.
+        AlternativeCostType.BLITZ to {
+            cardDef.keywordAbilities.filterIsInstance<KeywordAbility.Blitz>().firstOrNull()
+                ?.takeIf { zoneResolver.hasBlitzPermission(state, playerId, cardId) }
                 ?.let { priced(it.cost) }
         },
         AlternativeCostType.IMPENDING to {

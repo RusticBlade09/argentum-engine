@@ -20,6 +20,7 @@ import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.identity.LifeTotalComponent
 import com.wingedsheep.engine.state.ZoneKey
 import com.wingedsheep.engine.state.components.identity.ControllerComponent
+import com.wingedsheep.engine.state.components.identity.OwnerComponent
 import com.wingedsheep.engine.state.components.player.LandDropsComponent
 import com.wingedsheep.engine.state.components.player.SkipDrawStepComponent
 import com.wingedsheep.sdk.core.Color
@@ -115,6 +116,21 @@ class DecisionResponder(
      * instead of toward the best *removal* target. Off is the historical removal-oriented ranking.
      */
     private val targetPolarityFromEffect: Boolean = false,
+    /**
+     * [AiProfile.selectionSeesWhoseCards]: a card choice off the battlefield is read by what the
+     * choice does to whom ([selectionFate]) — which player's card moves, and whether it leaves a
+     * hand or arrives in one — instead of by its prompt's wording. An opponent's discard or
+     * exile takes the card most valuable to *them*; our own takes our least valuable; a choice
+     * that hands us cards takes as many as it may. Off is the prompt-word routing.
+     */
+    private val selectionSeesWhoseCards: Boolean = false,
+    /**
+     * [AiProfile.topOrBottomWeighsTheDraw]: "put it on the top or bottom of its owner's library"
+     * keeps the card on top only when it is worth at least an average draw from that library
+     * ([CardSelectionValue], so a land-short hand digs for a land). Off is the simulation tie,
+     * which always resolved to the first option, the top.
+     */
+    private val topOrBottomWeighsTheDraw: Boolean = false,
 ) {
     private val priors: ChoicePriors? = if (informedChoices) ChoicePriors(simulator.cardRegistry) else null
 
@@ -242,9 +258,9 @@ class DecisionResponder(
             }
         if (decision.targetRequirements.size == 1) {
             val req = decision.targetRequirements.first()
-            if (req.exclusiveGroups != null) {
+            if (req.exclusiveGroups != null || req.distinctCategories != null) {
                 val picks = constrainedTargetSelection(decision.legalTargetsFor(req.index, emptyMap()), req.minTargets, req.maxTargets,
-                    req.selectionGroups, req.exclusiveGroups.orEmpty(), heuristicFor(req))
+                    req.selectionGroups, req.exclusiveGroups, heuristicFor(req), req.distinctCategories)
                 return TargetsResponse(decision.id, mapOf(req.index to picks))
             }
             val equalityGroups = req.selectionGroups
@@ -333,9 +349,9 @@ class DecisionResponder(
             )
             val heuristic = heuristicFor(req)
             val groups = req.selectionGroups
-            val answer = if (req.exclusiveGroups != null) {
+            val answer = if (req.exclusiveGroups != null || req.distinctCategories != null) {
                 constrainedTargetSelection(targets, req.minTargets, req.maxTargets, req.selectionGroups,
-                    req.exclusiveGroups.orEmpty(), heuristic)
+                    req.exclusiveGroups, heuristic, req.distinctCategories)
             } else if (groups != null) {
                 val answers = groups.flatMap { group ->
                     val ranked = group.filter { it in targets }.sortedByDescending { targetHeuristic(state, it, playerId) }
@@ -569,6 +585,10 @@ class DecisionResponder(
             return CardsSelectedResponse(decision.id, cardsBelowKeepThreshold(state, decision, playerId))
         }
 
+        if (selectionSeesWhoseCards && !isSearch && castabilityAwareCardSelection) {
+            selectionByFate(state, decision, playerId)?.let { return it }
+        }
+
         return when {
             isDiscard || isScryBottom -> {
                 // Pick cards we want LEAST (to discard / put on bottom)
@@ -612,6 +632,83 @@ class DecisionResponder(
                 CardsSelectedResponse(decision.id, ranked.take(min.coerceAtLeast(0)))
             }
         }
+    }
+
+    /** Who a card selection moves a card for, and whether that player gains or loses it. */
+    private data class SelectionFate(val player: EntityId, val gains: Boolean)
+
+    /** Re-entrancy guard: the probe's own simulation answers nested selections the old way. */
+    private var probingSelectionFate = false
+
+    /**
+     * What choosing a card in [decision] does, read off a simulation of choosing one: a card that
+     * leaves a hand for a graveyard, exile or a library is its owner's loss (a discard, Null
+     * Summoner's exile); a card that arrives in a hand, or on the battlefield, is a gain for its
+     * new holder (Seismic Sense's "put it into your hand"). Null when the options are permanents,
+     * span several owners, or the probe moves nothing before the next decision — the prompt-word
+     * routing answers those.
+     *
+     * The prompt cannot carry this: Tinybones' "each opponent discards a card" asks "Choose 1
+     * card", and the generic branch then *kept* the best card, i.e. discarded it.
+     */
+    private fun selectionFate(state: GameState, decision: SelectCardsDecision): SelectionFate? {
+        if (probingSelectionFate || decision.maxSelections <= 0) return null
+        val options = decision.options
+        if (options.isEmpty()) return null
+        val owners = options.map { id ->
+            val entity = state.getEntity(id)
+            entity?.get<OwnerComponent>()?.playerId ?: entity?.get<CardComponent>()?.ownerId
+        }
+        val owner = owners.first() ?: return null
+        if (owners.any { it != owner }) return null
+        val battlefield = state.getBattlefield().toSet()
+        if (options.any { it in battlefield }) return null
+
+        val probe = options.take(decision.minSelections.coerceAtLeast(1).coerceAtMost(decision.maxSelections))
+        val result = try {
+            probingSelectionFate = true
+            simulator.simulateDecision(state, CardsSelectedResponse(decision.id, probe))
+        } finally {
+            probingSelectionFate = false
+        }
+        if (result is SimulationResult.Illegal) return null
+        val move = result.events.filterIsInstance<ZoneChangeEvent>().firstOrNull { it.entityId == probe.first() }
+            ?: return null
+        return when {
+            move.fromZone == Zone.HAND && move.toZone in LOSS_ZONES -> SelectionFate(move.ownerId, gains = false)
+            move.toZone == Zone.HAND && move.fromZone != Zone.HAND -> SelectionFate(move.ownerId, gains = true)
+            move.toZone == Zone.BATTLEFIELD -> SelectionFate(
+                result.state.projectedState.getController(move.entityId) ?: move.ownerId, gains = true,
+            )
+            else -> null
+        }
+    }
+
+    /**
+     * [AiProfile.selectionSeesWhoseCards]: answer a card choice by [selectionFate] — the card
+     * valued from the point of view of the player it moves for. Null leaves the choice to the
+     * prompt-word routing.
+     */
+    private fun selectionByFate(state: GameState, decision: SelectCardsDecision, playerId: EntityId): CardsSelectedResponse? {
+        val fate = selectionFate(state, decision) ?: return null
+        val options = decision.options
+        val ours = fate.player == playerId
+        if (!ours && !state.isOpponentTo(fate.player, playerId)) return null
+        val holder = CardSelectionValue.of(state, fate.player, intents, denial = !ours && !fate.gains)
+        val scored = options.map { it to holder.score(it) }
+        val best = scored.sortedByDescending { it.second }.map { it.first }
+        val worst = scored.sortedBy { it.second }.map { it.first }
+        val selected = when {
+            // Our discard / exile: the cards we can best spare, as few as the decision allows.
+            ours && !fate.gains -> minimumLegalSelection(decision, worst)
+            // Cards coming to us: the best of them, as many as we may take.
+            ours -> best.take(decision.maxSelections)
+            // An opponent loses what we pick: what they would most want to keep, as many as allowed.
+            !fate.gains -> best.take(decision.maxSelections)
+            // An opponent gets what we pick: the least useful to them, as few as allowed.
+            else -> worst.take(decision.minSelections.coerceAtMost(decision.maxSelections))
+        }
+        return CardsSelectedResponse(decision.id, selected)
     }
 
     /**
@@ -959,6 +1056,9 @@ class DecisionResponder(
         playerId: EntityId
     ): DecisionResponse {
         if (decision.options.size == 1) return OptionChosenResponse(decision.id, 0)
+        if (topOrBottomWeighsTheDraw && castabilityAwareCardSelection) {
+            topOrBottomByDraw(state, decision)?.let { return it }
+        }
         if (priors != null) return respondOptionInformed(state, decision, playerId, priors)
 
         val best = decision.options.indices.maxByOrNull { index ->
@@ -968,6 +1068,30 @@ class DecisionResponder(
             )
         }!!
         return OptionChosenResponse(decision.id, best)
+    }
+
+    /**
+     * [AiProfile.topOrBottomWeighsTheDraw]: "its owner puts it on the top or bottom of their
+     * library" (Plan for All Outcomes). The card on top *is* the
+     * owner's next draw; on the bottom, the next draw is a random library card. So the card stays
+     * on top only when its [CardSelectionValue] (as a card drawn later) is at least the mean value
+     * of the library's cards — a land-short hand bottoms a spell to dig for the land it needs.
+     * The simulation can't tell the two apart (the library's order is not on the board), and its
+     * tie always fell to the first option, the top. Valued from the owner's side, who is the one
+     * choosing; null when the decision is not that choice or the library is empty.
+     */
+    private fun topOrBottomByDraw(state: GameState, decision: ChooseOptionDecision): OptionChosenResponse? {
+        val choice = (state.peekContinuation() as? Suspension)?.takeIf { it.question.id == decision.id }
+            ?.answer as? PutOnTopOrBottomContinuation ?: return null
+        val positions = choice.positions.takeIf { it.size == decision.options.size } ?: return null
+        val top = positions.indexOf(com.wingedsheep.sdk.scripting.effects.LibraryChoicePosition.Top)
+        val bottom = positions.indexOf(com.wingedsheep.sdk.scripting.effects.LibraryChoicePosition.Bottom)
+        if (top < 0 || bottom < 0) return null
+        val library = state.getZone(choice.ownerId, Zone.LIBRARY)
+        if (library.isEmpty()) return null
+        val value = CardSelectionValue.of(state, choice.ownerId, intents, drawnLater = true)
+        val averageDraw = library.sumOf { value.score(it) } / library.size
+        return OptionChosenResponse(decision.id, if (value.score(choice.cardId) >= averageDraw) top else bottom)
     }
 
     /**
@@ -1613,6 +1737,9 @@ class DecisionResponder(
          * coming (1.5 or less) and a spell several land draws away fall below it.
          */
         const val LOOK_KEEP_THRESHOLD = 2.0
+
+        /** Where a card that leaves a hand is lost to its owner ([selectionFate]). */
+        private val LOSS_ZONES = setOf(Zone.GRAVEYARD, Zone.EXILE, Zone.LIBRARY)
 
         val CREATURE_TYPES_LOWER: Set<String> = Subtype.ALL_CREATURE_TYPES.mapTo(HashSet()) { it.lowercase() }
     }

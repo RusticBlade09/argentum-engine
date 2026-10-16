@@ -1,5 +1,6 @@
 package com.wingedsheep.gameserver.session
 
+import com.wingedsheep.engine.legalactions.OwnStackStop
 import com.wingedsheep.engine.handlers.PredicateEvaluator
 import com.wingedsheep.engine.view.ClientEvent
 import com.wingedsheep.engine.view.ClientEventTransformer
@@ -369,7 +370,8 @@ class GameSession(
 
     data class StopOverrideSettings(
         val myTurnStops: Set<Step> = emptySet(),
-        val opponentTurnStops: Set<Step> = emptySet()
+        val opponentTurnStops: Set<Step> = emptySet(),
+        val ownStackStops: Set<OwnStackStop> = emptySet()
     )
 
     enum class PriorityMode {
@@ -1227,8 +1229,8 @@ class GameSession(
         }
 
         val stateWithLog = clientState.copy(gameLog = playerLog.toList())
-        val stopOverrideInfo = if (playerOverrides.myTurnStops.isNotEmpty() || playerOverrides.opponentTurnStops.isNotEmpty()) {
-            ServerMessage.StopOverrideInfo(playerOverrides.myTurnStops, playerOverrides.opponentTurnStops)
+        val stopOverrideInfo = if (playerOverrides != StopOverrideSettings()) {
+            ServerMessage.StopOverrideInfo(playerOverrides.myTurnStops, playerOverrides.opponentTurnStops, playerOverrides.ownStackStops)
         } else {
             null
         }
@@ -1322,9 +1324,14 @@ class GameSession(
      * Set per-step stop overrides for a player.
      * When a stop is set for a step, auto-pass will not skip that step.
      */
-    fun setStopOverrides(playerId: EntityId, myTurnStops: Set<Step>, opponentTurnStops: Set<Step>) {
-        stopOverrides[playerId] = StopOverrideSettings(myTurnStops, opponentTurnStops)
-        logger.info("Player $playerId set stop overrides: myTurn=$myTurnStops, opponentTurn=$opponentTurnStops")
+    fun setStopOverrides(
+        playerId: EntityId,
+        myTurnStops: Set<Step>,
+        opponentTurnStops: Set<Step>,
+        ownStackStops: Set<OwnStackStop> = emptySet()
+    ) {
+        stopOverrides[playerId] = StopOverrideSettings(myTurnStops, opponentTurnStops, ownStackStops)
+        logger.info("Player $playerId set stop overrides: myTurn=$myTurnStops, opponentTurn=$opponentTurnStops, ownStack=$ownStackStops")
     }
 
     /**
@@ -1437,7 +1444,7 @@ class GameSession(
             overrides
         }
 
-        return if (autoPassManager.shouldAutoPass(state, priorityPlayer, legalActions, effectiveOverrides.myTurnStops, effectiveOverrides.opponentTurnStops, stopsMode = playerMode == PriorityMode.STOPS)) {
+        return if (autoPassManager.shouldAutoPass(state, priorityPlayer, legalActions, effectiveOverrides.myTurnStops, effectiveOverrides.opponentTurnStops, stopsMode = playerMode == PriorityMode.STOPS, ownStackStops = effectiveOverrides.ownStackStops)) {
             priorityPlayer
         } else {
             null

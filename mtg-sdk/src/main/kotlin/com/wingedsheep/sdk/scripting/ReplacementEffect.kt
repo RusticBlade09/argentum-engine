@@ -1823,6 +1823,50 @@ data class LifeLossFloor(
 }
 
 /**
+ * Life loss of one [origin] becomes life gain: "You gain life rather than lose life from radiation"
+ * (Strong, the Brutish Thespian). The [appliesTo]-matching player gains that much life instead of
+ * losing it; the gain is an ordinary life-gain event, so life-gain modifiers, "can't gain life" and
+ * "whenever you gain life" triggers all see it. Anything else the losing effect does still happens
+ * (radiation still removes its rad counters).
+ *
+ * When `ModifyLifeLoss` replacements also apply, the affected player orders them (CR 616.1) and
+ * the engine takes the order that gains the most life: every increase applies before the
+ * conversion, and every reduction is left with no loss to modify.
+ *
+ * Scope: non-damage life loss from a `LoseLife` effect of the given [origin]
+ * (`LifeLossOrigin.RADIATION` is the inherent radiation trigger's). Damage-caused loss and life
+ * payments are never converted.
+ */
+@SerialName("GainLifeInsteadOfLosingLife")
+@Serializable
+data class GainLifeInsteadOfLosingLife(
+    val origin: com.wingedsheep.sdk.scripting.effects.LifeLossOrigin,
+    override val restrictions: List<Condition> = emptyList(),
+    override val appliesTo: EventPattern = EventPattern.LifeLossEvent(Player.You)
+) : ReplacementEffect {
+    override val description: String = buildString {
+        val restrictionDesc = restrictions.joinToString(" and ") { it.description.removePrefix("if ") }
+        if (restrictionDesc.isNotEmpty()) append(restrictionDesc.replaceFirstChar { it.uppercase() }).append(", ")
+        val who = when ((appliesTo as? EventPattern.LifeLossEvent)?.player) {
+            Player.You -> "you gain"
+            Player.EachOpponent -> "each opponent gains"
+            else -> "each player gains"
+        }
+        append(if (restrictionDesc.isEmpty()) who.replaceFirstChar { it.uppercase() } else who)
+        append(" life rather than lose life")
+        if (origin == com.wingedsheep.sdk.scripting.effects.LifeLossOrigin.RADIATION) append(" from radiation")
+    }
+
+    override fun applyTextReplacement(replacer: TextReplacer): ReplacementEffect {
+        val newAppliesTo = appliesTo.applyTextReplacement(replacer)
+        val newRestrictions = restrictions.map { it.applyTextReplacement(replacer) }
+        val anyChanged = newAppliesTo !== appliesTo ||
+            newRestrictions.zip(restrictions).any { (n, o) -> n !== o }
+        return if (anyChanged) copy(appliesTo = newAppliesTo, restrictions = newRestrictions) else this
+    }
+}
+
+/**
  * A life *payment* becomes an exile of that many cards off the top of the payer's library, so long
  * as the library is deep enough to cover it. Ashiok, Wicked Manipulator: "If you would pay life
  * while your library has at least that many cards in it, exile that many cards from the top of your
@@ -2010,7 +2054,11 @@ enum class ChoiceType {
     COLOR,
     /** Choose a creature type (e.g., Doom Cannon, Cover of Darkness) */
     CREATURE_TYPE,
-    /** Choose another creature you control (e.g., Dauntless Bodyguard) */
+    /**
+     * Choose a permanent on the battlefield — by default another creature you control (Dauntless
+     * Bodyguard); [EntersWithChoice.permanentFilter] widens it (Scheming Fence's "a nonland
+     * permanent"). Stored in [ChoiceSlot.CREATURE] whatever its type.
+     */
     CREATURE_ON_BATTLEFIELD,
     /**
      * Choose one of a card-defined set of named [ModeOption]s. Used for cards
@@ -2193,11 +2241,36 @@ data class EntersWithChoice(
      * every other choice type.
      */
     val excludedColors: Set<Color> = emptySet(),
+    /**
+     * When [choiceType] is [ChoiceType.CREATURE_ON_BATTLEFIELD], which permanents on the battlefield
+     * may be chosen, matched from the entering permanent's controller's point of view (so
+     * `youControl()` means "you control"). The entering object itself is never a candidate. `null`
+     * is the default "another creature you control" (Dauntless Bodyguard); Scheming Fence's "a
+     * nonland permanent" is [GameObjectFilter.NonlandPermanent]. Whatever the filter, the pick is
+     * stored in [ChoiceSlot.CREATURE] and read back through
+     * [com.wingedsheep.sdk.scripting.predicates.CardPredicate.ChosenBySource] /
+     * [com.wingedsheep.sdk.scripting.targets.EffectTarget.ChosenCreature]. Ignored for every other
+     * choice type.
+     */
+    val permanentFilter: GameObjectFilter? = null,
+    /**
+     * When true, the chooser may decline — "you may choose …" (Scheming Fence) — and the permanent
+     * enters with no choice recorded. Only [ChoiceType.CREATURE_ON_BATTLEFIELD] honours it. Not
+     * [ReplacementEffect.optional]: that one asks whether to apply the replacement at all, while
+     * the permanent enters either way and only the pick may be empty.
+     */
+    val mayChooseNothing: Boolean = false,
     override val appliesTo: EventPattern = EventPattern.ZoneChangeEvent(
         filter = GameObjectFilter.Any,
         to = Zone.BATTLEFIELD
     )
 ) : ReplacementEffect {
+    init {
+        require(choiceType == ChoiceType.CREATURE_ON_BATTLEFIELD || (permanentFilter == null && !mayChooseNothing)) {
+            "permanentFilter and mayChooseNothing apply only to ChoiceType.CREATURE_ON_BATTLEFIELD"
+        }
+    }
+
     override val description: String = when (choiceType) {
         ChoiceType.COLOR -> {
             val otherThan = if (excludedColors.isEmpty()) "" else
@@ -2213,7 +2286,14 @@ data class EntersWithChoice(
         } else {
             "As this permanent enters, choose a creature type"
         }
-        ChoiceType.CREATURE_ON_BATTLEFIELD -> "As this creature enters, choose another creature you control"
+        ChoiceType.CREATURE_ON_BATTLEFIELD -> if (permanentFilter == null && !mayChooseNothing) {
+            "As this creature enters, choose another creature you control"
+        } else {
+            val verb = if (mayChooseNothing) "you may choose" else "choose"
+            val what = permanentFilter?.let { "${it.indefiniteArticle} ${it.description}" }
+                ?: "another creature you control"
+            "As this permanent enters, $verb $what"
+        }
         ChoiceType.MODE -> {
             val labels = modeOptions.joinToString(" or ") { it.label }
             if (chooser == Player.AnOpponent) {
@@ -2247,7 +2327,9 @@ data class EntersWithChoice(
 
     override fun applyTextReplacement(replacer: TextReplacer): ReplacementEffect {
         val newAppliesTo = appliesTo.applyTextReplacement(replacer)
-        return if (newAppliesTo !== appliesTo) copy(appliesTo = newAppliesTo) else this
+        val newFilter = permanentFilter?.applyTextReplacement(replacer)
+        return if (newAppliesTo !== appliesTo || newFilter !== permanentFilter)
+            copy(appliesTo = newAppliesTo, permanentFilter = newFilter) else this
     }
 }
 

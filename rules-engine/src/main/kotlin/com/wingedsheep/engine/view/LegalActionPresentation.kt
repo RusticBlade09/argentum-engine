@@ -25,6 +25,8 @@ data class LegalActionTargetInfo(
     /** Server-computed choices keyed by the comma-joined earlier target IDs, in slot order. */
     val selectionGroups: List<List<EntityId>>? = null,
     val exclusiveGroups: List<List<EntityId>>? = null,
+    /** Each valid target's claimable categories; picks must each claim a different one ("of each color"). */
+    val distinctCategories: Map<EntityId, List<String>>? = null,
     val validTargetsByPrefix: Map<String, List<EntityId>>? = null,
     val targetZone: String? = null,
     /**
@@ -303,6 +305,9 @@ data class AdditionalCostInfo(
     val costType: String,
     val validSacrificeTargets: List<EntityId> = emptyList(),
     val sacrificeCount: Int = 1,
+    /** Casualty X: the sacrifice needs power at least the chosen X — see
+     *  [com.wingedsheep.engine.legalactions.AdditionalCostData.sacrificeMinPowerIsX]. */
+    val sacrificeMinPowerIsX: Boolean = false,
     /** Emerge (CR 702.119): the mana cost left after sacrificing each candidate — see
      *  [com.wingedsheep.engine.legalactions.AdditionalCostData.costAfterSacrifice]. Empty otherwise. */
     val costAfterSacrifice: Map<EntityId, String> = emptyMap(),

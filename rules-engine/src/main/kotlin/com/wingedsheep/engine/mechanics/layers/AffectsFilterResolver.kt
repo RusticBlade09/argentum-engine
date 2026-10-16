@@ -628,7 +628,8 @@ internal class AffectsFilterResolver(
             com.wingedsheep.engine.handlers.predicates.sharesNameWithSpellCastThisTurn(
                 state, projectedValues[entityId]?.name ?: container.get<CardComponent>()?.name
             )
-        StatePredicate.WasDealtDamageThisTurn -> container.has<WasDealtDamageThisTurnComponent>()
+        is StatePredicate.WasDealtDamageThisTurn ->
+            container.get<WasDealtDamageThisTurnComponent>()?.matches(predicate.damageType) == true
         // Damage history — plain per-entity state with no source-relative half, so a group static
         // gated on "each creature that dealt damage this turn" resolves during projection and gives
         // the identical answer to PredicateEvaluator's.
@@ -1097,6 +1098,7 @@ internal class AffectsFilterResolver(
         CardPredicate.SharesCreatureTypeWithSource,
         CardPredicate.SharesCreatureTypeWithTriggeringEntity,
         CardPredicate.ConvokedSource,
+        CardPredicate.ChosenBySource,
         CardPredicate.HasChosenSubtype,
         CardPredicate.SharesChosenColorWithSource,
         CardPredicate.SharesColorWithRecipient,

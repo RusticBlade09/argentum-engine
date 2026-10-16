@@ -207,6 +207,8 @@ internal class CastValidator(
         }
         if (com.wingedsheep.engine.mechanics.BestowCasts.selected(action) &&
             (action.castFaceDown || action.faceIndex != null || action.castFused)) return "Bestow cannot be combined with another face or face-down casting"
+        if (com.wingedsheep.engine.mechanics.MutateCasts.selected(action) &&
+            (action.castFaceDown || action.faceIndex != null || action.castFused || action.castPrototyped)) return "Mutate cannot be combined with another face or face-down casting"
         if (action.castPrototyped) {
             if (action.castFaceDown || action.faceIndex != null || action.castFused || com.wingedsheep.engine.mechanics.BestowCasts.selected(action)) {
                 return "A prototyped spell is cast with its own characteristics only"
@@ -776,6 +778,10 @@ internal class CastValidator(
             state.getEntity(action.cardId)?.has<PlayWithFixedAlternativeManaCostComponent>() == true)) {
             return "Bestow cannot be combined with another alternative cost"
         }
+        if (com.wingedsheep.engine.mechanics.MutateCasts.selected(action) && (playForFree ||
+            state.getEntity(action.cardId)?.has<PlayWithFixedAlternativeManaCostComponent>() == true)) {
+            return "Mutate cannot be combined with another alternative cost"
+        }
         // The engine, not the client, decides what a convoke/delve/improvise choice is worth: every
         // chosen permanent or card must be one the payment could actually use, or the cost stage
         // would price a payment `execute` then silently declines to apply. A free cast has no
@@ -1011,7 +1017,7 @@ internal class CastValidator(
         action: CastSpell,
         cardDef: com.wingedsheep.sdk.model.CardDefinition
     ): String? {
-        val threshold = grantedKeywordResolver.casualtyThreshold(state, action.playerId, cardDef, action.cardId)
+        val casualty = grantedKeywordResolver.casualty(state, action.playerId, cardDef, action.cardId)
             ?: return "This spell does not have casualty"
         val creatureId = action.casualtyCreature ?: return "Casualty requires a creature to sacrifice"
         val projected = state.projectedState
@@ -1022,6 +1028,10 @@ internal class CastValidator(
         }
         if (!projected.isCreature(creatureId)) return "Casualty requires a creature"
         val power = projected.getPower(creatureId) ?: 0
+        // Casualty X: the announced X (CR 601.2b) is the threshold; unannounced, X is the
+        // sacrificed creature's power — the largest X that creature pays for.
+        val threshold = casualty.threshold ?: (action.xValue ?: power)
+        if (casualty.isVariable && threshold < 0) return "Casualty X can't be negative"
         if (power < threshold) return "Casualty creature must have power $threshold or greater"
         return null
     }

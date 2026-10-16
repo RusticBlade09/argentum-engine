@@ -107,6 +107,7 @@ data class SpellOnStackComponent(
     val alternativeCost: com.wingedsheep.engine.core.AlternativeCostType? = null,
     val wasWarped: Boolean = false,  // For warp - permanent is exiled at end step
     val wasDashed: Boolean = false,  // For dash (CR 702.109) - permanent gains haste, returns to hand at next end step
+    val wasBlitzed: Boolean = false,  // For blitz (CR 702.152) - permanent has haste + "dies: draw a card", sacrificed at next end step
     val wasEvoked: Boolean = false,  // For evoke - permanent is sacrificed on ETB
     val wasImpending: Boolean = false,  // For impending - permanent enters with time counters and isn't a creature until they're gone
     val wasOverloaded: Boolean = false,  // For overload (CR 702.96) - spell has no targets and resolves with its "each" variant
@@ -672,12 +673,15 @@ data class SpellGrantedKeywordsComponent(
  * controller's turn). The spell-copy sibling of the same fields on
  * `CreateTokenCopyOfTargetEffect`; used for "Copy target creature spell you control. The copy gains
  * haste and 'At the beginning of the end step, sacrifice this token.'" (Choreographed Sparks).
+ * [startingLoyalty], when set, is the loyalty a planeswalker token enters with in place of the
+ * printed one ("The copy … has starting loyalty X", casualty X on Ob Nixilis, the Adversary).
  */
 @Serializable
 data class SpellCopyTokenRidersComponent(
     val addedKeywords: Set<Keyword> = emptySet(),
     val sacrificeAtStep: Step? = null,
-    val sacrificeOnlyOnControllersTurn: Boolean = false
+    val sacrificeOnlyOnControllersTurn: Boolean = false,
+    val startingLoyalty: Int? = null
 ) : Component
 
 /**

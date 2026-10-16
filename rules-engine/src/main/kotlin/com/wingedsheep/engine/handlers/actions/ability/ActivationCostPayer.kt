@@ -549,8 +549,20 @@ internal class ActivationCostPayer(
         // `CardPredicate.AbilitySourceMatches` in PredicateEvaluator. Reading the *projected* type
         // line here also gets the animated-artifact / crewed-Vehicle source right.
         //
+        // A source exiled from the graveyard (scavenge) has no projection to read, so its power and
+        // toughness are recorded as it last existed there — a characteristic-defining P/T is
+        // evaluated now, before the exile that may change it (Young Deathclaws ruling 2024-03-08:
+        // "based on the card's power as it last existed in the graveyard").
         val lastKnownSourceSnapshot: EntitySnapshot? =
-            if (movesSource) captureLastKnown(state, action.sourceId) else null
+            if (movesSource) captureLastKnown(state, action.sourceId).let { snapshot ->
+                if (action.sourceId in state.getBattlefield()) snapshot
+                else snapshot.copy(
+                    power = snapshot.power
+                        ?: predicateEvaluator.amounts.offBattlefieldStat(state, action.sourceId, isPower = true),
+                    toughness = snapshot.toughness
+                        ?: predicateEvaluator.amounts.offBattlefieldStat(state, action.sourceId, isPower = false),
+                )
+            } else null
 
         // Snapshot the entity ids attached to the source before a self-exile / self-sacrifice cost
         // moves it off the battlefield (CR 113.7a). The host's live AttachmentsComponent is gone by

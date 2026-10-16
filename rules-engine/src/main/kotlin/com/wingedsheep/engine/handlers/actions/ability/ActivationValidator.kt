@@ -108,7 +108,7 @@ internal class ActivationValidator(
 
         // Apply text-changing effects to cost and target filters
         val textReplacement = com.wingedsheep.engine.state.components.identity.TextChanges.of(state, action.sourceId)
-        val effectiveCost = costTotaller.totalForValidation(state, action, ability, textReplacement)
+        val effectiveCost = costTotaller.total(state, action, ability, textReplacement)
         modalChoices.validate(state, action, ability.effect)?.let { return it }
         val modal = (ability.effect as? com.wingedsheep.sdk.scripting.effects.ModalEffect)
         val allRequirements = ability.targetRequirements + action.chosenModes.orEmpty().flatMap {

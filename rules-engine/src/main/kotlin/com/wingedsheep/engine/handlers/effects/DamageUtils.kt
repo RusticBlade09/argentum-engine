@@ -74,8 +74,10 @@ import com.wingedsheep.sdk.scripting.DoubleDamage
 import com.wingedsheep.sdk.scripting.EventPattern
 import com.wingedsheep.sdk.scripting.HealOtherDamage
 import com.wingedsheep.sdk.scripting.ModifyDamageAmount
+import com.wingedsheep.sdk.scripting.GainLifeInsteadOfLosingLife
 import com.wingedsheep.sdk.scripting.LifeLossFloor
 import com.wingedsheep.sdk.scripting.ModifyLifeLoss
+import com.wingedsheep.sdk.scripting.effects.LifeLossOrigin
 import com.wingedsheep.sdk.scripting.PreventDamage
 import com.wingedsheep.sdk.scripting.PreventLifeGain
 import com.wingedsheep.sdk.scripting.RedirectDamage
@@ -472,7 +474,7 @@ object DamageUtils {
             lifeLossAmount = applyLifeLossFloors(newState, targetId, currentLife, lifeLossAmount, predicateEvaluator = zones.predicateEvaluator)
             val newLife = currentLife - lifeLossAmount
             newState = newState.withLifeTotal(targetId, newLife)
-            newState = trackDamageReceivedByPlayer(newState, targetId, effectiveAmount, sourceId)
+            newState = trackDamageReceivedByPlayer(newState, targetId, effectiveAmount, sourceId, isCombatDamage)
             events.add(LifeChangedEvent(targetId, currentLife, newLife, LifeChangeReason.DAMAGE))
         } else if (projected.isPlaneswalker(targetId)) {
             // It's a planeswalker - remove loyalty counters equal to damage dealt
@@ -596,7 +598,7 @@ object DamageUtils {
             }
         }
 
-        newState = newState.updateEntity(targetId) { it.with(WasDealtDamageThisTurnComponent) }
+        newState = newState.updateEntity(targetId) { WasDealtDamageThisTurnComponent.markedOn(it, isCombatDamage) }
         newState = trackDamageDealt(newState, sourceId, effectiveAmount, isCombatDamage)
         // Record the source on its controller's per-turn set of damage sources. Unlike the stamp
         // above this is not battlefield-only: a resolving burn spell is a source that dealt damage
@@ -732,7 +734,13 @@ object DamageUtils {
      * Used for Final Punishment: "Target player loses life equal to the damage
      * already dealt to that player this turn."
      */
-    fun trackDamageReceivedByPlayer(state: GameState, playerId: EntityId, amount: Int, sourceId: EntityId? = null): GameState {
+    fun trackDamageReceivedByPlayer(
+        state: GameState,
+        playerId: EntityId,
+        amount: Int,
+        sourceId: EntityId? = null,
+        isCombatDamage: Boolean = false
+    ): GameState {
         if (amount <= 0) return state
         // Every path that deals damage to a player — combat and noncombat alike — funnels through
         // here, so it is the one place to record the source's "has dealt damage to this player this
@@ -756,8 +764,8 @@ object DamageUtils {
                 ?: com.wingedsheep.engine.state.components.player.DamageReceivedThisTurnComponent()
             val existingLifeLost = container.get<com.wingedsheep.engine.state.components.player.LifeLostAmountThisTurnComponent>()
                 ?: com.wingedsheep.engine.state.components.player.LifeLostAmountThisTurnComponent()
-            var updated = container.with(com.wingedsheep.engine.state.components.player.DamageReceivedThisTurnComponent(existing.amount + amount))
-                .with(WasDealtDamageThisTurnComponent)
+            var updated = WasDealtDamageThisTurnComponent.markedOn(container, isCombatDamage)
+                .with(com.wingedsheep.engine.state.components.player.DamageReceivedThisTurnComponent(existing.amount + amount))
                 .with(com.wingedsheep.engine.state.components.player.LifeLostThisTurnComponent)
                 .with(
                     com.wingedsheep.engine.state.components.player.LifeLostAmountThisTurnComponent(
@@ -861,6 +869,17 @@ object DamageUtils {
             applyStaticLifeLossModification(state, playerId, amount, predicateEvaluator = predicateEvaluator)
         } else {
             amount
+        }
+        if (applyLifeLossModification && amount > 0 &&
+            lifeLossBecomesGain(state, playerId, reason, predicateEvaluator)) {
+            // GainLifeInsteadOfLosingLife (Strong, the Brutish Thespian): the affected player orders
+            // it against ModifyLifeLoss (CR 616.1) — the increases first, then the conversion, which
+            // leaves every reduction with no loss to modify.
+            var gain = amount
+            forEachLifeLossReplacement<ModifyLifeLoss>(state, playerId, predicateEvaluator, { it.restrictions }) {
+                if (it.multiplier >= 1 && it.modifier >= 0) gain = gain * it.multiplier + it.modifier
+            }
+            return gainLife(state, playerId, gain, predicateEvaluator = predicateEvaluator)
         }
         val newLife = currentLife - lossAmount
         var newState = state.withLifeTotal(playerId, newLife)
@@ -2887,6 +2906,29 @@ object DamageUtils {
             if (modifiedAmount < 0) modifiedAmount = 0
         }
         return modifiedAmount
+    }
+
+    /**
+     * Whether a [GainLifeInsteadOfLosingLife] turns [playerId]'s non-damage life loss, tagged
+     * [reason], into life gain. The effect's origin is read off the reason: `RADIATION` for the
+     * inherent radiation trigger, `LIFE_LOSS` for every other `LoseLife` effect.
+     */
+    private fun lifeLossBecomesGain(
+        state: GameState,
+        playerId: EntityId,
+        reason: LifeChangeReason,
+        predicateEvaluator: PredicateEvaluator
+    ): Boolean {
+        val origin = when (reason) {
+            LifeChangeReason.RADIATION -> LifeLossOrigin.RADIATION
+            LifeChangeReason.LIFE_LOSS -> LifeLossOrigin.EFFECT
+            else -> return false
+        }
+        var converts = false
+        forEachLifeLossReplacement<GainLifeInsteadOfLosingLife>(state, playerId, predicateEvaluator, { it.restrictions }) {
+            if (it.origin == origin) converts = true
+        }
+        return converts
     }
 
     /**

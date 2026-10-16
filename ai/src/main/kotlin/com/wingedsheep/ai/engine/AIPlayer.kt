@@ -276,6 +276,8 @@ class AIPlayer(
                 discountedRaceClock = profile.discountedRaceClock,
                 creatureValuation = profile.creatureValuation.copy(
                     walkersFaceTheNextAttack = profile.defendPlaneswalkers,
+                    grantedLoyaltyAbilities = profile.spendFuelWalkers,
+                    walkersAsEngines = profile.walkersPricedAsEngines,
                 ),
                 priceLandsInHandAsMana = profile.priceLandsInHandAsMana,
                 evasionAfterAttacking = profile.evasionAfterAttacking,
@@ -291,6 +293,10 @@ class AIPlayer(
                 attackPlaneswalkers = profile.attackPlaneswalkers,
                 defendPlaneswalkers = profile.defendPlaneswalkers,
                 chumpForTheClock = profile.chumpForTheClock,
+                walkerEngines = if (profile.walkersPricedAsEngines) IntentCatalog.of(cardRegistry) else null,
+                stackChumpsOnTramplers = profile.stackChumpsOnTramplers,
+                attacksReadTheRace = profile.attacksReadTheRace,
+                raceWeight = EvalWeights.resolve(profile.evalWeightsId).threatAssessment,
             )
             val responder = DecisionResponder(
                 simulator, evaluator,
@@ -305,6 +311,8 @@ class AIPlayer(
                 combatAdvisor = combatAdvisor.takeIf { profile.pumpsNeedAPlannedAttack },
                 surplusAwareLands = profile.surplusAwareLands,
                 targetPolarityFromEffect = profile.targetPolarityFromEffect,
+                selectionSeesWhoseCards = profile.selectionSeesWhoseCards,
+                topOrBottomWeighsTheDraw = profile.topOrBottomWeighsTheDraw,
             )
 
             // Wire up the decision resolver so simulations can resolve non-trivial
@@ -340,11 +348,15 @@ class AIPlayer(
                     permanentCastIsNotCardLoss = profile.permanentCastIsNotCardLoss,
                     fuelLoyaltyIsNotBoardValue = profile.fuelLoyaltyIsNotBoardValue,
                     defendPlaneswalkers = profile.defendPlaneswalkers,
+                    spendFuelWalkers = profile.spendFuelWalkers,
                     landDropUnlocksSpells = profile.landDropUnlocksSpells,
                     activatedPumpsNeedAPlannedAttack = profile.activatedPumpsNeedAPlannedAttack,
                     enablersFirst = profile.enablersFirst,
                     precombatPumpsForThePlan = profile.precombatPumpsForThePlan,
                     holdInstantSpeedDeploys = profile.holdInstantSpeedDeploys,
+                    taxCountersReadTheirMana = profile.taxCountersReadTheirMana,
+                    refuseWastedPayoffs = profile.refuseWastedPayoffs,
+                    convokeLandsFirst = profile.convokeLandsFirst,
                     // Same seam as `CombatAdvisor`'s `lifeWeight`: a raw Phase 9 profile resolves
                     // to the compiled fallback here, which is the right answer for a policy that
                     // only needs to know what a point of board value trades against.

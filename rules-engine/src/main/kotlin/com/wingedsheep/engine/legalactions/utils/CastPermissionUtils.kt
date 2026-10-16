@@ -624,8 +624,8 @@ class CastPermissionUtils(
      * so the two always agree. Applied before [applyFreeFirstEquipDiscount].
      *
      * [equipTargetId] is the creature the equip ability targets, when known. A target-restricted
-     * grant ([ReduceEquipCost.onlyIfTargetIsSource]) only reduces the cost when the equip targets
-     * the permanent bearing the grant. Pass the chosen target at payment time so the paid cost is
+     * grant ([ReduceEquipCost.targetFilter]) only reduces the cost when the equip's target matches
+     * its filter. Pass the chosen target at payment time so the paid cost is
      * exact; pass `null` at enumeration (before the target is chosen) to offer the discount
      * optimistically.
      *
@@ -755,7 +755,7 @@ class CastPermissionUtils(
                     is com.wingedsheep.sdk.scripting.ConditionalStaticAbility -> {
                         val inner = ability.ability as? com.wingedsheep.sdk.scripting.ReduceEquipCost ?: continue
                         if (!countsForSource(inner)) continue
-                        if (!equipReductionApplies(state, entityId, inner, equipTargetId)) continue
+                        if (!equipReductionApplies(state, playerId, entityId, inner, equipTargetId)) continue
                         val context = com.wingedsheep.engine.handlers.EffectContext(
                             sourceId = entityId,
                             controllerId = playerId
@@ -764,7 +764,7 @@ class CastPermissionUtils(
                     }
                     is com.wingedsheep.sdk.scripting.ReduceEquipCost ->
                         if (countsForSource(ability) &&
-                            equipReductionApplies(state, entityId, ability, equipTargetId)) total += ability.amount
+                            equipReductionApplies(state, playerId, entityId, ability, equipTargetId)) total += ability.amount
                     else -> {}
                 }
             }
@@ -775,21 +775,26 @@ class CastPermissionUtils(
     /**
      * Whether a [ReduceEquipCost] grant borne by [sourceId] applies to an equip activation.
      * Unrestricted grants (Éowyn) always apply. A target-restricted grant
-     * ([ReduceEquipCost.onlyIfTargetIsSource], Cloud) applies only when the equip targets the
-     * source permanent: at payment ([equipTargetId] known) the ids must match; at enumeration
-     * ([equipTargetId] null) it applies optimistically whenever the source is currently a
-     * creature — i.e. a permanent the controller could legally choose as the equip's target — so
-     * the discounted cost is never withheld before the target is chosen.
+     * ([ReduceEquipCost.targetFilter] — Cloud's "that target ~", Strong Back's "that target
+     * enchanted creature") applies only when the equip's target matches the filter, evaluated
+     * relative to the grant's bearer: at payment ([equipTargetId] known) the chosen target must
+     * match; at enumeration ([equipTargetId] null) it applies optimistically whenever some creature
+     * [playerId] controls — a permanent they could choose as the equip's target — matches, so the
+     * discounted cost is never withheld before the target is chosen.
      */
     private fun equipReductionApplies(
         state: GameState,
+        playerId: EntityId,
         sourceId: EntityId,
         grant: com.wingedsheep.sdk.scripting.ReduceEquipCost,
         equipTargetId: EntityId?
     ): Boolean {
-        if (!grant.onlyIfTargetIsSource) return true
-        return if (equipTargetId != null) equipTargetId == sourceId
-        else state.projectedState.isCreature(sourceId)
+        val filter = grant.targetFilter ?: return true
+        val projected = state.projectedState
+        val context = PredicateContext(controllerId = playerId, sourceId = sourceId)
+        fun matches(id: EntityId) = predicateEvaluator.matches(state, projected, id, filter, context)
+        return if (equipTargetId != null) matches(equipTargetId)
+        else state.controlledBattlefield(playerId).any { projected.isCreature(it) && matches(it) }
     }
 
     /**
@@ -1657,7 +1662,9 @@ class CastPermissionUtils(
      * Resolve [com.wingedsheep.sdk.scripting.GainActivatedAbilitiesOfPermanents] grants for
      * [entityId]: for every battlefield permanent bearing this static whose `grantedTo` filter
      * matches [entityId], copy the printed activated abilities of every permanent matching its
-     * `sourceFilter` (dropping mana abilities unless `includeManaAbilities`). The granter is the
+     * `sourceFilter` (dropping mana abilities unless `includeManaAbilities`, and loyalty abilities
+     * when `includeLoyaltyAbilities` is off; with `spendAsThoughAnyColor`, each copy's colored mana
+     * requirements are relaxed so any mana pays them — `{C}` stays strict). The granter is the
      * permanent bearing the static (e.g., Sharkey), so a copied ability's `SacrificeSelf` / `{T}`
      * refers to the gainer — CR 113.7 (the source of an ability is the object that generated it).
      */
@@ -1714,7 +1721,13 @@ class CastPermissionUtils(
                     for (copied in com.wingedsheep.engine.state.components.identity.ownActivatedAbilities(sourceCard, sourceDef, sourceClassLevel)) {
                         if (copied.activateFromZone != com.wingedsheep.sdk.core.Zone.BATTLEFIELD) continue
                         if (!gain.includeManaAbilities && copied.isManaAbility) continue
-                        result.add(StaticGrantedAbility(copied, granterId))
+                        if (!gain.includeLoyaltyAbilities && copied.isPlaneswalkerAbility) continue
+                        // "You may spend mana as though it were mana of any color to activate those
+                        // abilities" reaches only these copies, not other abilities of the gainer.
+                        val granted = if (gain.spendAsThoughAnyColor) {
+                            copied.copy(cost = mapAbilityMana(copied.cost) { it.relaxColoredRequirements() })
+                        } else copied
+                        result.add(StaticGrantedAbility(granted, granterId))
                     }
                 }
             }
@@ -1726,9 +1739,11 @@ class CastPermissionUtils(
      * Every [com.wingedsheep.sdk.scripting.SpendAnyManaTypeForActivatedAbilities] static on the
      * battlefield that applies to [sourceId] — i.e. that relaxes the mana portion of [sourceId]'s
      * activated-ability costs (CR 118.14 / 609.4b). The list, rather than a boolean, because the
-     * static has two strengths: `substituteColor == null` is Sharkey's "mana of any type can be
-     * spent", and a color is Quicksilver Elemental's narrower "you may spend blue mana as though it
-     * were mana of any color". [relaxAbilityCostColorsIfAny] picks the strongest that applies.
+     * static has three strengths: `substituteColor == null` is Sharkey's "mana of any type can be
+     * spent", the same with `asThoughAnyColor` is Agatha's Soul Cauldron's "as though it were mana
+     * of any color" (`{C}` stays strict), and a color is Quicksilver Elemental's narrower "you may
+     * spend blue mana as though it were mana of any color". [relaxAbilityCostColorsIfAny] picks the
+     * strongest that applies.
      */
     fun spendRelaxationsForAbilities(
         state: GameState,
@@ -1781,15 +1796,19 @@ class CastPermissionUtils(
      * pass only widens colored pips into hybrids.
      */
     /**
-     * Lower [AbilityCost.AttachedPermanentManaCost] to a concrete mana cost read off the permanent
-     * the source is attached to (Merseine's "Pay enchanted creature's mana cost"), so every path
-     * that prices, displays or pays the cost sees a plain [CostAtom.Mana]. Mirrors
+     * Lower the costs that name another object's mana cost to a concrete [CostAtom.Mana], so every
+     * path that prices, displays or pays the cost sees a plain mana atom. Mirrors
      * `CostPaymentService.resolve`'s treatment of `PayCost.OwnManaCost`.
      *
-     * An unattached source — or one attached to a permanent with no mana cost, such as a land —
-     * lowers to an empty cost, which is {0} and trivially payable.
+     * - [AbilityCost.AttachedPermanentManaCost] reads the permanent the source is attached to
+     *   (Merseine's "Pay enchanted creature's mana cost"). An unattached source — or one attached
+     *   to a permanent with no mana cost, such as a land — lowers to an empty cost, {0}.
+     * - [AbilityCost.OwnManaCost] reads the source itself (a scavenge ability whose "cost is equal
+     *   to its mana cost", Young Deathclaws). A source with no mana cost — a land, or a card printed
+     *   without one — is left un-lowered: such a cost can't be paid (CR 118.6), and the cost
+     *   handler reports it unpayable. A printed {0} lowers to {0}.
      */
-    fun lowerAttachedManaCost(
+    fun lowerReferencedManaCost(
         state: GameState,
         sourceId: EntityId,
         cost: AbilityCost
@@ -1802,8 +1821,11 @@ class CastPermissionUtils(
                 val manaCost = attachedTo
                     ?.let { state.getEntity(it)?.get<CardComponent>()?.manaCost }
                     ?: com.wingedsheep.sdk.core.ManaCost(emptyList())
-                AbilityCost.Atom(CostAtom.Mana(manaCost))
+                // A permanent's {X} is 0 (CR 107.3h).
+                AbilityCost.Atom(CostAtom.Mana(manaCost.withXAs(0)))
             }
+            is AbilityCost.OwnManaCost -> com.wingedsheep.engine.handlers.ownManaCostOrNull(state, sourceId)
+                ?.let { AbilityCost.Atom(CostAtom.Mana(it)) } ?: c
             is AbilityCost.Composite -> AbilityCost.Composite(c.costs.map { lower(it) })
             else -> c
         }
@@ -1821,24 +1843,37 @@ class CastPermissionUtils(
         // activator's, applied after the spend relaxations so a widened pip keeps its life option.
         val lifePayable = com.wingedsheep.engine.mechanics.mana.LifePayableMana.colors(state, cardRegistry, payerId)
         if (relaxations.isEmpty() && lifePayable.isEmpty()) return cost
-        val anyType = relaxations.any { it.substituteColor == null }
+        val anyType = relaxations.any { it.substituteColor == null && !it.asThoughAnyColor }
+        val anyColor = relaxations.any { it.substituteColor == null && it.asThoughAnyColor }
         val substitutes = relaxations.mapNotNull { it.substituteColor }.distinct()
         fun relax(mana: com.wingedsheep.sdk.core.ManaCost): com.wingedsheep.sdk.core.ManaCost {
-            val spendRelaxed = if (anyType) mana.relaxColors()
-                else substitutes.fold(mana) { acc, color -> acc.relaxColorsTo(color) }
+            // Strongest first: any type relaxes {C} too; any color leaves {C} — colorless is a
+            // type, not one of the five colors of mana (CR 106.1a, 106.1b) — and already subsumes every
+            // single-color substitution.
+            val spendRelaxed = when {
+                anyType -> mana.relaxColors()
+                anyColor -> mana.relaxColoredRequirements()
+                else -> substitutes.fold(mana) { acc, color -> acc.relaxColorsTo(color) }
+            }
             return lifePayable.fold(spendRelaxed) { acc, color -> acc.withLifePayable(color) }
         }
-        return when (cost) {
-            is AbilityCost.Atom -> {
-                val mana = cost.manaCostOrNull ?: return cost
-                AbilityCost.Atom(CostAtom.Mana(relax(mana)))
-            }
-            is AbilityCost.Composite -> AbilityCost.Composite(cost.costs.map { sub ->
-                val mana = sub.manaCostOrNull
-                if (mana != null) AbilityCost.Atom(CostAtom.Mana(relax(mana))) else sub
-            })
-            else -> cost
+        return mapAbilityMana(cost, ::relax)
+    }
+
+    /** [cost] with its mana portion (a lone mana atom or each one in a composite) rewritten by [f]. */
+    private fun mapAbilityMana(
+        cost: AbilityCost,
+        f: (com.wingedsheep.sdk.core.ManaCost) -> com.wingedsheep.sdk.core.ManaCost,
+    ): AbilityCost = when (cost) {
+        is AbilityCost.Atom -> {
+            val mana = cost.manaCostOrNull
+            if (mana == null) cost else AbilityCost.Atom(CostAtom.Mana(f(mana)))
         }
+        is AbilityCost.Composite -> AbilityCost.Composite(cost.costs.map { sub ->
+            val mana = sub.manaCostOrNull
+            if (mana != null) AbilityCost.Atom(CostAtom.Mana(f(mana))) else sub
+        })
+        else -> cost
     }
 
     /**

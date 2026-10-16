@@ -1,5 +1,6 @@
 package com.wingedsheep.gameserver.protocol
 
+import com.wingedsheep.engine.legalactions.OwnStackStop
 import com.wingedsheep.sdk.core.Step
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.model.PrintingRef
@@ -500,12 +501,15 @@ sealed interface ClientMessage {
     /**
      * Set per-step stop overrides for the current game.
      * When a stop is set for a step, auto-pass will not skip that step (even if it normally would).
+     * [ownStackStops] keeps priority over the player's own triggers / abilities / spells when they
+     * can respond, instead of auto-passing them (absent from older clients: none).
      */
     @Serializable
     @SerialName("setStopOverrides")
     data class SetStopOverrides(
         val myTurnStops: Set<Step>,
-        val opponentTurnStops: Set<Step>
+        val opponentTurnStops: Set<Step>,
+        val ownStackStops: Set<OwnStackStop> = emptySet()
     ) : ClientMessage
 
     /**

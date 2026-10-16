@@ -174,11 +174,13 @@ class ActivatedAbilityEnumerator(
                 // Bracelet — "{X} less, where X is this creature's power"). Then apply Forge Anew's
                 // free-first-equip discount, so the displayed cost and affordability reflect the {0}
                 // the player will actually pay.
-                val costWithDefinedX =
-                    context.castPermissionUtils.applyDefinedXValue(rawCost, ability, state, entityId, playerId)
-                val effectiveCost = context.castPermissionUtils.lowerAttachedManaCost(
-                    state, entityId,
-                    context.castPermissionUtils.relaxAbilityCostColorsIfAny(
+                // A cost naming a mana cost (Merseine's "enchanted creature's mana cost") is priced
+                // first, so the reductions below see the mana they apply to — as the totaller does.
+                val costWithDefinedX = context.castPermissionUtils.applyDefinedXValue(
+                    context.castPermissionUtils.lowerReferencedManaCost(state, entityId, rawCost),
+                    ability, state, entityId, playerId
+                )
+                val effectiveCost = context.castPermissionUtils.relaxAbilityCostColorsIfAny(
                     state, entityId,
                     context.castPermissionUtils.applyFreeFirstEquipDiscount(
                         context.castPermissionUtils.applyEquipCostReduction(
@@ -194,7 +196,6 @@ class ActivatedAbilityEnumerator(
                         ability, state, playerId
                     ),
                     playerId
-                )
                 )
 
                 // Description shown to the player. When the effective cost differs from the printed

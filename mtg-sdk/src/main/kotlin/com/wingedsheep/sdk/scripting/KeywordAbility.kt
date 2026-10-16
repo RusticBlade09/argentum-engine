@@ -776,6 +776,37 @@ sealed interface KeywordAbility {
     }
 
     // =========================================================================
+    // Blitz
+    // =========================================================================
+
+    /**
+     * Blitz with a mana cost and an optional bundled non-mana cost (CR 702.152, Streets of New
+     * Capenna). "Blitz [cost]" — You may cast this card by paying [cost] rather than its mana cost.
+     * If you do, the permanent has haste and "When this permanent is put into a graveyard from the
+     * battlefield, draw a card" for as long as its blitz cost was paid, and it is sacrificed at the
+     * beginning of the next end step.
+     *
+     * [additionalCost] models the em-dash form that bundles a non-mana payment ("Blitz—{2}{B}{B},
+     * Pay 2 life." on Tenacious Underdog); it is paid only on the blitz cast path.
+     *
+     * Hand-only by default. "You may cast this card from your graveyard using its blitz ability"
+     * is a separate static ability: `MayCastSelfFromZones(listOf(Zone.GRAVEYARD), castUsing =
+     * Keyword.BLITZ)`. The haste and draw trigger are synthesized by the engine off the paid
+     * marker ([com.wingedsheep.sdk.scripting.Blitz.diesDrawAbility]), not printed on the card.
+     */
+    @SerialName("Blitz")
+    @Serializable
+    data class Blitz(
+        val cost: ManaCost,
+        val additionalCost: AdditionalCost? = null
+    ) : KeywordAbility {
+        override val keyword: Keyword = Keyword.BLITZ
+        override val description: String =
+            if (additionalCost == null) "Blitz $cost"
+            else "Blitz—$cost, ${additionalCost.description}"
+    }
+
+    // =========================================================================
     // Plot
     // =========================================================================
 
@@ -931,12 +962,41 @@ sealed interface KeywordAbility {
      * creature's projected power, so the choose-the-creature payment is handled as a
      * Casualty-specific branch of the cast flow (the threshold is intrinsic to the spell) rather
      * than a generic [com.wingedsheep.sdk.scripting.AdditionalCost] subtype.
+     *
+     * **Casualty X** ([threshold] `null`): the caster announces X as they cast the spell (CR 601.2b,
+     * the Ob Nixilis, the Adversary ruling) and may sacrifice a creature with power X or greater. X
+     * becomes the spell's X value, so the copy shares it (CR 707.10) and [DynamicAmount.XValue]
+     * reads it.
+     *
+     * The copy may carry riders printed beside the keyword — "The copy isn't legendary and has
+     * starting loyalty X." (Ob Nixilis): [copyExceptions] are copiable-value exceptions applied as
+     * the copy is put on the stack, and [copyStartingLoyalty] is the loyalty the token the copy
+     * resolves into enters with (CR 707.10f) in place of the printed one, read against the spell's X.
+     *
+     * @property threshold The N in "casualty N"; `null` for "casualty X".
+     * @property copyExceptions "except" clauses for the copy, e.g. removing [com.wingedsheep.sdk.core.Supertype.LEGENDARY].
+     * @property copyStartingLoyalty The copy's starting loyalty, when the card overrides it.
      */
     @SerialName("Casualty")
     @Serializable
-    data class Casualty(val threshold: Int) : KeywordAbility {
+    data class Casualty(
+        val threshold: Int?,
+        @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val copyExceptions: com.wingedsheep.sdk.scripting.effects.CopyExceptions =
+            com.wingedsheep.sdk.scripting.effects.CopyExceptions.None,
+        @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val copyStartingLoyalty: DynamicAmount? = null,
+    ) : KeywordAbility {
         override val keyword: Keyword = Keyword.CASUALTY
-        override val description: String = "Casualty $threshold"
+        override val description: String = "Casualty ${threshold ?: "X"}"
+
+        /** True for "casualty X": the caster chooses the power threshold as they cast. */
+        val isVariable: Boolean get() = threshold == null
+
+        /** True when the copy carries a printed rider (an exception or a starting loyalty). */
+        val hasCopyRiders: Boolean get() = !copyExceptions.isEmpty || copyStartingLoyalty != null
     }
 
     // =========================================================================
@@ -968,6 +1028,25 @@ sealed interface KeywordAbility {
     data class Bestow(val cost: ManaCost, val additionalCost: AdditionalCost? = null) : KeywordAbility {
         override val keyword: Keyword = Keyword.BESTOW
         override val description: String = "Bestow $cost" + (additionalCost?.let { ", ${it.description}" } ?: "")
+    }
+
+    // =========================================================================
+    // Mutate
+
+    /**
+     * Mutate [cost] (CR 702.140). The caster may pay [cost] rather than the card's mana cost; the
+     * spell then becomes a *mutating creature spell* targeting a non-Human creature with the same
+     * owner. If the target is still legal as it resolves, the spell doesn't enter the battlefield:
+     * its controller puts it over or under the creature and the two merge into one mutated
+     * permanent — the topmost card's characteristics plus every component's abilities (CR 730.2a,
+     * 702.140e). If the target is illegal, it resolves as an ordinary creature spell (702.140b).
+     * "Whenever this creature mutates" is `Triggers.self.mutates()`.
+     */
+    @Serializable
+    @SerialName("Mutate")
+    data class Mutate(val cost: ManaCost) : KeywordAbility {
+        override val keyword: Keyword = Keyword.MUTATE
+        override val description: String = "Mutate $cost"
     }
 
     // =========================================================================
@@ -1598,10 +1677,21 @@ sealed interface KeywordAbility {
         fun dash(cost: String): KeywordAbility = Dash(ManaCost.parse(cost))
 
         /**
+         * Create Blitz from a mana cost string and an optional bundled non-mana cost (CR 702.152).
+         * E.g. `blitz("{2}{R}")`, or `blitz("{2}{B}{B}", Costs.additional.PayLife(2))` for
+         * "Blitz—{2}{B}{B}, Pay 2 life."
+         */
+        fun blitz(cost: String, additionalCost: AdditionalCost? = null): KeywordAbility =
+            Blitz(ManaCost.parse(cost), additionalCost)
+
+        /**
          * Create Bestow with mana cost from string and an optional nonmana payment.
          */
         fun bestow(cost: String, additionalCost: AdditionalCost? = null): KeywordAbility =
             Bestow(ManaCost.parse(cost), additionalCost)
+
+        /** Create Mutate with its alternative mana cost: `mutate("{1}{G}{G}")` (CR 702.140). */
+        fun mutate(cost: String): KeywordAbility = Mutate(ManaCost.parse(cost))
 
         /** Create Prototype with its alternative mana cost and size: `prototype("{3}{R}", 2, 2)`. */
         fun prototype(cost: String, power: Int, toughness: Int): KeywordAbility =
@@ -1691,6 +1781,17 @@ sealed interface KeywordAbility {
          * Create Casualty N keyword ability.
          */
         fun casualty(threshold: Int): KeywordAbility = Casualty(threshold)
+
+        /**
+         * Create Casualty X — the caster chooses X as they cast — with the copy's printed riders:
+         * `casualtyX(CopyExceptions(removedSupertypes = setOf(Supertype.LEGENDARY)), DynamicAmount.XValue)`
+         * is Ob Nixilis, the Adversary's "The copy isn't legendary and has starting loyalty X."
+         */
+        fun casualtyX(
+            copyExceptions: com.wingedsheep.sdk.scripting.effects.CopyExceptions =
+                com.wingedsheep.sdk.scripting.effects.CopyExceptions.None,
+            copyStartingLoyalty: DynamicAmount? = null,
+        ): KeywordAbility = Casualty(null, copyExceptions, copyStartingLoyalty)
 
         /**
          * Create Miracle keyword ability with a miracle mana cost.

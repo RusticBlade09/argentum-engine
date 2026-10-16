@@ -18,6 +18,8 @@ import com.wingedsheep.engine.state.components.combat.AttackingComponent
 import com.wingedsheep.engine.state.components.combat.BlockingComponent
 import com.wingedsheep.engine.state.components.combat.MustAttackPlayerComponent
 import com.wingedsheep.engine.state.components.identity.CardComponent
+import com.wingedsheep.engine.state.components.player.CantCastSpellsComponent
+import com.wingedsheep.engine.state.components.player.PlayerEffectRemoval
 import com.wingedsheep.engine.state.components.player.AdditionalPhasesComponent
 import com.wingedsheep.engine.state.components.player.ExtraPhaseKind
 import com.wingedsheep.engine.state.components.player.InAdditionalCombatPhaseComponent
@@ -381,8 +383,8 @@ class TurnManager(
      * triggers (Goblin Flotilla). Deferred from the end of combat step so end-of-combat abilities
      * resolve while their attacking targets are still legal.
      */
-    private fun closeCombatPhase(state: GameState): ExecutionResult {
-        val endCombatResult = combatManager.endCombat(state)
+    private fun closeCombatPhase(state: GameState, combatPhaseRan: Boolean = true): ExecutionResult {
+        val endCombatResult = combatManager.endCombat(state, combatPhaseRan)
         if (endCombatResult.outcome !is Outcome.Done) return endCombatResult
         val newState = endCombatResult.newState.copy(
             delayedTriggers = endCombatResult.newState.delayedTriggers.filter {
@@ -631,7 +633,9 @@ class TurnManager(
             // POSTCOMBAT_MAIN branch below), so skipping the phase must still run it or creatures
             // stay in combat for the rest of the turn.
             if (nextStep == Step.POSTCOMBAT_MAIN) {
-                val endCombatResult = combatManager.endCombat(skipped)
+                val endCombatResult = combatManager.endCombat(
+                    skipped, combatPhaseRan = !skipsTurnPart(skipped, Step.BEGIN_COMBAT, activePlayer)
+                )
                 if (endCombatResult.outcome !is Outcome.Done) return endCombatResult
                 skipped = endCombatResult.newState
                 skipEvents.addAll(endCombatResult.events)
@@ -726,7 +730,9 @@ class TurnManager(
                 // The combat phase has now ended: remove every creature from combat (clear
                 // attacking/blocking and related components). Deferred from the end of combat step
                 // so end-of-combat abilities resolve while their attacking targets are still legal.
-                val endCombatResult = closeCombatPhase(newState)
+                val endCombatResult = closeCombatPhase(
+                    newState, combatPhaseRan = !skipsTurnPart(newState, Step.BEGIN_COMBAT, activePlayer)
+                )
                 if (endCombatResult.outcome !is Outcome.Done) return endCombatResult
                 newState = endCombatResult.newState
                 events.addAll(endCombatResult.events)
@@ -1241,6 +1247,18 @@ class TurnManager(
                 },
                 delayedTriggers = s.delayedTriggers.filterNot { it.expiryPlayerId == leaver }
             )
+            // The same floor-plus-controller window on a player's cast ban (Single Combat).
+            for (playerId in s.turnOrder) {
+                val bans = s.getEntity(playerId)?.get<CantCastSpellsComponent>() ?: continue
+                val remaining = bans.restrictions.filterNot {
+                    it.removeOn == PlayerEffectRemoval.EndOfYourNextTurn && it.controllerId == leaver
+                }
+                if (remaining.size == bans.restrictions.size) continue
+                s = s.updateEntity(playerId) {
+                    if (remaining.isEmpty()) it.without<CantCastSpellsComponent>()
+                    else it.with(CantCastSpellsComponent(remaining))
+                }
+            }
         }
         return s
     }
@@ -1436,6 +1454,10 @@ class TurnManager(
         attackingPlayer: EntityId,
         candidates: List<EntityId>,
     ): List<EntityId> = combatManager.legalDefendersFor(state, attackerId, attackingPlayer, candidates)
+
+    /** See [com.wingedsheep.engine.mechanics.combat.AttackPhaseManager.boundAttackDefenders]. */
+    fun boundAttackDefenders(state: GameState, attackingPlayer: EntityId): Map<EntityId, Set<EntityId>> =
+        combatManager.boundAttackDefenders(state, attackingPlayer)
 
     fun getValidBlockers(state: GameState, playerId: EntityId): List<EntityId> {
         val battlefield = state.getBattlefield()

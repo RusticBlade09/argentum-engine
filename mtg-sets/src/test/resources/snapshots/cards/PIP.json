@@ -106,6 +106,121 @@
     }
 }
 
+// Arcade Gannon
+{
+    "name": "Arcade Gannon",
+    "manaCost": "{2}{W}{U}",
+    "typeLine": "Legendary Creature — Human Doctor",
+    "oracleText": "{T}: Draw a card, then discard a card. Put a quest counter on Arcade Gannon.\nFor Auld Lang Syne — Once during each of your turns, you may cast an artifact or Human spell from your graveyard with mana value less than or equal to the number of quest counters on Arcade Gannon.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 3
+    },
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Arcade Gannon:1",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            }
+                        },
+                        {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "GatherCards",
+                                    "source": {
+                                        "type": "FromZone",
+                                        "zone": "Hand"
+                                    },
+                                    "storeAs": "hand"
+                                },
+                                {
+                                    "type": "SelectFromCollection",
+                                    "from": "hand",
+                                    "selection": {
+                                        "type": "ChooseExactly",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "storeSelected": "discarded",
+                                    "prompt": "Choose 1 card to discard"
+                                },
+                                {
+                                    "type": "MoveCollection",
+                                    "from": "discarded",
+                                    "destination": {
+                                        "type": "ToZone",
+                                        "zone": "Graveyard"
+                                    },
+                                    "moveType": "Discard"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "AddCounters",
+                            "counterType": "QUEST",
+                            "count": 1,
+                            "target": "Self"
+                        }
+                    ]
+                }
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "MayCastFromGraveyard",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "Or",
+                            "predicates": [
+                                "IsArtifact",
+                                {
+                                    "type": "HasSubtype",
+                                    "subtype": "Human"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "ManaValueAtMostDynamic",
+                            "amount": {
+                                "type": "EntityProperty",
+                                "entity": "Self",
+                                "numericProperty": {
+                                    "type": "CounterCount",
+                                    "counterType": "QUEST"
+                                }
+                            }
+                        }
+                    ]
+                },
+                "duringYourTurnOnly": true,
+                "oncePerTurn": true
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "92",
+        "rarity": "RARE",
+        "artist": "Kieran Yanner",
+        "imageUri": "https://cards.scryfall.io/normal/front/3/6/36356522-15fc-41e2-bf14-a745e5a96a50.jpg?1783912393"
+    },
+    "colorIdentityOverride": [
+        "WHITE",
+        "BLUE"
+    ]
+}
+
 // Armory Paladin
 {
     "name": "Armory Paladin",
@@ -798,6 +913,139 @@
             }
         ]
     }
+}
+
+// Cass, Hand of Vengeance
+{
+    "name": "Cass, Hand of Vengeance",
+    "manaCost": "{2}{R}{W}",
+    "typeLine": "Legendary Creature — Human Ranger",
+    "oracleText": "Vigilance\nWhenever Cass or another creature you control dies, if it was enchanted or equipped, return any number of Aura cards that were attached to it from your graveyard to the battlefield attached to target creature, then attach any number of Equipment that were attached to it to that creature.",
+    "creatureStats": {
+        "power": 4,
+        "toughness": 3
+    },
+    "keywords": [
+        "VIGILANCE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Cass, Hand of Vengeance:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "filter": {
+                        "cardPredicates": [
+                            "IsCreature"
+                        ],
+                        "statePredicates": [
+                            {
+                                "type": "StateOr",
+                                "predicates": [
+                                    "IsEnchanted",
+                                    "IsEquipped"
+                                ]
+                            }
+                        ],
+                        "controllerPredicate": "ControlledByYou"
+                    },
+                    "from": "Battlefield",
+                    "to": "Graveyard"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "AttachedToTarget",
+                                "host": "TriggeringEntity",
+                                "filter": "Aura",
+                                "zone": "Graveyard"
+                            },
+                            "storeAs": "gathered0"
+                        },
+                        {
+                            "type": "SelectFromCollection",
+                            "from": "gathered0",
+                            "selection": "ChooseAnyNumber",
+                            "storeSelected": "selected1",
+                            "prompt": "Choose any number of Aura cards to return attached to the target creature"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "selected1",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Battlefield"
+                            },
+                            "attachTo": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        },
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "AttachedToTarget",
+                                "host": "TriggeringEntity",
+                                "filter": "artifact Equipment"
+                            },
+                            "storeAs": "gathered3"
+                        },
+                        {
+                            "type": "SelectFromCollection",
+                            "from": "gathered3",
+                            "selection": "ChooseAnyNumber",
+                            "storeSelected": "selected4",
+                            "prompt": "Choose any number of Equipment to attach to the target creature",
+                            "useTargetingUI": true
+                        },
+                        {
+                            "type": "ForEach",
+                            "space": {
+                                "type": "IterationSpace.Collection",
+                                "collection": "selected4"
+                            },
+                            "body": {
+                                "type": "AttachTargetEquipmentToCreature",
+                                "equipmentTarget": "IterationEntity",
+                                "creatureTarget": {
+                                    "type": "BoundVariable",
+                                    "name": "t0"
+                                }
+                            }
+                        }
+                    ]
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": "creature"
+                    },
+                    "id": "t0"
+                },
+                "descriptionOverride": "Whenever Cass or another creature you control dies, if it was enchanted or equipped, return any number of Aura cards that were attached to it from your graveyard to the battlefield attached to target creature, then attach any number of Equipment that were attached to it to that creature."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "97",
+        "rarity": "RARE",
+        "artist": "Dan Watson",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/b/5b6d7fa6-4de6-4bc8-b250-2ed6eb559618.jpg?1783912391",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "You can't return Aura cards that can't legally be attached to the target creature. For example, if the target creature has protection from red, you can't return Grim Reaper's Sprint to the battlefield with Cass's last ability."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "RED",
+        "WHITE"
+    ]
 }
 
 // Charisma Bobblehead
@@ -2167,6 +2415,108 @@
             {
                 "date": "2024-03-08",
                 "text": "If, for some reason, the creature doesn't have the squad ability when it's on the battlefield, the ability won't trigger, even if you've paid the squad cost one or more times."
+            }
+        ]
+    }
+}
+
+// Harold and Bob, First Numens
+{
+    "name": "Harold and Bob, First Numens",
+    "manaCost": "{2}{G}",
+    "typeLine": "Legendary Creature — Treefolk Mutant",
+    "oracleText": "Reach, vigilance\nWhen Harold and Bob dies, if it was a creature, return it to the battlefield. It's an Aura enchantment with enchant Forest you control and \"Enchanted Forest has '{T}: Add three mana of any one color. You get two rad counters.'\" Harold and Bob loses all other abilities.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 3
+    },
+    "keywords": [
+        "REACH",
+        "VIGILANCE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Harold and Bob, First Numens:2",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "from": "Battlefield",
+                    "to": "Graveyard"
+                },
+                "effect": {
+                    "type": "PutOntoBattlefieldAsAura",
+                    "enchant": {
+                        "cardPredicates": [
+                            "IsLand",
+                            {
+                                "type": "HasSubtype",
+                                "subtype": "Forest"
+                            }
+                        ],
+                        "controllerPredicate": "ControlledByYou"
+                    },
+                    "grantedStaticAbilities": [
+                        {
+                            "type": "GrantActivatedAbility",
+                            "ability": {
+                                "id": "Harold and Bob, First Numens:1",
+                                "cost": "CostTap",
+                                "effect": {
+                                    "type": "Composite",
+                                    "effects": [
+                                        {
+                                            "type": "AddManaOfChoice",
+                                            "amount": {
+                                                "type": "Fixed",
+                                                "amount": 3
+                                            }
+                                        },
+                                        {
+                                            "type": "AddCounters",
+                                            "counterType": "RAD",
+                                            "count": 2,
+                                            "target": {
+                                                "type": "PlayerRef",
+                                                "player": "You"
+                                            }
+                                        }
+                                    ]
+                                },
+                                "timing": "ManaAbility",
+                                "isManaAbility": true,
+                                "descriptionOverride": "{T}: Add three mana of any one color. You get two rad counters."
+                            }
+                        }
+                    ]
+                },
+                "interveningIf": {
+                    "type": "TriggeringEntityWas",
+                    "filter": "creature"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "78",
+        "rarity": "RARE",
+        "artist": "Andrea Piparo",
+        "imageUri": "https://cards.scryfall.io/normal/front/d/7/d730ac69-20ec-4ef3-85ee-a5fd24e5f277.jpg?1783912398",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "If you control Harold and Bob, you'll return it to the battlefield when it dies while it's a creature. It doesn't matter who owns the card. You'll choose which Forest you control it will enchant as it returns to the battlefield."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If there's nothing for Harold and Bob to legally enchant, it remains in its owner's graveyard instead of returning to the battlefield."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "A token that's a copy of Harold and Bob won't return to the battlefield from its owner's graveyard."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If a nontoken permanent that's a copy of Harold and Bob dies while it's a creature, it will return to the battlefield as an Aura with only the abilities granted by the effect that returned it to the battlefield. It will also retain its name, colors, and supertypes, but it will be an Aura enchantment with no other types or subtypes."
             }
         ]
     }
@@ -4306,6 +4656,168 @@
     }
 }
 
+// Strong Back
+{
+    "name": "Strong Back",
+    "manaCost": "{2}{G}",
+    "typeLine": "Enchantment — Aura",
+    "oracleText": "Enchant creature\nEquip abilities you activate that target enchanted creature cost {3} less to activate.\nAura spells you cast that target enchanted creature cost {3} less to cast.\nEnchanted creature gets +2/+2 for each Aura and Equipment attached to it.",
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "ReduceEquipCost",
+                "amount": 3,
+                "targetFilter": {
+                    "cardPredicates": [
+                        "IsCreature"
+                    ],
+                    "statePredicates": [
+                        "IsAttachedToBySource"
+                    ]
+                }
+            },
+            {
+                "type": "ModifySpellCost",
+                "target": {
+                    "type": "YouCast",
+                    "filter": "enchantment Aura"
+                },
+                "modification": {
+                    "type": "ReduceGenericBy",
+                    "source": {
+                        "type": "FixedIfAnyTargetMatches",
+                        "amount": 3,
+                        "filter": {
+                            "cardPredicates": [
+                                "IsCreature"
+                            ],
+                            "statePredicates": [
+                                "IsAttachedToBySource"
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "type": "GrantDynamicStats",
+                "filter": {
+                    "baseFilter": "permanent",
+                    "scope": "AttachedTo"
+                },
+                "powerBonus": {
+                    "type": "Multiply",
+                    "amount": {
+                        "type": "EntityProperty",
+                        "entity": "EnchantedCreature",
+                        "numericProperty": "AttachmentCount"
+                    },
+                    "multiplier": 2
+                },
+                "toughnessBonus": {
+                    "type": "Multiply",
+                    "amount": {
+                        "type": "EntityProperty",
+                        "entity": "EnchantedCreature",
+                        "numericProperty": "AttachmentCount"
+                    },
+                    "multiplier": 2
+                }
+            }
+        ],
+        "auraTarget": {
+            "type": "TargetObject",
+            "filter": {
+                "baseFilter": "creature"
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "83",
+        "rarity": "RARE",
+        "artist": "Elizabeth Peiró",
+        "imageUri": "https://cards.scryfall.io/normal/front/3/f/3f65afa5-e4f7-49c2-97f9-47ad5dbcacfa.jpg?1783912396",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "Strong Back’s abilities reduce only the amount of generic mana in equip abilities that target the enchanted creature and in the total cost of Aura spells that target the enchanted creature. For example, it will reduce the total cost of Animal Friend from {1}{G} to {G}."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Strong Back’s third ability won’t reduce its own cost."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Some Equipment creature cards in other sets have reconfigure, a different ability that attaches them to a creature. Reconfigure is not an equip ability, and reconfigure costs are not reduced by Strong Back’s second ability. Equip variants or equip abilities with restrictions, like the “equip Citizen” ability of Ceremonial Groundbreaker from the Streets of New Capenna® set, are still equip abilities, and their costs will be reduced by Strong Back’s second ability."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "GREEN"
+    ]
+}
+
+// Strong, the Brutish Thespian
+{
+    "name": "Strong, the Brutish Thespian",
+    "manaCost": "{4}{G}{G}",
+    "typeLine": "Legendary Creature — Mutant Berserker",
+    "oracleText": "Ward {2}\nEnrage — Whenever Strong is dealt damage, you get three rad counters and put three +1/+1 counters on Strong.\nYou gain life rather than lose life from radiation.",
+    "creatureStats": {
+        "power": 7,
+        "toughness": 7
+    },
+    "keywords": [
+        "WARD"
+    ],
+    "keywordAbilities": [
+        {
+            "type": "Ward",
+            "cost": {
+                "type": "WardCost.Mana",
+                "manaCost": "{2}"
+            }
+        }
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Strong, the Brutish Thespian:1",
+                "trigger": "DamageReceivedEvent",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "AddCounters",
+                            "counterType": "RAD",
+                            "count": 3,
+                            "target": "Controller"
+                        },
+                        {
+                            "type": "AddCounters",
+                            "counterType": "PLUS_ONE_PLUS_ONE",
+                            "count": 3,
+                            "target": "Self"
+                        }
+                    ]
+                }
+            }
+        ],
+        "replacementEffects": [
+            {
+                "type": "GainLifeInsteadOfLosingLife",
+                "origin": "RADIATION"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "84",
+        "rarity": "RARE",
+        "artist": "Jason Rainville",
+        "flavorText": "\"Strong learn secret to human power from Mack Beth.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/2/b/2bc79ed6-057b-439f-b2cd-58d5bcd8b551.jpg?1783912395"
+    }
+}
+
 // Sunscorched Divide
 {
     "name": "Sunscorched Divide",
@@ -4357,6 +4869,106 @@
     "colorIdentityOverride": [
         "RED",
         "WHITE"
+    ]
+}
+
+// Super Mutant Scavenger
+{
+    "name": "Super Mutant Scavenger",
+    "manaCost": "{4}{G}",
+    "typeLine": "Creature — Mutant Warrior",
+    "oracleText": "Trample\nWhen this creature enters or dies, return up to one target Aura or Equipment card from your graveyard to your hand.",
+    "creatureStats": {
+        "power": 5,
+        "toughness": 5
+    },
+    "keywords": [
+        "TRAMPLE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Super Mutant Scavenger:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "MoveToZone",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "destination": "Hand"
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "optional": true,
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                {
+                                    "type": "HasAnyOfSubtypes",
+                                    "subtypes": [
+                                        "Aura",
+                                        "Equipment"
+                                    ]
+                                }
+                            ],
+                            "controllerPredicate": "OwnedByYou"
+                        },
+                        "zone": "Graveyard"
+                    },
+                    "id": "t0"
+                }
+            },
+            {
+                "id": "Super Mutant Scavenger:2",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "from": "Battlefield",
+                    "to": "Graveyard"
+                },
+                "effect": {
+                    "type": "MoveToZone",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t1"
+                    },
+                    "destination": "Hand"
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "optional": true,
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                {
+                                    "type": "HasAnyOfSubtypes",
+                                    "subtypes": [
+                                        "Aura",
+                                        "Equipment"
+                                    ]
+                                }
+                            ],
+                            "controllerPredicate": "OwnedByYou"
+                        },
+                        "zone": "Graveyard"
+                    },
+                    "id": "t1"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "85",
+        "rarity": "UNCOMMON",
+        "artist": "David Astruga",
+        "flavorText": "Out in the wastelands, everything's a steal.",
+        "imageUri": "https://cards.scryfall.io/normal/front/4/1/41f48a99-eaf7-42ec-bab3-9ebbc735a82a.jpg?1783912394"
+    },
+    "colorIdentityOverride": [
+        "GREEN"
     ]
 }
 
@@ -5693,4 +6305,97 @@
             }
         ]
     }
+}
+
+// Young Deathclaws
+{
+    "name": "Young Deathclaws",
+    "manaCost": "{2}{B}{G}",
+    "typeLine": "Creature — Lizard Mutant",
+    "oracleText": "Menace (This creature can't be blocked except by two or more creatures.)\nEach creature card in your graveyard has scavenge. The scavenge cost is equal to its mana cost. (Exile a creature card from your graveyard and pay its mana cost: Put a number of +1/+1 counters equal to that card's power on target creature. Scavenge only as a sorcery.)",
+    "creatureStats": {
+        "power": 4,
+        "toughness": 2
+    },
+    "keywords": [
+        "MENACE"
+    ],
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "GrantActivatedAbility",
+                "ability": {
+                    "id": "scavenge_own",
+                    "cost": {
+                        "type": "CostComposite",
+                        "costs": [
+                            "OwnManaCost",
+                            "CostExileSelf"
+                        ]
+                    },
+                    "effect": {
+                        "type": "AddDynamicCounters",
+                        "counterType": "PLUS_ONE_PLUS_ONE",
+                        "amount": {
+                            "type": "EntityProperty",
+                            "entity": "Self",
+                            "numericProperty": "Power"
+                        },
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t0"
+                        }
+                    },
+                    "targetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "creature"
+                            },
+                            "id": "t0"
+                        }
+                    ],
+                    "timing": "SorcerySpeed",
+                    "activateFromZone": "Graveyard",
+                    "descriptionOverride": "Scavenge — its mana cost (Exile this card from your graveyard and pay its mana cost: Put a number of +1/+1 counters equal to this card's power on target creature. Scavenge only as a sorcery.)"
+                },
+                "filter": {
+                    "baseFilter": "creature own:you"
+                },
+                "recipientZone": "Graveyard"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "125",
+        "rarity": "UNCOMMON",
+        "artist": "Nino Is",
+        "imageUri": "https://cards.scryfall.io/normal/front/6/4/64d5e6bd-de46-4bc2-854b-cc6cae713f98.jpg?1783912381",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "Exiling the creature card with scavenge is part of the cost of activating the scavenge ability. Once the ability is activated and the cost is paid, it's too late to stop the ability from being activated by trying to remove the creature card from the graveyard."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "While Young Deathclaws is on the battlefield, the scavenge cost of a creature card in your graveyard is equal to its mana cost, including any colored mana requirements."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "The number of counters that a card's scavenge ability puts on a creature is based on the card's power as it last existed in the graveyard."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the creature card you scavenge has {X} in its mana cost, X is 0."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If a creature card has multiple instances of scavenge, you can activate either ability (but not both, as the card will be exiled when you activate one of them). Young Deathclaws's ability doesn't affect the scavenge cost of a creature's other scavenge ability."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK",
+        "GREEN"
+    ]
 }

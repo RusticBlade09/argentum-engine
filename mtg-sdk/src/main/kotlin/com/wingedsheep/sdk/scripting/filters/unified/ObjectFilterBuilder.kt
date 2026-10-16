@@ -5,6 +5,7 @@ import com.wingedsheep.sdk.core.CounterType
 import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.core.Subtype
 import com.wingedsheep.sdk.core.Zone
+import com.wingedsheep.sdk.scripting.events.DamageType
 import com.wingedsheep.sdk.scripting.predicates.CardPredicate
 import com.wingedsheep.sdk.scripting.predicates.ControllerPredicate
 import com.wingedsheep.sdk.scripting.predicates.StatePredicate
@@ -59,6 +60,15 @@ interface ObjectFilterBuilder<out Self> {
 
     /** Restrict to objects that are exactly [count] colors (CR 105.2). */
     fun exactlyColors(count: Int) = withCardPredicate(CardPredicate.HasExactlyColors(count))
+
+    /**
+     * Restrict to objects that are exactly [amount] colors, resolved when the filter is checked —
+     * "a creature card that's exactly that many colors plus one" (Evolving Door). A fixed amount
+     * collapses to the static [exactlyColors] so both spellings build the same predicate.
+     */
+    fun exactlyColors(amount: DynamicAmount) =
+        if (amount is DynamicAmount.Fixed) exactlyColors(amount.amount)
+        else compareNumericProperty(CardNumericProperty.COLOR_COUNT, ComparisonOperator.EQ, amount)
 
     /** Restrict to objects that are *not* exactly [count] colors — "that isn't exactly two colors". */
     fun notExactlyColors(count: Int) =
@@ -659,9 +669,11 @@ interface ObjectFilterBuilder<out Self> {
      * Must have been dealt damage this turn — the **passive** voice (damage *received*), marked-damage
      * *history* rather than current marked damage. Survives damage removal / leaving combat; cleared at
      * end-of-turn cleanup. Used by "...that was dealt damage this turn" (Rooftop Assassin, Unsparing
-     * Boltcaster). The active-voice counterpart is [hasDealtDamageThisTurn].
+     * Boltcaster). [damageType] narrows it to one kind — `DamageType.NonCombat` for "was dealt noncombat
+     * damage this turn" (Grisly Sigil). The active-voice counterpart is [hasDealtDamageThisTurn].
      */
-    fun wasDealtDamageThisTurn() = withStatePredicate(StatePredicate.WasDealtDamageThisTurn)
+    fun wasDealtDamageThisTurn(damageType: DamageType = DamageType.Any) =
+        withStatePredicate(StatePredicate.WasDealtDamageThisTurn(damageType))
 
     /** Matches names recorded when a spell was cast this turn, regardless of its caster or current zone. */
     fun sharesNameWithSpellCastThisTurn() = withStatePredicate(StatePredicate.SharesNameWithSpellCastThisTurn)
@@ -1130,6 +1142,13 @@ interface ObjectFilterBuilder<out Self> {
 
     /** Must be owned by an opponent (for cards in graveyards/exile that don't have controllers) */
     fun ownedByOpponent() = withControllerPredicate(ControllerPredicate.OwnedByOpponent)
+
+    /**
+     * Must be owned by the player referenced by [target] — `ownedBy(PlayerRef(Player.OwnerOfSource))`
+     * is "with the same owner as this" (a mutating spell's target, CR 702.140a).
+     */
+    fun ownedBy(target: EffectTarget) =
+        withControllerPredicate(ControllerPredicate.OwnedByReferencedPlayer(target))
 
     /**
      * Must be owned by the target player (Hurkyl's Recall — "all artifacts target player owns").

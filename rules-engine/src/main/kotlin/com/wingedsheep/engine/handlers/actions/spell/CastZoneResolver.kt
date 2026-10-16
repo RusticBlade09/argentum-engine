@@ -190,6 +190,9 @@ class CastZoneResolver(
     private fun castsUsing(action: CastSpell?, keyword: Keyword?): Boolean = when (keyword) {
         null -> true
         Keyword.BESTOW -> action != null && BestowCasts.selected(action)
+        Keyword.BLITZ -> action != null && action.useAlternativeCost &&
+            action.alternativeCostType == AlternativeCostType.BLITZ
+        Keyword.MUTATE -> action != null && com.wingedsheep.engine.mechanics.MutateCasts.selected(action)
         else -> false
     }
 
@@ -458,7 +461,7 @@ class CastZoneResolver(
         }
         return predicateEvaluator.matches(
             state, state.projectedState, cardId, sa.filter,
-            PredicateContext(controllerId = playerId)
+            graveyardGrantFilterContext(playerId, grantSourceId)
         )
     }
 
@@ -669,6 +672,24 @@ class CastZoneResolver(
         val cardDef = cardRegistry.getCard(cardComponent.cardDefinitionId) ?: return false
         if (cardDef.keywordAbilities.none { it is KeywordAbility.Dash }) return false
         return cardId in state.getZone(ZoneKey(playerId, Zone.HAND))
+    }
+
+    /**
+     * Check if a card can be cast for its blitz cost (CR 702.152a) from its current zone: from the
+     * hand, or from wherever a `MayCastSelfFromZones(castUsing = Keyword.BLITZ)` permission reaches
+     * ("You may cast this card from your graveyard using its blitz ability", Tenacious Underdog).
+     */
+    fun hasBlitzPermission(
+        state: GameState,
+        playerId: EntityId,
+        cardId: EntityId
+    ): Boolean {
+        val cardComponent = state.getEntity(cardId)?.get<CardComponent>() ?: return false
+        val cardDef = cardRegistry.getCard(cardComponent.cardDefinitionId) ?: return false
+        if (cardDef.keywordAbilities.none { it is KeywordAbility.Blitz }) return false
+        if (cardId in state.getZone(ZoneKey(playerId, Zone.HAND))) return true
+        val blitzCast = CastSpell(playerId, cardId, useAlternativeCost = true, alternativeCostType = AlternativeCostType.BLITZ)
+        return findMayCastSelfFromZoneAbility(state, playerId, cardId, blitzCast)?.castUsing == Keyword.BLITZ
     }
 
     /**
@@ -946,6 +967,19 @@ class CastZoneResolver(
 
     companion object {
         /**
+         * The predicate context a [MayCastFromGraveyard] grant's filter is judged in: "you" is the
+         * caster, and the grant's own source — the permanent printing it, the emblem holding it, or
+         * the anchor of a durational grant — is the filter's `Self`. That makes source-relative caps
+         * read the granting object, not nothing: Arcade Gannon's "mana value less than or equal to
+         * the number of quest counters on Arcade Gannon" is
+         * `manaValueAtMost(DynamicAmounts.countersOnSelf(QUEST))`. A grant anchored to the player
+         * (The Great Work) has no object to be `Self`, so source-relative predicates fail closed.
+         * Shared by the handler-side resolver and `CastFromZoneEnumerator` so the two stay in step.
+         */
+        fun graveyardGrantFilterContext(playerId: EntityId, grantSourceId: EntityId): PredicateContext =
+            PredicateContext(controllerId = playerId, sourceId = grantSourceId.takeIf { it != playerId })
+
+        /**
          * @param state the game state, and [grantingSourceId] the permanent whose static ability
          *   supplies the filter. Both are optional and only
          *   [CardPredicate.SharesCardTypeWithLinkedExile] reads them — a filter that talks about the
@@ -1125,6 +1159,7 @@ class CastZoneResolver(
                 is CardPredicate.SharesCreatureTypeWithSource,
                 is CardPredicate.SharesCreatureTypeWithTriggeringEntity,
                 is CardPredicate.ConvokedSource,
+                is CardPredicate.ChosenBySource,
                 is CardPredicate.SharesCreatureTypeWith,
                 is CardPredicate.SharesCardTypeWith,
                 is CardPredicate.SharesColorWith,

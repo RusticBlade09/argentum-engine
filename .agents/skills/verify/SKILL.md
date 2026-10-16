@@ -40,11 +40,9 @@ waiting on.
 
 Benchmarks (`*Benchmark` in `:ai`) are too slow for routine validation — run `*Test` classes.
 
-For unattended loops, verify player-visible flows with `just e2e-loop <test-path> <unused-client-port>
-<unused-server-port>` from the unit's worktree instead of a personal desktop browser. It starts isolated
-servers and dedicated headless Chromium, retaining screenshots even on success. Follow
-[`docs/e2e-test-patterns.md`](../../../docs/e2e-test-patterns.md#unattended-loop-verification) for flow
-assertions, visual inspection, scoped sandbox approval if needed, and evidence in the ledger/PR.
+Unattended loops never write or run E2E specs either. They check player-visible flows by hand, in their
+own worktree: `just ui-dev <server-port> <client-port>`, a dev scenario, a throwaway headless-Chromium
+script, then screenshots they look at and fix from. The full rule is in `LOOP_PR_PROTOCOL` (`scripts/loop-lib.sh`).
 
 ## Expected: a card-snapshot diff
 

@@ -121,16 +121,21 @@ class ZoneActivatedAbilityEnumerator(
                 // afford only the reduced price.
                 // Then the board's statics, as the activation handler's totaller applies them —
                 // an "abilities you activate" reduction (Zirda) reaches a hand or graveyard card.
+                // A cost naming the card's own mana cost (a granted scavenge, Young Deathclaws) is
+                // lowered to that card's printed cost; one left un-lowered has no mana cost to pay.
                 val effectiveCost = context.castPermissionUtils.applyActivatedAbilityCostReduction(
                     AbilityCostReduction.apply(
-                        context.castPermissionUtils
-                            .applyDefinedXValue(ability.cost, ability, state, entityId, playerId),
+                        context.castPermissionUtils.applyDefinedXValue(
+                            context.castPermissionUtils.lowerReferencedManaCost(state, entityId, ability.cost),
+                            ability, state, entityId, playerId
+                        ),
                         ability, state, entityId, playerId, context.targetUtils,
                         predicateEvaluator = predicateEvaluator
                     ),
                     state, entityId, playerId, ability.isExhaust, ability.isPowerUp, ability.isManaAbility,
                     chosenTargetIds = if (ability.targetRequirements.isEmpty()) emptyList() else null
                 )
+                if (effectiveCost.containsUnpayableOwnManaCost()) continue
                 val displayDescription = AbilityCostReduction.describe(ability, effectiveCost)
 
                 var costCanBePaid = true
@@ -357,4 +362,10 @@ class ZoneActivatedAbilityEnumerator(
         atom.anyPlayersZone, atom.singleZone, atom.count,
         excludeSelfId = if (atom.excludeSelf) sourceId else null,
     ).size >= atom.count
+}
+
+private fun AbilityCost.containsUnpayableOwnManaCost(): Boolean = when (this) {
+    is AbilityCost.OwnManaCost -> true
+    is AbilityCost.Composite -> costs.any { it.containsUnpayableOwnManaCost() }
+    else -> false
 }

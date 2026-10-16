@@ -130,6 +130,11 @@ internal class PermanentEntry(
         newState = applyEntryCounterReplacements(
             newState, spellId, spellComponent, cardComponent, cardDef, controllerId, graveyardCastRider, counterEvents
         )
+        // The spell-copy riders have done their job (keywords, sacrifice, starting loyalty); strip
+        // them so they don't linger on the permanent.
+        newState = newState.updateEntity(spellId) { c ->
+            c.without<com.wingedsheep.engine.state.components.stack.SpellCopyTokenRidersComponent>()
+        }
         newState = applyEntryDesignations(newState, spellId, spellComponent, cardDef)
 
         // Add to battlefield — clean up any may-play permission first (mirrors the same
@@ -180,6 +185,7 @@ internal class PermanentEntry(
         addCastFaceDoorUnlockedEvents(newState, spellId, cardComponent, controllerId, counterEvents)
         newState = scheduleWarpExile(newState, spellId, spellComponent, cardComponent, controllerId)
         newState = scheduleDashReturn(newState, spellId, spellComponent, cardComponent, controllerId)
+        newState = scheduleBlitzSacrifice(newState, spellId, spellComponent, cardComponent, controllerId)
         newState = enterPreparedIfKeyworded(newState, spellId, spellComponent, cardDef, controllerId)
         newState = grantEntryKeywords(newState, spellId, spellComponent, controllerId)
 
@@ -480,6 +486,12 @@ internal class PermanentEntry(
             updated = updated.with(com.wingedsheep.engine.state.components.battlefield.DashedComponent)
         }
 
+        // Track if this permanent's blitz cost was paid (CR 702.152a — haste and the dies-draw
+        // trigger live off this marker; see BlitzedComponent's doc).
+        if (spellComponent.wasBlitzed) {
+            updated = updated.with(com.wingedsheep.engine.state.components.battlefield.BlitzedComponent)
+        }
+
         // Track if this permanent was cast for its evoke cost
         if (spellComponent.wasEvoked) {
             updated = updated.with(com.wingedsheep.engine.state.components.battlefield.EvokedComponent)
@@ -623,10 +635,6 @@ internal class PermanentEntry(
                     fireOnPlayerId = if (copyRiders.sacrificeOnlyOnControllersTurn) controllerId else null
                 )
             )
-            // The rider component has done its job; strip it so it doesn't linger on the permanent.
-            newState = newState.updateEntity(spellId) { c ->
-                c.without<com.wingedsheep.engine.state.components.stack.SpellCopyTokenRidersComponent>()
-            }
         }
         return newState
     }
@@ -739,13 +747,18 @@ internal class PermanentEntry(
         // because resolution places permanents via addToZone rather than
         // ZoneTransitionService.moveToZone. Every other entry reaches the same shared
         // placeEntryCounters call through ZoneMovementUtils.applyIntrinsicEntryCountersIfNeeded.
+        // A spell copy may enter with a starting loyalty other than the printed one (casualty X's
+        // "the copy has starting loyalty X", CR 707.10f).
+        val copyStartingLoyalty = newState.getEntity(spellId)
+            ?.get<com.wingedsheep.engine.state.components.stack.SpellCopyTokenRidersComponent>()?.startingLoyalty
         val intrinsicEntryCounters = if (cardDef != null && !spellComponent.castFaceDown) {
             when {
                 // Compleated (CR 702.150a): two fewer loyalty counters for each Phyrexian mana
                 // symbol the caster paid with life.
                 cardDef.startingLoyalty != null -> {
                     val lifePips = if (Keyword.COMPLEATED in cardDef.keywords) spellComponent.phyrexianLifePips else 0
-                    CounterType.LOYALTY to (cardDef.startingLoyalty!! - 2 * lifePips).coerceAtLeast(0)
+                    val printed = copyStartingLoyalty ?: cardDef.startingLoyalty!!
+                    CounterType.LOYALTY to (printed - 2 * lifePips).coerceAtLeast(0)
                 }
                 cardDef.startingDefense != null ->
                     com.wingedsheep.engine.mechanics.battle.Battles.DEFENSE_COUNTER to cardDef.startingDefense!!
@@ -985,6 +998,33 @@ internal class PermanentEntry(
             newState = allocatedState.addDelayedTrigger(delayedTrigger)
         }
         return newState
+    }
+
+    private fun scheduleBlitzSacrifice(
+        state: GameState,
+        spellId: EntityId,
+        spellComponent: SpellOnStackComponent,
+        cardComponent: CardComponent?,
+        controllerId: EntityId
+    ): GameState {
+        // Blitz (CR 702.152a): "sacrifice the permanent this spell becomes at the beginning of the
+        // next end step". `Self` is checked against the captured source reference, so the
+        // sacrifice only hits this battlefield object: one that was flickered or died and came back
+        // before the end step is a new object the trigger no longer tracks (CR 400.7 / 603.7c).
+        if (!spellComponent.wasBlitzed) return state
+        val (triggerId, allocatedState) = state.newRoutingId()
+        return allocatedState.addDelayedTrigger(
+            DelayedTriggeredAbility(
+                id = triggerId,
+                effect = com.wingedsheep.sdk.scripting.effects.SacrificeTargetEffect(EffectTarget.Self),
+                fireAtStep = Step.END,
+                sourceId = spellId,
+                objectReferences = com.wingedsheep.engine.handlers.ObjectReferenceEnvironment(captured = true,
+                    origin = state.objectRef(spellId), source = state.objectRef(spellId)),
+                sourceName = cardComponent?.name ?: "Unknown",
+                controllerId = controllerId
+            )
+        )
     }
 
     private fun enterPreparedIfKeyworded(

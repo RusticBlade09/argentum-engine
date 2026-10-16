@@ -149,8 +149,17 @@ data class ZoneEntryOptions(
      * the partly-moved state. Null for a lone move: the pre-move state already is the look-back.
      */
     val lookBackGrants: LookBackGrants? = null,
-    /** Internal card-arrival half of a meld departure; replacements already chose both cards' destination. */
-    val meldedPermanent: com.wingedsheep.engine.state.ObjectRef? = null
+    /**
+     * Internal card-arrival half of a melded or merged permanent's departure (CR 712.21, 730.3);
+     * replacements already chose every component's destination.
+     */
+    val meldedPermanent: com.wingedsheep.engine.state.ObjectRef? = null,
+    /**
+     * Enter as an Aura the card isn't printed as (`PutOntoBattlefieldAsAuraEffect`): applied as the
+     * object arrives, before [auraHostId] attaches it or the entry is recorded, so "a creature
+     * entered" observers never see it as a creature.
+     */
+    val asAura: com.wingedsheep.engine.handlers.effects.zones.AuraEntry? = null
 )
 
 /**
@@ -487,6 +496,7 @@ class ZoneTransitionService(
                 toughness = lastKnownToughness,
                 basePower = state.projectedState.getBasePower(entityId),
                 baseToughness = state.projectedState.getBaseToughness(entityId),
+                colors = state.projectedState.getColors(entityId),
                 // Mirror the projected type line's subtypes into the snapshot's own `subtypes`
                 // field so it carries the same meaning here as on the `fromProjection` path.
                 // Read by `TriggeringEntityWas` ("if it wasn't a Demon" — Infernal Vessel),
@@ -517,6 +527,7 @@ class ZoneTransitionService(
                 damageDealtByPlayers = lastKnownDamageDealtByPlayers,
                 damageSources = lastKnownDamageSources,
                 wasFaceDown = lastKnownWasFaceDown,
+                wasBlitzed = container.has<com.wingedsheep.engine.state.components.battlefield.BlitzedComponent>(),
                 chosenCreature = container.chosenCreatureChoice(),
                 copyTriggeredAbilities = com.wingedsheep.engine.state.components.stack.captureCopyTriggeredAbilities(state, entityId),
                 lookBackGrants = (options.lookBackGrants
@@ -715,6 +726,11 @@ class ZoneTransitionService(
         val melded = if (leavingBattlefield) {
             newState.getEntity(entityId)?.get<com.wingedsheep.engine.state.components.identity.MeldedComponent>()
         } else null
+        // CR 730.3: a merged (mutated) permanent likewise leaves as one permanent, and each of its
+        // components is put into the new zone.
+        val merged = if (leavingBattlefield) {
+            newState.getEntity(entityId)?.get<com.wingedsheep.engine.mechanics.MergedComponent>()
+        } else null
 
         // Strip battlefield components and remove floating effects AFTER removal
         if (leavingBattlefield) {
@@ -800,6 +816,9 @@ class ZoneTransitionService(
                 newState = com.wingedsheep.engine.handlers.effects.permanent.types
                     .separateMeldedHost(newState, cardRegistry, entityId, melded)
             }
+            if (merged != null) {
+                newState = com.wingedsheep.engine.mechanics.MutateCasts.separate(newState, cardRegistry, entityId, merged)
+            }
 
             newState = newState.updateEntity(entityId) { c -> stripBattlefieldComponents(c) }
             newState = removeFloatingEffectsTargeting(newState, entityId)
@@ -877,6 +896,7 @@ class ZoneTransitionService(
                     options.copy(tapped = options.tapped ||
                         (options.entryCopy?.copiedCard != null && options.entryCopy.replacement.tappedIfCopied)), fromZone
                 )
+                if (!options.faceDown) options.asAura?.let { newState = it.apply(newState, entityId, destControllerId) }
                 if (!options.faceDown && options.entryChoices.isNotEmpty()) {
                     newState = newState.updateEntity(entityId) { c ->
                         val recorded = options.entryChoices.entries.fold(c) { acc, (slot, value) -> acc.withCastChoice(slot, value) }
@@ -1126,9 +1146,10 @@ class ZoneTransitionService(
             )
         )
 
-        if (melded != null) {
+        val partnerIds = listOfNotNull(melded?.partnerId) + merged?.partnerIds(entityId).orEmpty()
+        for (partnerId in partnerIds) {
             val partner = moveToZone(
-                newState, melded.partnerId, actualDestZone,
+                newState, partnerId, actualDestZone,
                 options.copy(skipZoneChangeRedirect = true, meldedPermanent = oldObject,
                     libraryPlacement = effectiveLibraryPlacement),
                 fromZoneKey = currentZoneKey
@@ -1140,7 +1161,7 @@ class ZoneTransitionService(
             })
             transitions.addAll(partner.transitions.map { it.copy(requestedDestination = destinationZone) })
             if (actualDestZone == Zone.EXILE) redirectResult.linkSourceId?.let { source ->
-                newState = ZoneMovementUtils.linkExiledToSource(newState, melded.partnerId, source)
+                newState = ZoneMovementUtils.linkExiledToSource(newState, partnerId, source)
             }
         }
 

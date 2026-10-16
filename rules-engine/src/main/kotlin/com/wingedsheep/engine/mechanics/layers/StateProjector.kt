@@ -8,6 +8,7 @@ import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.battlefield.CantBeBlockedWhilePropertyAtMostComponent
 import com.wingedsheep.engine.state.components.battlefield.CountersComponent
+import com.wingedsheep.engine.state.components.battlefield.BlitzedComponent
 import com.wingedsheep.engine.state.components.battlefield.DashedComponent
 import com.wingedsheep.engine.state.components.battlefield.TappedComponent
 import com.wingedsheep.engine.state.components.identity.CardComponent
@@ -154,6 +155,8 @@ class StateProjector {
                         container.get<ToxicComponent>()?.let { add("TOXIC_${it.amount}") }
                         // Dash supplies haste from the live marker on every projection.
                         if (container.has<DashedComponent>()) add(Keyword.HASTE.name)
+                        // Blitz (CR 702.152a) likewise: haste for as long as its blitz cost was paid.
+                        if (container.has<BlitzedComponent>()) add(Keyword.HASTE.name)
                     },
                     colors = cardComponent.colors.mapTo(linkedSetOf()) { it.name },
                     types = extractTypes(cardComponent),
@@ -345,6 +348,18 @@ class StateProjector {
         val staticRemoveAllAbilitiesSources = sortedEffects
             .filter { it.modification is Modification.RemoveAllAbilities && it.fromStaticAbility }
             .mapTo(HashSet()) { it.sourceId }
+        // The latest lose-all-abilities effect on each object: an ability the object gained after
+        // it survives (CR 613.7a), see [ContinuousEffect.abilityGainedAt].
+        val latestAbilityRemoval = HashMap<EntityId, Long>()
+        for (effect in postTypeEffects) {
+            if (effect.modification !is Modification.RemoveAllAbilities) continue
+            for (id in effect.affectedEntities) {
+                latestAbilityRemoval.merge(id, effect.timestamp, ::maxOf)
+            }
+        }
+        fun gainedAfterRemoval(effect: ContinuousEffect): Boolean =
+            effect.abilityGainedAt != null &&
+                effect.abilityGainedAt > (latestAbilityRemoval[effect.sourceId] ?: Long.MIN_VALUE)
 
         // === Layers 5-6 (Color + Ability) ===
         val deferredCantBlock = mutableListOf<Pair<ContinuousEffect, Boolean>>()
@@ -364,6 +379,7 @@ class StateProjector {
             if ((effect.modification is Modification.GrantKeyword ||
                     effect.modification is Modification.GrantStaticAbility) && effect.fromStaticAbility &&
                 !startedBeforeAbility && effect.sourceId !in staticRemoveAllAbilitiesSources &&
+                !gainedAfterRemoval(effect) &&
                 projectedValues[effect.sourceId]?.lostAllAbilities == true) continue
             // "Can't block" is a rules effect, not a characteristic: it applies once Layer 6 has
             // settled who still has which ability (CR 613.11), so a lose-all-abilities effect
@@ -382,7 +398,7 @@ class StateProjector {
         // belonging to an effect that started applying before Layer 6 (CR 613.6).
         for ((effect, startedBeforeAbility) in deferredCantBlock) {
             if (effect.fromStaticAbility && !startedBeforeAbility &&
-                effect.sourceId !in staticRemoveAllAbilitiesSources &&
+                effect.sourceId !in staticRemoveAllAbilitiesSources && !gainedAfterRemoval(effect) &&
                 projectedValues[effect.sourceId]?.lostAllAbilities == true) continue
             effectApplicator.applyEffect(effect, state, projectedValues)
         }
@@ -442,7 +458,7 @@ class StateProjector {
             // exactly as Humility never undoes a Giant Growth that already resolved.
             val sourceProjected = projectedValues[effect.sourceId]
             if (effect.fromStaticAbility && sourceProjected != null && sourceProjected.lostAllAbilities &&
-                effect.sourceId !in removeAllAbilitiesSources && !startedBeforeAbility) {
+                effect.sourceId !in removeAllAbilitiesSources && !startedBeforeAbility && !gainedAfterRemoval(effect)) {
                 return@mapNotNull null
             }
 
@@ -1110,7 +1126,8 @@ class StateProjector {
                         groupId = data.groupId?.let { "grant$index-$it" },
                         // This node represents gaining the ability itself, not an effect generated
                         // by the holder's ability. A later grant survives an earlier ability loss.
-                        fromStaticAbility = data.modification !is Modification.GrantStaticAbility
+                        fromStaticAbility = data.modification !is Modification.GrantStaticAbility,
+                        abilityGainedAt = grantTimestamp
                     )
                 )
             }

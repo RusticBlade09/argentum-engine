@@ -702,6 +702,21 @@ sealed interface AbilityCost : TextReplaceable<AbilityCost> {
         override val description: String = "Pay enchanted permanent's mana cost"
     }
 
+    /**
+     * Pay this object's own mana cost — the cost of a scavenge ability granted by Young Deathclaws
+     * or Varolz, the Scar-Striped: "Each creature card in your graveyard has scavenge. The
+     * scavenge cost is equal to its mana cost." One granted ability, a different price per card.
+     *
+     * Lowered to a plain [Atom] mana cost against the source's printed cost by the same pass that
+     * lowers [AttachedPermanentManaCost], so every downstream path sees a uniform shape. A source
+     * with no mana cost lowers to an empty cost ({0}); a printed {0} stays {0}.
+     */
+    @SerialName("OwnManaCost")
+    @Serializable
+    data object OwnManaCost : AbilityCost {
+        override val description: String = "Pay its mana cost"
+    }
+
     /** Tap the creature this aura is attached to ({T} enchanted creature) */
     @SerialName("CostTapAttachedCreature")
     @Serializable

@@ -416,6 +416,11 @@ data class ClientCard(
      * later recast). Battlefield only. */
     val isDashed: Boolean = false,
 
+    /** Whether this permanent's blitz cost was paid (CR 702.152, Streets of New Capenna): it has
+     * haste and "when this dies, draw a card", and is sacrificed at the beginning of the next end
+     * step. Drives a "blitzed" cue on the battlefield. Battlefield only. */
+    val isBlitzed: Boolean = false,
+
     /** Morph cost for face-down creatures (only visible to controller) */
     val morphCost: String? = null,
 
@@ -736,7 +741,13 @@ data class ClientCard(
     val evoke: String? = null,
 
     /** Bestow price, including any nonmana payment, shown alongside the ordinary creature cast. */
-    val bestow: ClientBestow? = null
+    val bestow: ClientBestow? = null,
+
+    /**
+     * Mutate cost (CR 702.140), shown alongside the ordinary creature cast like [evoke] — so a card
+     * the player can only afford to mutate never mutates itself the moment it's dragged out.
+     */
+    val mutate: String? = null
 )
 
 /**
