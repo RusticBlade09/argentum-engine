@@ -40,14 +40,14 @@
 - [x] Battle of Hoover Dam
 - [x] Behemoth Sledge
 - [x] Behemoth of Vault 0
-- [ ] Bighorner Rancher
-- [ ] Biomass Mutation
+- [x] Bighorner Rancher
+- [x] Biomass Mutation
 - [x] Black Market
 - [x] Blasphemous Act
 - [x] Bloatfly Swarm
 - [x] Bloodforged Battle-Axe
 - [x] Boomer Scrapper
-- [ ] Bottle-Cap Blast
+- [x] Bottle-Cap Blast
 - [x] Branching Evolution
 - [ ] Brass Knuckles
 - [x] Break Down
@@ -138,14 +138,14 @@
 - [x] Hour of Reckoning
 - [x] Hullbreaker Horror
 - [ ] Ian the Reckless
-- [ ] Idolized
+- [x] Idolized
 - [x] Impassioned Orator
 - [x] Inexorable Tide
 - [x] Infesting Radroach
 - [x] Inspiring Call
 - [x] Intangible Virtue
 - [x] Intelligence Bobblehead
-- [ ] Inventory Management
+- [x] Inventory Management
 - [x] Irrigated Farmland
 - [ ] Island
 - [x] Isolated Chapel
@@ -160,9 +160,9 @@
 - [x] Lethal Scheme
 - [x] Liberty Prime, Recharged
 - [x] Lightning Greaves
-- [ ] Lily Bowen, Raging Grandma
+- [x] Lily Bowen, Raging Grandma
 - [x] Lord of the Undead
-- [ ] Loyal Apprentice
+- [x] Loyal Apprentice
 - [x] Luck Bobblehead
 - [x] Lumbering Megasloth
 - [x] MacCready, Lamplight Mayor
@@ -178,7 +178,7 @@
 - [x] Mind Stone
 - [x] Mirelurk Queen
 - [x] Mister Gutsy
-- [ ] Moira Brown, Guide Author
+- [x] Moira Brown, Guide Author
 - [x] Morbid Opportunist
 - [x] Mortuary Mire
 - [x] Mossfire Valley
@@ -222,7 +222,7 @@
 - [x] Puresteel Paladin
 - [x] Putrefy
 - [x] Radstorm
-- [ ] Rampaging Yao Guai
+- [x] Rampaging Yao Guai
 - [x] Rampant Growth
 - [x] Rancor
 - [x] Raul, Trouble Shooter
@@ -244,7 +244,7 @@
 - [x] Screeching Scorchbeast
 - [x] Secure the Wastes
 - [x] Securitron Squadron
-- [ ] Sentinel Sarah Lyons
+- [x] Sentinel Sarah Lyons
 - [x] Sentry Bot
 - [x] Shadowblood Ridge
 - [ ] Shaun, Father of Synths
@@ -321,7 +321,7 @@
 - [x] V.A.T.S.
 - [x] Valorous Stance
 - [x] Vandalblast
-- [ ] Vault 101: Birthday Party
+- [x] Vault 101: Birthday Party
 - [x] Vault 112: Sadistic Simulation
 - [x] Vault 11: Voter's Dilemma
 - [x] Vault 12: The Necropolis

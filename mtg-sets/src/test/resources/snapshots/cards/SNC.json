@@ -505,6 +505,96 @@
     ]
 }
 
+// Brass Knuckles
+{
+    "name": "Brass Knuckles",
+    "manaCost": "{4}",
+    "typeLine": "Artifact — Equipment",
+    "oracleText": "When you cast this spell, copy it. (The copy becomes a token.)\nEquipped creature has double strike as long as two or more Equipment are attached to it.\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Brass Knuckles:1",
+                "trigger": "CastThisSpellEvent",
+                "effect": {
+                    "type": "CopyTargetSpell",
+                    "target": "TriggeringEntity"
+                },
+                "descriptionOverride": "When you cast this spell, copy it."
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Brass Knuckles:2",
+                "cost": {
+                    "type": "CostAtomWrapper",
+                    "atom": {
+                        "type": "AtomMana",
+                        "cost": "{1}"
+                    }
+                },
+                "effect": {
+                    "type": "AttachEquipment",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "creature you control"
+                    }
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "creature ctrl:you"
+                        },
+                        "id": "creature you control"
+                    }
+                ],
+                "timing": "SorcerySpeed",
+                "isEquipAbility": true
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "ConditionalStaticAbility",
+                "ability": {
+                    "type": "GrantKeyword",
+                    "keyword": "DOUBLE_STRIKE"
+                },
+                "condition": {
+                    "type": "Compare",
+                    "left": {
+                        "type": "EntityProperty",
+                        "entity": "EnchantedCreature",
+                        "numericProperty": {
+                            "type": "AttachmentCount",
+                            "kind": "EQUIPMENT"
+                        }
+                    },
+                    "operator": "GTE",
+                    "right": {
+                        "type": "Fixed",
+                        "amount": 2
+                    }
+                }
+            }
+        ]
+    },
+    "equipCost": "{1}",
+    "metadata": {
+        "collectorNumber": "234",
+        "rarity": "UNCOMMON",
+        "artist": "Yeong-Hao Han",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/d/fd31ee9e-1af7-4eb4-bda8-11451ebd6927.jpg?1783923065",
+        "rulings": [
+            {
+                "date": "2022-04-29",
+                "text": "A copy of a permanent spell enters the battlefield as a token. This is not the same as an effect that creates a token, and any effect that refers to creating a token does not apply to copies of permanent spells."
+            }
+        ]
+    },
+    "colorIdentityOverride": []
+}
+
 // Brazen Upstart
 {
     "name": "Brazen Upstart",

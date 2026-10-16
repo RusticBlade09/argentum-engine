@@ -421,6 +421,95 @@
     }
 }
 
+// Animal Friend
+{
+    "name": "Animal Friend",
+    "manaCost": "{1}{G}",
+    "typeLine": "Enchantment — Aura",
+    "oracleText": "Enchant creature\nEnchanted creature has \"Whenever this creature attacks, create a 1/1 green Squirrel creature token. Put a +1/+1 counter on that token for each Aura and Equipment attached to this creature other than Animal Friend.\"",
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "GrantTriggeredAbility",
+                "ability": {
+                    "id": "Animal Friend:1",
+                    "trigger": "AttackEvent",
+                    "effect": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "GatherCards",
+                                "source": {
+                                    "type": "AttachedToTarget",
+                                    "host": "Self",
+                                    "filter": "Aura|Equipment"
+                                },
+                                "storeAs": "gathered0"
+                            },
+                            {
+                                "type": "FilterCollection",
+                                "from": "gathered0",
+                                "collectionFilter": {
+                                    "type": "ExcludeEntity",
+                                    "entity": "GrantingSource"
+                                },
+                                "storeMatching": "matching1"
+                            },
+                            {
+                                "type": "CreateToken",
+                                "power": 1,
+                                "toughness": 1,
+                                "colors": [
+                                    "GREEN"
+                                ],
+                                "creatureTypes": [
+                                    "Squirrel"
+                                ],
+                                "imageUri": "https://cards.scryfall.io/normal/front/f/9/f90bb066-79fd-48cd-ab5a-eaed71139b4e.jpg?1783912044"
+                            },
+                            {
+                                "type": "AddDynamicCounters",
+                                "counterType": "PLUS_ONE_PLUS_ONE",
+                                "amount": {
+                                    "type": "VariableReference",
+                                    "variableName": "matching1_count"
+                                },
+                                "target": {
+                                    "type": "PipelineTarget",
+                                    "collectionName": "createdTokens"
+                                }
+                            }
+                        ]
+                    },
+                    "descriptionOverride": "Whenever this creature attacks, create a 1/1 green Squirrel creature token. Put a +1/+1 counter on that token for each Aura and Equipment attached to this creature other than Animal Friend."
+                }
+            }
+        ],
+        "auraTarget": {
+            "type": "TargetObject",
+            "filter": {
+                "baseFilter": "creature"
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "72",
+        "rarity": "RARE",
+        "artist": "Maxim Kostin",
+        "flavorText": "\"I scratch their back, they scratch you.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/a/f/af31a045-0387-44ff-b735-54e19b04d925.jpg?1783912399",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "The token will enter the battlefield and then have counters put on it. In most cases, the game will see a 1/1 creature entering the battlefield for the purposes of any abilities that may trigger, such as the first ability of Overseer of Vault 76."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "GREEN"
+    ]
+}
+
 // Aradesh, the Founder
 {
     "name": "Aradesh, the Founder",
@@ -1158,6 +1247,77 @@
     }
 }
 
+// Bighorner Rancher
+{
+    "name": "Bighorner Rancher",
+    "manaCost": "{4}{G}",
+    "typeLine": "Creature — Human Ranger",
+    "oracleText": "Vigilance\n{T}: Add an amount of {G} equal to the greatest power among creatures you control.\nSacrifice this creature: You gain life equal to the greatest toughness among other creatures you control.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 5
+    },
+    "keywords": [
+        "VIGILANCE"
+    ],
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Bighorner Rancher:1",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "AddMana",
+                    "color": "GREEN",
+                    "amount": {
+                        "type": "AggregateBattlefield",
+                        "player": "You",
+                        "filter": "creature",
+                        "aggregation": "MAX",
+                        "property": "POWER"
+                    }
+                },
+                "timing": "ManaAbility",
+                "isManaAbility": true
+            },
+            {
+                "id": "Bighorner Rancher:2",
+                "cost": "CostSacrificeSelf",
+                "effect": {
+                    "type": "GainLife",
+                    "amount": {
+                        "type": "AggregateBattlefield",
+                        "player": "You",
+                        "filter": "creature",
+                        "aggregation": "MAX",
+                        "property": "TOUGHNESS",
+                        "excludeSelf": true
+                    }
+                },
+                "descriptionOverride": "You gain life equal to the greatest toughness among other creatures you control."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "73",
+        "rarity": "UNCOMMON",
+        "artist": "Brian Valeza",
+        "imageUri": "https://cards.scryfall.io/normal/front/8/6/861361bc-b357-4ff8-931b-a48d08817191.jpg?1783912401",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "Bighorner Rancher's second ability is a mana ability. It doesn't use the stack and can't be responded to. If the greatest power among creatures you control is somehow 0 or less, no mana is added."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "The amount of life you gain from Bighorner Rancher's last ability is determined when the ability resolves. If at that time the greatest toughness among creatures you control is 0 or less (probably because all of your other creatures were destroyed or otherwise left the battlefield in response), you won't gain any life."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "GREEN"
+    ]
+}
+
 // Bloatfly Swarm
 {
     "name": "Bloatfly Swarm",
@@ -1307,6 +1467,74 @@
     }
 }
 
+// Bottle-Cap Blast
+{
+    "name": "Bottle-Cap Blast",
+    "manaCost": "{4}{R}",
+    "typeLine": "Instant",
+    "oracleText": "Improvise (Your artifacts can help cast this spell. Each artifact you tap after you're done activating mana abilities pays for {1}.)\nBottle-Cap Blast deals 5 damage to any target. If excess damage was dealt to a permanent this way, create that many tapped Treasure tokens. (They're artifacts with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+    "keywords": [
+        "IMPROVISE"
+    ],
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "DealDamage",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 5
+                    },
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "excessDamageVariable": "storedNumber0"
+                },
+                {
+                    "type": "CreatePredefinedToken",
+                    "tokenType": "Treasure",
+                    "tapped": true,
+                    "dynamicCount": {
+                        "type": "VariableReference",
+                        "variableName": "storedNumber0"
+                    }
+                }
+            ]
+        },
+        "targetRequirements": [
+            {
+                "type": "AnyTarget",
+                "id": "t0"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "55",
+        "rarity": "UNCOMMON",
+        "artist": "Liiga Smilshkalne",
+        "imageUri": "https://cards.scryfall.io/normal/front/8/b/8bdceec0-0950-4d52-86fc-d0f04e8487ce.jpg?1783912404",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "Improvise doesn't change Bottle-Cap Blast's mana cost or mana value, and it can't reduce Bottle-Cap Blast's cost below {R}."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Excess damage has been dealt to a creature if the damage dealt to it is greater than lethal damage. Usually, this means damage greater than its toughness, although damage already marked on the creature is taken into account."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "For a planeswalker, excess damage means damage in excess of the planeswalker's loyalty (the number of loyalty counters it has on it). For a battle, excess damage means damage in excess of the battle's defense (the number of defense counters it has on it)."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "RED"
+    ]
+}
+
 // Break Down
 {
     "name": "Break Down",
@@ -1365,6 +1593,104 @@
     },
     "colorIdentityOverride": [
         "GREEN"
+    ]
+}
+
+// Brotherhood Outcast
+{
+    "name": "Brotherhood Outcast",
+    "manaCost": "{2}{W}",
+    "typeLine": "Creature — Human Soldier",
+    "oracleText": "When this creature enters, choose one —\n• Return target Aura or Equipment card with mana value 3 or less from your graveyard to the battlefield.\n• Put a shield counter on target creature. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 2
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Brotherhood Outcast:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Modal",
+                    "modes": [
+                        {
+                            "effect": {
+                                "type": "MoveToZone",
+                                "target": {
+                                    "type": "BoundVariable",
+                                    "name": "t0"
+                                },
+                                "destination": "Battlefield",
+                                "fromZone": "Graveyard"
+                            },
+                            "targetRequirements": [
+                                {
+                                    "type": "TargetObject",
+                                    "filter": {
+                                        "baseFilter": "Aura|Equipment mv<=3 own:you",
+                                        "zone": "Graveyard"
+                                    },
+                                    "id": "t0"
+                                }
+                            ],
+                            "description": "Return an Aura or Equipment card with mana value 3 or less from your graveyard to the battlefield"
+                        },
+                        {
+                            "effect": {
+                                "type": "AddCounters",
+                                "counterType": "SHIELD",
+                                "count": 1,
+                                "target": {
+                                    "type": "BoundVariable",
+                                    "name": "t1"
+                                }
+                            },
+                            "targetRequirements": [
+                                {
+                                    "type": "TargetObject",
+                                    "filter": {
+                                        "baseFilter": "creature"
+                                    },
+                                    "id": "t1"
+                                }
+                            ],
+                            "description": "Put a shield counter on target creature"
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "12",
+        "rarity": "UNCOMMON",
+        "artist": "Brian Valeza",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/e/5e96e656-7146-420d-aaae-3aedd773eea2.jpg?1783912418",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "If an Aura is put onto the battlefield without being cast, the Aura’s controller-to-be chooses what it will enchant as it comes back onto the battlefield. An Aura put onto the battlefield this way doesn’t target anything (so it could be attached to an opponent’s permanent with hexproof, for example), but the Aura’s enchant ability restricts what it can be attached to. If the Aura can’t legally be attached to anything, it remains in its current zone."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Shield counters don’t prevent players from sacrificing creatures."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If a permanent that would be dealt damage has more than one shield counter on it, that damage is prevented and only one shield counter is removed."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If a permanent with a shield counter is dealt unpreventable damage, that damage will be dealt and a shield counter will still be removed."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE"
     ]
 }
 
@@ -2120,6 +2446,128 @@
             }
         ]
     }
+}
+
+// Codsworth, Handy Helper
+{
+    "name": "Codsworth, Handy Helper",
+    "manaCost": "{2}{W}",
+    "typeLine": "Legendary Artifact Creature — Robot",
+    "oracleText": "Commanders you control have ward {2}.\n{T}: Add {W}{W}. Spend this mana only to cast Aura and/or Equipment spells.\n{T}: Attach target Aura or Equipment you control to target creature you control. Activate only as a sorcery.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 3
+    },
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Codsworth, Handy Helper:1",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "AddMana",
+                    "color": "WHITE",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 2
+                    },
+                    "restriction": {
+                        "type": "SubtypeSpellsOnly",
+                        "subtypes": [
+                            "Aura",
+                            "Equipment"
+                        ]
+                    }
+                },
+                "timing": "ManaAbility",
+                "isManaAbility": true
+            },
+            {
+                "id": "Codsworth, Handy Helper:2",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "AttachTargetEquipmentToCreature",
+                    "equipmentTarget": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "creatureTarget": {
+                        "type": "BoundVariable",
+                        "name": "t1"
+                    }
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "Aura|Equipment ctrl:you"
+                        },
+                        "id": "t0"
+                    },
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "creature ctrl:you"
+                        },
+                        "id": "t1"
+                    }
+                ],
+                "timing": "SorcerySpeed",
+                "descriptionOverride": "Attach target Aura or Equipment you control to target creature you control"
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "GrantWard",
+                "cost": {
+                    "type": "WardCost.Mana",
+                    "manaCost": "{2}"
+                },
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            "IsPermanent"
+                        ],
+                        "statePredicates": [
+                            "IsCommander"
+                        ],
+                        "controllerPredicate": "ControlledByYou"
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "14",
+        "rarity": "RARE",
+        "artist": "Alex Konstad",
+        "flavorText": "\"Proud to serve!\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/b/b/bbdfbd21-61b1-4ebd-8d37-bce2a391a7e9.jpg?1783912418",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "Once a commander's ward ability has triggered, causing that commander to lose ward by removing Codsworth won't affect the ability. The appropriate player will still have to pay {2} or see their spell or ability countered."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "You can't spend mana generated by Codsworth's second ability to activate abilities of Auras or Equipment. This includes paying equip costs."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "The Aura or Equipment you target with Codsworth's last ability doesn't have to be attached to a creature you control when you target it. You just have to control the Aura or Equipment you're targeting as well as the creature you're targeting."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If either target of Codsworth's last ability is an illegal target as the ability resolves, the ability won't do anything. If both targets are illegal, the ability won't resolve. If the target Aura or Equipment is already attached to the target creature, nothing happens."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "As Codsworth's last ability resolves, if the target Aura or Equipment can't legally be attached to the target creature (for example, because the creature has protection from enchantments or protection from artifacts), the target Aura or Equipment won't move."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
 }
 
 // Colonel Autumn
@@ -4645,6 +5093,67 @@
     }
 }
 
+// Idolized
+{
+    "name": "Idolized",
+    "manaCost": "{1}{W}",
+    "typeLine": "Enchantment — Aura",
+    "oracleText": "Enchant creature\nEnchanted creature has \"Whenever this creature attacks alone, it gets +X/+X until end of turn, where X is the number of nonland permanents you control.\"",
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "GrantTriggeredAbility",
+                "ability": {
+                    "id": "Idolized:1",
+                    "trigger": {
+                        "type": "AttackEvent",
+                        "requires": [
+                            "AttacksAlone"
+                        ]
+                    },
+                    "effect": {
+                        "type": "ModifyStats",
+                        "powerModifier": {
+                            "type": "AggregateBattlefield",
+                            "player": "You",
+                            "filter": "nonland permanent"
+                        },
+                        "toughnessModifier": {
+                            "type": "AggregateBattlefield",
+                            "player": "You",
+                            "filter": "nonland permanent"
+                        },
+                        "target": "Self"
+                    },
+                    "descriptionOverride": "Whenever this creature attacks alone, it gets +X/+X until end of turn, where X is the number of nonland permanents you control."
+                }
+            }
+        ],
+        "auraTarget": {
+            "type": "TargetObject",
+            "filter": {
+                "baseFilter": "creature"
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "17",
+        "rarity": "RARE",
+        "artist": "Kim Sokol",
+        "flavorText": "Renowned for your extensive support and goodwill, you are idolized by the community.",
+        "imageUri": "https://cards.scryfall.io/normal/front/6/8/687133cb-3754-475c-9e21-b6a33aa58bb0.jpg?1783912417",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "A creature attacks alone if it's the only creature declared as an attacker during the declare attackers step (including creatures controlled by your teammates, if applicable). For example, the ability granted by Idolized won't trigger if you attack with multiple creatures and all but one of them are removed from combat. Similarly, creatures that enter the battlefield attacking later in combat won't be considered when determining whether or not a creature attacked alone."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
 // Infesting Radroach
 {
     "name": "Infesting Radroach",
@@ -4782,6 +5291,70 @@
             {
                 "date": "2024-03-08",
                 "text": "The value of X is determined only once, as Intelligence Bobblehead’s last ability resolves."
+            }
+        ]
+    }
+}
+
+// Inventory Management
+{
+    "name": "Inventory Management",
+    "manaCost": "{R}{W}",
+    "typeLine": "Instant",
+    "oracleText": "Split second (As long as this spell is on the stack, players can't cast spells or activate abilities that aren't mana abilities.)\nFor each Aura and Equipment you control, you may attach it to a creature you control.",
+    "keywords": [
+        "SPLIT_SECOND"
+    ],
+    "script": {
+        "spellEffect": {
+            "type": "ForEach",
+            "space": {
+                "type": "IterationSpace.Group",
+                "filter": {
+                    "baseFilter": "permanent Aura|Equipment ctrl:you"
+                }
+            },
+            "body": {
+                "type": "Gated",
+                "gate": {
+                    "type": "Gate.MayDecide",
+                    "prompt": "Attach this to a creature you control?"
+                },
+                "then": {
+                    "type": "AttachToChosenHost",
+                    "attachment": "IterationEntity",
+                    "hostFilter": {
+                        "cardPredicates": [
+                            "IsCreature"
+                        ],
+                        "controllerPredicate": "ControlledByYou"
+                    }
+                }
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "105",
+        "rarity": "RARE",
+        "artist": "Kamila Szutenberg",
+        "flavorText": "Constant danger requires constant preparedness.",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/a/7a1acb59-a679-4c6d-8458-8fe5556b9d4d.jpg?1783912388",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "You can’t try to attach an Aura or Equipment to a creature if that Aura or Equipment can’t legally be attached to it."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Players still get priority while a spell with split second is on the stack; their options are just limited to mana abilities and certain special actions."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Split second doesn’t stop triggered abilities from triggering. If one does, its controller puts it on the stack and chooses targets for it, if any. Those abilities will resolve as normal."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "After a spell with split second resolves (or otherwise leaves the stack), players may again cast spells and activate abilities before the next object on the stack resolves."
             }
         ]
     }
@@ -5366,6 +5939,136 @@
         "WHITE",
         "BLUE",
         "RED"
+    ]
+}
+
+// Lily Bowen, Raging Grandma
+{
+    "name": "Lily Bowen, Raging Grandma",
+    "manaCost": "{3}{G}",
+    "typeLine": "Legendary Creature — Mutant Warrior",
+    "oracleText": "Vigilance\nLily Bowen enters with two +1/+1 counters on it.\nAt the beginning of your upkeep, double the number of +1/+1 counters on Lily Bowen if its power is 16 or less. Otherwise, remove all but one +1/+1 counter from it, then you gain 1 life for each +1/+1 counter removed this way.",
+    "creatureStats": {
+        "power": 0,
+        "toughness": 0
+    },
+    "keywords": [
+        "VIGILANCE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Lily Bowen, Raging Grandma:1",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "UPKEEP"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.WhenCondition",
+                        "condition": {
+                            "type": "Compare",
+                            "left": {
+                                "type": "EntityProperty",
+                                "entity": "Self",
+                                "numericProperty": "Power"
+                            },
+                            "operator": "LTE",
+                            "right": {
+                                "type": "Fixed",
+                                "amount": 16
+                            }
+                        }
+                    },
+                    "then": {
+                        "type": "DoubleCounters",
+                        "target": "Self"
+                    },
+                    "otherwise": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "StoreNumber",
+                                "name": "lilyBowenCountersBefore",
+                                "amount": {
+                                    "type": "EntityProperty",
+                                    "entity": "Self",
+                                    "numericProperty": {
+                                        "type": "CounterCount",
+                                        "counterType": "PLUS_ONE_PLUS_ONE"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "RemoveCounters",
+                                "counterType": "PLUS_ONE_PLUS_ONE",
+                                "count": {
+                                    "type": "IfPositive",
+                                    "amount": {
+                                        "type": "Subtract",
+                                        "left": {
+                                            "type": "VariableReference",
+                                            "variableName": "lilyBowenCountersBefore"
+                                        },
+                                        "right": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    }
+                                },
+                                "target": "Self"
+                            },
+                            {
+                                "type": "GainLife",
+                                "amount": {
+                                    "type": "IfPositive",
+                                    "amount": {
+                                        "type": "Subtract",
+                                        "left": {
+                                            "type": "VariableReference",
+                                            "variableName": "lilyBowenCountersBefore"
+                                        },
+                                        "right": {
+                                            "type": "EntityProperty",
+                                            "entity": "Self",
+                                            "numericProperty": {
+                                                "type": "CounterCount",
+                                                "counterType": "PLUS_ONE_PLUS_ONE"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                "descriptionOverride": "At the beginning of your upkeep, double the number of +1/+1 counters on Lily Bowen if its power is 16 or less. Otherwise, remove all but one +1/+1 counter from it, then you gain 1 life for each +1/+1 counter removed this way."
+            }
+        ],
+        "replacementEffects": [
+            {
+                "type": "EntersWithCounters",
+                "count": 2,
+                "selfOnly": true
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "79",
+        "rarity": "RARE",
+        "artist": "Villarrte",
+        "imageUri": "https://cards.scryfall.io/normal/front/0/5/052dc548-d356-43fe-9484-665db7e1f505.jpg?1783912398",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "To double the number of +1/+1 counters on Lily Bowen, put a number of +1/+1 counters on it equal to the number it already has. Replacement effects that modify the number of counters being placed on creatures you control, such as the effect of Branching Evolution, apply to this ability as normal."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "GREEN"
     ]
 }
 
@@ -6045,6 +6748,62 @@
                 "text": "Some spells and abilities that create Junk tokens may require targets. If each target chosen is illegal as that spell or ability tries to resolve, it won't resolve and none of its effects happen. You won't create any Junk tokens."
             }
         ]
+    }
+}
+
+// Moira Brown, Guide Author
+{
+    "name": "Moira Brown, Guide Author",
+    "manaCost": "{1}{R}{W}",
+    "typeLine": "Legendary Creature — Human Citizen",
+    "oracleText": "When Moira Brown enters, create a colorless Book Equipment artifact token named Wasteland Survival Guide with \"Equipped creature gets +1/+1 for each quest counter among permanents you control\" and equip {1}.\nWhenever you attack, put a quest counter on target nonland permanent you control.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 3
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Moira Brown, Guide Author:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "CreatePredefinedToken",
+                    "tokenType": "Wasteland Survival Guide"
+                },
+                "descriptionOverride": "When Moira Brown enters, create a colorless Book Equipment artifact token named Wasteland Survival Guide with \"Equipped creature gets +1/+1 for each quest counter among permanents you control\" and equip {1}."
+            },
+            {
+                "id": "Moira Brown, Guide Author:2",
+                "trigger": "YouAttackEvent",
+                "binding": "ANY",
+                "effect": {
+                    "type": "AddCounters",
+                    "counterType": "QUEST",
+                    "count": 1,
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": "nonland permanent ctrl:you"
+                    },
+                    "id": "t0"
+                },
+                "descriptionOverride": "Whenever you attack, put a quest counter on target nonland permanent you control."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "110",
+        "rarity": "RARE",
+        "artist": "Campbell White",
+        "imageUri": "https://cards.scryfall.io/normal/front/4/1/418ce6f6-b483-4695-aaf5-e4f7eeb9eb16.jpg?1783912387"
     }
 }
 
@@ -7890,6 +8649,79 @@
     ]
 }
 
+// Rampaging Yao Guai
+{
+    "name": "Rampaging Yao Guai",
+    "manaCost": "{X}{G}{G}{G}",
+    "typeLine": "Creature — Bear Mutant",
+    "oracleText": "Vigilance, trample\nThis creature enters with X +1/+1 counters on it.\nWhen this creature enters, destroy any number of target artifacts and/or enchantments with total mana value X or less.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 2
+    },
+    "keywords": [
+        "VIGILANCE",
+        "TRAMPLE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Rampaging Yao Guai:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "ForEach",
+                    "space": "IterationSpace.Targets",
+                    "body": {
+                        "type": "MoveToZone",
+                        "target": {
+                            "type": "ContextTarget",
+                            "index": 0
+                        },
+                        "destination": "Graveyard",
+                        "byDestruction": true
+                    }
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "unlimited": true,
+                    "filter": {
+                        "baseFilter": "artifact|enchantment"
+                    },
+                    "totalManaValueAtMost": "CastX"
+                }
+            }
+        ],
+        "replacementEffects": [
+            {
+                "type": "EntersWithDynamicCounters",
+                "count": "CastX"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "82",
+        "rarity": "RARE",
+        "artist": "Christina Kraus",
+        "imageUri": "https://cards.scryfall.io/normal/front/6/3/63619236-a27a-4fdd-add6-7a295901f906.jpg?1783912397",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "If a permanent has {X} in its mana cost, X is 0 when determining its mana value."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "A token that's not a copy of something else normally won't have a mana cost. Anything without a mana cost normally has a mana value of 0."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "GREEN"
+    ]
+}
+
 // Raul, Trouble Shooter
 {
     "name": "Raul, Trouble Shooter",
@@ -8708,6 +9540,102 @@
             }
         ]
     }
+}
+
+// Sentinel Sarah Lyons
+{
+    "name": "Sentinel Sarah Lyons",
+    "manaCost": "{3}{R}{W}",
+    "typeLine": "Legendary Creature — Human Knight",
+    "oracleText": "Haste\nAs long as an artifact entered the battlefield under your control this turn, creatures you control get +2/+2.\nBattalion — Whenever Sentinel Sarah Lyons and at least two other creatures attack, Sentinel Sarah Lyons deals damage equal to the number of artifacts you control to target player.",
+    "creatureStats": {
+        "power": 4,
+        "toughness": 4
+    },
+    "keywords": [
+        "HASTE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Sentinel Sarah Lyons:1",
+                "trigger": {
+                    "type": "AttackEvent",
+                    "requires": [
+                        {
+                            "type": "AttackerCountAtLeast",
+                            "n": 3
+                        }
+                    ]
+                },
+                "effect": {
+                    "type": "DealDamage",
+                    "amount": {
+                        "type": "AggregateBattlefield",
+                        "player": "You",
+                        "filter": "artifact"
+                    },
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                "targetRequirement": {
+                    "type": "TargetPlayer",
+                    "id": "t0"
+                }
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "ConditionalStaticAbility",
+                "ability": {
+                    "type": "ModifyStats",
+                    "powerBonus": 2,
+                    "toughnessBonus": 2,
+                    "filter": {
+                        "baseFilter": "creature ctrl:you"
+                    }
+                },
+                "condition": {
+                    "type": "PermanentTypeEnteredBattlefieldThisTurn",
+                    "cardType": "ARTIFACT"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "118",
+        "rarity": "RARE",
+        "artist": "David Astruga",
+        "imageUri": "https://cards.scryfall.io/normal/front/2/3/23b76965-528c-48f9-9ee6-332b09cae664.jpg?1783912384",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "Sentinel Sarah Lyons's second ability only cares if one or more artifacts entered the battlefield under your control this turn. Your creatures won't get more powerful if more than one artifact entered the battlefield under your control this turn."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Once an artifact enters the battlefield under your control in a given turn, it doesn't matter what happens to it later. Creatures you control will still get +2/+2 that turn as long as Sentinel Sarah Lyons is on the battlefield under your control."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Sentinel Sarah Lyons doesn't have to have been on the battlefield at the point in the turn where an artifact entered the battlefield under your control. If an artifact enters the battlefield under your control and then Sentinel Sarah Lyons enters the battlefield under your control later in that turn, creatures you control will still get +2/+2 that turn as long as Sentinel Sarah Lyons remains on the battlefield and under your control."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Once Sentinel Sarah Lyons's battalion ability has triggered, it doesn't matter how many creatures are still attacking when that ability resolves. It also doesn't matter whether or not Sentinel Sarah Lyons is still attacking or on the battlefield."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Use the number of artifacts you control at the time Sentinel Sarah Lyons's battalion ability resolves to determine how much damage to deal."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "RED",
+        "WHITE"
+    ]
 }
 
 // Sentry Bot
@@ -10610,6 +11538,197 @@
             {
                 "date": "2024-03-08",
                 "text": "Split second doesn’t stop triggered abilities from triggering. If one does, its controller puts it on the stack and chooses targets for it, if any. Those abilities will resolve as normal."
+            }
+        ]
+    }
+}
+
+// Vault 101: Birthday Party
+{
+    "name": "Vault 101: Birthday Party",
+    "manaCost": "{3}{W}",
+    "typeLine": "Enchantment — Saga",
+    "oracleText": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Create a 1/1 white Human Soldier creature token and a Food token. (A Food token is an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\nII, III — You may put an Aura or Equipment card from your hand or graveyard onto the battlefield. If an Equipment is put onto the battlefield this way, you may attach it to a creature you control.",
+    "script": {
+        "sagaChapters": [
+            {
+                "chapter": 1,
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "CreateToken",
+                            "power": 1,
+                            "toughness": 1,
+                            "colors": [
+                                "WHITE"
+                            ],
+                            "creatureTypes": [
+                                "Human",
+                                "Soldier"
+                            ],
+                            "imageUri": "https://cards.scryfall.io/normal/front/7/3/737741e7-b2b2-4c41-ab7c-4eeaf9f37b71.jpg?1783912046"
+                        },
+                        {
+                            "type": "CreatePredefinedToken",
+                            "tokenType": "Food"
+                        }
+                    ]
+                }
+            },
+            {
+                "chapter": 2,
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "FromMultipleZones",
+                                "zones": [
+                                    "Hand",
+                                    "Graveyard"
+                                ],
+                                "filter": "Aura|Equipment"
+                            },
+                            "storeAs": "gathered0"
+                        },
+                        {
+                            "type": "SelectFromCollection",
+                            "from": "gathered0",
+                            "selection": {
+                                "type": "ChooseUpTo",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            "storeSelected": "selected1",
+                            "prompt": "You may put an Aura or Equipment card onto the battlefield"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "selected1",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Battlefield"
+                            },
+                            "storeMovedAs": "moved2"
+                        },
+                        {
+                            "type": "ConditionalOnCollection",
+                            "collection": "moved2",
+                            "ifNotEmpty": {
+                                "type": "Gated",
+                                "gate": {
+                                    "type": "Gate.MayDecide",
+                                    "prompt": "Attach this Equipment to a creature you control?",
+                                    "feasibility": {
+                                        "type": "ControlsPermanentMatching",
+                                        "filter": "creature ctrl:you"
+                                    }
+                                },
+                                "then": {
+                                    "type": "AttachToChosenHost",
+                                    "attachment": {
+                                        "type": "PipelineTarget",
+                                        "collectionName": "moved2"
+                                    },
+                                    "hostFilter": {
+                                        "cardPredicates": [
+                                            "IsCreature"
+                                        ],
+                                        "controllerPredicate": "ControlledByYou"
+                                    }
+                                }
+                            },
+                            "filter": "Equipment"
+                        }
+                    ]
+                }
+            },
+            {
+                "chapter": 3,
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "FromMultipleZones",
+                                "zones": [
+                                    "Hand",
+                                    "Graveyard"
+                                ],
+                                "filter": "Aura|Equipment"
+                            },
+                            "storeAs": "gathered0"
+                        },
+                        {
+                            "type": "SelectFromCollection",
+                            "from": "gathered0",
+                            "selection": {
+                                "type": "ChooseUpTo",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            "storeSelected": "selected1",
+                            "prompt": "You may put an Aura or Equipment card onto the battlefield"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "selected1",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Battlefield"
+                            },
+                            "storeMovedAs": "moved2"
+                        },
+                        {
+                            "type": "ConditionalOnCollection",
+                            "collection": "moved2",
+                            "ifNotEmpty": {
+                                "type": "Gated",
+                                "gate": {
+                                    "type": "Gate.MayDecide",
+                                    "prompt": "Attach this Equipment to a creature you control?",
+                                    "feasibility": {
+                                        "type": "ControlsPermanentMatching",
+                                        "filter": "creature ctrl:you"
+                                    }
+                                },
+                                "then": {
+                                    "type": "AttachToChosenHost",
+                                    "attachment": {
+                                        "type": "PipelineTarget",
+                                        "collectionName": "moved2"
+                                    },
+                                    "hostFilter": {
+                                        "cardPredicates": [
+                                            "IsCreature"
+                                        ],
+                                        "controllerPredicate": "ControlledByYou"
+                                    }
+                                }
+                            },
+                            "filter": "Equipment"
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "28",
+        "rarity": "RARE",
+        "artist": "Andrea Piparo",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/c/fc513659-ea88-4d04-82bd-5bb2e740d957.jpg?1783912412",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "An Aura put onto the battlefield this way doesn't target anything (so it could be attached to an opponent's permanent with hexproof, for example), but the Aura's enchant ability restricts what it can be attached to. If the Aura can't legally be attached to anything, you can't choose to put it onto the battlefield at all."
             }
         ]
     }

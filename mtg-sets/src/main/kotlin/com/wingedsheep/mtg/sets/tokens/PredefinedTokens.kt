@@ -6,6 +6,7 @@ import com.wingedsheep.sdk.core.CounterType
 import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.dsl.Conditions
 import com.wingedsheep.sdk.dsl.Costs
+import com.wingedsheep.sdk.dsl.DynamicAmounts
 import com.wingedsheep.sdk.dsl.Effects
 import com.wingedsheep.sdk.dsl.Filters
 import com.wingedsheep.sdk.dsl.Targets
@@ -23,6 +24,7 @@ import com.wingedsheep.sdk.scripting.effects.ManaRestriction
 import com.wingedsheep.sdk.scripting.effects.SearchDestination
 import com.wingedsheep.sdk.scripting.effects.TransformEffect
 import com.wingedsheep.sdk.scripting.GameObjectFilter
+import com.wingedsheep.sdk.scripting.GrantDynamicStats
 import com.wingedsheep.sdk.scripting.GrantKeyword
 import com.wingedsheep.sdk.scripting.KeywordAbility
 import com.wingedsheep.sdk.scripting.GrantWard
@@ -986,6 +988,32 @@ object PredefinedTokens {
     }
 
     /**
+     * Wasteland Survival Guide — the colorless Book Equipment artifact token created by Moira
+     * Brown, Guide Author (Fallout): "Equipped creature gets +1/+1 for each quest counter among
+     * permanents you control" and equip {1}.
+     *
+     * The bonus is a continuously recomputed Layer 7c amount ([GrantDynamicStats]) over every
+     * quest counter on permanents the token's controller controls — the same count Overseer of
+     * Vault 76 reads. The Book subtype comes from Moira's Oracle text.
+     */
+    val WastelandSurvivalGuide = card("Wasteland Survival Guide") {
+        typeLine = "Artifact — Book Equipment"
+        oracleText = "Equipped creature gets +1/+1 for each quest counter among permanents you control.\nEquip {1}"
+
+        staticAbility {
+            val quests = DynamicAmounts.battlefield(Player.You).totalCounters(CounterType.QUEST)
+            ability = GrantDynamicStats(Filters.EquippedCreature, quests, quests)
+        }
+
+        equipAbility("{1}")
+
+        metadata {
+            imageUri = "https://cards.scryfall.io/normal/front/a/d/ad073c87-42f2-45f0-9613-2cdbd0abf719.jpg?1783912040"
+            artist = "Sergio Cosmai"
+        }
+    }
+
+    /**
      * Pest token — the 1/1 black **and** green Pest with "When this creature dies, you gain 1
      * life." that Strixhaven's Witherbloom cards hand out (Hunt for Specimens, Pest Summoning,
      * Sedgemoor Witch, …).
@@ -1246,6 +1274,7 @@ object PredefinedTokens {
         Galactus,
         SturdyShield,
         Axe,
+        WastelandSurvivalGuide,
         Jace,
         Heartwood,
         Lotus,
