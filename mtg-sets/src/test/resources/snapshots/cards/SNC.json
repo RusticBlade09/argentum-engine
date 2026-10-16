@@ -400,6 +400,150 @@
     ]
 }
 
+// Body Launderer
+{
+    "name": "Body Launderer",
+    "manaCost": "{2}{B}{B}",
+    "typeLine": "Creature — Ogre Rogue",
+    "oracleText": "Deathtouch\nWhenever another nontoken creature you control dies, this creature connives. (Draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on this creature.)\nWhen this creature dies, return another target non-Rogue creature card with equal or lesser power from your graveyard to the battlefield.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 3
+    },
+    "keywords": [
+        "DEATHTOUCH"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Body Launderer:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "filter": "creature nontoken ctrl:you",
+                    "from": "Battlefield",
+                    "to": "Graveyard"
+                },
+                "binding": "OTHER",
+                "effect": {
+                    "type": "Connive",
+                    "body": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "DrawCards",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            {
+                                "type": "GatherCards",
+                                "source": {
+                                    "type": "FromZone",
+                                    "zone": "Hand"
+                                },
+                                "storeAs": "connive_hand"
+                            },
+                            {
+                                "type": "SelectFromCollection",
+                                "from": "connive_hand",
+                                "selection": {
+                                    "type": "ChooseExactly",
+                                    "count": {
+                                        "type": "Fixed",
+                                        "amount": 1
+                                    }
+                                },
+                                "storeSelected": "connive_discarded",
+                                "prompt": "Choose a card to discard"
+                            },
+                            {
+                                "type": "MoveCollection",
+                                "from": "connive_discarded",
+                                "destination": {
+                                    "type": "ToZone",
+                                    "zone": "Graveyard"
+                                },
+                                "moveType": "Discard"
+                            },
+                            {
+                                "type": "ConditionalOnCollection",
+                                "collection": "connive_discarded",
+                                "ifNotEmpty": {
+                                    "type": "AddCounters",
+                                    "counterType": "PLUS_ONE_PLUS_ONE",
+                                    "count": 1,
+                                    "target": "Self"
+                                },
+                                "filter": "nonland"
+                            }
+                        ],
+                        "descriptionOverride": "Connive"
+                    }
+                }
+            },
+            {
+                "id": "Body Launderer:2",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "from": "Battlefield",
+                    "to": "Graveyard"
+                },
+                "effect": {
+                    "type": "MoveToZone",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "destination": "Battlefield",
+                    "fromZone": "Graveyard"
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                "IsCreature",
+                                {
+                                    "type": "NotSubtype",
+                                    "subtype": "Rogue"
+                                },
+                                {
+                                    "type": "PowerAtMostEntity",
+                                    "reference": "Self"
+                                }
+                            ],
+                            "controllerPredicate": "OwnedByYou"
+                        },
+                        "zone": "Graveyard",
+                        "excludeSelf": true
+                    },
+                    "id": "t0"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "68",
+        "rarity": "MYTHIC",
+        "artist": "Matt Stewart",
+        "imageUri": "https://cards.scryfall.io/normal/front/2/4/24d7d77a-35b6-451a-af44-ecaf38facccb.jpg?1783923136",
+        "rulings": [
+            {
+                "date": "2022-04-29",
+                "text": "Use Body Launderer's power as it last existed on the battlefield to determine legal targets for its last ability."
+            },
+            {
+                "date": "2022-04-29",
+                "text": "If a resolving spell or ability instructs a specific creature to connive but that creature has left the battlefield, the creature still connives. If you discard a nonland card this way, you won't put a +1/+1 counter on anything. Abilities that trigger “when [that creature] connives” will trigger."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
 // Bootleggers' Stash
 {
     "name": "Bootleggers' Stash",
@@ -593,6 +737,111 @@
         "RED",
         "WHITE"
     ]
+}
+
+// Brokers Hideout
+{
+    "name": "Brokers Hideout",
+    "manaCost": "",
+    "typeLine": "Land",
+    "oracleText": "When this land enters, sacrifice it. When you do, search your library for a basic Forest, Plains, or Island card, put it onto the battlefield tapped, then shuffle and you gain 1 life.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Brokers Hideout:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.WhenCondition",
+                        "condition": {
+                            "type": "SourceInZone",
+                            "zones": [
+                                "Battlefield"
+                            ]
+                        }
+                    },
+                    "then": {
+                        "type": "ReflexiveTrigger",
+                        "action": {
+                            "type": "SacrificeTarget",
+                            "target": "Self"
+                        },
+                        "optional": false,
+                        "reflexiveEffect": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "GatherCards",
+                                    "source": {
+                                        "type": "FromZone",
+                                        "zone": "Library",
+                                        "filter": {
+                                            "cardPredicates": [
+                                                "IsBasicLand",
+                                                {
+                                                    "type": "HasAnyOfSubtypes",
+                                                    "subtypes": [
+                                                        "Forest",
+                                                        "Plains",
+                                                        "Island"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "storeAs": "searchable",
+                                    "search": true
+                                },
+                                {
+                                    "type": "SelectFromCollection",
+                                    "from": "searchable",
+                                    "selection": {
+                                        "type": "ChooseUpTo",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "storeSelected": "found",
+                                    "prompt": "Search your library for a basic Forest, Plains, or Island card to put onto the battlefield tapped",
+                                    "selectedLabel": "Put onto the battlefield tapped"
+                                },
+                                {
+                                    "type": "MoveCollection",
+                                    "from": "found",
+                                    "destination": {
+                                        "type": "ToZone",
+                                        "zone": "Battlefield",
+                                        "placement": "Tapped"
+                                    }
+                                },
+                                "ShuffleLibrary",
+                                "EmitLibrarySearchedEvent",
+                                {
+                                    "type": "GainLife",
+                                    "amount": {
+                                        "type": "Fixed",
+                                        "amount": 1
+                                    }
+                                }
+                            ]
+                        },
+                        "descriptionOverride": "Sacrifice this land. When you do, search your library for a basic Forest, Plains, or Island card, put it onto the battlefield tapped, then shuffle and you gain 1 life."
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "248",
+        "artist": "James Paick",
+        "flavorText": "Once the witness was inside, the safe house vanished first from sight, then from memory.",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/8/989b299b-daa9-4bda-94e2-9a2f0e8f2bce.jpg?1783923058"
+    }
 }
 
 // Brokers Initiate
@@ -838,6 +1087,111 @@
         "RED",
         "WHITE"
     ]
+}
+
+// Cabaretti Courtyard
+{
+    "name": "Cabaretti Courtyard",
+    "manaCost": "",
+    "typeLine": "Land",
+    "oracleText": "When this land enters, sacrifice it. When you do, search your library for a basic Mountain, Forest, or Plains card, put it onto the battlefield tapped, then shuffle and you gain 1 life.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Cabaretti Courtyard:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.WhenCondition",
+                        "condition": {
+                            "type": "SourceInZone",
+                            "zones": [
+                                "Battlefield"
+                            ]
+                        }
+                    },
+                    "then": {
+                        "type": "ReflexiveTrigger",
+                        "action": {
+                            "type": "SacrificeTarget",
+                            "target": "Self"
+                        },
+                        "optional": false,
+                        "reflexiveEffect": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "GatherCards",
+                                    "source": {
+                                        "type": "FromZone",
+                                        "zone": "Library",
+                                        "filter": {
+                                            "cardPredicates": [
+                                                "IsBasicLand",
+                                                {
+                                                    "type": "HasAnyOfSubtypes",
+                                                    "subtypes": [
+                                                        "Mountain",
+                                                        "Forest",
+                                                        "Plains"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "storeAs": "searchable",
+                                    "search": true
+                                },
+                                {
+                                    "type": "SelectFromCollection",
+                                    "from": "searchable",
+                                    "selection": {
+                                        "type": "ChooseUpTo",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "storeSelected": "found",
+                                    "prompt": "Search your library for a basic Mountain, Forest, or Plains card to put onto the battlefield tapped",
+                                    "selectedLabel": "Put onto the battlefield tapped"
+                                },
+                                {
+                                    "type": "MoveCollection",
+                                    "from": "found",
+                                    "destination": {
+                                        "type": "ToZone",
+                                        "zone": "Battlefield",
+                                        "placement": "Tapped"
+                                    }
+                                },
+                                "ShuffleLibrary",
+                                "EmitLibrarySearchedEvent",
+                                {
+                                    "type": "GainLife",
+                                    "amount": {
+                                        "type": "Fixed",
+                                        "amount": 1
+                                    }
+                                }
+                            ]
+                        },
+                        "descriptionOverride": "Sacrifice this land. When you do, search your library for a basic Mountain, Forest, or Plains card, put it onto the battlefield tapped, then shuffle and you gain 1 life."
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "249",
+        "artist": "Kasia 'Kafis' Zielińska",
+        "flavorText": "So long as the Halo keeps flowing, the festivities never end.",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/d/9dda1e1c-b330-42e0-8547-97e2afc7615f.jpg?1783923056"
+    }
 }
 
 // Cabaretti Initiate
@@ -4575,6 +4929,111 @@
     ]
 }
 
+// Maestros Theater
+{
+    "name": "Maestros Theater",
+    "manaCost": "",
+    "typeLine": "Land",
+    "oracleText": "When this land enters, sacrifice it. When you do, search your library for a basic Island, Swamp, or Mountain card, put it onto the battlefield tapped, then shuffle and you gain 1 life.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Maestros Theater:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.WhenCondition",
+                        "condition": {
+                            "type": "SourceInZone",
+                            "zones": [
+                                "Battlefield"
+                            ]
+                        }
+                    },
+                    "then": {
+                        "type": "ReflexiveTrigger",
+                        "action": {
+                            "type": "SacrificeTarget",
+                            "target": "Self"
+                        },
+                        "optional": false,
+                        "reflexiveEffect": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "GatherCards",
+                                    "source": {
+                                        "type": "FromZone",
+                                        "zone": "Library",
+                                        "filter": {
+                                            "cardPredicates": [
+                                                "IsBasicLand",
+                                                {
+                                                    "type": "HasAnyOfSubtypes",
+                                                    "subtypes": [
+                                                        "Island",
+                                                        "Swamp",
+                                                        "Mountain"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "storeAs": "searchable",
+                                    "search": true
+                                },
+                                {
+                                    "type": "SelectFromCollection",
+                                    "from": "searchable",
+                                    "selection": {
+                                        "type": "ChooseUpTo",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "storeSelected": "found",
+                                    "prompt": "Search your library for a basic Island, Swamp, or Mountain card to put onto the battlefield tapped",
+                                    "selectedLabel": "Put onto the battlefield tapped"
+                                },
+                                {
+                                    "type": "MoveCollection",
+                                    "from": "found",
+                                    "destination": {
+                                        "type": "ToZone",
+                                        "zone": "Battlefield",
+                                        "placement": "Tapped"
+                                    }
+                                },
+                                "ShuffleLibrary",
+                                "EmitLibrarySearchedEvent",
+                                {
+                                    "type": "GainLife",
+                                    "amount": {
+                                        "type": "Fixed",
+                                        "amount": 1
+                                    }
+                                }
+                            ]
+                        },
+                        "descriptionOverride": "Sacrifice this land. When you do, search your library for a basic Island, Swamp, or Mountain card, put it onto the battlefield tapped, then shuffle and you gain 1 life."
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "251",
+        "artist": "Jokubas Uogintas",
+        "flavorText": "Only extraordinary performers are invited to grace the grandest stage in New Capenna.",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/1/51eb4a44-a5c8-49ed-b440-2462626bb638.jpg?1783923056"
+    }
+}
+
 // Make Disappear
 {
     "name": "Make Disappear",
@@ -4901,6 +5360,98 @@
     ]
 }
 
+// Nimble Larcenist
+{
+    "name": "Nimble Larcenist",
+    "manaCost": "{W}{U}{B}",
+    "typeLine": "Creature — Bird Rogue",
+    "oracleText": "Flying\nWhen this creature enters, target opponent reveals their hand. You choose an artifact, instant, or sorcery card from it and exile that card.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 1
+    },
+    "keywords": [
+        "FLYING"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Nimble Larcenist:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "RevealHand",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        },
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "FromZone",
+                                "zone": "Hand",
+                                "player": {
+                                    "type": "BoundVariable",
+                                    "name": "t0"
+                                },
+                                "filter": "artifact|instant|sorcery"
+                            },
+                            "storeAs": "chosenCardCandidates"
+                        },
+                        {
+                            "type": "SelectFromCollection",
+                            "from": "chosenCardCandidates",
+                            "selection": {
+                                "type": "ChooseExactly",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            "storeSelected": "chosenCard",
+                            "prompt": "Choose an artifact, instant, or sorcery card to exile"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "chosenCard",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Exile",
+                                "player": {
+                                    "type": "BoundVariable",
+                                    "name": "t0"
+                                }
+                            }
+                        }
+                    ]
+                },
+                "targetRequirement": {
+                    "type": "TargetOpponent",
+                    "id": "t0"
+                },
+                "descriptionOverride": "When this creature enters, target opponent reveals their hand. You choose an artifact, instant, or sorcery card from it and exile that card."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "205",
+        "rarity": "UNCOMMON",
+        "artist": "Volkan Baǵa",
+        "imageUri": "https://cards.scryfall.io/normal/front/0/1/0150d4c7-2c90-4a71-b2d3-3d9a0079fea1.jpg?1783923082"
+    },
+    "colorIdentityOverride": [
+        "WHITE",
+        "BLUE",
+        "BLACK"
+    ]
+}
+
 // Ob Nixilis, the Adversary
 {
     "name": "Ob Nixilis, the Adversary",
@@ -5100,6 +5651,217 @@
     ]
 }
 
+// Obscura Ascendancy
+{
+    "name": "Obscura Ascendancy",
+    "manaCost": "{W}{U}{B}",
+    "typeLine": "Enchantment",
+    "oracleText": "Whenever you cast a spell, if its mana value is equal to 1 plus the number of soul counters on this enchantment, put a soul counter on this enchantment, then create a 2/2 white Spirit creature token with flying.\nAs long as there are five or more soul counters on this enchantment, Spirits you control get +3/+3.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Obscura Ascendancy:1",
+                "trigger": "SpellCastEvent",
+                "binding": "ANY",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "AddCounters",
+                            "counterType": "SOUL",
+                            "count": 1,
+                            "target": "Self"
+                        },
+                        {
+                            "type": "CreateToken",
+                            "power": 2,
+                            "toughness": 2,
+                            "colors": [
+                                "WHITE"
+                            ],
+                            "creatureTypes": [
+                                "Spirit"
+                            ],
+                            "keywords": [
+                                "FLYING"
+                            ],
+                            "imageUri": "https://cards.scryfall.io/normal/front/0/a/0a7a7f7c-29e3-4b98-ad2f-2d585ec7610e.jpg?1783922963"
+                        }
+                    ]
+                },
+                "interveningIf": {
+                    "type": "Compare",
+                    "left": {
+                        "type": "ContextProperty",
+                        "key": "TRIGGERING_SPELL_MANA_VALUE"
+                    },
+                    "operator": "EQ",
+                    "right": {
+                        "type": "Add",
+                        "left": {
+                            "type": "EntityProperty",
+                            "entity": "Self",
+                            "numericProperty": {
+                                "type": "CounterCount",
+                                "counterType": "SOUL"
+                            }
+                        },
+                        "right": {
+                            "type": "Fixed",
+                            "amount": 1
+                        }
+                    }
+                },
+                "descriptionOverride": "Whenever you cast a spell, if its mana value is equal to 1 plus the number of soul counters on this enchantment, put a soul counter on this enchantment, then create a 2/2 white Spirit creature token with flying."
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "ConditionalStaticAbility",
+                "ability": {
+                    "type": "ModifyStats",
+                    "powerBonus": 3,
+                    "toughnessBonus": 3,
+                    "filter": {
+                        "baseFilter": "creature Spirit ctrl:you"
+                    }
+                },
+                "condition": {
+                    "type": "Compare",
+                    "left": {
+                        "type": "EntityProperty",
+                        "entity": "Self",
+                        "numericProperty": {
+                            "type": "CounterCount",
+                            "counterType": "SOUL"
+                        }
+                    },
+                    "operator": "GTE",
+                    "right": {
+                        "type": "Fixed",
+                        "amount": 5
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "207",
+        "rarity": "RARE",
+        "artist": "Igor Krstic",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/8/98a11e5e-d2a9-4490-90f3-a643fc7ed7c3.jpg?1783923077",
+        "rulings": [
+            {
+                "date": "2022-04-29",
+                "text": "If there are no soul counters on Obscura Ascendancy, its ability triggers if you cast a spell with mana value 1. If there is one counter, its ability triggers if you cast a spell with mana value 2, and so on."
+            },
+            {
+                "date": "2022-04-29",
+                "text": "Obscura Ascendancy's triggered ability has an “intervening ‘if'” clause. This means that it checks the number of counters both when the ability triggers and when it resolves. Notably, this means that casting two instants in a row with mana value 1 will never cause a player to create two tokens or put two counters on Obscura Ascendancy."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE",
+        "BLUE",
+        "BLACK"
+    ]
+}
+
+// Obscura Charm
+{
+    "name": "Obscura Charm",
+    "manaCost": "{W}{U}{B}",
+    "typeLine": "Instant",
+    "oracleText": "Choose one —\n• Return target multicolored permanent card with mana value 3 or less from your graveyard to the battlefield tapped.\n• Counter target instant or sorcery spell.\n• Destroy target creature or planeswalker with mana value 3 or less.",
+    "script": {
+        "spellEffect": {
+            "type": "Modal",
+            "modes": [
+                {
+                    "effect": {
+                        "type": "MoveToZone",
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t0"
+                        },
+                        "destination": "Battlefield",
+                        "placement": "Tapped",
+                        "fromZone": "Graveyard"
+                    },
+                    "targetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": {
+                                    "cardPredicates": [
+                                        "IsPermanent",
+                                        "IsMulticolored",
+                                        {
+                                            "type": "ManaValueAtMost",
+                                            "max": 3
+                                        }
+                                    ],
+                                    "controllerPredicate": "OwnedByYou"
+                                },
+                                "zone": "Graveyard"
+                            },
+                            "id": "t0"
+                        }
+                    ],
+                    "description": "Return target multicolored permanent card with mana value 3 or less from your graveyard to the battlefield tapped"
+                },
+                {
+                    "effect": "Counter",
+                    "targetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "instant|sorcery",
+                                "zone": "Stack"
+                            },
+                            "id": "t1"
+                        }
+                    ],
+                    "description": "Counter target instant or sorcery spell"
+                },
+                {
+                    "effect": {
+                        "type": "MoveToZone",
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t2"
+                        },
+                        "destination": "Graveyard",
+                        "byDestruction": true
+                    },
+                    "targetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "creature|planeswalker mv<=3"
+                            },
+                            "id": "t2"
+                        }
+                    ],
+                    "description": "Destroy target creature or planeswalker with mana value 3 or less"
+                }
+            ]
+        }
+    },
+    "metadata": {
+        "collectorNumber": "208",
+        "rarity": "UNCOMMON",
+        "artist": "Steve Argyle",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/9/9961562d-cad9-40e5-afae-3ebce77a2260.jpg?1783923075"
+    },
+    "colorIdentityOverride": [
+        "BLACK",
+        "BLUE",
+        "WHITE"
+    ]
+}
+
 // Obscura Initiate
 {
     "name": "Obscura Initiate",
@@ -5143,6 +5905,234 @@
         "BLUE",
         "WHITE"
     ]
+}
+
+// Obscura Interceptor
+{
+    "name": "Obscura Interceptor",
+    "manaCost": "{1}{W}{U}{B}",
+    "typeLine": "Creature — Octopus Wizard",
+    "oracleText": "Flash\nLifelink\nWhen this creature enters, it connives. When it connives this way, return up to one target spell to its owner's hand. (To have a creature connive, draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on that creature.)",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 1
+    },
+    "keywords": [
+        "FLASH",
+        "LIFELINK"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Obscura Interceptor:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "ReflexiveTrigger",
+                    "action": {
+                        "type": "Connive",
+                        "body": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "DrawCards",
+                                    "count": {
+                                        "type": "Fixed",
+                                        "amount": 1
+                                    }
+                                },
+                                {
+                                    "type": "GatherCards",
+                                    "source": {
+                                        "type": "FromZone",
+                                        "zone": "Hand"
+                                    },
+                                    "storeAs": "connive_hand"
+                                },
+                                {
+                                    "type": "SelectFromCollection",
+                                    "from": "connive_hand",
+                                    "selection": {
+                                        "type": "ChooseExactly",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "storeSelected": "connive_discarded",
+                                    "prompt": "Choose a card to discard"
+                                },
+                                {
+                                    "type": "MoveCollection",
+                                    "from": "connive_discarded",
+                                    "destination": {
+                                        "type": "ToZone",
+                                        "zone": "Graveyard"
+                                    },
+                                    "moveType": "Discard"
+                                },
+                                {
+                                    "type": "ConditionalOnCollection",
+                                    "collection": "connive_discarded",
+                                    "ifNotEmpty": {
+                                        "type": "AddCounters",
+                                        "counterType": "PLUS_ONE_PLUS_ONE",
+                                        "count": 1,
+                                        "target": "Self"
+                                    },
+                                    "filter": "nonland"
+                                }
+                            ],
+                            "descriptionOverride": "Connive"
+                        }
+                    },
+                    "optional": false,
+                    "reflexiveEffect": {
+                        "type": "ReturnSpellOrPermanentToOwnersHand",
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t0"
+                        }
+                    },
+                    "reflexiveTargetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "optional": true,
+                            "filter": {
+                                "baseFilter": {},
+                                "zone": "Stack"
+                            },
+                            "id": "t0"
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "209",
+        "rarity": "RARE",
+        "artist": "Jason A. Engle",
+        "imageUri": "https://cards.scryfall.io/normal/front/0/8/08886346-2405-47ee-997f-c0fb7776c783.jpg?1783923074",
+        "rulings": [
+            {
+                "date": "2022-04-29",
+                "text": "If a resolving spell or ability instructs a specific creature to connive but that creature has left the battlefield, the creature still connives. Abilities that trigger \"when [that creature] connives,\" such as that of Obscura Interceptor, will trigger."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE",
+        "BLUE",
+        "BLACK"
+    ]
+}
+
+// Obscura Storefront
+{
+    "name": "Obscura Storefront",
+    "manaCost": "",
+    "typeLine": "Land",
+    "oracleText": "When this land enters, sacrifice it. When you do, search your library for a basic Plains, Island, or Swamp card, put it onto the battlefield tapped, then shuffle and you gain 1 life.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Obscura Storefront:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.WhenCondition",
+                        "condition": {
+                            "type": "SourceInZone",
+                            "zones": [
+                                "Battlefield"
+                            ]
+                        }
+                    },
+                    "then": {
+                        "type": "ReflexiveTrigger",
+                        "action": {
+                            "type": "SacrificeTarget",
+                            "target": "Self"
+                        },
+                        "optional": false,
+                        "reflexiveEffect": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "GatherCards",
+                                    "source": {
+                                        "type": "FromZone",
+                                        "zone": "Library",
+                                        "filter": {
+                                            "cardPredicates": [
+                                                "IsBasicLand",
+                                                {
+                                                    "type": "HasAnyOfSubtypes",
+                                                    "subtypes": [
+                                                        "Plains",
+                                                        "Island",
+                                                        "Swamp"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "storeAs": "searchable",
+                                    "search": true
+                                },
+                                {
+                                    "type": "SelectFromCollection",
+                                    "from": "searchable",
+                                    "selection": {
+                                        "type": "ChooseUpTo",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "storeSelected": "found",
+                                    "prompt": "Search your library for a basic Plains, Island, or Swamp card to put onto the battlefield tapped",
+                                    "selectedLabel": "Put onto the battlefield tapped"
+                                },
+                                {
+                                    "type": "MoveCollection",
+                                    "from": "found",
+                                    "destination": {
+                                        "type": "ToZone",
+                                        "zone": "Battlefield",
+                                        "placement": "Tapped"
+                                    }
+                                },
+                                "ShuffleLibrary",
+                                "EmitLibrarySearchedEvent",
+                                {
+                                    "type": "GainLife",
+                                    "amount": {
+                                        "type": "Fixed",
+                                        "amount": 1
+                                    }
+                                }
+                            ]
+                        },
+                        "descriptionOverride": "Sacrifice this land. When you do, search your library for a basic Plains, Island, or Swamp card, put it onto the battlefield tapped, then shuffle and you gain 1 life."
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "252",
+        "artist": "Muhammad Firdaus",
+        "flavorText": "In volatile times, a sense of certainty is in high demand.",
+        "imageUri": "https://cards.scryfall.io/normal/front/1/0/1016b884-9a4c-41de-bd65-14271f4f6f9a.jpg?1783923055"
+    }
 }
 
 // Ominous Parcel
@@ -5548,6 +6538,127 @@
         "artist": "Marcela Medeiros",
         "flavorText": "She knows your next move before you do.",
         "imageUri": "https://cards.scryfall.io/normal/front/b/1/b1e04834-7335-4b25-bedf-b7739c5c3aad.jpg"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
+// Psychic Pickpocket
+{
+    "name": "Psychic Pickpocket",
+    "manaCost": "{4}{U}",
+    "typeLine": "Creature — Octopus Rogue",
+    "oracleText": "When this creature enters, it connives. When it connives this way, return up to one target nonland permanent to its owner's hand. (To have a creature connive, draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on that creature.)",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 2
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Psychic Pickpocket:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "ReflexiveTrigger",
+                    "action": {
+                        "type": "Connive",
+                        "body": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "DrawCards",
+                                    "count": {
+                                        "type": "Fixed",
+                                        "amount": 1
+                                    }
+                                },
+                                {
+                                    "type": "GatherCards",
+                                    "source": {
+                                        "type": "FromZone",
+                                        "zone": "Hand"
+                                    },
+                                    "storeAs": "connive_hand"
+                                },
+                                {
+                                    "type": "SelectFromCollection",
+                                    "from": "connive_hand",
+                                    "selection": {
+                                        "type": "ChooseExactly",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "storeSelected": "connive_discarded",
+                                    "prompt": "Choose a card to discard"
+                                },
+                                {
+                                    "type": "MoveCollection",
+                                    "from": "connive_discarded",
+                                    "destination": {
+                                        "type": "ToZone",
+                                        "zone": "Graveyard"
+                                    },
+                                    "moveType": "Discard"
+                                },
+                                {
+                                    "type": "ConditionalOnCollection",
+                                    "collection": "connive_discarded",
+                                    "ifNotEmpty": {
+                                        "type": "AddCounters",
+                                        "counterType": "PLUS_ONE_PLUS_ONE",
+                                        "count": 1,
+                                        "target": "Self"
+                                    },
+                                    "filter": "nonland"
+                                }
+                            ],
+                            "descriptionOverride": "Connive"
+                        }
+                    },
+                    "optional": false,
+                    "reflexiveEffect": {
+                        "type": "MoveToZone",
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t0"
+                        },
+                        "destination": "Hand"
+                    },
+                    "reflexiveTargetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "optional": true,
+                            "filter": {
+                                "baseFilter": "nonland permanent"
+                            },
+                            "id": "t0"
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "54",
+        "rarity": "UNCOMMON",
+        "artist": "Will Gist",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/5/956b90ca-1012-4132-bf2f-bc3825ed16ac.jpg?1783923141",
+        "rulings": [
+            {
+                "date": "2022-04-29",
+                "text": "The target permanent to return is chosen after Psychic Pickpocket connives."
+            },
+            {
+                "date": "2022-04-29",
+                "text": "If a resolving spell or ability instructs a specific creature to connive but that creature has left the battlefield, the creature still connives. Abilities that trigger \"when [that creature] connives,\" such as that of Psychic Pickpocket, will trigger."
+            }
+        ]
     },
     "colorIdentityOverride": [
         "BLUE"
@@ -6227,6 +7338,145 @@
     ]
 }
 
+// Raffine's Silencer
+{
+    "name": "Raffine's Silencer",
+    "manaCost": "{2}{B}",
+    "typeLine": "Creature — Human Assassin",
+    "oracleText": "When this creature enters, it connives. (Draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on this creature.)\nWhen this creature dies, target creature an opponent controls gets -X/-X until end of turn, where X is this creature's power.",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 1
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Raffine's Silencer:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Connive",
+                    "body": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "DrawCards",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            {
+                                "type": "GatherCards",
+                                "source": {
+                                    "type": "FromZone",
+                                    "zone": "Hand"
+                                },
+                                "storeAs": "connive_hand"
+                            },
+                            {
+                                "type": "SelectFromCollection",
+                                "from": "connive_hand",
+                                "selection": {
+                                    "type": "ChooseExactly",
+                                    "count": {
+                                        "type": "Fixed",
+                                        "amount": 1
+                                    }
+                                },
+                                "storeSelected": "connive_discarded",
+                                "prompt": "Choose a card to discard"
+                            },
+                            {
+                                "type": "MoveCollection",
+                                "from": "connive_discarded",
+                                "destination": {
+                                    "type": "ToZone",
+                                    "zone": "Graveyard"
+                                },
+                                "moveType": "Discard"
+                            },
+                            {
+                                "type": "ConditionalOnCollection",
+                                "collection": "connive_discarded",
+                                "ifNotEmpty": {
+                                    "type": "AddCounters",
+                                    "counterType": "PLUS_ONE_PLUS_ONE",
+                                    "count": 1,
+                                    "target": "Self"
+                                },
+                                "filter": "nonland"
+                            }
+                        ],
+                        "descriptionOverride": "Connive"
+                    }
+                }
+            },
+            {
+                "id": "Raffine's Silencer:2",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "from": "Battlefield",
+                    "to": "Graveyard"
+                },
+                "effect": {
+                    "type": "ModifyStats",
+                    "powerModifier": {
+                        "type": "Multiply",
+                        "amount": {
+                            "type": "EntityProperty",
+                            "entity": "Self",
+                            "numericProperty": "Power"
+                        },
+                        "multiplier": -1
+                    },
+                    "toughnessModifier": {
+                        "type": "Multiply",
+                        "amount": {
+                            "type": "EntityProperty",
+                            "entity": "Self",
+                            "numericProperty": "Power"
+                        },
+                        "multiplier": -1
+                    },
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": "creature ctrl:opponent"
+                    },
+                    "id": "t0"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "90",
+        "rarity": "UNCOMMON",
+        "artist": "Fajareka Setiawan",
+        "imageUri": "https://cards.scryfall.io/normal/front/4/b/4ba72399-c827-43f3-b072-08597dbafb2d.jpg?1783923129",
+        "rulings": [
+            {
+                "date": "2022-04-29",
+                "text": "Use Raffine's Silencer's power as it last existed on the battlefield to determine the value of X."
+            },
+            {
+                "date": "2022-04-29",
+                "text": "If a resolving spell or ability instructs a specific creature to connive but that creature has left the battlefield, the creature still connives. If you discard a nonland card this way, you won't put a +1/+1 counter on anything."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
 // Raffine's Tower
 {
     "name": "Raffine's Tower",
@@ -6255,6 +7505,146 @@
         "BLACK",
         "BLUE",
         "WHITE"
+    ]
+}
+
+// Raffine, Scheming Seer
+{
+    "name": "Raffine, Scheming Seer",
+    "manaCost": "{W}{U}{B}",
+    "typeLine": "Legendary Creature — Sphinx Demon",
+    "oracleText": "Flying, ward {1}\nWhenever you attack, target attacking creature connives X, where X is the number of attacking creatures. (Draw X cards, then discard X cards. Put a +1/+1 counter on that creature for each nonland card discarded this way.)",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 4
+    },
+    "keywords": [
+        "FLYING",
+        "WARD"
+    ],
+    "keywordAbilities": [
+        {
+            "type": "Ward",
+            "cost": {
+                "type": "WardCost.Mana",
+                "manaCost": "{1}"
+            }
+        }
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Raffine, Scheming Seer:1",
+                "trigger": "YouAttackEvent",
+                "binding": "ANY",
+                "effect": {
+                    "type": "Connive",
+                    "subject": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "body": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "StoreNumber",
+                                "name": "connive_n",
+                                "amount": {
+                                    "type": "AggregateBattlefield",
+                                    "player": "Each",
+                                    "filter": "creature attacking"
+                                }
+                            },
+                            {
+                                "type": "DrawCards",
+                                "count": {
+                                    "type": "VariableReference",
+                                    "variableName": "connive_n"
+                                }
+                            },
+                            {
+                                "type": "GatherCards",
+                                "source": {
+                                    "type": "FromZone",
+                                    "zone": "Hand"
+                                },
+                                "storeAs": "connive_hand"
+                            },
+                            {
+                                "type": "SelectFromCollection",
+                                "from": "connive_hand",
+                                "selection": {
+                                    "type": "ChooseExactly",
+                                    "count": {
+                                        "type": "VariableReference",
+                                        "variableName": "connive_n"
+                                    }
+                                },
+                                "storeSelected": "connive_discarded",
+                                "prompt": "Choose cards to discard"
+                            },
+                            {
+                                "type": "MoveCollection",
+                                "from": "connive_discarded",
+                                "destination": {
+                                    "type": "ToZone",
+                                    "zone": "Graveyard"
+                                },
+                                "moveType": "Discard"
+                            },
+                            {
+                                "type": "FilterCollection",
+                                "from": "connive_discarded",
+                                "filter": "nonland",
+                                "storeMatching": "connive_nonland"
+                            },
+                            {
+                                "type": "AddDynamicCounters",
+                                "counterType": "PLUS_ONE_PLUS_ONE",
+                                "amount": {
+                                    "type": "VariableReference",
+                                    "variableName": "connive_nonland_count"
+                                },
+                                "target": {
+                                    "type": "BoundVariable",
+                                    "name": "t0"
+                                }
+                            }
+                        ],
+                        "descriptionOverride": "Connive the number of attacking creatures on the battlefield"
+                    },
+                    "count": {
+                        "type": "AggregateBattlefield",
+                        "player": "Each",
+                        "filter": "creature attacking"
+                    }
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": "creature attacking"
+                    },
+                    "id": "t0"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "213",
+        "rarity": "MYTHIC",
+        "artist": "Johannes Voss",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/1/716a44b4-f6b0-4f14-a270-6442aed3251f.jpg?1783923074",
+        "rulings": [
+            {
+                "date": "2022-04-29",
+                "text": "Connive X is a variant of connive. If a creature connives X, its controller will draw X cards, discard X cards, then put a number of +1/+1 counters on the conniving permanent equal to the number of nonland cards discarded this way."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE",
+        "BLUE",
+        "BLACK"
     ]
 }
 
@@ -7139,6 +8529,69 @@
     ]
 }
 
+// Rumor Gatherer
+{
+    "name": "Rumor Gatherer",
+    "manaCost": "{1}{W}{W}",
+    "typeLine": "Creature — Elf Wizard",
+    "oracleText": "Alliance — Whenever another creature you control enters, scry 1. If this is the second time this ability has resolved this turn, draw a card instead.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 1
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Rumor Gatherer:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "filter": "creature ctrl:you",
+                    "to": "Battlefield"
+                },
+                "binding": "OTHER",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        "IncrementAbilityResolutionCount",
+                        {
+                            "type": "Gated",
+                            "gate": {
+                                "type": "Gate.WhenCondition",
+                                "condition": {
+                                    "type": "SourceAbilityResolvedNTimesThisTurn",
+                                    "count": 2
+                                }
+                            },
+                            "then": {
+                                "type": "DrawCards",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            "otherwise": {
+                                "type": "Scry",
+                                "count": 1
+                            }
+                        }
+                    ]
+                },
+                "descriptionOverride": "Alliance — Whenever another creature you control enters, scry 1. If this is the second time this ability has resolved this turn, draw a card instead."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "29",
+        "rarity": "UNCOMMON",
+        "artist": "Simon Dominic",
+        "flavorText": "\"It's delightful, the things their owners reveal when they think no one is listening.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/8/f8b87807-cac5-4e33-a8ed-a9ced0cd83a1.jpg?1783923152"
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
 // Scheming Fence
 {
     "name": "Scheming Fence",
@@ -7197,6 +8650,123 @@
     },
     "colorIdentityOverride": [
         "WHITE",
+        "BLUE"
+    ]
+}
+
+// Security Bypass
+{
+    "name": "Security Bypass",
+    "manaCost": "{1}{U}",
+    "typeLine": "Enchantment — Aura",
+    "oracleText": "Enchant creature\nAs long as enchanted creature is attacking alone, it can't be blocked.\nEnchanted creature has \"Whenever this creature deals combat damage to a player, it connives.\" (Its controller draws a card, then discards a card. If they discarded a nonland card, they put a +1/+1 counter on this creature.)",
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "ConditionalStaticAbility",
+                "ability": {
+                    "type": "CantBeBlocked",
+                    "filter": {
+                        "baseFilter": "permanent",
+                        "scope": "AttachedTo"
+                    }
+                },
+                "condition": {
+                    "type": "EntityMatches",
+                    "entity": "EnchantedPermanent",
+                    "filter": {
+                        "statePredicates": [
+                            "IsAttackingAlone"
+                        ]
+                    }
+                }
+            },
+            {
+                "type": "GrantTriggeredAbility",
+                "ability": {
+                    "id": "Security Bypass:1",
+                    "trigger": {
+                        "type": "DealsDamageEvent",
+                        "damageType": "DamageCombat",
+                        "recipient": {
+                            "type": "RecipientPlayer",
+                            "player": "Any"
+                        }
+                    },
+                    "effect": {
+                        "type": "Connive",
+                        "body": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "DrawCards",
+                                    "count": {
+                                        "type": "Fixed",
+                                        "amount": 1
+                                    }
+                                },
+                                {
+                                    "type": "GatherCards",
+                                    "source": {
+                                        "type": "FromZone",
+                                        "zone": "Hand"
+                                    },
+                                    "storeAs": "connive_hand"
+                                },
+                                {
+                                    "type": "SelectFromCollection",
+                                    "from": "connive_hand",
+                                    "selection": {
+                                        "type": "ChooseExactly",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "storeSelected": "connive_discarded",
+                                    "prompt": "Choose a card to discard"
+                                },
+                                {
+                                    "type": "MoveCollection",
+                                    "from": "connive_discarded",
+                                    "destination": {
+                                        "type": "ToZone",
+                                        "zone": "Graveyard"
+                                    },
+                                    "moveType": "Discard"
+                                },
+                                {
+                                    "type": "ConditionalOnCollection",
+                                    "collection": "connive_discarded",
+                                    "ifNotEmpty": {
+                                        "type": "AddCounters",
+                                        "counterType": "PLUS_ONE_PLUS_ONE",
+                                        "count": 1,
+                                        "target": "Self"
+                                    },
+                                    "filter": "nonland"
+                                }
+                            ],
+                            "descriptionOverride": "Connive"
+                        }
+                    },
+                    "descriptionOverride": "Whenever this creature deals combat damage to a player, it connives."
+                }
+            }
+        ],
+        "auraTarget": {
+            "type": "TargetObject",
+            "filter": {
+                "baseFilter": "creature"
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "59",
+        "artist": "Volkan Baǵa",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/c/5c155be9-8432-4e35-b586-96b6339d27ae.jpg?1783923140"
+    },
+    "colorIdentityOverride": [
         "BLUE"
     ]
 }
@@ -7308,6 +8878,75 @@
     },
     "colorIdentityOverride": [
         "RED"
+    ]
+}
+
+// Sky Crier
+{
+    "name": "Sky Crier",
+    "manaCost": "{1}{W}",
+    "typeLine": "Creature — Bird Citizen",
+    "oracleText": "Flying, lifelink\n{3}{W}: You and target opponent each draw a card.",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 1
+    },
+    "keywords": [
+        "FLYING",
+        "LIFELINK"
+    ],
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Sky Crier:1",
+                "cost": {
+                    "type": "CostAtomWrapper",
+                    "atom": {
+                        "type": "AtomMana",
+                        "cost": "{3}{W}"
+                    }
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            }
+                        },
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            },
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        }
+                    ]
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetOpponent",
+                        "id": "t0"
+                    }
+                ],
+                "descriptionOverride": "{3}{W}: You and target opponent each draw a card."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "31",
+        "artist": "Raoul Vitale",
+        "flavorText": "\"Breaking news! Lord Xander found dead! Suspect at large!\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/8/98e01fa9-9127-4250-94f1-39e71cc3c2bc.jpg?1783923151"
+    },
+    "colorIdentityOverride": [
+        "WHITE"
     ]
 }
 
