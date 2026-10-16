@@ -1062,6 +1062,36 @@ data class AiProfile(
      * a chance at a land.
      */
     val topOrBottomWeighsTheDraw: Boolean = false,
+    /**
+     * Score an attack plan by the **race**: our next swing as well as theirs, each attack's defence
+     * charged once, and the crack-back checked against the block the defender would rather not make.
+     *
+     * 2026-10-15 logs, `LIVE`. The AI sat still while ahead, then threw creatures away once behind.
+     * `42518dd1` turn 17: 20–6 up, 6 power against one untapped 3/3 reach blocker, and it declared
+     * no attack — sending everything costs a 2/2 flier and leaves the opponent on 2, facing a team
+     * that kills them next turn, and it never attacked again. `c71b39d3` turn 24: at 1 life it
+     * swung Skrull 4/4 beside a vigilant 4/7 flier, leaving one blocker against two attackers; the
+     * plan read safe only because the simulated defender double-blocked the Skrull and so had no
+     * crack-back left. The human took the eight and swung back for the win. Three terms of
+     * [CombatAdvisor]'s attack evaluation were mis-shaped:
+     *
+     * - **Only their next swing was priced.** The crack-back charges what the opponent's next
+     *   attack does to us; nothing charged or credited what *our* next attack does to them, and the
+     *   evaluator's race term reads raw power, which saturates once power reaches their life — six
+     *   power into one blocker on 6 life and four power on 2 read as the same "won" race. With this
+     *   on, the plan is also credited with our follow-up: turns to kill them through every blocker
+     *   they will have, chump blocks included, priced on the evaluator's own race scale
+     *   ([com.wingedsheep.ai.engine.evaluation.ThreatAssessment.raceLeadValue]).
+     * - **An attack paid for its defence twice.** The post-combat board was scored with the
+     *   attackers tapped — a tapped discount and an untapped-only defence term — and then the
+     *   crack-back charged the same missing blockers again as life. The board is now read as it
+     *   stands at our next untap, so the crack-back is the only price of a tapped attacker; a
+     *   vigilant or unblockable attacker was never charged it and costs nothing extra now either.
+     * - **The defender was assumed to block.** When the predicted blocks cost the defender a
+     *   creature, the plan is also scored with no blocks at all — the defender keeping its creatures
+     *   for the swing back — and counts at the worse of the two.
+     */
+    val attacksReadTheRace: Boolean = false,
     /** Non-null profiles may only be selected automatically for this set. Arena selection stays explicit. */
     val restrictedToSet: String? = null,
 ) {
@@ -2011,6 +2041,7 @@ data class AiProfile(
             convokeLandsFirst = true,
             selectionSeesWhoseCards = true,
             topOrBottomWeighsTheDraw = true,
+            attacksReadTheRace = true,
         )
 
         /**

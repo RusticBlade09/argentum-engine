@@ -1132,6 +1132,14 @@ object ThreatAssessment : BoardFeature {
     private fun urgency(life: Int, power: Int): Double =
         if (power <= 0 || life <= 0) 0.0 else minOf(power.toDouble() / life, 1.0)
 
+    /**
+     * What a race lead of [lead] urgency is worth, unweighted: the [RACE_URGENCY_SCALE] with the
+     * same 2.0 / 1.5 slopes [score] applies. Public so a consumer pricing one side of the race on
+     * its own — `CombatAdvisor`'s follow-up under `AiProfile.attacksReadTheRace` — uses this scale
+     * rather than a second one.
+     */
+    fun raceLeadValue(lead: Double): Double = lead * RACE_URGENCY_SCALE * if (lead > 0) 2.0 else 1.5
+
     /** Score with the historical turns-linear race and its `99.0` sentinel. */
     override fun score(state: GameState, projected: ProjectedState, playerId: EntityId): Double =
         score(state, projected, playerId, discountedRaceClock = false)
@@ -1199,7 +1207,7 @@ object ThreatAssessment : BoardFeature {
                 // Urgency, not turns — see [RACE_URGENCY_SCALE]. Same slopes, same sign, and the
                 // no-clock sentinel simply does not exist on this path.
                 val lead = urgency(theirLife, myAttackPower) - urgency(myLife, theirAttackPower)
-                score += lead * RACE_URGENCY_SCALE * if (lead > 0) 2.0 else 1.5
+                score += raceLeadValue(lead)
             } else {
                 // How many turns until opponent kills us (if we can't block)
                 val turnsUntilDead =

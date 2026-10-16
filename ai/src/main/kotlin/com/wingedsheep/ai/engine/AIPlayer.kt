@@ -295,6 +295,8 @@ class AIPlayer(
                 chumpForTheClock = profile.chumpForTheClock,
                 walkerEngines = if (profile.walkersPricedAsEngines) IntentCatalog.of(cardRegistry) else null,
                 stackChumpsOnTramplers = profile.stackChumpsOnTramplers,
+                attacksReadTheRace = profile.attacksReadTheRace,
+                raceWeight = EvalWeights.resolve(profile.evalWeightsId).threatAssessment,
             )
             val responder = DecisionResponder(
                 simulator, evaluator,
