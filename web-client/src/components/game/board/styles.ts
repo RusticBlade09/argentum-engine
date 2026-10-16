@@ -825,10 +825,74 @@ export const styles: Record<string, React.CSSProperties> = {
     borderRadius: 4,
     border: '1px solid rgba(255, 255, 255, 0.3)',
   } as React.CSSProperties,
-  keywordIconsContainer: {
+  // Top-left corner stack on a card: every marker that wants that corner flows through this one
+  // column (GameCard), so a token chip, a ring-bearer and a keyword column never paint over each other.
+  cornerStack: {
     position: 'absolute',
-    top: 4,
-    left: 4,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 2,
+    maxWidth: 'calc(100% - 8px)',
+    zIndex: 7,
+    pointerEvents: 'none',
+  } as React.CSSProperties,
+  cornerStackRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 2,
+    maxWidth: '100%',
+  } as React.CSSProperties,
+  // Token marker — same dark-glass language as the keyword icons below it, with a hairline
+  // highlight so it reads as a label rather than another ability.
+  tokenChip: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '2px 5px',
+    borderRadius: 4,
+    background: 'linear-gradient(180deg, rgba(40, 40, 48, 0.92) 0%, rgba(10, 10, 14, 0.92) 100%)',
+    border: '1px solid rgba(255, 255, 255, 0.4)',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
+    color: '#ececf2',
+    fontWeight: 700,
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase',
+    lineHeight: 1,
+    whiteSpace: 'nowrap',
+  } as React.CSSProperties,
+  ringBearerMarker: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    borderRadius: '50%',
+    background: 'radial-gradient(circle at 35% 30%, #3a2c00 0%, #1a1206 80%)',
+    border: '1px solid rgba(212, 175, 55, 0.85)',
+    boxShadow: '0 0 6px 1px rgba(212, 175, 55, 0.65), inset 0 1px 1px rgba(0, 0, 0, 0.5)',
+  } as React.CSSProperties,
+  grantedColorGem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 2,
+    padding: '2px 4px',
+    borderRadius: 999,
+    background: 'radial-gradient(circle at 35% 30%, rgba(34, 34, 42, 0.92) 0%, rgba(10, 10, 14, 0.92) 90%)',
+    border: '1px solid rgba(255, 255, 255, 0.28)',
+  } as React.CSSProperties,
+  copyOfBadge: {
+    maxWidth: '100%',
+    backgroundColor: 'rgba(40, 40, 80, 0.9)',
+    color: '#a0b0e0',
+    padding: '1px 4px',
+    borderRadius: 3,
+    border: '1px solid rgba(100, 120, 200, 0.6)',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    cursor: 'help',
+    pointerEvents: 'auto',
+  } as React.CSSProperties,
+  keywordIconsContainer: {
     display: 'flex',
     flexDirection: 'column',
     gap: 2,
@@ -2176,9 +2240,6 @@ export const styles: Record<string, React.CSSProperties> = {
   } as React.CSSProperties,
   // Plotted status (CR 718) — a card sitting face-up in exile, castable for free on a later turn.
   plottedBadge: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
     borderRadius: 4,
     padding: '1px 5px',
     display: 'flex',
@@ -2192,14 +2253,10 @@ export const styles: Record<string, React.CSSProperties> = {
     boxShadow: '0 0 6px rgba(245, 215, 110, 0.85)',
     textShadow: 'none',
     pointerEvents: 'none',
-    zIndex: 6,
   } as React.CSSProperties,
 
   // Prepared status (Secrets of Strixhaven) — a creature whose prepare-spell copy waits castable in exile.
   preparedBadge: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
     borderRadius: 4,
     padding: '1px 5px',
     display: 'flex',
@@ -2213,7 +2270,6 @@ export const styles: Record<string, React.CSSProperties> = {
     boxShadow: '0 0 6px rgba(143, 111, 224, 0.85)',
     textShadow: 'none',
     pointerEvents: 'none',
-    zIndex: 6,
   } as React.CSSProperties,
 
   // Warp (CR 702.185, Edge of Eternities) — a permanent cast for its warp cost that will be exiled at

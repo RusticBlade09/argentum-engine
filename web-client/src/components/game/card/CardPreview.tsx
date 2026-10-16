@@ -554,12 +554,11 @@ function MobileCardPreview({ card, dismissible = false }: { card: import('@/type
               card's image, so only this says it is a token. */}
           {card.isToken && !card.imageUri?.includes('/art_crop/') && (
             <div style={{
+              ...styles.tokenChip,
               position: 'absolute', top: 8, left: 8,
-              backgroundColor: 'rgba(0, 0, 0, 0.78)', color: '#f0f0f0',
-              fontSize: 11, fontWeight: 700, letterSpacing: 0.5, padding: '2px 8px', borderRadius: 4,
-              border: '1px solid rgba(255, 255, 255, 0.55)', pointerEvents: 'none', whiteSpace: 'nowrap',
+              fontSize: 11, padding: '3px 8px', pointerEvents: 'none',
             }}>
-              TOKEN
+              Token
             </div>
           )}
           {isRevealedFaceDown && (

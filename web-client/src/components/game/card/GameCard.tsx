@@ -1353,39 +1353,6 @@ function GameCardImpl({
         </>
       )}
 
-      {/* A token that copies a real card (Dance of Many, Clone-style tokens) carries that card's
-          full image, so nothing about it reads as a token — the generated frame above only kicks in
-          for the art-crop tokens. This chip is the marker for that case: it matters at a glance,
-          because a token that leaves the battlefield ceases to exist. Counter-rotated so it stays
-          upright on a tapped permanent, like the untap lock. */}
-      {!faceDown && card.isToken && !card.imageUri?.includes('/art_crop/') && (
-        <div
-          aria-label="Token"
-          title="Token — it ceases to exist if it leaves the battlefield"
-          style={{
-            position: 'absolute',
-            top: 3,
-            left: 3,
-            padding: '0 4px',
-            borderRadius: 3,
-            transform: totalRotateDeg ? `rotate(${-totalRotateDeg}deg)` : undefined,
-            transition: counterRotateTransition,
-            transformOrigin: 'top left',
-            background: 'rgba(0, 0, 0, 0.78)',
-            border: '1px solid rgba(255, 255, 255, 0.55)',
-            color: '#f0f0f0',
-            fontSize: Math.max(responsive.badges.smallLabelFontSize - 1, 6),
-            fontWeight: 700,
-            letterSpacing: 0.5,
-            lineHeight: 1.5,
-            zIndex: 7,
-            pointerEvents: 'none',
-          }}
-        >
-          TOKEN
-        </div>
-      )}
-
       {/* Tapped indicator */}
       {isTapped && (
         <div style={styles.tappedOverlay} />
@@ -1441,80 +1408,6 @@ function GameCardImpl({
           "stays like this", which is the read that changes how you attack into the board. */}
       {untapRestriction && isTapped && (
         <div style={styles.untapLockedOverlay} />
-      )}
-
-      {/* Ring-bearer badge (CR 701.54) — a prominent golden Ring marker pinned to the top-left of
-          the creature a player designated as their Ring-bearer. Gold fill + glow makes the bearer
-          unmistakable at a glance across the battlefield, using the mana-font
-          `ms-ability-ring-bearer` (One Ring) glyph. */}
-      {battlefield && !faceDown && card.isRingBearer && (
-        <div
-          aria-label="Ring-bearer"
-          title="Ring-bearer"
-          style={{
-            position: 'absolute',
-            top: 3,
-            left: 3,
-            width: responsive.badges.ptFontSize * 1.7,
-            height: responsive.badges.ptFontSize * 1.7,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle at 35% 30%, #3a2c00 0%, #1a1206 80%)',
-            border: '1px solid rgba(212, 175, 55, 0.85)',
-            boxShadow: '0 0 6px 1px rgba(212, 175, 55, 0.65), inset 0 1px 1px rgba(0, 0, 0, 0.5)',
-            zIndex: 7,
-            pointerEvents: 'none',
-          }}
-        >
-          <i
-            className="ms ms-ability-ring-bearer"
-            style={{
-              fontSize: responsive.badges.ptFontSize * 1.1,
-              color: '#f2d472',
-              lineHeight: 1,
-              display: 'block',
-              filter: 'drop-shadow(0 0 2px rgba(212, 175, 55, 0.85))',
-            }}
-          />
-        </div>
-      )}
-
-      {/* Chosen-color gem — when an attached "choose a color" aura (e.g. Shimmerwilds Growth's
-          "Enchanted land is the chosen color") has made this permanent a color, the aura sits
-          hidden behind the host, so paint the chosen color(s) as mana pip(s) on the host itself.
-          A soft colored halo makes the granted color readable at a glance even on an
-          otherwise-colorless land. */}
-      {battlefield && !faceDown && card.grantedColors && card.grantedColors.length > 0 && (
-        <div
-          aria-label={`Chosen color: ${card.grantedColors.map((c) => c.toLowerCase()).join(', ')}`}
-          title={`Chosen color: ${card.grantedColors
-            .map((c) => c.charAt(0) + c.slice(1).toLowerCase())
-            .join(', ')}`}
-          style={{
-            position: 'absolute',
-            top: 3,
-            // Slide clear of the ring-bearer marker on the rare creature that has both.
-            left: card.isRingBearer ? 3 + responsive.badges.ptFontSize * 2 : 3,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            padding: '2px 4px',
-            borderRadius: 999,
-            background: 'radial-gradient(circle at 35% 30%, rgba(34, 34, 42, 0.92) 0%, rgba(10, 10, 14, 0.92) 90%)',
-            border: '1px solid rgba(255, 255, 255, 0.28)',
-            boxShadow: card.grantedColors
-              .map((c) => `0 0 6px 1px ${COLOR_GLOW[c]}`)
-              .join(', '),
-            zIndex: 7,
-            pointerEvents: 'none',
-          }}
-        >
-          {card.grantedColors.map((c) => (
-            <ManaSymbol key={c} symbol={ColorSymbols[c]} size={responsive.badges.ptFontSize * 1.25} />
-          ))}
-        </div>
       )}
 
       {/* P/T overlay for creatures on battlefield (server sends 2/2 for face-down creatures) */}
@@ -1691,28 +1584,6 @@ function GameCardImpl({
       {isBanded && bandColor && (
         <div style={{ ...styles.bandBadge, backgroundColor: bandColor.base }}>
           Band {bandIndex + 1}
-        </div>
-      )}
-
-      {/* Plot (CR 718): card sitting face-up in exile, castable for free on a later turn */}
-      {card.isPlotted && (
-        <div style={styles.plottedBadge} title="Plotted (CR 718) — cast it for free on a later turn">
-          Plotted
-        </div>
-      )}
-
-      {/* Prepared (Secrets of Strixhaven): a copy of this creature's prepare spell waits castable in exile */}
-      {card.isPrepared && (
-        <div style={styles.preparedBadge} title="Prepared (Secrets of Strixhaven) — cast a copy of its spell from exile; doing so unprepares it">
-          Prepared
-        </div>
-      )}
-
-      {/* Prepared spell copy (Secrets of Strixhaven): the castable exile copy shown as a ghost card in
-          hand. Same lavender badge as the creature's "Prepared" cue so the link is obvious. */}
-      {card.isPreparedSpell && (
-        <div style={styles.preparedBadge} title="Prepared spell (Secrets of Strixhaven) — a copy from your prepared creature; casting it unprepares that creature">
-          ✦ Prepared
         </div>
       )}
 
@@ -2332,15 +2203,140 @@ function GameCardImpl({
         )
       })()}
 
-      {/* Keyword ability icons (shown for face-up cards, and for face-down cards with granted keywords) */}
-      {battlefield && !hideKeywordIcons && (card.keywords.length > 0 || (card.abilityFlags && card.abilityFlags.length > 0) || (card.protections && card.protections.length > 0) || (card.hexproofFromColors && card.hexproofFromColors.length > 0) || card.isSuspected || card.isSolved || card.isRenowned || card.isMonstrous) && (
-        <KeywordIcons keywords={card.keywords} abilityFlags={card.abilityFlags ?? []} protections={card.protections ?? []} hexproofFromColors={card.hexproofFromColors ?? []} hexproofFromMonocolored={card.hexproofFromMonocolored ?? false} hexproofFromMulticolored={card.hexproofFromMulticolored ?? false} isSuspected={card.isSuspected ?? false} isSolved={card.isSolved ?? false} isRenowned={card.isRenowned ?? false} isMonstrous={card.isMonstrous ?? false} {...(() => {
-          // The ring-bearer marker and the "Prepared" badge both pin to the top-left corner; push the
-          // keyword icons down past whichever is showing so they aren't hidden beneath the badge.
-          const topOffset = (card.isRingBearer && !faceDown ? 3 + responsive.badges.ptFontSize * 1.7 + 3 : 0) + (card.isPrepared ? 22 : 0)
-          return topOffset > 0 ? { topOffset } : {}
-        })()} size={responsive.badges.keywordIconSize} />
-      )}
+      {/* Top-left corner stack. Every marker that wants this corner — the token chip, the
+          ring-bearer, the chosen-color gem, the copy-of label, Plotted/Prepared, and the keyword
+          icons — flows through one column instead of being pinned to the same `top/left` and
+          painted over each other. Identity markers share the first row; the keyword column
+          follows underneath, so any combination stacks cleanly. */}
+      {(() => {
+        const showToken = !faceDown && card.isToken && !card.imageUri?.includes('/art_crop/')
+        const showRingBearer = battlefield && !faceDown && card.isRingBearer
+        const showGrantedColors = battlefield && !faceDown && !!card.grantedColors && card.grantedColors.length > 0
+        const showCopyOf = !faceDown && !!card.copyOf
+        const showKeywords = battlefield && !hideKeywordIcons && (card.keywords.length > 0 || (card.abilityFlags && card.abilityFlags.length > 0) || (card.protections && card.protections.length > 0) || (card.hexproofFromColors && card.hexproofFromColors.length > 0) || card.isSuspected || card.isSolved || card.isRenowned || card.isMonstrous)
+        const showHeaderRow = showToken || showRingBearer || showGrantedColors
+        if (!showHeaderRow && !showCopyOf && !card.isPlotted && !card.isPrepared && !card.isPreparedSpell && !showKeywords) return null
+        const markerSize = responsive.badges.ptFontSize * 1.7
+        return (
+          <div style={{ ...styles.cornerStack, top: responsive.badges.badgeInset, left: responsive.badges.badgeInset }}>
+            {showHeaderRow && (
+              <div style={styles.cornerStackRow}>
+                {/* A token's full-card image (a real token print, or a copy of a real card — Dance
+                    of Many, Clone-style tokens) doesn't read as a token at battlefield size; the
+                    generated frame only kicks in for art-crop tokens. This chip is the marker: it
+                    matters at a glance, because a token that leaves the battlefield ceases to exist. */}
+                {showToken && (
+                  <div
+                    aria-label="Token"
+                    title="Token — it ceases to exist if it leaves the battlefield"
+                    style={{
+                      ...styles.tokenChip,
+                      fontSize: Math.max(responsive.badges.smallLabelFontSize - 1, 6),
+                    }}
+                  >
+                    Token
+                  </div>
+                )}
+
+                {/* Ring-bearer badge (CR 701.54) — a golden Ring marker on the creature a player
+                    designated as their Ring-bearer, using the mana-font `ms-ability-ring-bearer`
+                    (One Ring) glyph. */}
+                {showRingBearer && (
+                  <div
+                    aria-label="Ring-bearer"
+                    title="Ring-bearer"
+                    style={{ ...styles.ringBearerMarker, width: markerSize, height: markerSize }}
+                  >
+                    <i
+                      className="ms ms-ability-ring-bearer"
+                      style={{
+                        fontSize: responsive.badges.ptFontSize * 1.1,
+                        color: '#f2d472',
+                        lineHeight: 1,
+                        display: 'block',
+                        filter: 'drop-shadow(0 0 2px rgba(212, 175, 55, 0.85))',
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Chosen-color gem — when an attached "choose a color" aura (e.g. Shimmerwilds
+                    Growth's "Enchanted land is the chosen color") has made this permanent a color,
+                    the aura sits hidden behind the host, so paint the chosen color(s) as mana pip(s)
+                    on the host itself, with a halo in that color. */}
+                {showGrantedColors && card.grantedColors && (
+                  <div
+                    aria-label={`Chosen color: ${card.grantedColors.map((c) => c.toLowerCase()).join(', ')}`}
+                    title={`Chosen color: ${card.grantedColors
+                      .map((c) => c.charAt(0) + c.slice(1).toLowerCase())
+                      .join(', ')}`}
+                    style={{
+                      ...styles.grantedColorGem,
+                      boxShadow: card.grantedColors.map((c) => `0 0 6px 1px ${COLOR_GLOW[c]}`).join(', '),
+                    }}
+                  >
+                    {card.grantedColors.map((c) => (
+                      <ManaSymbol key={c} symbol={ColorSymbols[c]} size={responsive.badges.ptFontSize * 1.25} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Copy indicator (e.g., Clever Impersonator copying Wind Drake). Hovering it previews
+                the *original* card (the printed identity), not the copy's current characteristics. */}
+            {showCopyOf && (
+              <div
+                onMouseEnter={(e) => {
+                  e.stopPropagation()
+                  useGameStore.getState().hoverCard(null)
+                  setCopyBadgeHoverPos({ x: e.clientX, y: e.clientY })
+                }}
+                onMouseMove={(e) => {
+                  e.stopPropagation()
+                  setCopyBadgeHoverPos({ x: e.clientX, y: e.clientY })
+                }}
+                onMouseLeave={(e) => {
+                  e.stopPropagation()
+                  setCopyBadgeHoverPos(null)
+                  // Restore the regular card preview as the cursor moves back onto the card body.
+                  useGameStore.getState().hoverCard(card.id, { x: e.clientX, y: e.clientY })
+                }}
+                style={{ ...styles.copyOfBadge, fontSize: responsive.badges.smallLabelFontSize }}
+              >
+                {card.copyOf}
+              </div>
+            )}
+
+            {/* Plot (CR 718): card sitting face-up in exile, castable for free on a later turn */}
+            {card.isPlotted && (
+              <div style={styles.plottedBadge} title="Plotted (CR 718) — cast it for free on a later turn">
+                Plotted
+              </div>
+            )}
+
+            {/* Prepared (Secrets of Strixhaven): a copy of this creature's prepare spell waits castable in exile */}
+            {card.isPrepared && (
+              <div style={styles.preparedBadge} title="Prepared (Secrets of Strixhaven) — cast a copy of its spell from exile; doing so unprepares it">
+                Prepared
+              </div>
+            )}
+
+            {/* Prepared spell copy (Secrets of Strixhaven): the castable exile copy shown as a ghost
+                card in hand. Same lavender badge as the creature's "Prepared" cue so the link is obvious. */}
+            {card.isPreparedSpell && (
+              <div style={styles.preparedBadge} title="Prepared spell (Secrets of Strixhaven) — a copy from your prepared creature; casting it unprepares that creature">
+                ✦ Prepared
+              </div>
+            )}
+
+            {/* Keyword ability icons (face-up cards, and face-down cards with granted keywords) */}
+            {showKeywords && (
+              <KeywordIcons keywords={card.keywords} abilityFlags={card.abilityFlags ?? []} protections={card.protections ?? []} hexproofFromColors={card.hexproofFromColors ?? []} hexproofFromMonocolored={card.hexproofFromMonocolored ?? false} hexproofFromMulticolored={card.hexproofFromMulticolored ?? false} isSuspected={card.isSuspected ?? false} isSolved={card.isSolved ?? false} isRenowned={card.isRenowned ?? false} isMonstrous={card.isMonstrous ?? false} size={responsive.badges.keywordIconSize} />
+            )}
+          </div>
+        )
+      })()}
 
       {/* Revealed face-down eye icon (e.g., peeked via Spy Network) */}
       {faceDown && card.revealedName && (
@@ -2446,45 +2442,6 @@ function GameCardImpl({
           lineHeight: 1,
         }}>
           <i className={`ms ms-dfc-${card.currentFace === 'BACK' ? 'night' : 'day'}`} />
-        </div>
-      )}
-
-      {/* Copy indicator badge (e.g., Clever Impersonator copying Wind Drake).
-          Hovering the badge previews the *original* card (the printed identity),
-          not the copy's current characteristics. */}
-      {!faceDown && card.copyOf && (
-        <div
-          onMouseEnter={(e) => {
-            e.stopPropagation()
-            useGameStore.getState().hoverCard(null)
-            setCopyBadgeHoverPos({ x: e.clientX, y: e.clientY })
-          }}
-          onMouseMove={(e) => {
-            e.stopPropagation()
-            setCopyBadgeHoverPos({ x: e.clientX, y: e.clientY })
-          }}
-          onMouseLeave={(e) => {
-            e.stopPropagation()
-            setCopyBadgeHoverPos(null)
-            // Restore the regular card preview as the cursor moves back onto the card body.
-            useGameStore.getState().hoverCard(card.id, { x: e.clientX, y: e.clientY })
-          }}
-          style={{
-            position: 'absolute',
-            top: 4,
-            left: 4,
-            backgroundColor: 'rgba(40, 40, 80, 0.9)',
-            color: '#a0b0e0',
-            fontSize: responsive.badges.smallLabelFontSize,
-            padding: '1px 4px',
-            borderRadius: 3,
-            border: '1px solid rgba(100, 120, 200, 0.6)',
-            whiteSpace: 'nowrap',
-            cursor: 'help',
-            zIndex: 5,
-          }}
-        >
-          {card.copyOf}
         </div>
       )}
 
