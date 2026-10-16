@@ -66,6 +66,7 @@ private fun PendingDecision.requestEventType(): String = when (this) {
     is ChooseOptionDecision -> "CHOOSE_OPTION"
     is ChooseReplacementDecision -> "CHOOSE_REPLACEMENT"
     is BudgetModalDecision -> "BUDGET_MODAL"
+    is FlipOntoBattlefieldDecision -> "FLIP_ONTO_BATTLEFIELD"
     is AssignDamageDecision -> "ASSIGN_DAMAGE"
     is CombatResolutionDecision -> "COMBAT_RESOLUTION"
     is SelectManaSourcesDecision -> "SELECT_MANA_SOURCES"

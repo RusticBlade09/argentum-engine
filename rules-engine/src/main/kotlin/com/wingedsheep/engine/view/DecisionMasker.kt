@@ -82,6 +82,8 @@ class DecisionMasker(private val visibility: Visibility) {
             is ReorderLibraryDecision -> decision.copy(context = context)
             is SelectManaSourcesDecision -> decision.copy(context = context)
             is BudgetModalDecision -> decision.copy(context = context)
+            // Face-down permanents already lie on the table nameless and imageless.
+            is FlipOntoBattlefieldDecision -> decision.copy(context = context)
             is PlayCardDecision -> decision.copy(context = context)
         }
     }

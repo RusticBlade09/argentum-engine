@@ -194,6 +194,7 @@ class DecisionResponder(
             is ChooseOptionDecision -> respondOption(state, decision, playerId)
             is ChooseReplacementDecision -> respondReplacement(decision)
             is BudgetModalDecision -> respondBudgetModal(decision)
+            is FlipOntoBattlefieldDecision -> FlipAim.respond(state, decision, playerId)
             is AssignDamageDecision -> respondDamageAssignment(state, decision)
             is CombatResolutionDecision -> respondCombatResolution(state, decision, playerId)
             is SearchLibraryDecision -> respondSearchLibrary(state, decision, playerId)

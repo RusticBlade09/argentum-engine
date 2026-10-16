@@ -39,6 +39,8 @@ import type {
   MatchmakingStatusMessage,
   MatchFoundMessage,
   MatchmakingQueueCount,
+  FlipTable,
+  FlipLanding,
 } from '@/types'
 import type { ConnectionStatus } from '@/network/websocket.ts'
 import type { AssistUndo, DeckSnapshot } from './assistDeck'
@@ -827,6 +829,31 @@ export interface RevealAnimation {
 }
 
 /**
+ * A dexterity flip (Chaos Orb) in the air or just landed. The thrower's client creates it the
+ * moment they let go (so the flight starts with no network wait); the server's
+ * `cardFlippedOntoBattlefield` event then supplies [result] — and creates it outright on every
+ * other client.
+ */
+export interface FlipShow {
+  id: string
+  table: FlipTable
+  sourceName: string
+  sourceImageUri: string | null
+  flipperId: EntityId
+  /** True on the thrower's own client. */
+  isYours: boolean
+  /** The thrower's intent, known only on their client before the result arrives. */
+  aim: { x: number; y: number; strength: number } | null
+  result: {
+    landing: FlipLanding
+    turnedOver: boolean
+    touched: readonly EntityId[]
+    affected: readonly EntityId[]
+  } | null
+  startedAt: number
+}
+
+/**
  * A coin flip animation.
  */
 export interface CoinFlipAnimation {
@@ -1015,6 +1042,7 @@ export type GameStore = {
   submitOptionDecision: (decisionId: string, optionIndex: number) => void
   submitReplacementDecision: (decisionId: string, fromIndex: number, toIndex: number) => void
   submitBudgetModalDecision: (decisionId: string, selectedModeIndices: readonly number[]) => void
+  submitFlipThrow: (decisionId: string, aimX: number, aimY: number, strength: number) => void
   submitDistributeDecision: (decisionId: string, distribution: Record<EntityId, number>) => void
   submitDamageAssignmentDecision: (decisionId: string, assignments: Record<EntityId, number>) => void
   submitCombatResolutionDecision: (decisionId: string, edges: ReadonlyArray<{ edgeId: string; amount: number }>) => void
@@ -1266,6 +1294,7 @@ export type GameStore = {
   damageAnimations: readonly DamageAnimation[]
   revealAnimations: readonly RevealAnimation[]
   coinFlipAnimations: readonly CoinFlipAnimation[]
+  flipShow: FlipShow | null
   targetReselectedAnimations: readonly TargetReselectedAnimation[]
   /**
    * Battlefield card ids currently pulsing after being beheld, along with the
@@ -1388,6 +1417,7 @@ export type GameStore = {
   removeRevealAnimation: (id: string) => void
   addCoinFlipAnimation: (animation: CoinFlipAnimation) => void
   removeCoinFlipAnimation: (id: string) => void
+  setFlipShow: (show: FlipShow | null) => void
   addTargetReselectedAnimation: (animation: TargetReselectedAnimation) => void
   removeTargetReselectedAnimation: (id: string) => void
   addBeholdPulse: (cardId: EntityId, sourceName: string) => void

@@ -367,6 +367,7 @@ class AlphaZeroSearch<T>(
         is AssignDamageDecision,
         is CombatResolutionDecision,
         is SelectManaSourcesDecision,
+        is com.wingedsheep.engine.core.FlipOntoBattlefieldDecision,
         is BudgetModalDecision -> null
     }
 

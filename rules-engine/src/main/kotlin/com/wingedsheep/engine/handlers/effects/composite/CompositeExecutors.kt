@@ -68,6 +68,7 @@ class CompositeExecutors(
         flipTwoCoinsExecutor,
         flipCoinsExecutor,
         RollDiceExecutor(amountEvaluator),
+        FlipOntoBattlefieldExecutor(amountEvaluator.predicates),
         flipCoinsUntilLossExecutor,
         repeatWhileExecutor,
         repeatDynamicTimesExecutor,

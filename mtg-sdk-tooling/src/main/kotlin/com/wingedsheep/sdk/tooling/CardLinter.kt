@@ -695,6 +695,7 @@ object CardLinter {
         put("ChoosePile" to "storeOtherAs", write(Space.COLLECTION))
         put("MoveCollection" to "storeMovedAs", write(Space.COLLECTION))
         put("SelectTarget" to "storeAs", write(Space.COLLECTION))
+        put("FlipOntoBattlefield" to "storeTouchedAs", write(Space.COLLECTION))
         put("FilterCollection" to "storeMatching", write(Space.COLLECTION))
         put("FilterCollection" to "storeNonMatching", write(Space.COLLECTION))
         put("ExileLibraryUntilManaValue" to "storeAs", write(Space.COLLECTION))

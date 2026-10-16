@@ -9,6 +9,7 @@ import type {
   DamageAnimation,
   RevealAnimation,
   CoinFlipAnimation,
+  FlipShow,
   TargetReselectedAnimation,
   MatchIntro,
 } from '../types'
@@ -67,6 +68,7 @@ export interface AnimationSliceState {
   damageAnimations: readonly DamageAnimation[]
   revealAnimations: readonly RevealAnimation[]
   coinFlipAnimations: readonly CoinFlipAnimation[]
+  flipShow: FlipShow | null
   targetReselectedAnimations: readonly TargetReselectedAnimation[]
   beholdPulses: readonly { cardId: EntityId; sourceName: string; floorUntil: number }[]
   matchIntro: MatchIntro | null
@@ -89,6 +91,7 @@ export interface AnimationSliceActions {
   removeRevealAnimation: (id: string) => void
   addCoinFlipAnimation: (animation: CoinFlipAnimation) => void
   removeCoinFlipAnimation: (id: string) => void
+  setFlipShow: (show: FlipShow | null) => void
   addTargetReselectedAnimation: (animation: TargetReselectedAnimation) => void
   removeTargetReselectedAnimation: (id: string) => void
   addBeholdPulse: (cardId: EntityId, sourceName: string) => void
@@ -110,6 +113,7 @@ export const createAnimationSlice: SliceCreator<AnimationSlice> = (set, get) => 
   damageAnimations: [],
   revealAnimations: [],
   coinFlipAnimations: [],
+  flipShow: null,
   targetReselectedAnimations: [],
   beholdPulses: [],
   matchIntro: null,
@@ -233,6 +237,8 @@ export const createAnimationSlice: SliceCreator<AnimationSlice> = (set, get) => 
       coinFlipAnimations: [...state.coinFlipAnimations, animation],
     }))
   },
+
+  setFlipShow: (show) => set({ flipShow: show }),
 
   removeCoinFlipAnimation: (id) => {
     set((state) => ({

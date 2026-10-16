@@ -15,6 +15,7 @@ import { ChooseOptionDecisionUI } from './ChooseOptionDecisionUI'
 import { DungeonChoiceDecisionUI, dungeonChoiceKind } from './DungeonChoiceDecisionUI'
 import { ChooseReplacementDecisionUI } from './ChooseReplacementDecisionUI'
 import { BudgetModalDecisionUI } from './BudgetModalDecisionUI'
+import { FlipDecisionOverlay } from '../dexterity/FlipDecisionOverlay'
 import { ChooseColorDecisionUI } from './ChooseColorDecisionUI'
 import { CardSelectionDecision } from './CardSelectionDecisionUI'
 import { BattlefieldSelectionUI } from './BattlefieldSelectionUI'
@@ -50,6 +51,7 @@ function isPlayerOnlyTargeting(decision: ChooseTargetsDecision, playerIds: Entit
 export function DecisionUI() {
   const pendingDecision = useGameStore((state) => state.pendingDecision)
   const gameState = useGameStore((state) => state.gameState)
+  const flipShow = useGameStore((state) => state.flipShow)
   const responsive = useResponsive()
   const [decisionMinimized, setDecisionMinimized] = useState(false)
 
@@ -187,6 +189,13 @@ export function DecisionUI() {
     return (
       <ChooseReplacementDecisionUI key={pendingDecision.id} decision={pendingDecision} />
     )
+  }
+
+  // Dexterity flip (Chaos Orb): the table mini-game. Once thrown, the flight overlay
+  // (FlipShowOverlay) owns the screen until the landing is shown.
+  if (pendingDecision.type === 'FlipOntoBattlefieldDecision') {
+    if (flipShow) return null
+    return <FlipDecisionOverlay key={pendingDecision.id} decision={pendingDecision} />
   }
 
   // Handle BudgetModalDecision (Bloomburrow Season cycle pawprint modes)

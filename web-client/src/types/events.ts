@@ -1,5 +1,6 @@
 import { EntityId } from './entities'
 import { DayNight } from './enums'
+import type { FlipLanding, FlipTable } from './messages'
 
 /**
  * Client-facing game events.
@@ -48,6 +49,7 @@ export type ClientEvent =
   | TransformedEvent
   | DieRolledEvent
   | CoinFlippedEvent
+  | CardFlippedOntoBattlefieldEvent
   | TurnChangedEvent
   | GameRestartedEvent
   | ControlChangedEvent
@@ -403,6 +405,28 @@ export interface TransformedEvent {
   readonly newFaceName: string
   readonly intoBackFace: boolean
   readonly controllerId: EntityId
+  readonly isYours: boolean | null
+  readonly description: string
+}
+
+// ============================================================================
+// Dexterity flip (Chaos Orb)
+// ============================================================================
+
+/** A card was flipped onto the battlefield; carries the table so every client can replay it. */
+export interface CardFlippedOntoBattlefieldEvent {
+  readonly type: 'cardFlippedOntoBattlefield'
+  readonly playerId: EntityId
+  readonly sourceId: EntityId | null
+  readonly sourceName: string
+  readonly sourceImageUri: string | null
+  readonly table: FlipTable
+  readonly landing: FlipLanding
+  readonly turnedOver: boolean
+  /** Every permanent the landed card overlaps. */
+  readonly touched: readonly EntityId[]
+  /** The touched permanents the flip counts (destroyed, for Chaos Orb). */
+  readonly affected: readonly EntityId[]
   readonly isYours: boolean | null
   readonly description: string
 }

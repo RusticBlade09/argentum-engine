@@ -74,6 +74,8 @@ class FastDecisionResponder(private val intents: IntentCatalog = IntentCatalog.N
     fun respond(state: GameState, decision: PendingDecision, playerId: EntityId): DecisionResponse {
         TrivialDecisions.responseFor(decision)?.let { return it }
         return when (decision) {
+            is com.wingedsheep.engine.core.FlipOntoBattlefieldDecision ->
+                com.wingedsheep.ai.engine.FlipAim.respond(state, decision, playerId, samples = 4)
             is com.wingedsheep.engine.core.PlayCardDecision ->
                 error("Forced play must use the rollout's ordinary action policy")
             // Rank by the same heuristic the Strategist's cheap path uses. Not "first legal": a

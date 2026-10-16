@@ -22,6 +22,7 @@ import com.wingedsheep.sdk.scripting.effects.CopyCollectionIntoCollectionEffect
 import com.wingedsheep.sdk.scripting.effects.EachPlayerChoosesCreatureTypeEffect
 import com.wingedsheep.sdk.scripting.effects.Effect
 import com.wingedsheep.sdk.scripting.effects.FilterCollectionEffect
+import com.wingedsheep.sdk.scripting.effects.FlipOntoBattlefieldEffect
 import com.wingedsheep.sdk.scripting.effects.ForEachCapturedControllerEffect
 import com.wingedsheep.sdk.scripting.effects.GatherCardsEffect
 import com.wingedsheep.sdk.scripting.effects.GatherSubtypesEffect
@@ -292,6 +293,16 @@ class PipelineBuilder private constructor(private val shared: Shared) {
         revealed = revealed,
         name = name
     )
+
+    /**
+     * Flip this card onto the battlefield and collect the permanents matching [filter] it touches
+     * ([FlipOntoBattlefieldEffect]) — Chaos Orb. Empty unless the card turned over completely.
+     */
+    fun flipOntoBattlefield(filter: GameObjectFilter = GameObjectFilter.Permanent, name: String? = null): CollectionSlot {
+        val slot = CollectionSlot(slotKey("touched", nextIndex(), name))
+        steps += FlipOntoBattlefieldEffect(storeTouchedAs = slot.key, filter = filter)
+        return slot
+    }
 
     /**
      * Mill [count] cards from [player]'s library (CR 701.17) and return the milled cards —

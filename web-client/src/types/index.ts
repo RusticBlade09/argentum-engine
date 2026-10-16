@@ -110,6 +110,7 @@ export type {
   PlayerLostEvent,
   GameEndedEvent,
   HandLookedAtEvent,
+  CardFlippedOntoBattlefieldEvent,
 } from './events'
 export {
   isLifeChangedEvent,
@@ -207,6 +208,12 @@ export type {
   OptionMetadata,
   BudgetModalDecision,
   BudgetModeOption,
+  FlipOntoBattlefieldDecision,
+  FlipTable,
+  FlipTableCard,
+  FlipTableBand,
+  FlipReleaseProfile,
+  FlipLanding,
   DistributeDecision,
   AssignDamageDecision,
   CombatResolutionDecision,

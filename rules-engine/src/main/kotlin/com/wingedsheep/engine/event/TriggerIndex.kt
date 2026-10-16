@@ -489,6 +489,7 @@ class TriggerIndex(
             is com.wingedsheep.engine.core.CitysBlessingGainedEvent,
             is com.wingedsheep.engine.core.ClassLevelChangedEvent,
             is com.wingedsheep.engine.core.CoinFlipEvent,
+            is com.wingedsheep.engine.core.CardFlippedOntoBattlefieldEvent,
             is com.wingedsheep.engine.core.CreatureDestroyedEvent,
             is com.wingedsheep.engine.core.CreatureGoadedEvent,
             is com.wingedsheep.engine.core.CreatureNoLongerGoadedEvent,

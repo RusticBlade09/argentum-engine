@@ -331,6 +331,13 @@ private fun randomDecisionResponse(decision: PendingDecision, rng: Random): Deci
         is CombatResolutionDecision ->
             CombatResolutionResponse(decision.id, decision.edges.map { DamageEdgeAmount(it.id, it.amount) })
 
+        is FlipOntoBattlefieldDecision -> FlipThrowResponse(
+            decision.id,
+            rng.nextDouble() * decision.table.width,
+            rng.nextDouble() * decision.table.height,
+            rng.nextDouble(),
+        )
+
         is BudgetModalDecision -> {
             val selected = mutableListOf<Int>()
             var budget = decision.budget

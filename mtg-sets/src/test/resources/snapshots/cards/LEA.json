@@ -1548,6 +1548,98 @@
     ]
 }
 
+// Chaos Orb
+{
+    "name": "Chaos Orb",
+    "manaCost": "{2}",
+    "typeLine": "Artifact",
+    "oracleText": "{1}, {T}: If this artifact is on the battlefield, flip it onto the battlefield from a height of at least one foot. If this artifact turns over completely at least once during the flip, destroy all nontoken permanents it touches. Then destroy this artifact.",
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Chaos Orb:1",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{1}"
+                            }
+                        },
+                        "CostTap"
+                    ]
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "Gated",
+                            "gate": {
+                                "type": "Gate.WhenCondition",
+                                "condition": {
+                                    "type": "SourceInZone",
+                                    "zones": [
+                                        "Battlefield"
+                                    ]
+                                }
+                            },
+                            "then": {
+                                "type": "Composite",
+                                "effects": [
+                                    {
+                                        "type": "FlipOntoBattlefield",
+                                        "storeTouchedAs": "touched0",
+                                        "filter": "permanent nontoken"
+                                    },
+                                    {
+                                        "type": "MoveCollection",
+                                        "from": "touched0",
+                                        "destination": {
+                                            "type": "ToZone",
+                                            "zone": "Graveyard"
+                                        },
+                                        "moveType": "Destroy"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "type": "MoveToZone",
+                            "target": "Self",
+                            "destination": "Graveyard",
+                            "byDestruction": true
+                        }
+                    ]
+                },
+                "descriptionOverride": "{1}, {T}: If this artifact is on the battlefield, flip it onto the battlefield from a height of at least one foot. If this artifact turns over completely at least once during the flip, destroy all nontoken permanents it touches. Then destroy this artifact."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "235",
+        "rarity": "RARE",
+        "artist": "Mark Tedin",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/2/92274971-7c4a-4326-b0fe-75e2d124f718.jpg?1783948669",
+        "rulings": [
+            {
+                "date": "2004-10-04",
+                "text": "Chaos Orb can only affect permanents. Cards that are in the game but not on the battlefield, such as those in the Library and Graveyard, can't be affected."
+            },
+            {
+                "date": "2004-10-04",
+                "text": "It must flip 360 degrees (that's what \"flip\" means). And this flip must be in the air and not in your hand."
+            },
+            {
+                "date": "2004-10-04",
+                "text": "This is a not a targeted ability."
+            }
+        ]
+    },
+    "colorIdentityOverride": []
+}
+
 // Chaoslace
 {
     "name": "Chaoslace",

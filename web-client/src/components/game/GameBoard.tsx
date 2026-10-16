@@ -22,6 +22,7 @@ import { DrawAnimations } from '../animations/DrawAnimations'
 import { DamageAnimations } from '../animations/DamageAnimations'
 import { RevealAnimations } from '../animations/RevealAnimations'
 import { CoinFlipAnimations } from '../animations/CoinFlipAnimations'
+import { FlipShowOverlay } from '../dexterity/FlipShowOverlay'
 import { TargetReselectedAnimations } from '../animations/TargetReselectedAnimations'
 import { useResponsive, useViewportSize, MOBILE_BREAKPOINT } from '@/hooks/useResponsive'
 import { ManaSymbol } from '../ui/ManaSymbols'
@@ -2316,6 +2317,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
 
       {/* Coin flip animations */}
       <CoinFlipAnimations />
+      <FlipShowOverlay />
 
       {/* Target reselection animations (Grip of Chaos, etc.) */}
       <TargetReselectedAnimations />

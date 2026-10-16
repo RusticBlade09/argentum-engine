@@ -743,6 +743,35 @@ sealed interface ClientEvent {
         }
     ) : ClientEvent
 
+    /**
+     * A card was flipped onto the battlefield (Chaos Orb). Carries the table as it lay when the
+     * card was thrown, so every client can replay the flight and landing.
+     */
+    @Serializable
+    @SerialName("cardFlippedOntoBattlefield")
+    data class CardFlippedOntoBattlefield(
+        val playerId: EntityId,
+        val sourceId: EntityId?,
+        val sourceName: String,
+        val sourceImageUri: String?,
+        val table: com.wingedsheep.engine.mechanics.dexterity.FlipTable,
+        val landing: com.wingedsheep.engine.mechanics.dexterity.FlipLanding,
+        val turnedOver: Boolean,
+        val touched: List<EntityId>,
+        val affected: List<EntityId>,
+        val isYours: Boolean? = null,
+        override val description: String = run {
+            val who = when (isYours) { true -> "You"; false -> "Opponent"; null -> "A player" }
+            val names = affected.mapNotNull { id -> table.cards.firstOrNull { it.entityId == id } }
+                .map { it.name ?: "a face-down permanent" }
+            when {
+                !turnedOver -> "$who flipped $sourceName — it didn't turn over, so nothing happens"
+                names.isEmpty() -> "$who flipped $sourceName — it touched nothing"
+                else -> "$who flipped $sourceName onto ${names.joinToString(", ")}"
+            }
+        },
+    ) : ClientEvent
+
     /** A mutating creature spell merged with a creature (CR 702.140c). */
     @Serializable
     @SerialName("mutated")
@@ -1527,6 +1556,19 @@ object ClientEventTransformer {
                 sourceName = event.sourceName,
                 isYours = event.playerId == viewingPlayerId,
                 ignored = event.ignored
+            )
+
+            is CardFlippedOntoBattlefieldEvent -> ClientEvent.CardFlippedOntoBattlefield(
+                playerId = event.playerId,
+                sourceId = event.sourceId,
+                sourceName = event.sourceName,
+                sourceImageUri = event.sourceImageUri,
+                table = event.table,
+                landing = event.landing,
+                turnedOver = event.landing.turnedOver,
+                touched = event.touched,
+                affected = event.affected,
+                isYours = event.playerId == viewingPlayerId,
             )
 
             is MutatedEvent -> ClientEvent.Mutated(

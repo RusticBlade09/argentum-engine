@@ -1021,6 +1021,24 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     related: ['game-table', 'card-badges'],
   },
   {
+    id: 'dexterity-flips',
+    section: 'playing',
+    title: 'Flipping Chaos Orb',
+    summary:
+      'Chaos Orb is played for real: the battlefield is laid out as a card table, you aim, press and hold to swing, and let go with the drop-height gauge in the gold. Where it lands decides what it destroys.',
+    body: [
+      { kind: 'p', text: 'When Chaos Orb’s ability resolves, a table opens with every permanent lying where it would on a paper battlefield — creatures in front, lands at the back, tapped cards sideways, Auras and Equipment peeking out from behind what they’re attached to. Your side is at the bottom; the Orb sits in your hand at the edge.' },
+      { kind: 'ol', items: [
+        'Aim — move over the table. The dashed card shows where you’re aiming; anything under it lights up red, your own permanents amber, and tokens grey (Chaos Orb can’t destroy tokens). The ring shows how far a clean flip can stray.',
+        'Swing — press and hold. The gauge beside the table swings between one and three feet; the ring tightens when the needle is in the gold band and widens outside it. You can drag to adjust while you hold, but hold too long and your hand starts to shake.',
+        'Let go — release with the needle in the gold for your most accurate flip. Let go too low and the Orb may not turn over completely, which means it does nothing.',
+      ] },
+      { kind: 'p', text: 'The server decides where it lands from your aim and release, so every player sees the same flight. Everything the Orb touches is destroyed if it turned over — yours included — and then the Orb itself is destroyed. Your opponent watches the same flip from their side of the table.' },
+      { kind: 'tip', text: 'Aim at the seam between two cards to take both — but a wide ring means the seam can just as easily miss them both. Space works as the swing button too, and Esc stops a swing without throwing.' },
+    ],
+    related: ['decisions', 'game-table'],
+  },
+  {
     id: 'emotes',
     section: 'playing',
     title: 'Emotes',
@@ -1179,7 +1197,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       { kind: 'p', text: 'A strip above each prompt names the cards involved — the source, its target, what triggered it — so a long chain of triggers stays readable.' },
       { kind: 'p', text: 'Secret choices stay private until everyone has confirmed. Pick a number in the prompt, or click a highlighted creature to vote for it; Select None submits an optional ballot without a vote. The game log reveals everyone’s choices together after the last answer.' },
     ],
-    related: ['targeting-and-combat', 'yields', 'mana-payment'],
+    related: ['targeting-and-combat', 'yields', 'mana-payment', 'dexterity-flips'],
   },
   {
     id: 'yields',

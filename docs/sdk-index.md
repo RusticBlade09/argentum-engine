@@ -853,6 +853,7 @@ Families:
 - `FlipCoinsEffect(count: Int, storeHeadsAs: String)` — Flip count coins, then store the number that came up heads under storeHeadsAs in pipeline `storedNumbers` so a later sub-effect in the same composite can scale off it via com.wingedsheep.sdk.script…
 - `FlipCoinsUntilLossEffect(storeWinsAs: String)` — Flip coins one at a time until the flipper *loses* a flip or chooses to stop, then store how many flips they won under storeWinsAs in pipeline `storedNumbers`.
 - `FlipEffect(target: EffectTarget)` — Flip a flip-card permanent (CR 710) — "flip this creature".
+- `FlipOntoBattlefieldEffect(storeTouchedAs: String, filter: GameObjectFilter)` — "Flip this card onto the battlefield from a height of at least one foot.
 - `FlipTwoCoinsEffect(bothHeadsEffect: Effect?, bothTailsEffect: Effect?, mixedEffect: Effect?)` — Flip two coins.
 - `ForEachCapturedControllerEffect(collection: String, originalCollection: String, controllerSnapshot: String, countVariable: String, effects: List<Effect>)` — Iterate the unique controllers captured by CaptureControllersEffect for cards that appear in a follow-on collection (e.g. cards that actually died after a destroy), running effects once per control…
 - `ForEachEffect(space: IterationSpace, body: Effect, collectCollections: Map<String, String>)` — Run body once per item in space.

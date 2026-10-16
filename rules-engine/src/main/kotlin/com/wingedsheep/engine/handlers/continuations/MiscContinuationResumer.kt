@@ -44,6 +44,7 @@ class MiscContinuationResumer(
         resumer(RepeatWhileDecisionContinuation::class, ::resumeRepeatWhile),
         resumer(FlipCoinsUntilLossContinuation::class, ::resumeFlipCoinsUntilLoss),
         resumer(CoinFlipChoiceContinuation::class, ::resumeCoinFlipChoice),
+        resumer(FlipOntoBattlefieldContinuation::class, ::resumeFlipOntoBattlefield),
         resumer(StormCopyTargetContinuation::class, ::resumeStormCopyTarget),
         resumer(StormCopyModalTargetContinuation::class, ::resumeStormCopyModalTarget),
         resumer(CopyEachSpellContinuation::class, ::resumeCopyEachSpell),
@@ -66,6 +67,44 @@ class MiscContinuationResumer(
             resumeReturnFromLinkedExile(state, continuation, response, checkForMore)
         }
     )
+
+    /**
+     * The player let go of a [com.wingedsheep.sdk.scripting.effects.FlipOntoBattlefieldEffect]
+     * flip: roll where it lands, report the flight, and hand the permanents it counts to the next
+     * pipeline step — none unless it turned over completely.
+     */
+    private fun resumeFlipOntoBattlefield(
+        state: GameState,
+        continuation: FlipOntoBattlefieldContinuation,
+        response: DecisionResponse,
+        checkForMore: CheckForMore
+    ): ExecutionResult {
+        if (response !is FlipThrowResponse) {
+            return ExecutionResult.error(state, "Expected a flip throw response")
+        }
+        val table = continuation.table
+        val (landing, rolled) = state.nextRandom {
+            com.wingedsheep.engine.mechanics.dexterity.FlipPhysics.land(
+                table, response.aimX, response.aimY, response.strength, this
+            )
+        }
+        val touched = com.wingedsheep.engine.mechanics.dexterity.FlipPhysics.touched(table, landing)
+        val eligible = table.cards.filter { it.eligible }.map { it.entityId }.toSet()
+        // The decision froze the game, so the table's permanents are still on the battlefield.
+        val affected = if (landing.turnedOver) touched.filter { it in eligible } else emptyList()
+        val event = CardFlippedOntoBattlefieldEvent(
+            playerId = continuation.playerId,
+            sourceId = continuation.sourceId,
+            sourceName = continuation.sourceName,
+            sourceImageUri = continuation.sourceImageUri,
+            table = table,
+            landing = landing,
+            touched = touched,
+            affected = affected,
+        )
+        val newState = exposeCollectionsToNextFrame(rolled, mapOf(continuation.storeTouchedAs to affected))
+        return checkForMore(newState, listOf(event))
+    }
 
     private fun resumeCopyTriggeredAbilityTarget(
         state: GameState,

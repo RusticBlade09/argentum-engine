@@ -244,6 +244,13 @@ internal fun randomDecisionResponse(decision: PendingDecision, rng: Random): Dec
 
         is YesNoDecision -> YesNoResponse(decision.id, rng.nextBoolean())
 
+        is FlipOntoBattlefieldDecision -> FlipThrowResponse(
+            decision.id,
+            rng.nextDouble() * decision.table.width,
+            rng.nextDouble() * decision.table.height,
+            rng.nextDouble(),
+        )
+
         is BatchYesNoDecision -> BatchYesNoResponse(decision.id, choice = rng.nextBoolean(), applyToAll = true)
 
         is ChooseReplacementDecision -> {

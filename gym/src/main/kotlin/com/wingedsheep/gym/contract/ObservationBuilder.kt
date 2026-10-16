@@ -552,6 +552,10 @@ class ObservationBuilder(
                         ActionRegistry.EMPTY
                 }
             }
+            // A continuous aim and release strength: no discrete action space to fold it into.
+            is com.wingedsheep.engine.core.FlipOntoBattlefieldDecision ->
+                baseView(decision, PendingDecisionKind.FLIP_ONTO_BATTLEFIELD, baseShape, structured = true) to
+                    ActionRegistry.EMPTY
             is BudgetModalDecision -> {
                 val shape = DecisionShape(budget = decision.budget)
                 baseView(decision, PendingDecisionKind.BUDGET_MODAL, shape, structured = true) to

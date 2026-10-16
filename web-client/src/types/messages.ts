@@ -831,6 +831,76 @@ export interface BudgetModalDecision extends PendingDecisionBase {
   readonly modes: readonly BudgetModeOption[]
 }
 
+/** One permanent lying on a dexterity-flip table (millimetres, rectangle centre). */
+export interface FlipTableCard {
+  readonly entityId: EntityId
+  readonly controllerId: EntityId
+  readonly x: number
+  readonly y: number
+  /** Footprint after tapping — a tapped card lies sideways. */
+  readonly width: number
+  readonly height: number
+  readonly tapped: boolean
+  /** Whether the flip counts this permanent (Chaos Orb: nontoken permanents). */
+  readonly eligible: boolean
+  readonly isToken: boolean
+  readonly faceDown: boolean
+  /** The host an Aura/Equipment is tucked behind; only a strip of it shows. */
+  readonly attachedTo: EntityId | null
+  /** The touchable vertical extent — the visible strip for an attachment. */
+  readonly hitTop: number
+  readonly hitBottom: number
+  readonly name: string | null
+  readonly imageUri: string | null
+}
+
+export interface FlipTableBand {
+  readonly playerId: EntityId
+  readonly top: number
+  readonly height: number
+}
+
+/** The battlefield laid out as a physical table by the engine, flipper seated at the bottom. */
+export interface FlipTable {
+  readonly width: number
+  readonly height: number
+  readonly bands: readonly FlipTableBand[]
+  /** Back-to-front draw order. */
+  readonly cards: readonly FlipTableCard[]
+  readonly handX: number
+  readonly handY: number
+}
+
+/** The release meter and scatter the engine scores a throw against. */
+export interface FlipReleaseProfile {
+  readonly cleanFrom: number
+  readonly cleanTo: number
+  readonly tooSoftBelow: number
+  readonly baseScatter: number
+  readonly scatterPerMm: number
+  readonly sloppyScatter: number
+  readonly slopRange: number
+}
+
+/** Where a flipped card came to rest. `halfTurns` ≥ 2 means it turned over completely. */
+export interface FlipLanding {
+  readonly x: number
+  readonly y: number
+  readonly rotation: number
+  readonly halfTurns: number
+}
+
+/**
+ * Player must flip a card onto the battlefield (Chaos Orb): aim on the table, then time the
+ * release. Answered with a FlipThrowResponse; the server rolls where it lands.
+ */
+export interface FlipOntoBattlefieldDecision extends PendingDecisionBase {
+  readonly type: 'FlipOntoBattlefieldDecision'
+  readonly table: FlipTable
+  readonly release: FlipReleaseProfile
+  readonly flippedImageUri: string | null
+}
+
 /**
  * One yes/no raised for a run of N identical optional ("you may …") triggers, answered once
  * instead of N times. The response carries both the yes/no `choice` and `applyToAll`:
@@ -865,6 +935,7 @@ export type PendingDecision =
   | ChooseOptionDecision
   | ChooseReplacementDecision
   | BudgetModalDecision
+  | FlipOntoBattlefieldDecision
   | DistributeDecision
   | ChooseColorDecision
   | PlayCardDecision

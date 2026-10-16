@@ -47,6 +47,14 @@ internal class JevDecisions(private val q: JevChoices, private val label: (Entit
             }
             ReplacementChosenResponse(d.id, from, to)
         }
+        is FlipOntoBattlefieldDecision -> {
+            // Aim at a permanent's centre with a clean release, or throw it off the table.
+            val aims = d.table.cards.filter { it.eligible }
+            val aim = q.pick("${d.prompt}: aim at", aims + listOf(null)) { it?.let { c -> c.name ?: "a face-down permanent" } ?: "Off the table" }
+            val release = (d.release.cleanFrom + d.release.cleanTo) / 2
+            if (aim == null) FlipThrowResponse(d.id, d.table.width / 2, -2 * d.table.height, release)
+            else FlipThrowResponse(d.id, aim.x, aim.y, release)
+        }
         is BudgetModalDecision -> {
             var budget = d.budget
             val selected = mutableListOf<Int>()

@@ -50,6 +50,7 @@ export type {
   DamageAnimation,
   RevealAnimation,
   CoinFlipAnimation,
+  FlipShow,
   TargetReselectedAnimation,
   MatchIntro,
   GameStore,

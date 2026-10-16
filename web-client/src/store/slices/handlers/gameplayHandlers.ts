@@ -4,7 +4,8 @@
 import type { MessageHandlers } from '@/network/messageHandlers.ts'
 import { ErrorCode, ZoneType } from '@/types'
 import type { EntityId } from '@/types'
-import type { ClientGameState, ClientEvent, LegalActionInfo, PendingDecision, OpponentDecisionStatus, PriorityModeValue, Step } from '@/types'
+import type { ClientGameState, ClientEvent, LegalActionInfo, PendingDecision, OpponentDecisionStatus, PriorityModeValue, Step, CardFlippedOntoBattlefieldEvent } from '@/types'
+import type { FlipShow } from '../types'
 import { trackEvent, setInGame } from '@/utils/analytics.ts'
 import { applyStateDelta } from '@/network/deltaApplicator.ts'
 import { getWebSocket, clearLobbyId, requestReauth } from '../shared'
@@ -275,6 +276,7 @@ const CLEARED_ANIMATIONS = {
   damageAnimations: [],
   revealAnimations: [],
   coinFlipAnimations: [],
+  flipShow: null,
   targetReselectedAnimations: [],
 } as const
 
@@ -596,6 +598,36 @@ function processStateUpdate(
     })
   })
 
+  // A dexterity flip (Chaos Orb): join the thrower's own in-flight show, or start the replay on
+  // every other client. The event carries the table as it lay, since the board it changed is gone.
+  const flipEvent = msg.events.find((e) => e.type === 'cardFlippedOntoBattlefield') as
+    | CardFlippedOntoBattlefieldEvent
+    | undefined
+  let newFlipShow: FlipShow | null = null
+  if (flipEvent && !suppressAnimations) {
+    const result = {
+      landing: flipEvent.landing,
+      turnedOver: flipEvent.turnedOver,
+      touched: flipEvent.touched,
+      affected: flipEvent.affected,
+    }
+    const inFlight = get().flipShow
+    newFlipShow =
+      inFlight && inFlight.isYours && inFlight.result === null && inFlight.flipperId === flipEvent.playerId
+        ? { ...inFlight, table: flipEvent.table, result }
+        : {
+            id: `flip-${flipEvent.playerId}-${Date.now()}`,
+            table: flipEvent.table,
+            sourceName: flipEvent.sourceName,
+            sourceImageUri: flipEvent.sourceImageUri,
+            flipperId: flipEvent.playerId,
+            isYours: flipEvent.playerId === playerId,
+            aim: null,
+            result,
+            startedAt: Date.now(),
+          }
+  }
+
   // Process target reselection events for animations
   const targetReselectedEvents = msg.events.filter((e) => e.type === 'targetReselected') as {
     type: 'targetReselected'
@@ -658,6 +690,7 @@ function processStateUpdate(
     ...(newDamageAnimations.length > 0 && !suppressAnimations ? { damageAnimations: [...state.damageAnimations, ...newDamageAnimations] } : {}),
     ...(newRevealAnimations.length > 0 && !suppressAnimations ? { revealAnimations: [...state.revealAnimations, ...newRevealAnimations] } : {}),
     ...(newCoinFlipAnimations.length > 0 && !suppressAnimations ? { coinFlipAnimations: [...state.coinFlipAnimations, ...newCoinFlipAnimations] } : {}),
+    ...(newFlipShow ? { flipShow: newFlipShow } : {}),
     ...(newTargetReselectedAnimations.length > 0 && !suppressAnimations
       ? { targetReselectedAnimations: [...state.targetReselectedAnimations, ...newTargetReselectedAnimations] }
       : {}),

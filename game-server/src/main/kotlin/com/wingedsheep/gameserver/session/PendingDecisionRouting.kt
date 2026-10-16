@@ -22,5 +22,6 @@ internal fun PendingDecision.withClientRoutingId(id: String): PendingDecision = 
     is ReorderLibraryDecision -> copy(id = id)
     is SelectManaSourcesDecision -> copy(id = id)
     is BudgetModalDecision -> copy(id = id)
+    is FlipOntoBattlefieldDecision -> copy(id = id)
     is CombatResolutionDecision -> copy(id = id)
 }

@@ -217215,7 +217215,7 @@
         "img": "https://cards.scryfall.io/normal/front/f/2/f2b9983e-20d4-4d12-9e2c-ec6d9a345787.jpg",
         "notPlanned": {
           "kind": "dexterity",
-          "why": "Requires physical dexterity with a real card, which has no digital equivalent."
+          "why": "Requires physical dexterity with a real card that the table-flip mini-game (built for Chaos Orb) doesn't cover yet."
         }
       },
       {
@@ -218958,11 +218958,7 @@
       },
       {
         "name": "Chaos Orb",
-        "img": "https://cards.scryfall.io/normal/front/6/b/6bec436c-2869-432a-b3cf-633a58af6d4c.jpg",
-        "notPlanned": {
-          "kind": "dexterity",
-          "why": "Requires physical dexterity with a real card, which has no digital equivalent."
-        }
+        "img": "https://cards.scryfall.io/normal/front/6/b/6bec436c-2869-432a-b3cf-633a58af6d4c.jpg"
       },
       {
         "name": "Chaoslace",
@@ -220152,11 +220148,7 @@
       },
       {
         "name": "Chaos Orb",
-        "img": "https://cards.scryfall.io/normal/front/9/2/92274971-7c4a-4326-b0fe-75e2d124f718.jpg",
-        "notPlanned": {
-          "kind": "dexterity",
-          "why": "Requires physical dexterity with a real card, which has no digital equivalent."
-        }
+        "img": "https://cards.scryfall.io/normal/front/9/2/92274971-7c4a-4326-b0fe-75e2d124f718.jpg"
       },
       {
         "name": "Chaoslace",

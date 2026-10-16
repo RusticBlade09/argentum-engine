@@ -5,6 +5,8 @@ import com.wingedsheep.engine.core.BatchYesNoDecision
 import com.wingedsheep.engine.core.BatchYesNoResponse
 import com.wingedsheep.engine.core.BudgetModalDecision
 import com.wingedsheep.engine.core.BudgetModalResponse
+import com.wingedsheep.engine.core.FlipOntoBattlefieldDecision
+import com.wingedsheep.engine.core.FlipThrowResponse
 import com.wingedsheep.engine.core.CancelDecisionResponse
 import com.wingedsheep.engine.core.CardsSelectedResponse
 import com.wingedsheep.engine.core.ChooseColorDecision
@@ -77,6 +79,7 @@ object DecisionValidators {
             is ChooseOptionDecision -> validateOption(decision, response)
             is ChooseReplacementDecision -> validateReplacement(decision, response)
             is BudgetModalDecision -> validateBudgetModal(decision, response)
+            is FlipOntoBattlefieldDecision -> validateFlipThrow(response)
             is AssignDamageDecision -> validateDamageAssignment(decision, response)
             is CombatResolutionDecision -> validateCombatResolution(decision, response)
             is SearchLibraryDecision -> validateLibrarySearch(decision, response)
@@ -530,6 +533,15 @@ object DecisionValidators {
         val allowed = decision.allowedToByFrom.getOrNull(response.fromIndex)
         if (allowed != null && !allowed.contains(response.toIndex)) {
             return "Replacement ${decision.toOptions[response.toIndex]} not allowed for ${decision.fromOptions[response.fromIndex]}"
+        }
+        return null
+    }
+
+    /** A throw's numbers only need to be numbers; the engine clamps aim and strength itself. */
+    private fun validateFlipThrow(response: DecisionResponse): String? {
+        if (response !is FlipThrowResponse) return "Expected flip throw response"
+        if (!response.aimX.isFinite() || !response.aimY.isFinite() || !response.strength.isFinite()) {
+            return "Flip throw values must be finite numbers"
         }
         return null
     }

@@ -72,6 +72,7 @@ class DecisionEnricher(private val cardRegistry: CardRegistry) {
             is ChooseOptionDecision -> "Making a choice"
             is ChooseReplacementDecision -> "Changing text"
             is BudgetModalDecision -> "Choosing modes"
+            is FlipOntoBattlefieldDecision -> "Taking aim"
             is SelectManaSourcesDecision -> "Selecting mana sources"
         }
         val sourceId = decision.context.sourceId

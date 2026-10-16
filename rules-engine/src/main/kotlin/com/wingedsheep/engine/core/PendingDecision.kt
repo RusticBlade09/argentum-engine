@@ -808,6 +808,7 @@ sealed interface DecisionResponse {
         is OptionChosenResponse -> copy(decisionId = newId)
         is ReplacementChosenResponse -> copy(decisionId = newId)
         is BudgetModalResponse -> copy(decisionId = newId)
+        is FlipThrowResponse -> copy(decisionId = newId)
         is DamageAssignmentResponse -> copy(decisionId = newId)
         is ManaSourcesSelectedResponse -> copy(decisionId = newId)
         is CombatResolutionResponse -> copy(decisionId = newId)
@@ -967,6 +968,39 @@ data class BudgetModalDecision(
     val budget: Int,
     val modes: List<BudgetModeOption>
 ) : PendingDecision
+
+/**
+ * Player must physically flip a card onto the battlefield (Chaos Orb). The engine lays the
+ * battlefield out as [table]; the player answers with a [FlipThrowResponse] — where they aim and
+ * how hard they let go — and the engine rolls where it lands. [release] is the strength meter the
+ * engine scores the release against, so the client can draw its zones.
+ */
+@Serializable
+@SerialName("FlipOntoBattlefieldDecision")
+data class FlipOntoBattlefieldDecision(
+    override val id: String,
+    override val playerId: EntityId,
+    override val prompt: String,
+    override val context: DecisionContext,
+    val table: com.wingedsheep.engine.mechanics.dexterity.FlipTable,
+    val release: com.wingedsheep.engine.mechanics.dexterity.FlipReleaseProfile =
+        com.wingedsheep.engine.mechanics.dexterity.FlipReleaseProfile(),
+    /** Image of the card being flipped, for the client to put in the player's hand. */
+    val flippedImageUri: String? = null,
+) : PendingDecision
+
+/**
+ * Response to [FlipOntoBattlefieldDecision]: the aim point in table millimetres and the release
+ * strength (0..1). Out-of-range values are clamped by the engine, never trusted.
+ */
+@Serializable
+@SerialName("FlipThrowResponse")
+data class FlipThrowResponse(
+    override val decisionId: String,
+    val aimX: Double,
+    val aimY: Double,
+    val strength: Double,
+) : DecisionResponse
 
 /**
  * A single mode option in a budget modal decision (cost + description, no effect data).

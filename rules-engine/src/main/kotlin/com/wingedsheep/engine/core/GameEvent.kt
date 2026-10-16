@@ -2467,6 +2467,27 @@ data class CoinFlipEvent(
 ) : GameEvent
 
 /**
+ * A card was flipped onto the battlefield (Chaos Orb) and came to rest at [landing] on [table].
+ * Carries the whole table so every client can replay the flip as it happened, not as the
+ * battlefield looks after the destruction it caused.
+ *
+ * @property touched Every permanent the landed card overlaps, eligible or not
+ * @property affected The touched permanents the flip counts — empty when it didn't turn over
+ */
+@Serializable
+@SerialName("CardFlippedOntoBattlefieldEvent")
+data class CardFlippedOntoBattlefieldEvent(
+    val playerId: EntityId,
+    val sourceId: EntityId?,
+    val sourceName: String,
+    val sourceImageUri: String?,
+    val table: com.wingedsheep.engine.mechanics.dexterity.FlipTable,
+    val landing: com.wingedsheep.engine.mechanics.dexterity.FlipLanding,
+    val touched: List<EntityId>,
+    val affected: List<EntityId>,
+) : GameEvent
+
+/**
  * Emitted when a player has been scheduled to control another player's next turn
  * (Mindslaver-style hijack). PR 1 ships this as informational only — the full
  * input/visibility routing arrives in a follow-up PR.

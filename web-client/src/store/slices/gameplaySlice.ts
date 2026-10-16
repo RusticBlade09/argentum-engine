@@ -73,6 +73,7 @@ export interface GameplaySliceActions {
   submitOptionDecision: (decisionId: string, optionIndex: number) => void
   submitReplacementDecision: (decisionId: string, fromIndex: number, toIndex: number) => void
   submitBudgetModalDecision: (decisionId: string, selectedModeIndices: readonly number[]) => void
+  submitFlipThrow: (decisionId: string, aimX: number, aimY: number, strength: number) => void
   submitDistributeDecision: (decisionId: string, distribution: Record<EntityId, number>) => void
   submitDamageAssignmentDecision: (decisionId: string, assignments: Record<EntityId, number>) => void
   submitCombatResolutionDecision: (decisionId: string, edges: ReadonlyArray<{ edgeId: string; amount: number }>) => void
@@ -350,6 +351,36 @@ export const createGameplaySlice: SliceCreator<GameplaySlice> = (set, get) => ({
         type: 'BudgetModalResponse' as const,
         decisionId,
         selectedModeIndices,
+      },
+    }
+    get().submitAction(action, decisionInteractionEpoch(action.response.decisionId))
+  },
+
+  submitFlipThrow: (decisionId, aimX, aimY, strength) => {
+    const { pendingDecision } = get()
+    if (!pendingDecision || pendingDecision.id !== decisionId || pendingDecision.type !== 'FlipOntoBattlefieldDecision') return
+
+    // The flight starts now; the server's landing joins it mid-air (see FlipShow).
+    get().setFlipShow({
+      id: `flip-${decisionId}`,
+      table: pendingDecision.table,
+      sourceName: pendingDecision.context.sourceName ?? 'Card',
+      sourceImageUri: pendingDecision.flippedImageUri,
+      flipperId: pendingDecision.playerId,
+      isYours: true,
+      aim: { x: aimX, y: aimY, strength },
+      result: null,
+      startedAt: Date.now(),
+    })
+    const action = {
+      type: 'SubmitDecision' as const,
+      playerId: pendingDecision.playerId,
+      response: {
+        type: 'FlipThrowResponse' as const,
+        decisionId,
+        aimX,
+        aimY,
+        strength,
       },
     }
     get().submitAction(action, decisionInteractionEpoch(action.response.decisionId))
