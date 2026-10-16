@@ -375,7 +375,17 @@ function processStateUpdate(
 
   // A Magic subgame beginning or ending (CR 729) turns the table into a different game; announce it.
   const subgameTransition = subgameTransitionFor(msg.events, resolvedState, get().gameState)
-  if (subgameTransition && !suppressAnimations) set({ subgameTransition })
+  if (subgameTransition) {
+    // The hovered or selected card belongs to the game being left. Its hand may have unmounted
+    // under the cursor (the subgame opens on its mulligan), so no mouse-leave ever cleared it, and
+    // the card would pop up again as a stray preview the moment that game came back.
+    set({
+      hoveredCardId: null,
+      hoverPosition: null,
+      selectedCardId: null,
+      ...(suppressAnimations ? {} : { subgameTransition }),
+    })
+  }
 
   // Animations spawned by this update are collected here and committed with the state itself,
   // in one store write. Each separate write re-runs every subscriber's selector across the
