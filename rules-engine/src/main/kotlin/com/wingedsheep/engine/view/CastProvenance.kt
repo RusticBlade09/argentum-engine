@@ -96,14 +96,15 @@ object CastProvenance {
     /**
      * The zone worth naming in a cast description, or null when it isn't. Hand is the assumed
      * default and would only add noise; the battlefield, stack and sideboard are never a cast's
-     * origin zone (a wish moves the card to hand first), so they fall through to null too.
+     * origin zone (a wish moves the card to hand first), and nothing is ever cast from the ante
+     * (CR 407.3), so they fall through to null too.
      */
     private fun originName(zone: Zone): String? = when (zone) {
         Zone.GRAVEYARD -> "graveyard"
         Zone.EXILE -> "exile"
         Zone.COMMAND -> "command zone"
         Zone.LIBRARY -> "library"
-        Zone.HAND, Zone.BATTLEFIELD, Zone.STACK, Zone.SIDEBOARD -> null
+        Zone.HAND, Zone.BATTLEFIELD, Zone.STACK, Zone.SIDEBOARD, Zone.ANTE -> null
     }
 
     /**

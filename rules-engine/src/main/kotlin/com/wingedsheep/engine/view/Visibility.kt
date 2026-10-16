@@ -66,7 +66,9 @@ class Visibility(
         Zone.GRAVEYARD,
         Zone.STACK,
         Zone.EXILE,
-        Zone.COMMAND -> true
+        Zone.COMMAND,
+        // Cards in the ante may be examined by any player at any time (CR 407.2).
+        Zone.ANTE -> true
     }
 
     /**

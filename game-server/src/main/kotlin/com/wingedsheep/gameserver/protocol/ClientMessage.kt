@@ -217,6 +217,11 @@ sealed interface ClientMessage {
          * defaults to Commander rules.
          */
         val rules: String? = null,
+        /**
+         * Play the lobby's games for ante (CR 407). Ignored (forced off) when the lobby is ranked —
+         * ranked games are never played for ante.
+         */
+        val playingForAnte: Boolean = false,
     ) : ClientMessage
 
     /**
@@ -393,8 +398,10 @@ sealed interface ClientMessage {
          * sent each time (not a delta). Null leaves the current assignment unchanged.
          */
         val teamAssignments: Map<String, Int>? = null,
-        /** Toggle ranked play (TOURNAMENT mode only). Null = unchanged. */
+        /** Toggle ranked play (TOURNAMENT mode only). Null = unchanged. Turning it on clears [playingForAnte]. */
         val ranked: Boolean? = null,
+        /** Play for ante (CR 407). Null = unchanged. Rejected while the lobby is ranked. */
+        val playingForAnte: Boolean? = null,
     ) : ClientMessage
 
     /**
@@ -604,6 +611,8 @@ sealed interface ClientMessage {
          * (both seats logged in) at start.
          */
         val ranked: Boolean = false,
+        /** Play for ante (CR 407). Forced off when the lobby ends up [ranked]. */
+        val playingForAnte: Boolean = false,
     ) : ClientMessage
 
     /**
@@ -716,6 +725,14 @@ sealed interface ClientMessage {
     @Serializable
     @SerialName("setQuickGameLobbyRanked")
     data class SetQuickGameLobbyRanked(val ranked: Boolean) : ClientMessage
+
+    /**
+     * Toggle playing for ante (CR 407) in the quick-game lobby (host-only). Rejected while the
+     * lobby is ranked. Turning it off un-readies anyone whose submitted deck holds an ante card.
+     */
+    @Serializable
+    @SerialName("setQuickGameLobbyAnte")
+    data class SetQuickGameLobbyAnte(val playingForAnte: Boolean) : ClientMessage
 
     /**
      * Set the deck-format restriction for the lobby (host-only). Null = no restriction.

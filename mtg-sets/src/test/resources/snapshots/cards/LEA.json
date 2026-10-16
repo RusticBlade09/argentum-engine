@@ -2118,6 +2118,78 @@
     "colorIdentityOverride": []
 }
 
+// Contract from Below
+{
+    "name": "Contract from Below",
+    "manaCost": "{B}",
+    "typeLine": "Sorcery",
+    "oracleText": "Remove this card from your deck before playing if you're not playing for ante.\nDiscard your hand, ante the top card of your library, then draw seven cards.",
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "GatherCards",
+                    "source": {
+                        "type": "FromZone",
+                        "zone": "Hand"
+                    },
+                    "storeAs": "discardedHand"
+                },
+                {
+                    "type": "MoveCollection",
+                    "from": "discardedHand",
+                    "destination": {
+                        "type": "ToZone",
+                        "zone": "Graveyard"
+                    },
+                    "moveType": "Discard"
+                },
+                {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "TopOfLibrary",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            "storeAs": "anted_top"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "anted_top",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Ante"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "type": "DrawCards",
+                    "count": {
+                        "type": "Fixed",
+                        "amount": 7
+                    }
+                }
+            ]
+        }
+    },
+    "metadata": {
+        "collectorNumber": "96",
+        "rarity": "RARE",
+        "artist": "Douglas Shuler",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/8/9853b0ce-4763-4877-9741-f9145a3659c6.jpg?1783948698"
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
 // Control Magic
 {
     "name": "Control Magic",
@@ -2741,6 +2813,75 @@
     ]
 }
 
+// Darkpact
+{
+    "name": "Darkpact",
+    "manaCost": "{B}{B}{B}",
+    "typeLine": "Sorcery",
+    "oracleText": "Remove this card from your deck before playing if you're not playing for ante.\nYou own target card in the ante. Exchange that card with the top card of your library.",
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "GatherCards",
+                    "source": {
+                        "type": "TopOfLibrary",
+                        "count": {
+                            "type": "Fixed",
+                            "amount": 1
+                        }
+                    },
+                    "storeAs": "gathered0"
+                },
+                {
+                    "type": "ChangeOwnership",
+                    "card": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                {
+                    "type": "MoveToZone",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "destination": "Library",
+                    "placement": "Top"
+                },
+                {
+                    "type": "MoveCollection",
+                    "from": "gathered0",
+                    "destination": {
+                        "type": "ToZone",
+                        "zone": "Ante"
+                    }
+                }
+            ]
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": {},
+                    "zone": "Ante"
+                },
+                "id": "t0"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "99",
+        "rarity": "RARE",
+        "artist": "Quinton Hoover",
+        "imageUri": "https://cards.scryfall.io/normal/front/e/7/e78db688-93a2-47f5-9aa5-9158a72cd973.jpg?1783948697"
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
 // Death Ward
 {
     "name": "Death Ward",
@@ -2847,6 +2988,56 @@
         "rarity": "RARE",
         "artist": "Sandra Everingham",
         "imageUri": "https://cards.scryfall.io/normal/front/6/f/6ff1cefc-62cb-4525-b0c5-2b09603b4314.jpg?1783948696"
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
+// Demonic Attorney
+{
+    "name": "Demonic Attorney",
+    "manaCost": "{1}{B}{B}",
+    "typeLine": "Sorcery",
+    "oracleText": "Remove this card from your deck before playing if you're not playing for ante.\nEach player antes the top card of their library.",
+    "script": {
+        "spellEffect": {
+            "type": "ForEach",
+            "space": {
+                "type": "IterationSpace.Players",
+                "players": "ActivePlayerFirst"
+            },
+            "body": {
+                "type": "Composite",
+                "effects": [
+                    {
+                        "type": "GatherCards",
+                        "source": {
+                            "type": "TopOfLibrary",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            }
+                        },
+                        "storeAs": "anted_top"
+                    },
+                    {
+                        "type": "MoveCollection",
+                        "from": "anted_top",
+                        "destination": {
+                            "type": "ToZone",
+                            "zone": "Ante"
+                        }
+                    }
+                ]
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "102",
+        "rarity": "RARE",
+        "artist": "Daniel Gelon",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/d/fd891fc6-d9d6-494e-ae65-8bea8f44b575.jpg?1783948696"
     },
     "colorIdentityOverride": [
         "BLACK"

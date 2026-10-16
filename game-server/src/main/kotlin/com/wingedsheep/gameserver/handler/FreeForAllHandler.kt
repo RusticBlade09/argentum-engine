@@ -100,6 +100,8 @@ class FreeForAllHandler(
         }
         // CR 802 / 803 — the lobby's chosen attack rule applies to this multiplayer game.
         gameSession.attackMode = lobby.attackMode
+        // CR 407 — play the game for ante when the host turned it on.
+        gameSession.playingForAnte = lobby.playingForAnte
 
         // Team games (2HG — CR 810; Team vs. Team — CR 808): run under the team format and split the
         // pod into two even teams — random by default (re-rolled each game), or the host's manual

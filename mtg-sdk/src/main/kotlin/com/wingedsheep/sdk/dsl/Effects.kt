@@ -123,6 +123,7 @@ import com.wingedsheep.sdk.scripting.effects.FilterCollectionEffect
 import com.wingedsheep.sdk.scripting.effects.ForceSacrificeEffect
 import com.wingedsheep.sdk.scripting.effects.SacrificeTargetEffect
 import com.wingedsheep.sdk.scripting.effects.ExchangeControlEffect
+import com.wingedsheep.sdk.scripting.effects.ChangeOwnershipEffect
 import com.wingedsheep.sdk.scripting.effects.CreatureStat
 import com.wingedsheep.sdk.scripting.effects.ExchangeLifeAndStatEffect
 import com.wingedsheep.sdk.scripting.effects.GainControlByRankEffect
@@ -4220,6 +4221,15 @@ object Effects {
     /** The active player gains control of [target] (Contested Game Ball, Risky Move). */
     fun GainControlByActivePlayer(target: EffectTarget = EffectTarget.Self): Effect =
         com.wingedsheep.sdk.scripting.effects.GainControlByActivePlayerEffect(target)
+
+    /**
+     * [newOwner] becomes the owner of [card] (CR 407.3) — "You own target card in the ante"
+     * (Darkpact). The card stays put; only the ante cards change ownership.
+     */
+    fun ChangeOwnership(
+        card: EffectTarget = EffectTarget.ContextTarget(0),
+        newOwner: EffectTarget = EffectTarget.Controller
+    ): Effect = ChangeOwnershipEffect(card, newOwner)
 
     /**
      * Exchange control of two target creatures.

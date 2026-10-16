@@ -90,6 +90,13 @@ data class ClientGameState(
     val attackMode: com.wingedsheep.sdk.core.AttackMode? = null,
 
     /**
+     * True when this game is played for ante (CR 407). Fixed for the whole game and public, like
+     * [attackMode], so never masked and never carried in a delta. Tells the board to show each
+     * player's ante; the ante cards themselves arrive as ordinary public `Ante` zones.
+     */
+    val playingForAnte: Boolean = false,
+
+    /**
      * If non-null, the affected player whose choices the viewing player is currently
      * driving during turn, combat or stack-resolution control. Drives UI cues such as the controller banner
      * and promoting the affected player's hand to face-up.

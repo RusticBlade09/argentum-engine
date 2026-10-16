@@ -488,7 +488,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     title: 'Rules: Standard',
     summary:
       'The ordinary rules for whichever table you picked — 20 life at 1v1, no command zone, and 4 copies of a card if the deck legality allows it.',
-    related: ['rules-commander', 'axes'],
+    related: ['rules-commander', 'axes', 'playing-for-ante'],
   },
   {
     id: 'rules-commander',
@@ -562,6 +562,27 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     related: ['ranked', 'axis-limits'],
   },
   {
+    id: 'playing-for-ante',
+    section: 'modes',
+    title: 'Playing for ante',
+    summary:
+      'An opt-in lobby setting: each player antes a random card from their deck before the game, and the winner takes the ante. Ranked games never play for ante.',
+    body: [
+      { kind: 'p', text: 'The host turns it on with the Play for ante row in the lobby’s Rules settings — in a quick game or in a tournament or Free-for-All lobby. Everyone else sees a “Stakes: For ante” chip at the top of the lobby, so nobody walks into it by surprise. Ranked and ante don’t mix: while Ranked is on, the ante row is locked off.' },
+      { kind: 'p', text: 'Before the opening draw, a random card from each player’s deck goes into the ante. You can see every player’s stake on the board — a bronze Ante pile beside their command zone. Hover it for the card, click it to see every card staked so far. A “For ante” chip beside the phase bar reminds the table what’s at stake.' },
+      { kind: 'h', text: 'What the winner gets' },
+      { kind: 'ul', items: [
+        'In a Limited tournament (sealed or draft), the cards the winner takes join their pool for the rest of the event. A loser whose deck falls below the minimum is topped back up with a basic land.',
+        'Anywhere else, the win is a trophy: the card is listed in the Spoils panel on the winner’s profile. Nobody’s saved decks change.',
+        'In a draw, the ante goes back to its owners.',
+      ] },
+      { kind: 'p', text: 'The game-over screen shows what you won and what you lost.' },
+      { kind: 'h', text: 'Ante cards' },
+      { kind: 'p', text: 'Cards that only work with ante — Contract from Below, Darkpact, Demonic Attorney, Jeweled Bird and Bronze Tablet — are legal only in a game played for ante. A deck holding one is refused in any other lobby. When one of them targets a card in the ante (Darkpact), you pick it from a browser of every player’s ante.' },
+    ],
+    related: ['ranked', 'profile', 'tournament-flow', 'lobby-screen', 'game-over'],
+  },
+  {
     id: 'ranked',
     section: 'community',
     title: 'Ranked play and ratings',
@@ -579,7 +600,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       { kind: 'p', text: 'Every rating starts at 1200. Your first 10 games are placement and move it quickly; after that, an even game moves it by about 10 points. Tiers: Bronze below 1000, Silver to 1200, Gold to 1400, Platinum to 1600, Diamond to 2000, and Mythic above.' },
       { kind: 'p', text: 'Ratings, tiers and a rating-over-time chart appear on your Stats page and public profile once you have played a ranked game.' },
     ],
-    related: ['guest-vs-account', 'axis-limits', 'stats', 'matchmaking'],
+    related: ['guest-vs-account', 'axis-limits', 'stats', 'matchmaking', 'playing-for-ante'],
   },
   {
     id: 'profile',
@@ -591,13 +612,14 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       { kind: 'ul', items: [
         'Games, wins, losses and win rate.',
         'Recent games, ten to a page — open Decks to see both players’ lists, Watch the replay, or Share its link.',
+        'Spoils — the cards you’ve won in games played for ante, and a count of the ones you lost.',
         'Recent tournaments, each opening its final standings and replays.',
         'Shortcuts to Full stats, My decks, Friends and Preferences.',
       ] },
       { kind: 'p', text: 'Click your avatar to choose one. Portraits offers 56 painted characters — the creature types of each colour, from Kithkin and Loxodon to Phyrexians and Eldrazi. Card art lets you search for any card, pick the printing whose art you like, and drag and zoom the circle to frame the part you want. Your avatar shows in the account menu, on your public profile, to friends and in messages, on the match intro, and as your portrait at the table, with your life total beneath it. At a table of three or more it leads your name on the player rail and board labels, and anyone spectating or watching the replay sees it beside your name too. “Use my initial” goes back to the letter. Avatars need an account; guests show their initial, and AI opponents sit behind a portrait of their own.' },
       { kind: 'p', text: 'Everyone also has a public profile at `/u/<id>` that anyone can open without signing in. It shows the same statistics and recent games but never your decklists. “This is how others see your profile” marks your own.' },
     ],
-    related: ['stats', 'friends', 'guest-vs-account'],
+    related: ['stats', 'friends', 'guest-vs-account', 'playing-for-ante'],
   },
   {
     id: 'stats',
@@ -738,7 +760,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       { kind: 'p', text: 'Every group has a `?` for its help topic and a “!” when it holds the reason Start is disabled. The action bar writes that reason out; the primary button is Ready, Start Game, Start Draft or Start Tournament depending on the lobby.' },
       { kind: 'p', text: 'The lobby has no chat and no kick button — players leave themselves with Leave. Use your usual voice or chat app alongside.' },
     ],
-    related: ['axes', 'lobby-switching', 'saved-setups', 'roster-solo', 'invite-codes'],
+    related: ['axes', 'lobby-switching', 'saved-setups', 'roster-solo', 'invite-codes', 'playing-for-ante'],
   },
   {
     id: 'saved-setups',
@@ -910,7 +932,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       { kind: 'p', text: 'Leave Tournament (confirm with a second click) drops you from the event. If a player disconnects, everyone sees a countdown banner; others can extend it by a minute, and kick them once two minutes have passed.' },
       { kind: 'p', text: 'Anyone can follow the event from its tournament link, and every finished match’s replay is under Replays.' },
     ],
-    related: ['event-round-robin', 'limited-deckbuilding', 'spectating', 'replays', 'disconnects'],
+    related: ['event-round-robin', 'limited-deckbuilding', 'spectating', 'replays', 'disconnects', 'playing-for-ante'],
   },
   {
     id: 'cube-building',
@@ -1311,8 +1333,9 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         'Watch Replay — opens this game’s replay.',
         'Return to Menu — leave the game.',
       ] },
+      { kind: 'p', text: 'In a game played for ante, the result also shows which cards you won and lost.' },
     ],
-    related: ['replays', 'tournament-flow', 'disconnects'],
+    related: ['replays', 'tournament-flow', 'disconnects', 'playing-for-ante'],
   },
   {
     id: 'disconnects',

@@ -2299,6 +2299,21 @@ data class ControlChangedEvent(
     val newControllerId: EntityId
 ) : GameEvent
 
+/**
+ * A card's owner changed — something only the ante cards can do (CR 407.3): Darkpact's "You own
+ * target card in the ante", Bronze Tablet's swap. The card stays where it is; [zone] is where it
+ * sat when it changed hands.
+ */
+@Serializable
+@SerialName("OwnershipChangedEvent")
+data class OwnershipChangedEvent(
+    val cardId: EntityId,
+    val cardName: String,
+    val zone: Zone,
+    val oldOwnerId: EntityId,
+    val newOwnerId: EntityId
+) : GameEvent
+
 // =============================================================================
 // Targeting Events
 // =============================================================================

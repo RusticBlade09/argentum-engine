@@ -484,6 +484,16 @@ data class CardDefinition(
         found
     }
 
+    /**
+     * Whether this card may only be played in a game played for ante — its Oracle text carries
+     * "Remove this card from your deck before playing if you're not playing for ante." CR 407.3:
+     * when not playing for ante, players can't include these cards in their decks or sideboards.
+     * Read off the Oracle text once per definition; delegated, so never serialized.
+     */
+    val requiresAnte: Boolean by lazy {
+        oracleText.contains("if you're not playing for ante", ignoreCase = true)
+    }
+
     /** The effect when this spell resolves (for instants/sorceries) */
     val spellEffect get() = script.spellEffect
 

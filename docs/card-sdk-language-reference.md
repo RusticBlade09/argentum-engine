@@ -2988,6 +2988,17 @@ wrappers: Word of Command composes it inside `WithManaAbilitySources` and
   the condition fails — so a pump that wears off, a re-tap, or a re-acquired source never
   re-grabs the creature.
 - `ExchangeControlEffect(target1, target2)` — swap control of two permanents.
+- `ChangeOwnershipEffect(card = ContextTarget(0), newOwner = Controller)` (facade `Effects.ChangeOwnership(card, newOwner)`) —
+  `newOwner` becomes the **owner** of `card` (CR 407.3), the one thing only the ante cards do: Darkpact's "You
+  own target card in the ante", Bronze Tablet's "that player owns this card and you own the other exiled card"
+  (`newOwner = PlayerRef(Player.OwnerOf(...))` hands the Tablet to the target's owner — sequence it *before* the
+  target's own change, since `OwnerOf` reads the target's current owner). Not control: no layer, no duration, any
+  zone. The card doesn't move — the executor keeps `OwnerComponent`, `CardComponent.ownerId` and the owner-keyed
+  zone it sits in (exile, ante, graveyard, …) in step without minting a new object, emits `OwnershipChangedEvent`,
+  and stamps `OriginalOwnerComponent` so `AnteSettlement` can report the change "for keeps" when the game ends
+  (a card that comes back to its first owner reports nothing). Follow it with an ordinary move to act on the
+  card as its new owner's ("…exchange that card with the top card of your library" → `Effects.Move(card,
+  Zone.LIBRARY, placement = Top)` lands in *your* library).
   Triggered abilities with mandatory single-permanent target slots may compare a later target to an
   earlier one using `EffectTarget.ContextTarget(index)` (Spawnbroker: `powerAtMostEntity(ContextTarget(0))`).
   The engine asks for these targets sequentially, offers only choices that can complete the remaining
@@ -4352,6 +4363,18 @@ one-off pipeline belongs inline in the card file via `Effects.Pipeline { }` (§5
     `val kept = runStoringCollection { Patterns.Library.surveil(1, storeGraveyardAs = it) }` then
     `move(kept, ToZone(HAND), filter = Any.manaValueAtMostDynamic(lifeGainedThisTurn()))`.
 - `mill(count)` — top N cards into graveyard.
+- `anteTop(target = Controller)` — ante the top card of a player's library: put it into `Zone.ANTE`
+  (CR 407.4). Same Gather → Move pipeline as `exileTop`, destination the ante. Contract from Below
+  (`discardHand() then anteTop() then DrawCards(7)`), Demonic Attorney (`ForEachPlayer(ActivePlayerFirst,
+  anteTop())` — each player antes their own top card, since only an owner can ante a card). **The ante zone**
+  (`Zone.ANTE`) exists only in a game played for ante (`GameConfig.playingForAnte`, the lobby's "Play for ante"):
+  public and shared (CR 400.1/400.2), keyed by owner like exile, so `CardSource.FromZone(Zone.ANTE, Player.You)`
+  is "the cards you own in the ante" (Jeweled Bird) and `TargetFilter(Any, zone = Zone.ANTE)` is "target card in
+  the ante" (Darkpact). Each player antes a random card of their deck before the opening draw (CR 407.2), a
+  leaving player's ante cards stay (CR 800.4n), and at game end `AnteSettlement` hands the winner everything in
+  it. The cards that read "Remove this card from your deck before playing if you're not playing for ante"
+  (`CardDefinition.requiresAnte`) are legal only in such games — deck validation enforces it (CR 407.3), so the
+  card script just omits that line's behaviour.
 - `exileTop(count, target = Controller)` — top N cards of a player's library into exile (Malboro's
   "exiles the top three cards of their library"). Same Gather → Move pipeline as `mill`, destination
   exile. `count` is an `Int` or `DynamicAmount`. Pass a `target` (e.g. a `Player.You` rebind under

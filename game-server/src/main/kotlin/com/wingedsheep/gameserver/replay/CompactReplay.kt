@@ -231,6 +231,8 @@ data class ReplaySetup(
     val seatRoster: List<ServerMessage.PlayerSeatInfo>,
     /** Absent in old replays, which chose deterministic insertion order. */
     val preserveGraveyardOrder: Boolean = false,
+    /** Whether the game was played for ante (CR 407); anteing consumes RNG. Absent in old replays. */
+    val playingForAnte: Boolean = false,
 )
 
 /** Flattened, serializable form of [com.wingedsheep.engine.core.PlayerConfig]. */

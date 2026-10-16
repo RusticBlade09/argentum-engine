@@ -225,7 +225,9 @@ sealed interface ServerMessage {
          * Clients decide "did I win?" from this; [winnerId] is one representative and stays for
          * the spectator / replay readers that predate teams. Empty for a draw.
          */
-        val winnerIds: List<EntityId> = emptyList()
+        val winnerIds: List<EntityId> = emptyList(),
+        /** What changed hands in a game played for ante (CR 407); null when it wasn't. */
+        val ante: AnteOutcome? = null
     ) : ServerMessage
 
     /**
@@ -593,6 +595,8 @@ sealed interface ServerMessage {
         val ranked: Boolean = false,
         /** Whether ranked may be enabled: a TOURNAMENT-mode bracket (1v1 matches). */
         val rankedEligible: Boolean = false,
+        /** Whether the lobby's games are played for ante (CR 407). Never true together with [ranked]. */
+        val playingForAnte: Boolean = false,
     )
 
     /**
@@ -1264,6 +1268,8 @@ sealed interface ServerMessage {
          * so nobody can change them, and it can't be made public or given an AI seat.
          */
         val matchmade: Boolean = false,
+        /** Whether the game is played for ante (CR 407). Never true together with [ranked]. */
+        val playingForAnte: Boolean = false,
     ) : ServerMessage
 
     /**
@@ -1485,3 +1491,38 @@ enum class GameOverReason {
     /** Commander format: 21+ combat damage from a single commander (CR 903.10a). */
     COMMANDER_DAMAGE,
 }
+
+/**
+ * The settlement of a game played for ante, on [ServerMessage.GameOver]. Ante is "for keeps"
+ * (CR 407.1); [scope] says what keeping means here.
+ */
+@Serializable
+data class AnteOutcome(
+    val scope: AnteScope,
+    /** Every card that ended the game owned by someone other than the player who brought it. Empty for a draw. */
+    val transfers: List<AnteTransferInfo>,
+)
+
+@Serializable
+enum class AnteScope {
+    /** A Limited tournament: the cards moved between the players' pools for the rest of the event. */
+    EVENT,
+
+    /** Anywhere else: the cards are a trophy, recorded on the winner's profile as spoils. */
+    SPOILS,
+}
+
+@Serializable
+data class AnteTransferInfo(
+    val cardName: String,
+    val imageUri: String?,
+    val fromPlayerId: EntityId,
+    val fromPlayerName: String,
+    val toPlayerId: EntityId,
+    val toPlayerName: String,
+    /** ANTE = won from the ante (CR 407.2); OWNERSHIP = changed hands by an ante card's effect (CR 407.3). */
+    val cause: String,
+    /** EVENT scope only: the basic land that topped the loser's deck back up to 40, if one was added. */
+    val refilledWith: String? = null,
+)
+

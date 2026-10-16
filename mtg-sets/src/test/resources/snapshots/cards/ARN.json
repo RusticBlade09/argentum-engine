@@ -2355,6 +2355,76 @@
     }
 }
 
+// Jeweled Bird
+{
+    "name": "Jeweled Bird",
+    "manaCost": "{1}",
+    "typeLine": "Artifact",
+    "oracleText": "Remove this card from your deck before playing if you're not playing for ante.\n{T}: Ante this artifact. If you do, put all other cards you own from the ante into your graveyard, then draw a card.",
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Jeweled Bird:1",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.WhenCondition",
+                        "condition": {
+                            "type": "SourceInZone",
+                            "zones": [
+                                "Battlefield"
+                            ]
+                        }
+                    },
+                    "then": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "GatherCards",
+                                "source": {
+                                    "type": "FromZone",
+                                    "zone": "Ante"
+                                },
+                                "storeAs": "gathered0"
+                            },
+                            {
+                                "type": "MoveToZone",
+                                "target": "Self",
+                                "destination": "Ante",
+                                "fromZone": "Battlefield"
+                            },
+                            {
+                                "type": "MoveCollection",
+                                "from": "gathered0",
+                                "destination": {
+                                    "type": "ToZone",
+                                    "zone": "Graveyard"
+                                }
+                            },
+                            {
+                                "type": "DrawCards",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+    },
+    "setCode": "ARN",
+    "metadata": {
+        "collectorNumber": "66",
+        "rarity": "UNCOMMON",
+        "artist": "Amy Weber",
+        "imageUri": "https://cards.scryfall.io/normal/front/b/f/bfffb65d-851d-4dc9-9233-d53abf955dcd.jpg?1783948377"
+    },
+    "colorIdentityOverride": []
+}
+
 // Jihad
 {
     "name": "Jihad",

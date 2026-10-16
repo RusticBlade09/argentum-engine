@@ -749,6 +749,7 @@ Families:
 - `ChangeColorToChosenEffect(target: EffectTarget, duration: Duration)` — Replace the target's colors with the color(s) chosen earlier in this resolution (read from `EffectContext.chosenColors`, falling back to the single `chosenColor`).
 - `ChangeCreatureTypeTextEffect(target: EffectTarget, excludedTypes: List<String>)` — Change the text of target spell or permanent by replacing all instances of one creature type with another.
 - `ChangeGroupColorEffect(colors: Set<String>, filter: GroupFilter, duration: Duration)` — Change color for a group of creatures.
+- `ChangeOwnershipEffect(card: EffectTarget, newOwner: EffectTarget)` — newOwner becomes the owner of card — "You own target card in the ante" (Darkpact), "that player owns this card and you own the other exiled card" (Bronze Tablet).
 - `ChangeSpeedEffect(target: EffectTarget, amount: DynamicAmount, minimum: Int)` — Changes the target player's **speed** by a signed amount (Aetherdrift, CR 702.179).
 - `ChangeSpellTargetEffect(targetMustBeSource: Boolean)` — Change the target of a spell that has exactly one target, and that target is a creature, to another creature.
 - `ChangeTargetEffect(newTargetMustBePlayer: Boolean, onlyIfCurrentTargetIsController: Boolean, newTarget: EffectTarget?)` — Change the target of target spell or ability with a single target.

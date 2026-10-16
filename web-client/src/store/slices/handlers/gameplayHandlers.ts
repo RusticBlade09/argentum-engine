@@ -27,7 +27,7 @@ import type {
 /**
  * Extract the relevant player ID from an event for log coloring.
  */
-function getEventPlayerId(event: { type: string; playerId?: string; casterId?: string; controllerId?: string; attackingPlayerId?: string; viewingPlayerId?: string; revealingPlayerId?: string; activePlayerId?: string; newControllerId?: string; startingPlayerId?: string; newHolderId?: string }): EntityId | null {
+function getEventPlayerId(event: { type: string; playerId?: string; casterId?: string; controllerId?: string; attackingPlayerId?: string; viewingPlayerId?: string; revealingPlayerId?: string; activePlayerId?: string; newControllerId?: string; startingPlayerId?: string; newHolderId?: string; newOwnerId?: string }): EntityId | null {
   switch (event.type) {
     case 'lifeChanged': return event.playerId as EntityId
     case 'cardDrawn': return event.playerId as EntityId
@@ -54,6 +54,7 @@ function getEventPlayerId(event: { type: string; playerId?: string; casterId?: s
     case 'venturedIntoDungeon': return event.playerId as EntityId
     case 'dungeonCompleted': return event.playerId as EntityId
     case 'controlChanged': return event.newControllerId as EntityId
+    case 'ownershipChanged': return event.newOwnerId as EntityId
     case 'decisionMade': return event.playerId as EntityId
     default: return null
   }
@@ -943,6 +944,7 @@ export function createGameplayHandlers(set: SetState, get: GetState): Pick<Messa
               winnerIds: msg.winnerIds && msg.winnerIds.length > 0 ? msg.winnerIds : msg.winnerId ? [msg.winnerId] : [],
               reason: msg.reason,
               message: msg.message ?? null,
+              ...(msg.ante ? { ante: msg.ante } : {}),
             },
           },
           // The fight is over; drop the declaration previews. Animations are left to play out:
@@ -972,6 +974,7 @@ export function createGameplayHandlers(set: SetState, get: GetState): Pick<Messa
           result,
           message: msg.message,
           gameId: msg.gameId,
+          ...(msg.ante ? { ante: msg.ante } : {}),
         },
         ...CLEARED_ANIMATIONS,
       })

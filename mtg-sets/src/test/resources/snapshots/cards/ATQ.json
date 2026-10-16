@@ -786,6 +786,126 @@
     "colorIdentityOverride": []
 }
 
+// Bronze Tablet
+{
+    "name": "Bronze Tablet",
+    "manaCost": "{6}",
+    "typeLine": "Artifact",
+    "oracleText": "Remove this card from your deck before playing if you're not playing for ante.\nThis artifact enters tapped.\n{4}, {T}: Exile this artifact and target nontoken permanent an opponent owns. That player may pay 10 life. If they do, put this card into its owner's graveyard. Otherwise, that player owns this card and you own the other exiled card.",
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Bronze Tablet:1",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{4}"
+                            }
+                        },
+                        "CostTap"
+                    ]
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "MoveToZone",
+                            "target": "Self",
+                            "destination": "Exile",
+                            "fromZone": "Battlefield"
+                        },
+                        {
+                            "type": "MoveToZone",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            },
+                            "destination": "Exile"
+                        },
+                        {
+                            "type": "Gated",
+                            "gate": {
+                                "type": "Gate.MayPay",
+                                "cost": {
+                                    "type": "PayDynamicLife",
+                                    "amount": {
+                                        "type": "Fixed",
+                                        "amount": 10
+                                    },
+                                    "payer": {
+                                        "type": "OwnerOf",
+                                        "targetDescription": "target permanent"
+                                    }
+                                }
+                            },
+                            "then": {
+                                "type": "MoveToZone",
+                                "target": "Self",
+                                "destination": "Graveyard",
+                                "fromZone": "Exile"
+                            },
+                            "otherwise": {
+                                "type": "Composite",
+                                "effects": [
+                                    {
+                                        "type": "ChangeOwnership",
+                                        "card": "Self",
+                                        "newOwner": {
+                                            "type": "PlayerRef",
+                                            "player": {
+                                                "type": "OwnerOf",
+                                                "targetDescription": "target permanent"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "type": "ChangeOwnership",
+                                        "card": {
+                                            "type": "BoundVariable",
+                                            "name": "t0"
+                                        }
+                                    }
+                                ]
+                            },
+                            "decisionMaker": {
+                                "type": "PlayerRef",
+                                "player": {
+                                    "type": "OwnerOf",
+                                    "targetDescription": "target permanent"
+                                }
+                            }
+                        }
+                    ]
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "permanent nontoken own:opponent"
+                        },
+                        "id": "t0"
+                    }
+                ]
+            }
+        ],
+        "replacementEffects": [
+            "EntersTapped"
+        ]
+    },
+    "setCode": "ATQ",
+    "metadata": {
+        "collectorNumber": "42",
+        "rarity": "RARE",
+        "artist": "Tom Wänerstrand",
+        "imageUri": "https://cards.scryfall.io/normal/front/6/f/6fb10552-dd47-4f8a-ac7c-8c2b61e56736.jpg?1783948364"
+    },
+    "colorIdentityOverride": []
+}
+
 // Candelabra of Tawnos
 {
     "name": "Candelabra of Tawnos",

@@ -79,9 +79,11 @@ object PlayerLeavesGameProcessor {
         )
 
         // 2. Collect every object the leaver owns (all zones), plus the leaver's stack
-        //    abilities that aren't represented by a card — all of which leave the game.
+        //    abilities that aren't represented by a card — all of which leave the game. The
+        //    exception is the ante (CR 800.4n): what the leaver anted stays for the winner.
+        val leaverAnte = s.getZone(leaver, com.wingedsheep.sdk.core.Zone.ANTE).toSet()
         val ownedObjects = s.entities.keys.filter { id ->
-            id != leaver && s.getEntity(id)?.get<CardComponent>()?.ownerId == leaver
+            id != leaver && id !in leaverAnte && s.getEntity(id)?.get<CardComponent>()?.ownerId == leaver
         }
         val leaverStackAbilities = s.stack.filter { id ->
             val c = s.getEntity(id) ?: return@filter false

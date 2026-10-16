@@ -20,6 +20,7 @@ import { SessionReplacedOverlay } from './components/ui/SessionReplacedOverlay'
 import { MatchIntroAnimation } from './components/animations/MatchIntroAnimation'
 import { StandaloneConcedeButton } from './components/game/overlay'
 import overlay from './components/game/overlay/GameOverlays.module.css'
+import { AnteResultPanel } from './components/ante/AnteResultPanel'
 import { trackPageView } from './utils/analytics'
 import { randomBackground } from './utils/background'
 import { useNavigate } from 'react-router-dom'
@@ -513,6 +514,7 @@ function GameOverlay() {
   const clearError = useGameStore((state) => state.clearError)
   const returnToMenu = useGameStore((state) => state.returnToMenu)
   const enterEliminatedSpectate = useGameStore((state) => state.enterEliminatedSpectate)
+  const viewerId = useGameStore((state) => state.playerId)
   // The board state is still in the store behind the overlay; with it gone, fall back to duel copy.
   const table = useGameStore((state): 'duel' | 'pod' | 'teams' => {
     if ((state.gameState?.players.length ?? 0) <= 2) return 'duel'
@@ -547,6 +549,8 @@ function GameOverlay() {
           <p className={overlay.eyebrow}>Game over</p>
           <h1 id="game-over-title" className={overlay.title}>{title}</h1>
           <p className={overlay.reason}>{reasonText}</p>
+          {/* Played for ante (CR 407): what changed hands, before the next-step actions. */}
+          {gameOverState.ante && <AnteResultPanel ante={gameOverState.ante} viewerId={viewerId} />}
           {postGame && <PostGamePanel postGame={postGame} />}
           <div className={overlay.actions}>
             {/* The quick lobby is destroyed when the game starts

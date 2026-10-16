@@ -30,6 +30,14 @@ export interface Announcement {
 
 export const ANNOUNCEMENTS: readonly Announcement[] = [
   {
+    id: 'feature-playing-for-ante',
+    date: '2026-10-17',
+    kind: 'feature',
+    title: 'Play for ante',
+    body:
+      'Raise the stakes the old-fashioned way. Turn on Play for ante in a lobby and each player antes a random card from their deck before the opening draw — the winner takes the pile. In a sealed or draft tournament the cards you win join your pool for the rest of the event; anywhere else they go up as trophies in the new Spoils panel on your profile. It also unlocks the ante cards: Contract from Below, Darkpact, Demonic Attorney, Jeweled Bird and Bronze Tablet. Ranked games never play for ante.',
+  },
+  {
     id: 'feature-card-browser',
     date: '2026-10-14',
     kind: 'feature',

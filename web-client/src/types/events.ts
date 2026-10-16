@@ -51,6 +51,7 @@ export type ClientEvent =
   | TurnChangedEvent
   | GameRestartedEvent
   | ControlChangedEvent
+  | OwnershipChangedEvent
   | CardCycledEvent
   | LibraryShuffledEvent
   | AbilityFizzledEvent
@@ -477,6 +478,18 @@ export interface ControlChangedEvent {
   readonly permanentName: string
   readonly newControllerId: EntityId
   readonly isYours: boolean | null
+  readonly description: string
+}
+
+/**
+ * A card permanently changed owner — an ante effect such as Darkpact or Bronze Tablet (CR 407).
+ * Unlike [ControlChangedEvent] this outlives the game; `description` reads "You now own …".
+ */
+export interface OwnershipChangedEvent {
+  readonly type: 'ownershipChanged'
+  readonly cardName: string
+  readonly newOwnerId: EntityId
+  readonly isYours?: boolean | null
   readonly description: string
 }
 

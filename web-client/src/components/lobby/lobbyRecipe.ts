@@ -90,6 +90,8 @@ export interface RecipeSettings {
   readonly aiAssistEnabled?: boolean
   readonly isPublic?: boolean
   readonly ranked?: boolean
+  /** Play for ante (CR 407). Never true alongside `ranked` — ranked forces ante off. */
+  readonly playingForAnte?: boolean
   readonly cube?: RecipeCube
 }
 
@@ -254,6 +256,7 @@ export function recipeFromLobby(
         aiAssistEnabled: s.aiAssistEnabled,
         isPublic: s.isPublic,
         ranked: s.ranked ?? false,
+        playingForAnte: view.ante.on,
         ...(cube ? { cube } : {}),
       }
     : {
@@ -261,6 +264,7 @@ export function recipeFromLobby(
         rules: view.axes.rules,
         isPublic: view.isPublic,
         ranked: view.ranked.on,
+        playingForAnte: view.ante.on,
       }
 
   if (s?.cubeName && !cube) {
@@ -460,6 +464,7 @@ function trimSettings(
   if (typeof raw.aiAssistEnabled === 'boolean') out.aiAssistEnabled = raw.aiAssistEnabled
   if (typeof raw.isPublic === 'boolean') out.isPublic = raw.isPublic
   if (typeof raw.ranked === 'boolean') out.ranked = raw.ranked
+  if (typeof raw.playingForAnte === 'boolean') out.playingForAnte = raw.playingForAnte
   if (raw.rules === 'STANDARD' || raw.rules === 'COMMANDER') out.rules = raw.rules
   if (raw.attackMode === 'MULTIPLE' || raw.attackMode === 'LEFT' || raw.attackMode === 'RIGHT') {
     out.attackMode = raw.attackMode
@@ -531,6 +536,7 @@ function settingsTail(recipe: LobbyRecipe, availableSets: readonly AvailableSet[
       .map((c) => availableSets.find((a) => a.code === c)?.name ?? c)
       .join(' + ')}`)
   }
+  if (s.playingForAnte && !s.ranked) tail.push('For ante')
   return tail
 }
 

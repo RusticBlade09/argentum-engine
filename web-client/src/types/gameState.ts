@@ -74,6 +74,13 @@ export interface ClientGameState {
   readonly attackMode?: AttackMode | null
 
   /**
+   * True when this game is played for ante (CR 407): each player's ante zone is shown on the board
+   * and the "Playing for ante" indicator is up. Absent means false. Fixed for the whole game, so a
+   * delta never carries it — the applicator keeps the full state's value.
+   */
+  readonly playingForAnte?: boolean
+
+  /**
    * If non-null, the affected player whose choices the viewing player is currently driving
    * (turn, combat or stack-resolution control). Drives the controller banner and promoting their hand to
    * face-up. Null in normal play.

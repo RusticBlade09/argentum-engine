@@ -37,7 +37,7 @@ import type {
  * these is sent to the server as a `Card` target tagged with its zone, so a cross-zone union
  * requirement (Sorceress's Schemes: graveyard ∪ exile) matches it to the correct clause.
  */
-const CARD_TARGET_ZONES = new Set(['Graveyard', 'Exile', 'Hand', 'Library', 'Command'])
+const CARD_TARGET_ZONES = new Set(['Graveyard', 'Exile', 'Hand', 'Library', 'Command', 'Ante'])
 
 /** The entity a chosen target points at, whichever arm of the union it is. */
 function targetEntityId(target: ChosenTarget): EntityId {

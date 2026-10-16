@@ -248,6 +248,8 @@ export interface GameOverState {
    * of the game) alongside the exit buttons.
    */
   eliminated?: boolean
+  /** The ante settlement (CR 407) when the game was played for ante. */
+  ante?: import('../../types').AnteResult | null
 }
 
 /**
@@ -773,6 +775,8 @@ export interface SpectatorGameOver {
   reason: GameOverReason
   /** Server-written end-of-game text (e.g. a stalled game's explanation), preferred when present. */
   message: string | null
+  /** The ante settlement (CR 407) when the game was played for ante. */
+  ante?: import('../../types').AnteResult | null
 }
 
 /**
@@ -1051,7 +1055,7 @@ export type GameStore = {
   tournamentState: TournamentState | null
   ffaState: FfaState | null
   spectatingState: SpectatingState | null
-  createTournamentLobby: (setCodes: string[], format?: TournamentFormat, boosterCount?: number, maxPlayers?: number, pickTimeSeconds?: number, isPublic?: boolean, gameMode?: LobbyGameMode, rules?: GameRules) => void
+  createTournamentLobby: (setCodes: string[], format?: TournamentFormat, boosterCount?: number, maxPlayers?: number, pickTimeSeconds?: number, isPublic?: boolean, gameMode?: LobbyGameMode, rules?: GameRules, playingForAnte?: boolean) => void
   joinLobby: (lobbyId: string) => void
   startLobby: () => void
   leaveLobby: () => void
@@ -1086,7 +1090,7 @@ export type GameStore = {
 
   // Quick Game Lobby slice
   quickGameLobbyState: QuickGameLobbyStateMessage | null
-  createQuickGameLobby: (vsAi?: boolean, setCode?: string, isPublic?: boolean, format?: DeckFormat, momirBasic?: boolean, ranked?: boolean) => void
+  createQuickGameLobby: (vsAi?: boolean, setCode?: string, isPublic?: boolean, format?: DeckFormat, momirBasic?: boolean, ranked?: boolean, playingForAnte?: boolean) => void
   addQuickGameAi: () => void
   removeQuickGameAi: () => void
   joinQuickGameLobby: (lobbyId: string) => void
@@ -1104,6 +1108,7 @@ export type GameStore = {
   setQuickGameLobbySetCode: (setCodes: readonly string[]) => void
   setQuickGameLobbyPublic: (isPublic: boolean) => void
   setQuickGameLobbyRanked: (ranked: boolean) => void
+  setQuickGameLobbyAnte: (playingForAnte: boolean) => void
   setQuickGameLobbyFormat: (format: DeckFormat | null, momirBasic?: boolean) => void
   /** Host-only: choose what the AI opponent plays (auto / built from sets / an exact list). */
   setQuickGameAiDeck: (spec: AiDeckSpec) => void

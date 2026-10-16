@@ -175,6 +175,7 @@ sealed interface EventPattern : TextReplaceable<EventPattern> {
                     // No card is ever moved *to* the sideboard mid-game (it is "outside the game",
                     // CR 400.11); this branch only exists for `when` exhaustiveness.
                     Zone.SIDEBOARD -> append("be put into a sideboard")
+                    Zone.ANTE -> append("be anted")
                 }
                 if (from != null && to != Zone.GRAVEYARD) {
                     append(" from ${from.displayName}")

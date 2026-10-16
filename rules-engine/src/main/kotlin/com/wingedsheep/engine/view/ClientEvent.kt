@@ -818,6 +818,20 @@ sealed interface ClientEvent {
     // Control Events
     // =========================================================================
 
+    /** A card changed owner — only the ante cards do this (CR 407.3). */
+    @Serializable
+    @SerialName("ownershipChanged")
+    data class OwnershipChanged(
+        val cardName: String,
+        val newOwnerId: EntityId,
+        val isYours: Boolean? = null,
+        override val description: String = when (isYours) {
+            true -> "You now own $cardName"
+            false -> "Opponent now owns $cardName"
+            null -> "Ownership of $cardName changed"
+        }
+    ) : ClientEvent
+
     @Serializable
     @SerialName("controlChanged")
     data class ControlChanged(
@@ -1578,6 +1592,12 @@ is PermanentsSacrificedEvent -> {
                     )
                 } else null
             }
+
+            is com.wingedsheep.engine.core.OwnershipChangedEvent -> ClientEvent.OwnershipChanged(
+                cardName = event.cardName,
+                newOwnerId = event.newOwnerId,
+                isYours = event.newOwnerId == viewingPlayerId
+            )
 
             is ControlChangedEvent -> ClientEvent.ControlChanged(
                 permanentName = event.permanentName,

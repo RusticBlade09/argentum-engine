@@ -30,7 +30,7 @@ import { computeCoverage } from '../decisions/manaCoverage'
 // Import extracted components
 import { SeatPortrait, useHasSeatPortrait } from './SeatPortrait'
 import { useResponsiveContext } from './board/shared'
-import { Battlefield, CardRow, CommandZone, OpponentBoardArea, BoardNamePlate, HandCountBadge, CollapsedBoardTab, COLLAPSED_TAB_WIDTH, CELL_PLATE_BAND, useCellHandMetrics, StackDisplay, ZonePile, ResponsiveContext } from './board'
+import { Battlefield, CardRow, CommandZone, AnteZone, AnteIndicator, OpponentBoardArea, BoardNamePlate, HandCountBadge, CollapsedBoardTab, COLLAPSED_TAB_WIDTH, CELL_PLATE_BAND, useCellHandMetrics, StackDisplay, ZonePile, ResponsiveContext } from './board'
 import { RenderProfiler } from '@/utils/renderProfiler'
 import { PooledBattlefieldLayoutContext } from './board/shared'
 import { useBoardGroups } from './board/useBoardGroups'
@@ -1341,6 +1341,8 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
         {/* Game-level day/night designation (CR 731) — one badge for the whole table, not per-player.
             Renders nothing until a designation exists, so most games never show it. */}
         <DayNightBadge designation={gameState.dayNight} />
+        {/* "For ante" chip (CR 407) — fixed for the whole game, so it never shifts the HUD mid-game. */}
+        <AnteIndicator />
         <StepStrip
           phase={gameState.currentPhase}
           step={gameState.currentStep}
@@ -1430,6 +1432,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
           )}
           <div style={styles.playerRowWithZones}>
             <CommandZone player={eliminatedBottomSeat} />
+            <AnteZone player={eliminatedBottomSeat} />
             <div style={styles.playerMainArea}>
               <Battlefield isOpponent={false} playerId={eliminatedBottomSeat.playerId} spectatorMode />
             </div>
@@ -1550,6 +1553,8 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
           <div style={styles.playerRowWithZones}>
             {/* Player command zone (left side) — Commander format only; renders nothing otherwise. */}
             {effectiveViewingPlayer && <CommandZone player={effectiveViewingPlayer} />}
+            {/* The player's ante (CR 407) — only in a game played for ante; renders nothing otherwise. */}
+            {effectiveViewingPlayer && <AnteZone player={effectiveViewingPlayer} />}
 
             <div ref={playerSlotRef} style={{
               ...styles.playerMainArea,
@@ -2689,6 +2694,7 @@ function SelfBottomCell({
       {!plateAtBottom && <div style={{ height: CELL_PLATE_BAND + handBand, flexShrink: 0 }} aria-hidden />}
       <div style={{ ...styles.playerRowWithZones, alignItems: 'flex-start', flex: 1 }}>
         <CommandZone player={player} compact />
+        <AnteZone player={player} compact />
         <div style={{ ...styles.playerMainArea, ...(hijackedSurfaceStyle ?? null) }}>
           <Battlefield isOpponent={false} spectatorMode={spectatorMode} />
         </div>
