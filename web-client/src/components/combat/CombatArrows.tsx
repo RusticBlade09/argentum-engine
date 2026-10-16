@@ -205,7 +205,7 @@ function getPlayerLifeAnchor(playerId: EntityId, from: Point): Point | null {
 /**
  * Get the edge positions of a card element for attack indicators.
  */
-function getCardEdgeCenter(cardId: EntityId): { topCenter: Point; bottomCenter: Point; centerY: number } | null {
+function getCardEdgeCenter(cardId: EntityId): { topCenter: Point; bottomCenter: Point } | null {
   const element = document.querySelector(`[data-card-id="${cardId}"]`)
   if (!element) return null
 
@@ -213,7 +213,6 @@ function getCardEdgeCenter(cardId: EntityId): { topCenter: Point; bottomCenter: 
   return {
     topCenter: { x: rect.left + rect.width / 2, y: rect.top },
     bottomCenter: { x: rect.left + rect.width / 2, y: rect.bottom },
-    centerY: rect.top + rect.height / 2,
   }
 }
 
@@ -650,7 +649,13 @@ export function CombatArrows() {
 
       // Compute attack direction indicators (red triangles)
       const newIndicators: AttackIndicatorData[] = []
-      const viewportCenterY = window.innerHeight / 2
+
+      // The viewing seat's board is anchored at the bottom, so its attackers stream up and everyone
+      // else's stream down. Read it off the controller, not the card's screen position: a sparse
+      // board (a replay with no creatures on the bottom seat) can push the top seat's creature row
+      // past the viewport's midline.
+      const directionFor = (attackerId: EntityId): 'up' | 'down' =>
+        cards?.[attackerId]?.controllerId === viewingPlayerId ? 'up' : 'down'
 
       // Seat color for an indicator given the attack's target id (player or planeswalker).
       const indicatorColorFor = (targetId: EntityId | undefined): string => {
@@ -667,7 +672,7 @@ export function CombatArrows() {
           if (targetId && !isMulti) continue
           const edge = getCardEdgeCenter(attackerId)
           if (edge) {
-            const direction = edge.centerY > viewportCenterY ? 'up' : 'down'
+            const direction = directionFor(attackerId)
             const pos = direction === 'up' ? edge.topCenter : edge.bottomCenter
             newIndicators.push({ x: pos.x, y: pos.y, direction, attackerId, color: indicatorColorFor(targetId) })
           }
@@ -679,7 +684,7 @@ export function CombatArrows() {
           if (targetId && !isMulti) continue
           const edge = getCardEdgeCenter(attackerId)
           if (edge) {
-            const direction = edge.centerY > viewportCenterY ? 'up' : 'down'
+            const direction = directionFor(attackerId)
             const pos = direction === 'up' ? edge.topCenter : edge.bottomCenter
             newIndicators.push({ x: pos.x, y: pos.y, direction, attackerId, color: indicatorColorFor(targetId) })
           }
@@ -692,7 +697,7 @@ export function CombatArrows() {
 
           const edge = getCardEdgeCenter(attacker.creatureId)
           if (edge) {
-            const direction = edge.centerY > viewportCenterY ? 'up' : 'down'
+            const direction = directionFor(attacker.creatureId)
             const pos = direction === 'up' ? edge.topCenter : edge.bottomCenter
             newIndicators.push({
               x: pos.x,
