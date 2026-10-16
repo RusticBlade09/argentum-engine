@@ -144,3 +144,81 @@
         "GREEN"
     ]
 }
+
+// Jaws of Defeat
+{
+    "name": "Jaws of Defeat",
+    "manaCost": "{3}{B}",
+    "typeLine": "Enchantment",
+    "oracleText": "Whenever a creature you control enters, target opponent loses life equal to the difference between that creature's power and its toughness.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Jaws of Defeat:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "filter": "creature ctrl:you",
+                    "to": "Battlefield"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "LoseLife",
+                    "amount": {
+                        "type": "Max",
+                        "left": {
+                            "type": "Subtract",
+                            "left": {
+                                "type": "EntityProperty",
+                                "entity": "TriggeringEntity",
+                                "numericProperty": "Power"
+                            },
+                            "right": {
+                                "type": "EntityProperty",
+                                "entity": "TriggeringEntity",
+                                "numericProperty": "Toughness"
+                            }
+                        },
+                        "right": {
+                            "type": "Subtract",
+                            "left": {
+                                "type": "EntityProperty",
+                                "entity": "TriggeringEntity",
+                                "numericProperty": "Toughness"
+                            },
+                            "right": {
+                                "type": "EntityProperty",
+                                "entity": "TriggeringEntity",
+                                "numericProperty": "Power"
+                            }
+                        }
+                    },
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                "targetRequirement": {
+                    "type": "TargetOpponent",
+                    "id": "t0"
+                },
+                "descriptionOverride": "Target opponent loses life equal to the difference between that creature's power and its toughness."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "27",
+        "rarity": "RARE",
+        "artist": "Andreas Zafiratos",
+        "flavorText": "\"The Jeskai like talking about their Way? Let's see them talk their way out of this dilemma.\"\n—Girdah, Abzan beastrider",
+        "imageUri": "https://cards.scryfall.io/normal/front/c/4/c495f3bf-86a4-4d2f-821f-c01515f084c9.jpg?1783907177",
+        "rulings": [
+            {
+                "date": "2025-04-04",
+                "text": "To find the difference between a creature's power and its toughness, subtract the smaller of those two numbers from the larger one. For example, the difference between the power and toughness of a 3/5 creature is 2. The difference between the power and toughness of a 5/3 creature is also 2."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
