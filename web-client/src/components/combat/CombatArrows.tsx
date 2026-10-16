@@ -14,7 +14,7 @@ import type { EntityId } from '@/types'
 import { Step, ZoneType } from '@/types'
 import { defendingPlayerOf, isBattle } from '@/utils/combatTargets'
 import { bandsFromBandIds, computeCombatClique, type CombatClique } from './combatClique'
-import { CliqueCaption, CliqueSpotlight, cliqueBounds, describeFocus, measureClique } from './CombatFocus'
+import { BLOCKER_TONE, CliqueCaption, CliqueSpotlight, cliqueBounds, describeFocus, measureClique } from './CombatFocus'
 import { setCombatFocusBounds } from './combatFocusBounds'
 
 interface Point {
@@ -48,6 +48,8 @@ interface AttackerArrowData {
   attackerId: EntityId
   /** Defender seat color in multiplayer; defaults to combat red. */
   color?: string
+  /** Blocked with no blockers left: the attack still points at its defender but goes nowhere. */
+  stalled?: boolean
 }
 
 /**
@@ -69,6 +71,8 @@ interface AttackIndicatorData {
   attackerId: EntityId
   /** Defender seat color in multiplayer; defaults to combat red. */
   color?: string
+  /** Blocked with no blockers left: drawn as a "Blocked" tag instead of the attack chevron. */
+  blocked?: boolean
 }
 
 /**
@@ -255,6 +259,49 @@ function AttackIndicator({ x, y, direction, color = '#ff4444' }: { x: number; y:
   )
 }
 
+/**
+ * Tag on an attacker that is blocked but has no blockers left (CR 509.1h) — every blocker left
+ * combat, or an effect made it blocked. It takes the attack chevron's place on the defender-facing
+ * edge, straddling it, so the card says outright that its attack was stopped even with no blocker
+ * arrow left to show it.
+ */
+function BlockedIndicator({ x, y, direction }: { x: number; y: number; direction: 'up' | 'down' }) {
+  const width = 92
+  const height = 20
+  const cy = y + (direction === 'up' ? -1 : 1) * 4
+  const iconX = x - width / 2 + 14
+  // A small shield, centred on (iconX, cy).
+  const shield = `M ${iconX} ${cy - 6} L ${iconX + 5} ${cy - 4} V ${cy} C ${iconX + 5} ${cy + 3.5} ${iconX + 2.5} ${cy + 5.5} ${iconX} ${cy + 6.5} C ${iconX - 2.5} ${cy + 5.5} ${iconX - 5} ${cy + 3.5} ${iconX - 5} ${cy} V ${cy - 4} Z`
+  return (
+    <g data-testid="blocked-indicator">
+      <rect
+        x={x - width / 2}
+        y={cy - height / 2}
+        width={width}
+        height={height}
+        rx={height / 2}
+        fill="#0c0f16"
+        fillOpacity={0.94}
+        stroke={BLOCKER_TONE}
+        strokeWidth={1.5}
+      />
+      <path d={shield} fill={BLOCKER_TONE} fillOpacity={0.9} />
+      <text
+        x={iconX + 11}
+        y={cy + 3.8}
+        fill={BLOCKER_TONE}
+        fontSize={10.5}
+        fontWeight={700}
+        letterSpacing="0.08em"
+        fontFamily="system-ui, -apple-system, sans-serif"
+        style={{ pointerEvents: 'none' }}
+      >
+        BLOCKED
+      </text>
+    </g>
+  )
+}
+
 /** Is this viewport point horizontally on-screen (i.e., not on a slid-away board)? */
 function isOnScreen(p: Point): boolean {
   return p.x >= -4 && p.x <= window.innerWidth + 4
@@ -406,6 +453,29 @@ export function CombatArrows() {
 
   // Check if we're in active declare blockers mode (local state)
   const isDeclaringBlockers = combatState?.mode === 'declareBlockers'
+
+  // Attackers that are blocked with no blocker left on them (CR 509.1h: a creature stays blocked
+  // after every creature blocking it leaves combat, and "becomes blocked" effects block with none).
+  // Without a mark these read as unblocked: no blocker arrow, the attack chevron still pointing on.
+  // A banded attacker counts only when nothing blocks any of its band.
+  const blockedWithoutBlockers = useMemo(() => {
+    const ids = new Set<EntityId>()
+    if (!gameStateCombat || isDeclaringBlockers) return ids
+    const liveBlocked = new Set<EntityId>()
+    for (const b of gameStateCombat.blockers) {
+      if (cards?.[b.creatureId]?.zone?.zoneType === ZoneType.BATTLEFIELD) liveBlocked.add(b.blockingAttacker)
+    }
+    const liveBands = new Set<string>()
+    for (const a of gameStateCombat.attackers) {
+      if (a.bandId && liveBlocked.has(a.creatureId)) liveBands.add(a.bandId)
+    }
+    for (const a of gameStateCombat.attackers) {
+      if (!a.isBlocked || liveBlocked.has(a.creatureId)) continue
+      if (a.bandId && liveBands.has(a.bandId)) continue
+      ids.add(a.creatureId)
+    }
+    return ids
+  }, [gameStateCombat, cards, isDeclaringBlockers])
 
   // Update arrow positions when assignments change
   useEffect(() => {
@@ -592,6 +662,7 @@ export function CombatArrows() {
           end: targetPos,
           attackerId,
           color: seatColorOf(defenderId),
+          ...(blockedWithoutBlockers.has(attackerId) ? { stalled: true } : {}),
         })
       }
 
@@ -709,6 +780,7 @@ export function CombatArrows() {
                   ? attacker.attackingTarget.playerId
                   : attacker.attackingTarget.permanentId,
               ),
+              ...(blockedWithoutBlockers.has(attacker.creatureId) ? { blocked: true } : {}),
             })
           }
         }
@@ -720,7 +792,7 @@ export function CombatArrows() {
     updateArrows()
     const interval = setInterval(updateArrows, 100)
     return () => clearInterval(interval)
-  }, [combatState, gameStateCombat, opponentAttackerTargets, opponentBlockerAssignments, isDeclaringBlockers, isInCombatPhase, isDeclareAttackersStep, isDeclareBlockersStep, cards, isSpectating, isSelectingDamageOrder, players, teamMap, isMulti, viewedOpponentId, viewingPlayerId])
+  }, [combatState, gameStateCombat, opponentAttackerTargets, opponentBlockerAssignments, isDeclaringBlockers, isInCombatPhase, isDeclareAttackersStep, isDeclareBlockersStep, cards, isSpectating, isSelectingDamageOrder, players, teamMap, isMulti, viewedOpponentId, viewingPlayerId, blockedWithoutBlockers])
 
   // Hover focus: hovering a creature in combat lifts its whole clique (see computeCombatClique)
   // and dims every other arrow, so one block can be read out of a crowded board.
@@ -794,7 +866,8 @@ export function CombatArrows() {
   // Whether "no blockers" is a fact yet: blocks are being declared right now, or have been.
   const blocksKnown = isDeclaringBlockers ||
     (opponentBlockerAssignments != null && Object.keys(opponentBlockerAssignments).length > 0 && isDeclareBlockersStep) ||
-    (gameStateCombat != null && (gameStateCombat.blockers.length > 0 || BLOCKS_RESOLVED_STEPS.has(currentStep as Step)))
+    (gameStateCombat != null && (gameStateCombat.blockers.length > 0 || BLOCKS_RESOLVED_STEPS.has(currentStep as Step))) ||
+    blockedWithoutBlockers.size > 0
 
   // Don't render during full-screen overlay decisions
   if (hasOverlayDecision) {
@@ -837,7 +910,7 @@ export function CombatArrows() {
     focused ? [...items].sort((a, b) => Number(inClique(a)) - Number(inClique(b))) : items
   const attackerInClique = (item: { attackerId: EntityId }) => clique?.attackers.has(item.attackerId) ?? false
   const blockInClique = (item: ArrowData) => clique?.blockers.has(item.blockerId) ?? false
-  const caption = clique && focusId ? describeFocus(focusId, clique, arrows, bands, blocksKnown) : null
+  const caption = clique && focusId ? describeFocus(focusId, clique, arrows, bands, blocksKnown, blockedWithoutBlockers) : null
   const spotlight = lastFocus.current
   const spotlightRects = spotlight ? measureClique(spotlight.clique) : null
   const focusRect = focusId ? spotlightRects?.get(focusId) : undefined
@@ -866,26 +939,34 @@ export function CombatArrows() {
       >
         {/* Attack direction indicators (triangles pointing toward the defender,
             seat-colored once assigned in multiplayer) */}
-        {attackIndicators.map(({ x, y, direction, attackerId, color }) => (
+        {attackIndicators.map(({ x, y, direction, attackerId, color, blocked }) => (
           <g key={`indicator-${attackerId}`} style={fade(clique?.attackers.has(attackerId) ?? false)}>
-            <AttackIndicator
-              x={x}
-              y={y}
-              direction={direction}
-              {...(color ? { color } : {})}
-            />
+            {blocked ? (
+              <BlockedIndicator x={x} y={y} direction={direction} />
+            ) : (
+              <AttackIndicator
+                x={x}
+                y={y}
+                direction={direction}
+                {...(color ? { color } : {})}
+              />
+            )}
           </g>
         ))}
 
         {/* Attacker arrows (attackers to the defending player / planeswalker) */}
         {focusLast(attackerArrows, attackerInClique).map((arrow) => (
           <g key={`attacker-${arrow.attackerId}`} style={fade(attackerInClique(arrow))}>
-            <Arrow
-              start={arrow.start}
-              end={arrow.end}
-              color={arrow.color ?? '#ff4444'}
-              emphasized={focused && attackerInClique(arrow)}
-            />
+            {/* A stalled attack (blocked, no blockers left) fades to a dashed trace */}
+            <g opacity={arrow.stalled ? 0.45 : 1}>
+              <Arrow
+                start={arrow.start}
+                end={arrow.end}
+                color={arrow.color ?? '#ff4444'}
+                emphasized={focused && attackerInClique(arrow)}
+                dashed={arrow.stalled === true}
+              />
+            </g>
           </g>
         ))}
 

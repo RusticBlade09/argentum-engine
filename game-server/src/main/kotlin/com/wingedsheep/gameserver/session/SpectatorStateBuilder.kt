@@ -182,7 +182,8 @@ class SpectatorStateBuilder(
             attackers.add(
                 ServerMessage.SpectatorAttacker(
                     creatureId = entityId.value,
-                    blockedBy = blockedComponent?.blockerIds?.map { it.value } ?: emptyList()
+                    blockedBy = blockedComponent?.blockerIds?.map { it.value } ?: emptyList(),
+                    isBlocked = blockedComponent != null
                 )
             )
         }

@@ -932,6 +932,11 @@ export interface ClientAttacker {
   readonly creatureName: string
   readonly attackingTarget: ClientCombatTarget
   readonly blockedBy: readonly EntityId[]
+  /**
+   * Whether this attacker is blocked. A blocked creature stays blocked after every creature
+   * blocking it leaves combat (CR 509.1h), so this can be true with an empty `blockedBy`.
+   */
+  readonly isBlocked?: boolean
   /** True if all creatures that can block this creature must do so (Alluring Scent) */
   readonly mustBeBlockedByAll?: boolean
   /** Banding band id (CR 702.22) shared by every attacker in the same band; null/absent if not banded. */

@@ -2032,6 +2032,8 @@ export type SpectatorTarget =
 export interface SpectatorAttacker {
   readonly creatureId: string
   readonly blockedBy: readonly string[]
+  /** Stays true after every blocker leaves combat (CR 509.1h). */
+  readonly isBlocked?: boolean
 }
 
 export interface SpectatorCombatState {

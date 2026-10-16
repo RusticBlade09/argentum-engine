@@ -1145,6 +1145,12 @@ data class ClientAttacker(
     val creatureName: String,
     val attackingTarget: ClientCombatTarget,
     val blockedBy: List<EntityId>,
+    /**
+     * Whether this attacker is blocked. Usually the same as `blockedBy` being non-empty, but a
+     * blocked creature stays blocked after every creature blocking it leaves combat (CR 509.1h),
+     * so an attacker can be blocked with an empty `blockedBy`.
+     */
+    val isBlocked: Boolean = false,
     /** True if all creatures that can block this creature must do so (Alluring Scent) */
     val mustBeBlockedByAll: Boolean = false,
     /**

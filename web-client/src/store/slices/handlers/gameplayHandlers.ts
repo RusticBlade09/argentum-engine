@@ -710,7 +710,9 @@ function processStateUpdate(
     opponentBlockerAssignments: keepBlockerPreview(
       resolvedState.currentStep,
       resolvedState.combat != null,
-      (resolvedState.combat?.blockers?.length ?? 0) > 0,
+      // A blocked attacker whose blockers all left combat still counts (CR 509.1h).
+      (resolvedState.combat?.blockers?.length ?? 0) > 0 ||
+        (resolvedState.combat?.attackers?.some((a) => a.isBlocked === true) ?? false),
     )
       ? state.opponentBlockerAssignments
       : null,

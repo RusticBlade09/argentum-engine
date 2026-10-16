@@ -1089,7 +1089,9 @@ sealed interface ServerMessage {
     @Serializable
     data class SpectatorAttacker(
         val creatureId: String,
-        val blockedBy: List<String> = emptyList()
+        val blockedBy: List<String> = emptyList(),
+        /** Stays true after every blocker leaves combat (CR 509.1h); mirrors `ClientAttacker.isBlocked`. */
+        val isBlocked: Boolean = false
     )
 
     /**

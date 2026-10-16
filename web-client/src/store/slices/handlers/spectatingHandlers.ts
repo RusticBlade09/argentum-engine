@@ -106,7 +106,7 @@ export function createSpectatingHandlers(set: SetState, get: GetState): Pick<Mes
         opponentBlockerAssignments: keepBlockerPreview(
           spectatorStep,
           msg.combat != null,
-          msg.combat?.attackers?.some(a => a.blockedBy.length > 0) ?? false,
+          msg.combat?.attackers?.some(a => a.isBlocked === true || a.blockedBy.length > 0) ?? false,
         )
           ? state.opponentBlockerAssignments
           : null,
