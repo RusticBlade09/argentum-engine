@@ -30,6 +30,14 @@ export interface Announcement {
 
 export const ANNOUNCEMENTS: readonly Announcement[] = [
   {
+    id: 'feature-subgames-shahrazad',
+    date: '2026-10-17',
+    kind: 'feature',
+    title: 'Shahrazad: a game within the game',
+    body:
+      'Arabian Nights’ Shahrazad now works as printed: cast it and everyone plays a whole subgame of Magic, using their libraries as their decks — fresh life, fresh hands, mulligans and all — while the main game waits with the spell still on the stack. A gilded frame and a SUBGAME badge show which game you are in and what is waiting outside it. When it is over, the cards go home, and everyone who didn’t win loses half their life. You can even cast Shahrazad inside a subgame.',
+  },
+  {
     id: 'feature-card-browser',
     date: '2026-10-14',
     kind: 'feature',

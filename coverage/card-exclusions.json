@@ -4,7 +4,7 @@
     "'everything we intend to build is built' rather than 'literally every card exists'.",
     "",
     "This is a policy list, not a backlog. A card belongs here only when the reason is",
-    "permanent — the card needs a mechanic the engine will never carry (ante, subgames,",
+    "permanent — the card needs a mechanic the engine will never carry (ante,",
     "physical dexterity). A card that is merely hard, or blocked on a feature we do plan",
     "to build, stays a normal missing card and keeps counting against the set.",
     "",
@@ -25,7 +25,6 @@
   ],
   "reasons": {
     "ante": "Ante is not supported — the engine has no ante zone, and ante play is banned in every sanctioned format.",
-    "subgame": "Playing a Magic subgame inside a game is out of scope for the engine.",
     "dexterity": "Requires physical dexterity with a real card, which has no digital equivalent."
   },
   "cards": [
@@ -38,7 +37,6 @@
     { "name": "Rebirth", "reason": "ante" },
     { "name": "Tempest Efreet", "reason": "ante" },
     { "name": "Timmerian Fiends", "reason": "ante" },
-    { "name": "Shahrazad", "reason": "subgame" },
     { "name": "Chaos Orb", "reason": "dexterity" },
     { "name": "Falling Star", "reason": "dexterity" }
   ]

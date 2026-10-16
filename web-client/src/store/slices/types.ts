@@ -792,6 +792,33 @@ export interface MatchIntro {
 }
 
 /**
+ * The interstitial shown as a Magic subgame (Shahrazad, CR 729) begins or ends: the table is about
+ * to become a different game, and the players should see that happen rather than find it.
+ */
+export type SubgameTransition =
+  | {
+      kind: 'start'
+      /** 1 for a subgame of the main game, 2 for one within it. */
+      depth: number
+      sourceName: string | null
+      sourceImageUri: string | null
+      /** The randomly chosen first player: "You" or their name. */
+      firstPlayerName: string
+      youGoFirst: boolean
+    }
+  | {
+      kind: 'end'
+      depth: number
+      sourceName: string | null
+      sourceImageUri: string | null
+      /** Empty for a draw. */
+      winnerNames: string[]
+      youWon: boolean
+      /** The players who didn't win — what the spell does to them next, it says itself. */
+      nonWinnerNames: string[]
+    }
+
+/**
  * A log entry for the game log panel.
  */
 export interface LogEntry {
@@ -1032,7 +1059,11 @@ export type GameStore = {
   mulligan: () => void
   chooseBottomCards: (cardIds: readonly EntityId[]) => void
   toggleMulliganCard: (cardId: EntityId) => void
-  concede: () => void
+  /**
+   * Concede. During a Magic subgame (CR 729), `subgameOnly` concedes just the subgame — the main
+   * game then resumes — instead of the main game as well.
+   */
+  concede: (subgameOnly?: boolean) => void
   requestUndo: () => void
   toggleAutoTap: () => void
   cancelGame: () => void
@@ -1396,4 +1427,6 @@ export type GameStore = {
   matchIntro: MatchIntro | null
   setMatchIntro: (intro: MatchIntro) => void
   clearMatchIntro: () => void
+  subgameTransition: SubgameTransition | null
+  clearSubgameTransition: () => void
 }

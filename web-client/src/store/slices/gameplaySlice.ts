@@ -515,9 +515,9 @@ export const createGameplaySlice: SliceCreator<GameplaySlice> = (set, get) => ({
     })
   },
 
-  concede: () => {
-    trackEvent('player_conceded')
-    getWebSocket()?.send(createConcedeMessage())
+  concede: (subgameOnly = false) => {
+    trackEvent(subgameOnly ? 'player_conceded_subgame' : 'player_conceded')
+    getWebSocket()?.send(createConcedeMessage(subgameOnly))
   },
 
   requestUndo: () => {

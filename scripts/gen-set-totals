@@ -28,7 +28,7 @@ Extras additionally carry `group` — a Scryfall-style section heading ("Starter
 emitted pre-sorted into those sections, so the Set Completion view can break the extras out the
 way scryfall.com/sets/<code> does instead of showing one undifferentiated "Extras" pile.
 `notPlanned` is present only for the cards listed in `coverage/card-exclusions.json`
-(ante, subgames, physical dexterity) and carries `{ kind, why }` — the short reason key
+(ante, physical dexterity) and carries `{ kind, why }` — the short reason key
 and the sentence explaining it. Those cards stay in the list so the detail view can show
 them, but the server drops them from the denominator while they're unimplemented, so a
 set reads complete once everything we intend to build is built.

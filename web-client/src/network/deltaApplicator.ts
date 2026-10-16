@@ -92,7 +92,9 @@ export function applyStateDelta(
     isGameOver: delta.isGameOver ?? current.isGameOver,
     winnerId: delta.winnerId !== undefined ? delta.winnerId : current.winnerId,
     // Carried forward: a null delta value means unchanged (the game never reverts to neither, CR 731.1).
-    dayNight: delta.dayNight ?? current.dayNight ?? null,
+    dayNight: delta.dayNightCleared ? null : (delta.dayNight ?? current.dayNight ?? null),
+    // A subgame starting, changing or ending (CR 729); otherwise carried forward.
+    subgame: delta.subgameCleared ? null : (delta.subgame ?? current.subgame ?? null),
     // Fixed for the whole game, so only the full state carries it.
     attackMode: current.attackMode ?? null,
     voidActive: delta.voidActive ?? current.voidActive ?? false,

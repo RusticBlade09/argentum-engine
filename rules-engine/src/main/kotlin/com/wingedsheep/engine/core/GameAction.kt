@@ -759,12 +759,15 @@ data class BottomCards(
 // =============================================================================
 
 /**
- * Player concedes the game.
+ * Player concedes the game (CR 104.3a). During a Magic subgame (CR 729) that is the subgame; with
+ * [includingMainGames] the player concedes every main game it was created from as well, so they
+ * leave the whole table rather than just the game within it.
  */
 @Serializable
 @SerialName("Concede")
 data class Concede(
-    override val playerId: EntityId
+    override val playerId: EntityId,
+    val includingMainGames: Boolean = false,
 ) : GameAction
 
 // =============================================================================

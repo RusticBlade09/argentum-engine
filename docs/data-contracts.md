@@ -352,7 +352,7 @@ contain nothing new and never appear. Sectioning only partitions the extras: it 
 in or out of `extraTotal` / `extraImplemented`. Sets with no booster at all have no extras and so no
 sections.
 
-**Cards we won't implement.** A card needing a mechanic the engine will never carry (ante, subgames,
+**Cards we won't implement.** A card needing a mechanic the engine will never carry (ante,
 physical dexterity) is listed in the repo-root `coverage/card-exclusions.json` manifest, keyed by name
 so one entry covers every set that prints it. `scripts/gen-set-totals` bakes the flag onto the card as
 `"notPlanned": { "kind": "ante", "why": "…" }` — exclusion is carried *as* its reason, so a not-planned

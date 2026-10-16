@@ -125,7 +125,52 @@ data class ClientGameState(
      * own 60 without learning anything about an opponent's. Library *order* is never exposed —
      * entries are aggregated counts, not positions. See [ClientDeckCard].
      */
-    val deck: List<ClientDeckCard> = emptyList()
+    val deck: List<ClientDeckCard> = emptyList(),
+
+    /**
+     * Set while this state is a Magic subgame (CR 729) — the board, zones and life totals above are
+     * the subgame's. Describes the games waiting on it, so the players can see what's at stake.
+     * Null in an ordinary game.
+     */
+    val subgame: ClientSubgame? = null,
+)
+
+/**
+ * A Magic subgame in progress (CR 729).
+ *
+ * @property depth 1 for a subgame of the main game, 2 for a subgame within that one (CR 729.6)
+ * @property waitingGames the games discontinued while it's played, outermost first; the last is the
+ *   game the subgame was created in, whose spell finishes resolving when it's over
+ */
+@Serializable
+data class ClientSubgame(
+    val depth: Int,
+    val waitingGames: List<ClientWaitingGame>,
+)
+
+/**
+ * A game discontinued while a subgame it created is played. All public: life totals and the spell
+ * still on its stack.
+ *
+ * @property sourceName the spell that created the subgame this game waits on (Shahrazad)
+ * @property sourceImageUri that spell's art, for its card preview
+ * @property sourceOracleText that spell's rules text — what happens when the subgame is over
+ * @property players each player's standing in this game
+ */
+@Serializable
+data class ClientWaitingGame(
+    val sourceName: String? = null,
+    val sourceImageUri: String? = null,
+    val sourceOracleText: String? = null,
+    val players: List<ClientWaitingPlayer>,
+)
+
+/** A player's life total in a waiting game, and whether they have already left it. */
+@Serializable
+data class ClientWaitingPlayer(
+    val playerId: EntityId,
+    val life: Int,
+    val hasLost: Boolean = false,
 )
 
 /**

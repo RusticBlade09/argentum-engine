@@ -18,6 +18,7 @@ import { OpponentDecisionIndicator } from './components/ui/OpponentDecisionIndic
 import { DisconnectCountdown } from './components/ui/DisconnectCountdown'
 import { SessionReplacedOverlay } from './components/ui/SessionReplacedOverlay'
 import { MatchIntroAnimation } from './components/animations/MatchIntroAnimation'
+import { SubgameTransition } from './components/animations/SubgameTransition'
 import { StandaloneConcedeButton } from './components/game/overlay'
 import overlay from './components/game/overlay/GameOverlays.module.css'
 import { trackPageView } from './utils/analytics'
@@ -452,6 +453,9 @@ export default function App() {
 
       {/* Match intro animation (plays before mulligan) */}
       {matchIntro && <MatchIntroAnimation />}
+
+      {/* A Magic subgame beginning or ending (Shahrazad) — over the board or the subgame's mulligan */}
+      <SubgameTransition />
 
       {/* Mulligan overlay */}
       {mulliganState && !matchIntro && <MulliganUI />}

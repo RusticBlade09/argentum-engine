@@ -424,7 +424,7 @@ time (it's how Invasion was done):
    own measured band.
 
 A set can also finish with a card or two deliberately left out — Antiquities' Bronze Tablet needs the
-ante zone, Arabian Nights' Shahrazad needs a whole subgame. Add those to
+ante zone, as does Arabian Nights' Jeweled Bird. Add those to
 [`coverage/card-exclusions.json`](coverage/card-exclusions.json) with a reason (required) and re-run
 `scripts/gen-set-totals`: they drop out of the denominator and show as "not planned" on the
 [set completion tracker](https://magic.wingedsheep.com/set-completion), so completion means

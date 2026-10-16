@@ -20,6 +20,7 @@ import com.wingedsheep.gameserver.config.GameProperties
 import com.wingedsheep.gameserver.deck.EasterEggDeckInjector
 import com.wingedsheep.engine.core.GameEvent
 import com.wingedsheep.engine.core.GameRestartedEvent
+import com.wingedsheep.engine.core.SubgameStartedEvent
 import com.wingedsheep.engine.core.PlayerLostEvent
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.components.identity.LifeTotalComponent
@@ -116,7 +117,7 @@ class GamePlayHandler(
             is ClientMessage.CreateGame -> handleCreateGame(session, message)
             is ClientMessage.JoinGame -> handleJoinGame(session, message)
             is ClientMessage.SubmitAction -> handleSubmitAction(session, message)
-            is ClientMessage.Concede -> handleConcede(session)
+            is ClientMessage.Concede -> handleConcede(session, message.subgameOnly)
             is ClientMessage.CancelGame -> handleCancelGame(session)
             is ClientMessage.KeepHand -> handleKeepHand(session)
             is ClientMessage.Mulligan -> handleMulligan(session)
@@ -586,7 +587,7 @@ class GamePlayHandler(
         }
     }
 
-    private fun handleConcede(session: WebSocketSession) {
+    private fun handleConcede(session: WebSocketSession, subgameOnly: Boolean = false) {
         val playerSession = sessionRegistry.getPlayerSession(session.id)
         if (playerSession == null) {
             sender.sendError(session, ErrorCode.NOT_CONNECTED, "Not connected")
@@ -595,8 +596,8 @@ class GamePlayHandler(
 
         val gameSession = getGameSession(session, playerSession) ?: return
 
-        logger.info("Player ${playerSession.playerName} conceded game ${gameSession.sessionId}")
-        concedeSeat(gameSession, playerSession.playerId)
+        logger.info("Player ${playerSession.playerName} conceded ${if (subgameOnly) "the subgame of" else "game"} ${gameSession.sessionId}")
+        concedeSeat(gameSession, playerSession.playerId, subgameOnly)
     }
 
     /**
@@ -606,8 +607,8 @@ class GamePlayHandler(
      * everyone else just sees the seat drop out of the state. In a 2-player game conceding always
      * ends it — the degenerate case.
      */
-    internal fun concedeSeat(gameSession: GameSession, playerId: EntityId) {
-        gameSession.playerConcedes(playerId)
+    internal fun concedeSeat(gameSession: GameSession, playerId: EntityId, subgameOnly: Boolean = false) {
+        val events = gameSession.concede(playerId, subgameOnly)
         if (gameSession.isGameOver()) {
             handleGameOver(gameSession, GameOverReason.CONCESSION)
             return
@@ -630,7 +631,7 @@ class GamePlayHandler(
                 }
             }
         }
-        broadcastStateUpdate(gameSession, emptyList())
+        broadcastStateUpdate(gameSession, events)
     }
 
     /**
@@ -973,7 +974,8 @@ class GamePlayHandler(
             // has re-seated behind the overlay) but before the spectator feed.
             notifyEliminatedSeats(gameSession)
 
-            if (allEvents.any { it is GameRestartedEvent }) beginRestartedGameMulligans(gameSession)
+            // A restarted game (CR 727) and a subgame (CR 729) both begin with mulligans.
+            if (allEvents.any { it is GameRestartedEvent || it is SubgameStartedEvent }) beginRestartedGameMulligans(gameSession)
 
             // Update spectators. (Replay recording no longer happens here — the compact replay
             // records the input stream as actions are applied, and reconstructs snapshots on demand.)

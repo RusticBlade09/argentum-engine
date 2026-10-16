@@ -1692,6 +1692,23 @@ uses `Patterns.Exile.impulse()`; playing the card follows ordinary costs and tim
   ids public in the old game don't name cards in new hands. The server re-sends each seat its mulligan decision on
   the `GameRestartedEvent`. **Karn Liberated** −14:
   `Pipeline { val exiled = gather(CardSource.FromLinkedExile()); val kept = filter(exiled, Permanent.notSubtype(AURA)); run(Effects.RestartGame(kept, afterRestart = Pipeline { move(kept, ToZone(BATTLEFIELD, Player.You)) })) }`.
+- `PlaySubgame { nonWinners -> afterSubgame }` — players play a Magic subgame using their libraries as their decks
+  (CR 729; `PlaySubgameEffect`). Every player still in the game takes part; each one's main-game library becomes
+  their subgame deck and nothing else crosses over (a commander in the command zone and a vanguard do, CR
+  729.2b–c; the sideboard is shared, CR 729.4). The subgame begins like any game — random first player, starting
+  life, seven-card hands, its own mulligans (a game set up with `skipMulligans` skips them again) — and a player
+  whose library can't supply seven cards loses it at its first upkeep (CR 729.3). The main game is discontinued
+  whole, kept as the subgame's `GameState.mainGame`: no trigger, effect or designation reaches across (CR 729.1b).
+  When the subgame ends, every card the players own in it (exile included) goes into its owner's main-game
+  library, which is shuffled; tokens, counters and the subgame's zones are gone (CR 729.5). The players who didn't
+  win (everyone, after a draw) are passed to the builder as a plural collection — read it with
+  `nonWinners.asPlayers` — and `afterSubgame` runs in the main game with the effect's controller as controller;
+  only then does the spell finish resolving and go to the graveyard (it waits on the stack throughout). Like
+  `RestartGame`, the executor only records a request (`GameState.pendingSubgame`) that the settle boundary carries
+  out through `Subgames`, so it must be the **last** instruction. A subgame can be created within a subgame (CR
+  729.6), and restarting a subgame leaves its main game alone (CR 727.6). `Concede(player, includingMainGames)`
+  concedes just the subgame or the whole table. **Shahrazad**:
+  `Effects.PlaySubgame { nonWinners -> Effects.ForEachPlayer(nonWinners.asPlayers, Effects.LoseHalfLife(roundUp = true)) }`.
 - `ForceExileMultiZone(count, target)` — exile from hand/battlefield/graveyard combined (Lich's Mastery shape).
 
 ### Cards (draw / discard)

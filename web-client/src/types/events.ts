@@ -50,6 +50,8 @@ export type ClientEvent =
   | CoinFlippedEvent
   | TurnChangedEvent
   | GameRestartedEvent
+  | SubgameStartedEvent
+  | SubgameEndedEvent
   | ControlChangedEvent
   | CardCycledEvent
   | LibraryShuffledEvent
@@ -465,6 +467,29 @@ export interface GameRestartedEvent {
   readonly type: 'gameRestarted'
   readonly startingPlayerId: EntityId
   readonly isYourTurn: boolean | null
+  readonly description: string
+}
+
+/** A Magic subgame began (Shahrazad, CR 729); the state now shows it. */
+export interface SubgameStartedEvent {
+  readonly type: 'subgameStarted'
+  readonly startingPlayerId: EntityId
+  /** 1 for a subgame of the main game, 2 for one within it (CR 729.6). */
+  readonly depth: number
+  readonly sourceName?: string | null
+  readonly isYourTurn: boolean | null
+  readonly description: string
+}
+
+/** A Magic subgame ended (CR 729.5) and its main game resumed. */
+export interface SubgameEndedEvent {
+  readonly type: 'subgameEnded'
+  /** Empty for a draw. */
+  readonly winnerIds: readonly EntityId[]
+  readonly nonWinnerIds: readonly EntityId[]
+  readonly depth: number
+  readonly sourceName?: string | null
+  readonly youWon: boolean | null
   readonly description: string
 }
 

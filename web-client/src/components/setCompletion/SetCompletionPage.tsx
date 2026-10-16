@@ -421,7 +421,7 @@ function SetsTab({
                           {summary.distinctNotPlanned > 0 && (
                             <span
                               className={styles.summaryNote}
-                              title="Cards needing mechanics the engine will never carry — ante, subgames, physical dexterity. They're excluded from every total here."
+                              title="Cards needing mechanics the engine will never carry — ante, physical dexterity. They're excluded from every total here."
                             >
                               {' '}
                               ({summary.distinctNotPlanned} cards not planned)
@@ -633,7 +633,7 @@ function SetCard({ set, onOpen }: { set: SetCoverage; onOpen: () => void }) {
         {notPlanned > 0 && (
           <span
             className={styles.notPlannedTag}
-            title={`${notPlanned} card${notPlanned === 1 ? '' : 's'} we won't implement (ante, subgames, dexterity) — not counted in the total`}
+            title={`${notPlanned} card${notPlanned === 1 ? '' : 's'} we won't implement (ante, dexterity) — not counted in the total`}
           >
             {notPlanned} not planned
           </span>

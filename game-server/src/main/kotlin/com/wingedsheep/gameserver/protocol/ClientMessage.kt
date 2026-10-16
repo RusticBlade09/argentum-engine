@@ -89,11 +89,12 @@ sealed interface ClientMessage {
     ) : ClientMessage
 
     /**
-     * Concede the current game.
+     * Concede the current game. During a Magic subgame (CR 729), [subgameOnly] concedes just the
+     * subgame and the main game resumes; otherwise the player concedes the main game too.
      */
     @Serializable
     @SerialName("concede")
-    data object Concede : ClientMessage
+    data class Concede(val subgameOnly: Boolean = false) : ClientMessage
 
     /**
      * Cancel a game that hasn't started yet (waiting for opponent).
