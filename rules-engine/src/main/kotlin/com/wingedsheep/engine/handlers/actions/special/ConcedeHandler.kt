@@ -43,11 +43,9 @@ class ConcedeHandler(
         val lostEvent = PlayerLostEvent(action.playerId, GameEndReason.CONCESSION)
 
         val sbaResult = sbaChecker.checkAndApply(marked)
-        if (sbaResult.outcome is Outcome.Paused) {
-            return ExecutionResult.propagatePause(
-                sbaResult.state,
-                listOf(lostEvent) + sbaResult.events
-            )
+        if (sbaResult.outcome !is Outcome.Done) {
+            // Paused on an SBA's question (or rejected): pass it on.
+            return sbaResult.copy(events = listOf(lostEvent) + sbaResult.events)
         }
         return ExecutionResult.success(
             sbaResult.newState,

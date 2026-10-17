@@ -214,6 +214,7 @@ class Settler(
             // legend rule); the ones already waiting stay put until the choice is answered.
             state = ControlHistory.record(CounterHistory.record(state, sba.events), sba.events)
             state = state.enqueue(triggerDetector.detectTriggers(state, sba.events))
+            if (sba.outcome is Outcome.Rejected) return ExecutionResult(state, events, sba.outcome)
             if (sba.pendingDecision != null) return ExecutionResult.propagatePause(state, events)
             if (state.gameOver) return ExecutionResult.success(state.withoutPendingTriggers(), events)
 

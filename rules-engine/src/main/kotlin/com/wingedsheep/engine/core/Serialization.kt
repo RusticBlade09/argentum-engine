@@ -256,6 +256,7 @@ val engineSerializersModule = SerializersModule {
     polymorphic(ContinuationFrame::class) {
         subclass(Suspension::class)
         subclass(FinishResolvingSpellContinuation::class)
+        subclass(FinishResolvingAbilityContinuation::class)
         subclass(FinishForcedPlayContinuation::class)
         subclass(ManaAbilitySourcesContinuation::class)
         subclass(ManaSpendingObligationsContinuation::class)
@@ -293,6 +294,7 @@ val engineSerializersModule = SerializersModule {
         subclass(ManaSpendingObligationsContinuation::class)
         subclass(ScopedManaProductionContinuation::class)
         subclass(FinishResolvingSpellContinuation::class)
+        subclass(FinishResolvingAbilityContinuation::class)
         subclass(EndResolutionControlContinuation::class)
         subclass(ReplacementResolveContinuation::class)
         subclass(PerformLifeGainContinuation::class)

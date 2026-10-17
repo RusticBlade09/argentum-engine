@@ -109,17 +109,14 @@ internal class AbilityResolver(
         }
 
         // Execute the effect
-        val started = state.beginResolutionControl(abilityId)
-        val result = executeThenLeaveStack(
-            started.state, abilityId, abilityComponent.effect, context,
-            resolvedEvents = listOf(
-                AbilityResolvedEvent(
-                    abilityComponent.sourceId,
-                    abilityComponent.description
-                )
-            ) + sagaChapterResolvedEvents(abilityComponent)
+        return executeThenLeaveStack(
+            state, abilityId, abilityComponent.effect, context,
+            abilityResolvedEvent = AbilityResolvedEvent(
+                abilityComponent.sourceId,
+                abilityComponent.description
+            ),
+            sagaChapterResolvedEvent = sagaChapterResolvedEvent(abilityComponent)
         )
-        return result.copy(events = started.events + result.events)
     }
 
     /**
@@ -177,17 +174,13 @@ internal class AbilityResolver(
         val context = activatedAbilityContext(
             state, abilityId, abilityComponent, activatedReqs, activatedTargets, alignedActivatedTargets
         )
-        val started = state.beginResolutionControl(abilityId)
-        val result = executeThenLeaveStack(
-            started.state, abilityId, abilityComponent.effect, context,
-            resolvedEvents = listOf(
-                AbilityResolvedEvent(
-                    abilityComponent.sourceId,
-                    abilityComponent.sourceName
-                )
+        return executeThenLeaveStack(
+            state, abilityId, abilityComponent.effect, context,
+            abilityResolvedEvent = AbilityResolvedEvent(
+                abilityComponent.sourceId,
+                abilityComponent.sourceName
             )
         )
-        return result.copy(events = started.events + result.events)
     }
 
     private fun activatedAbilityContext(
@@ -255,49 +248,85 @@ internal class AbilityResolver(
         )
 
     /**
-     * Run the ability's effect, then remove the ability from the stack (CR 608.2n) and report
-     * [resolvedEvents] after the effect's own events.
+     * Run the ability's effect with the ability on the stack, then finish it: CR 608.2n, "As the
+     * final part of an ability's resolution, the ability is removed from the stack and ceases to
+     * exist." [abilityResolvedEvent] and [sagaChapterResolvedEvent] are reported after the effect's
+     * own events.
+     *
+     * [StackResolver.resolveTop] popped the ability off the priority stack; it is put back on top
+     * for the whole resolution, so anything its effect puts on the stack lands above it. A
+     * [FinishResolvingAbilityContinuation] is pre-pushed beneath the effect: if the effect pauses
+     * for a decision, the ability stays on the stack and that frame finishes it once every frame
+     * above it has run; otherwise it is finished here and the frame is dropped.
      */
     private fun executeThenLeaveStack(
         state: GameState,
         abilityId: EntityId,
         effect: Effect,
         context: EffectContext,
-        resolvedEvents: List<GameEvent>
+        abilityResolvedEvent: AbilityResolvedEvent,
+        sagaChapterResolvedEvent: SagaChapterResolvedEvent? = null
     ): ExecutionResult {
-        val effectResult = effects.execute(state, effect, context)
+        val abilityObject = state.objectRef(abilityId)
+            ?: return ExecutionResult.error(state, "Missing resolving object identity")
+        val started = state.beginResolutionControl(abilityId)
+        val onStack = started.state.let { if (abilityId in it.stack) it else it.copy(stack = it.stack + abilityId) }
+        val finishing = FinishResolvingAbilityContinuation(
+            abilityObject = abilityObject,
+            abilityResolvedEvent = abilityResolvedEvent,
+            sagaChapterResolvedEvent = sagaChapterResolvedEvent,
+        )
 
-        // If effect is paused awaiting a decision, return paused state
-        // The ability entity stays removed (it's off the stack), but the decision must resolve
+        val effectResult = effects.execute(onStack.pushContinuation(finishing), effect, context)
+
         if (effectResult.outcome is Outcome.Paused) {
-            val pausedState = effectResult.state.removeEntity(abilityId)
-            return ExecutionResult.propagatePause(
-                pausedState,
-                effectResult.events
-            )
+            // The finisher is below all of the effect's frames; the ability stays on the stack.
+            return ExecutionResult.propagatePause(effectResult.state, started.events + effectResult.events)
+        }
+        if (effectResult.state.pendingSubgame != null) {
+            // The effect created a subgame. As for a spell, the ability finishes resolving only once
+            // the subgame is over and the rest of its text has run, so it stays on the stack and the
+            // finisher waits.
+            return ExecutionResult.success(effectResult.state, started.events + effectResult.events)
         }
 
-        var newState = effectResult.newState
+        // Nothing paused: finish inline and drop the frame pre-pushed for the paused path. There
+        // is at most one per resolving ability object.
+        val dropped = effectResult.newState.copy(continuationStack = effectResult.newState.continuationStack
+            .filterNot { it is FinishResolvingAbilityContinuation && it.abilityObject == abilityObject })
+        val finished = finishResolvingAbility(dropped, finishing)
+        return finished.copy(events = started.events + effectResult.events + finished.events)
+    }
 
-        // Remove the ability entity
-        newState = newState.removeEntity(abilityId)
-        return ExecutionResult.success(newState, effectResult.events + resolvedEvents)
+    /**
+     * The final part of an ability's resolution (CR 608.2n): remove it from the stack, let it cease
+     * to exist, and report it resolved. Runs inline when the effect didn't pause, or as the
+     * [FinishResolvingAbilityContinuation] once a paused resolution's choices are all made.
+     *
+     * Mirrors [NonPermanentSpellResolver.finishResolvingSpell]'s guard: only the captured stack
+     * object is finished. An ability that already left the stack mid-resolution — countered by its
+     * own effect, or gone with a player who left the game — didn't resolve, so nothing is reported.
+     */
+    fun finishResolvingAbility(state: GameState, continuation: FinishResolvingAbilityContinuation): ExecutionResult {
+        val abilityId = continuation.abilityObject.entityId
+        val stillOnStack = state.isCurrentObject(continuation.abilityObject) &&
+            state.logicalZone(abilityId)?.zoneType == com.wingedsheep.sdk.core.Zone.STACK
+        if (!stillOnStack) return ExecutionResult.success(state)
+        return ExecutionResult.success(state.removeEntity(abilityId), continuation.resolvedEvents)
     }
 
     /**
      * A Saga chapter ability resolving emits SagaChapterResolvedEvent so "whenever the final
      * chapter ability of a Saga you control resolves" triggers (Tom Bombadil) can detect it.
      */
-    private fun sagaChapterResolvedEvents(abilityComponent: TriggeredAbilityOnStackComponent): List<GameEvent> =
+    private fun sagaChapterResolvedEvent(abilityComponent: TriggeredAbilityOnStackComponent): SagaChapterResolvedEvent? =
         abilityComponent.sagaChapterInfo?.let { info ->
-            listOf(
-                SagaChapterResolvedEvent(
-                    sagaId = abilityComponent.sourceId,
-                    controllerId = abilityComponent.controllerId,
-                    chapterNumber = info.chapterNumber,
-                    finalChapterNumber = info.finalChapterNumber,
-                    isFinalChapter = info.isFinalChapter
-                )
+            SagaChapterResolvedEvent(
+                sagaId = abilityComponent.sourceId,
+                controllerId = abilityComponent.controllerId,
+                chapterNumber = info.chapterNumber,
+                finalChapterNumber = info.finalChapterNumber,
+                isFinalChapter = info.isFinalChapter
             )
-        } ?: emptyList()
+        }
 }

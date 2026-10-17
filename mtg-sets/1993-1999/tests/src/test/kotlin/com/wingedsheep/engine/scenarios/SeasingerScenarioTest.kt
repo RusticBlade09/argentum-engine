@@ -198,7 +198,8 @@ class SeasingerScenarioTest : FunSpec({
 
         val sbaChecker = com.wingedsheep.engine.mechanics.StateBasedActionChecker(
             driver.zones,
-            cardRegistry = driver.cardRegistry
+            cardRegistry = driver.cardRegistry,
+            finishAbandonedResolution = driver.services.finishAbandonedResolution
         )
         driver.replaceState(sbaChecker.checkAndApply(driver.state).newState)
 

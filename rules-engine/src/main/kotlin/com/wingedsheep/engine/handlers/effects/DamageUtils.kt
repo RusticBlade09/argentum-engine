@@ -949,9 +949,10 @@ object DamageUtils {
         if (container.get<SpellGrantedKeywordsComponent>()?.keywords?.contains(keyword.name) == true) {
             return true
         }
-        // A resolving spell is popped from `state.stack` *before* its effects run, but keeps its
-        // [SpellOnStackComponent] until it leaves the stack zone — so gate on the component, not
-        // stack membership.
+        // A spell keeps its [SpellOnStackComponent] until it leaves the stack zone, including while
+        // it resolves, whereas `state.stack` membership doesn't cover every resolving spell (a
+        // permanent spell is popped from it as it resolves) — so gate on the component, not stack
+        // membership.
         val spellOnStack = container.get<SpellOnStackComponent>() ?: return false
         val controllerId = container.get<ControllerComponent>()?.playerId ?: spellOnStack.casterId
         val cardDef = container.get<CardComponent>()

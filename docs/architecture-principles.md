@@ -544,6 +544,24 @@ separate from the effect context's permission to follow its own moves. Triggers 
 nested choices are deferred beneath this finalizer, even when the finalizer is unchanged by the
 latest response. Their placement and target choices happen after the spell leaves the stack.
 
+A resolving triggered or activated ability follows the same lifecycle (CR 608.2n): it stays on the
+stack, below anything its effect puts there, until its effect and every nested decision finish. When
+the effect itself starts a subgame without pausing first, the ability stays on the stack while the
+subgame is played out and finishes once the main game resumes, as a spell does; the
+resolution-control window, though, already ends as the subgame starts. A subgame started after the
+resolution paused is not yet supported, for spells and abilities alike: the frames drained after the
+answer don't stop at the pending subgame, so the object finishes before the subgame is played.
+`FinishResolvingAbilityContinuation` captures the ability object and its resolved events
+(`AbilityResolvedEvent`, plus `SagaChapterResolvedEvent` for a Saga chapter); it removes the ability
+and reports those events exactly once, inline when nothing paused and as an automatic frame after
+the last answer otherwise. Like the spell finalizer it acts only on the captured object while it is
+still on the stack: an ability that left mid-resolution didn't resolve and reports nothing. When a
+player leaves the game while a resolution waits on their answer, the frames needing the answer are
+dropped but both finalizers and the resolution-control end frame still run, so a surviving player's
+ability or nonpermanent spell finishes once instead of resolving again. A permanent spell paused
+while it enters has no finish frame and is no longer on the stack, so that path can't finish it;
+this is a known gap.
+
 Insertion is a movement/creation operation, not a reconstruction API. An already-present destination
 member is idempotent; insertion while still present in its origin is rejected. Pure permutations
 use `reorderZone`. Fresh constructor fixtures and legacy JSON without identity fields initialize

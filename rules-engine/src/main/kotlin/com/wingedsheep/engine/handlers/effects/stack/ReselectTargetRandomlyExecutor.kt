@@ -178,8 +178,9 @@ class ReselectTargetRandomlyExecutor(
             }
 
             requirement is TargetSpellOrPermanent -> {
-                // Spells on stack + permanents on battlefield
-                state.stack + state.getBattlefield()
+                // Spells on stack + permanents on battlefield. Only spells: abilities are on the
+                // stack too — this resolving one among them (CR 608.2n) — but aren't spells.
+                state.stack.filter(state::isSpellOnStack) + state.getBattlefield()
             }
 
             // Fallback: infer from current target type

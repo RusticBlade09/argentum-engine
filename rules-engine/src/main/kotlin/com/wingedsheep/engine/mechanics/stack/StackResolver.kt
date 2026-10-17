@@ -287,6 +287,10 @@ class StackResolver(
     fun finishResolvingSpell(state: GameState, continuation: FinishResolvingSpellContinuation): ExecutionResult =
         nonPermanentSpellResolver.finishResolvingSpell(state, continuation)
 
+    /** Finish a triggered or activated ability whose resolution paused (CR 608.2n). */
+    fun finishResolvingAbility(state: GameState, continuation: FinishResolvingAbilityContinuation): ExecutionResult =
+        abilityResolver.finishResolvingAbility(state, continuation)
+
     /**
      * Complete the permanent entry to the battlefield (shared between normal resolution and clone
      * continuation). See [PermanentEntry.enterPermanentOnBattlefield].

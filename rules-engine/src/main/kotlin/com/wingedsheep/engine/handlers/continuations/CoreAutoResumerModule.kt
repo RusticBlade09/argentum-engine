@@ -28,6 +28,10 @@ class CoreAutoResumerModule(
             val result = services.stackResolver.finishResolvingSpell(state, continuation)
             mergeAndContinue(result, events, checkForMore)
         },
+        autoResumer(FinishResolvingAbilityContinuation::class) { state, continuation, events, checkForMore ->
+            val result = services.stackResolver.finishResolvingAbility(state, continuation)
+            mergeAndContinue(result, events, checkForMore)
+        },
         autoResumer(AdvanceStepContinuation::class) { state, _, events, checkForMore ->
             mergeAndContinue(services.turnManager.advanceStep(state), events, checkForMore)
         },

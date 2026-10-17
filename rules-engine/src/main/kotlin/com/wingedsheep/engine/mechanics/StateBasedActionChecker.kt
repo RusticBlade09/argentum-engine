@@ -46,8 +46,14 @@ class StateBasedActionChecker(
         zones: ZoneTransitionService,
         decisionHandler: DecisionHandler = DecisionHandler(),
         cardRegistry: com.wingedsheep.engine.registry.CardRegistry,
+        /**
+         * Runs the final part of a resolution abandoned when a player leaves —
+         * [com.wingedsheep.engine.core.EngineServices.finishAbandonedResolution]. Required: see
+         * [com.wingedsheep.engine.mechanics.sba.player.PlayerLeavesGameProcessor.process].
+         */
+        finishAbandonedResolution: (GameState) -> ExecutionResult,
         effectExecutor: ((GameState, Effect, EffectContext) -> EffectResult)? = null
-    ) : this(buildDefaultRegistry(zones, decisionHandler, cardRegistry), effectExecutor)
+    ) : this(buildDefaultRegistry(zones, decisionHandler, cardRegistry, finishAbandonedResolution), effectExecutor)
 
     /**
      * Check and apply all state-based actions until none apply.
@@ -83,12 +89,10 @@ class StateBasedActionChecker(
 
             val result = checkOnce(currentState, pendingTriggerSources)
 
-            // If an SBA needs player input (e.g., legend rule choice), return paused
-            if (result.outcome is Outcome.Paused) {
-                return ExecutionResult.propagatePause(
-                    result.state,
-                    allEvents + result.events
-                )
+            // If an SBA needs player input (e.g., legend rule choice), return paused; if one was
+            // rejected (an engine error), return that.
+            if (result.outcome !is Outcome.Done) {
+                return result.copy(events = allEvents + result.events)
             }
 
             val riders = runReplacementRiders(result)
@@ -130,12 +134,9 @@ class StateBasedActionChecker(
             // stood before the batch started gets it rather than reconstructing it.
             val result = check.check(newState, state, pendingTriggerSources)
 
-            if (result.outcome is Outcome.Paused) {
-                // Return paused with events accumulated so far + this check's events
-                return ExecutionResult.propagatePause(
-                    result.state,
-                    events + result.events
-                )
+            if (result.outcome !is Outcome.Done) {
+                // Paused (or rejected): return it with the events accumulated so far + this check's
+                return result.copy(events = events + result.events)
             }
 
             newState = result.newState
@@ -158,10 +159,11 @@ class StateBasedActionChecker(
         fun buildDefaultRegistry(
             zones: ZoneTransitionService,
             decisionHandler: DecisionHandler = DecisionHandler(),
-            cardRegistry: com.wingedsheep.engine.registry.CardRegistry
+            cardRegistry: com.wingedsheep.engine.registry.CardRegistry,
+            finishAbandonedResolution: (GameState) -> ExecutionResult,
         ): StateBasedActionRegistry {
             val registry = StateBasedActionRegistry()
-            registry.registerModule(PlayerSbaModule(zones))
+            registry.registerModule(PlayerSbaModule(zones, finishAbandonedResolution))
             registry.registerModule(CreatureSbaModule(zones))
             registry.registerModule(PermanentSbaModule(zones, decisionHandler, cardRegistry))
             registry.registerModule(ZoneSbaModule())

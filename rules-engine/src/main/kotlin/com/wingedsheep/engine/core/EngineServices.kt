@@ -30,6 +30,7 @@ import com.wingedsheep.engine.mechanics.targeting.TargetValidator
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.registry.PrintingRegistry
 import com.wingedsheep.engine.registry.TokenArtRegistry
+import com.wingedsheep.engine.state.GameState
 
 /**
  * Composition root for the rules engine.
@@ -136,7 +137,18 @@ class EngineServices(
     val mulliganHandler = MulliganHandler(cardRegistry, effectExecutorRegistry::execute)
     val castPermissionUtils = CastPermissionUtils(cardRegistry, predicateEvaluator, conditionEvaluator)
     val legalityKernel = LegalityKernel(cardRegistry, conditionEvaluator)
-    val sbaChecker = StateBasedActionChecker(zones, cardRegistry = cardRegistry, effectExecutor = effectExecutorRegistry::execute)
+    /**
+     * Runs the final part of a resolution abandoned because the player it waited on left the game
+     * (see [com.wingedsheep.engine.mechanics.sba.player.PlayerLeavesGameProcessor.process]): the
+     * finish and resolution-control frames left on the stack, drained by their auto-resumers.
+     * [continuationHandler] is built below; this only reads it when a player leaves.
+     */
+    val finishAbandonedResolution: (GameState) -> ExecutionResult =
+        { state -> continuationHandler.drainAutomatic(state, emptyList()) }
+    val sbaChecker = StateBasedActionChecker(
+        zones, cardRegistry = cardRegistry, finishAbandonedResolution = finishAbandonedResolution,
+        effectExecutor = effectExecutorRegistry::execute,
+    )
     val turnManager = TurnManager(
         zones,
         cardRegistry = cardRegistry,
