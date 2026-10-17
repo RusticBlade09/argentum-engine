@@ -98,6 +98,74 @@ loop_await_turn() {
   loop_wait_ci "${LOOP_PRS%% *}"
 }
 
+# How long a Claude session may sit silent after answering its protocol line before it's ended.
+LOOP_LINGER_GRACE=${LOOP_LINGER_GRACE:-120}
+
+# Runs a Claude session (the rest of the args) whose stream-json output the caller tees to $1; $2 is
+# the loop's completion word (SET_COMPLETE, ...). `claude -p` doesn't exit while a background task it
+# started is still running, so one poll loop that never ends — a watcher grepping a log for a line
+# nothing writes — would hold the iteration, and with it the whole loop, forever. Once the
+# transcript ends on a result whose last line is a protocol answer and nothing more has been written
+# for LOOP_LINGER_GRACE seconds, the session and everything it spawned is stopped and "$1.reaped" is
+# left for loop_note_reaped. Returns the session's exit status.
+loop_run_reaped() {
+  local transcript=$1 done_word=$2 pid reaper status
+  shift 2
+  "$@" &
+  pid=$!
+  # Off the pipe: a reaper still holding it open would keep the caller's tee from seeing EOF.
+  _loop_reap_lingering "$pid" "$transcript" "$done_word" >/dev/null 2>&1 &
+  reaper=$!
+  # Quiet: a reaped session would otherwise put the shell's "Terminated" notice in the transcript.
+  wait "$pid" 2>/dev/null; status=$?
+  kill "$reaper" 2>/dev/null; wait "$reaper" 2>/dev/null
+  return $status
+}
+
+# Logs, and clears, a reap loop_run_reaped made of the session transcribed to $1. Callers define `log`.
+loop_note_reaped() {
+  [ -e "$1.reaped" ] || return 0
+  rm -f "$1.reaped"
+  log "session sat idle ${LOOP_LINGER_GRACE}s after answering — stopped it and the background tasks it left running"
+}
+
+_loop_reap_lingering() {
+  local pid=$1 transcript=$2 done_word=$3 tick=${LOOP_REAP_TICK:-10} size last="" idle=0
+  while kill -0 "$pid" 2>/dev/null; do
+    sleep "$tick"
+    size=$(wc -c < "$transcript" 2>/dev/null) || size=0
+    if [ "$size" != "$last" ]; then last=$size; idle=0; continue; fi
+    idle=$((idle + tick))
+    [ "$idle" -ge "$LOOP_LINGER_GRACE" ] && _loop_answered "$transcript" "$done_word" || continue
+    touch "$transcript.reaped"
+    _loop_kill_tree "$pid"
+    return 0
+  done
+}
+
+# True when the transcript's last event is a result and the last non-empty result (a /goal session
+# closes on an empty one) ends on a protocol line. A session still mid-turn — a long silent build —
+# has an assistant or tool event last, so it's never taken for idle.
+_loop_answered() {
+  local last
+  [ "$(jq -Rr 'fromjson? | .type' "$1" 2>/dev/null | tail -1)" = result ] || return 1
+  last=$(jq -Rc 'fromjson? | select(.type == "result" and (.result // "") != "") | .result' "$1" 2>/dev/null |
+    tail -1 | jq -r '.' 2>/dev/null | sed '/^[[:space:]]*$/d' | tail -1)
+  [[ "$last" =~ ^(STEP\ [0-9]+\ DONE|WAITING_CI|$2|STUCK\ .+)[[:space:]]*$ ]]
+}
+
+# Stops $1 and all its descendants in one signal. One `kill`, because the session's exit ends this
+# reaper (loop_run_reaped stops it) before it could get round to the children.
+_loop_kill_tree() {
+  kill $(_loop_tree "$1") 2>/dev/null
+}
+
+_loop_tree() {
+  local kid
+  echo "$1"
+  for kid in $(pgrep -P "$1"); do _loop_tree "$kid"; done
+}
+
 # Re-runs the launcher under the live dashboard (scripts/loop-tui) when it was started from a
 # terminal. $1 is the loop's name (its log stem); the rest is the launcher command to run under it.
 # LOOP_TUI=0 keeps the plain streamed output.

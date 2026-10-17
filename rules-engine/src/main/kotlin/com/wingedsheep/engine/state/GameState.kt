@@ -182,6 +182,16 @@ data class GameState(
      */
     val pendingTriggers: List<com.wingedsheep.engine.event.PendingTrigger> = emptyList(),
 
+    /**
+     * The rest of the wave the settle boundary was putting on the stack when one of its triggers
+     * stopped for a choice (targets, modes). They have already been ordered (CR 603.3b) and go on
+     * the stack, in this order, as soon as the choice is answered — before anything in
+     * [pendingTriggers]. Kept apart from [pendingTriggers] because an ability that triggers while
+     * the choice is answered (ward, on becoming a target) belongs to the next wave, not this one.
+     * Only [com.wingedsheep.engine.core.Settler] and the trigger placement it drives write this.
+     */
+    val triggersBeingPlaced: List<com.wingedsheep.engine.event.PendingTrigger> = emptyList(),
+
     /** Number of spells cast this turn (by all players), used for Storm count */
     val spellsCastThisTurn: Int = 0,
 
@@ -265,7 +275,9 @@ data class GameState(
      * Duration-bounded "spells you cast [this turn | until your next turn] that match … cost {N}
      * less" discounts (the Scion cycle; Ral, Leyline Prodigy). Unlike [pendingNextSpellAffinities]
      * these are not consumed by the spell they discount — they apply to every matching spell until
-     * their [SpellCostModifier.duration] ends. Serialized under its pre-duration name so recorded
+     * their [SpellCostModifier.duration] ends — except a [SpellCostModifier.nextSpellOnly] entry
+     * ("the next spell you cast this turn costs {N} less"), which the next matching cast spends.
+     * Serialized under its pre-duration name so recorded
      * states keep decoding.
      */
     @kotlinx.serialization.SerialName("turnSpellCostReductions")
@@ -577,6 +589,13 @@ data class GameState(
     val projectedState: ProjectedState by lazy {
         StateProjector().project(this)
     }
+
+    /**
+     * Every triggered ability that has triggered but isn't on the stack yet (CR 603.3), in the
+     * order they'll get there: the rest of the wave being placed, then the next wave.
+     */
+    val waitingTriggers: List<com.wingedsheep.engine.event.PendingTrigger>
+        get() = if (triggersBeingPlaced.isEmpty()) pendingTriggers else triggersBeingPlaced + pendingTriggers
 
     // =========================================================================
     // Entity Operations

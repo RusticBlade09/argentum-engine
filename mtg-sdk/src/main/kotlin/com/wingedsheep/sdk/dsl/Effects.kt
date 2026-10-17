@@ -4864,8 +4864,12 @@ object Effects {
         PlayAnyNumberFromCollectionWithoutPayingCost(from.key)
 
     /** Cast up to [maxCasts] of the cards in [from] without paying their mana costs. */
-    fun CastUpToNFromCollectionWithoutPayingCost(from: CollectionSlot, maxCasts: Int): Effect =
-        CastUpToNFromCollectionWithoutPayingCost(from.key, maxCasts)
+    fun CastUpToNFromCollectionWithoutPayingCost(
+        from: CollectionSlot,
+        maxCasts: Int,
+        maxTotalManaValue: Int? = null,
+        insteadOfGraveyard: AfterResolveDestination? = null,
+    ): Effect = CastUpToNFromCollectionWithoutPayingCost(from.key, maxCasts, maxTotalManaValue, insteadOfGraveyard)
 
     /** Cast any number of the cards in [from] with total mana value [maxTotalManaValue] or less, without paying their mana costs. */
     fun CastWithTotalManaValueFromCollectionWithoutPayingCost(from: CollectionSlot, maxTotalManaValue: Int): Effect =
@@ -5107,13 +5111,31 @@ object Effects {
      * [CastAnyNumberFromCollectionWithoutPayingCost] ("you may cast up to two spells from among
      * the exiled cards without paying their mana costs", Doom Reigns Supreme). The cap is a
      * ceiling only: the controller may stop earlier, and cards left uncast stay where they are.
+     *
+     * [maxTotalManaValue] adds the "with total mana value N or less" budget on top of the count,
+     * and [insteadOfGraveyard] the "if those spells would be put into your graveyard, exile them
+     * instead" rider — Invoke Calamity: "cast up to two instant and/or sorcery spells with total
+     * mana value 6 or less from your graveyard and/or hand without paying their mana costs".
      */
-    fun CastUpToNFromCollectionWithoutPayingCost(from: String, maxCasts: Int): Effect {
+    fun CastUpToNFromCollectionWithoutPayingCost(
+        from: String,
+        maxCasts: Int,
+        maxTotalManaValue: Int? = null,
+        insteadOfGraveyard: AfterResolveDestination? = null,
+    ): Effect {
         require(maxCasts > 0) {
             "maxCasts must be positive (was $maxCasts); use " +
                 "CastAnyNumberFromCollectionWithoutPayingCost for the uncapped form"
         }
-        return CastAnyNumberFromCollectionWithoutPayingCostEffect(from = from, maxCasts = maxCasts)
+        require(maxTotalManaValue == null || maxTotalManaValue >= 0) {
+            "maxTotalManaValue must not be negative (was $maxTotalManaValue)"
+        }
+        return CastAnyNumberFromCollectionWithoutPayingCostEffect(
+            from = from,
+            maxCasts = maxCasts,
+            maxTotalManaValue = maxTotalManaValue,
+            insteadOfGraveyard = insteadOfGraveyard,
+        )
     }
 
     /**
@@ -5617,6 +5639,19 @@ object Effects {
     ): Effect = com.wingedsheep.sdk.scripting.effects.ModifySpellCostsEffect(spellFilter, amount, duration)
 
     /**
+     * "The next spell you cast this turn [that matches [spellFilter]] costs {X} less to cast, where
+     * X is [amount]" (Peerless Samurai) — the one-shot form of [ReduceSpellCosts]. [amount] is
+     * locked in on resolution; the first matching spell cast this turn spends the discount, whether
+     * or not it needed it, and an unused one ends with the turn.
+     */
+    fun ReduceNextSpellCost(
+        amount: DynamicAmount,
+        spellFilter: GameObjectFilter = GameObjectFilter.Any,
+    ): Effect = com.wingedsheep.sdk.scripting.effects.ModifySpellCostsEffect(
+        spellFilter, amount, Duration.EndOfTurn, nextSpellOnly = true
+    )
+
+    /**
      * "Spells [player] casts this turn that match [spellFilter] cost {X} more to cast, where X is
      * [amount]" — the tax mirror of [ReduceSpellCosts]. Academy Loremaster: "spells they cast this
      * turn cost {2} more", with `player = Player.TriggeringPlayer`.
@@ -6027,7 +6062,7 @@ object Effects {
      * this turn rather than only once" for [duration] (Urza Assembles the Titans III). Lifts only the
      * once-per-turn half of CR 606.3, for every matching planeswalker including ones that arrive
      * later; the largest allowance wins, never a sum. For one named permanent use
-     * [AllowLoyaltyActivationsThisTurn]; for a static on a permanent, `ExtraLoyaltyActivation`.
+     * [AllowLoyaltyActivationsThisTurn]; for a static on a permanent, `LoyaltyActivationPermission`.
      */
     fun ExtraLoyaltyActivations(
         times: Int = 2,

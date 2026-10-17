@@ -749,7 +749,7 @@ class ZoneTransitionService(
                 ?.get<com.wingedsheep.engine.state.components.battlefield.LinkedExileComponent>()
             val departedTimestamp = lastKnownSnapshot?.battlefieldEntryTimestamp
             if (lastKnownSnapshot != null) {
-                newState = newState.copy(pendingTriggers = newState.pendingTriggers.map { pending ->
+                val withDeparture = { pending: com.wingedsheep.engine.event.PendingTrigger ->
                     if (lastKnownSnapshot.objectRef != null && pending.objectReferences.triggering == lastKnownSnapshot.objectRef) {
                         pending.copy(triggerContext = pending.triggerContext.copy(
                             triggeringLastKnownSnapshot = lastKnownSnapshot,
@@ -757,7 +757,11 @@ class ZoneTransitionService(
                             lastKnownToughness = lastKnownSnapshot.toughness,
                         ))
                     } else pending
-                })
+                }
+                newState = newState.copy(
+                    pendingTriggers = newState.pendingTriggers.map(withDeparture),
+                    triggersBeingPlaced = newState.triggersBeingPlaced.map(withDeparture),
+                )
                 for (stackId in newState.stack) {
                     val stackEntity = newState.getEntity(stackId) ?: continue
                     val activated = stackEntity.get<ActivatedAbilityOnStackComponent>()
@@ -943,7 +947,7 @@ class ZoneTransitionService(
                 // This pipeline records via PermanentEntryTracker.record directly rather than
                 // BattlefieldEntry.place because the read must happen *after* applyBattlefieldEntry
                 // wires the controller — only then does projection see the right controller.
-                newState = PermanentEntryTracker.record(newState, destControllerId, entityId)
+                newState = PermanentEntryTracker.record(newState, destControllerId, entityId, options.simultaneousEntryGroup)
                 // Handle Saga entering the battlefield (Rule 714.3a)
                 val (sagaState, sagaEvents) = ZoneMovementUtils.applySagaEntryIfNeeded(newState, entityId, predicateEvaluator, entryCounterTotals)
                 newState = sagaState

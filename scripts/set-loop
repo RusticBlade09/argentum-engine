@@ -363,10 +363,12 @@ while [ ! -e "$RUNS/$CODE.stop" ]; do
     # still run. The evaluator sees only the transcript (not the system prompt), so the condition must be
     # checkable from the output alone. --strict-mcp-config drops MCP servers the loop never uses; they
     # weigh on every subagent's context.
-    (cd "$REPO" && claude -p "$GOAL" --append-system-prompt "$PROMPT" --model "$MODEL" \
+    (cd "$REPO" && loop_run_reaped "$TRANSCRIPT" SET_COMPLETE \
+        claude -p "$GOAL" --append-system-prompt "$PROMPT" --model "$MODEL" \
         --permission-mode "${PERMISSION_MODE:-auto}" --strict-mcp-config \
         --output-format stream-json --verbose < /dev/null 2>&1) \
       | tee "$TRANSCRIPT" | jq -Rr --unbuffered --argjson verbose "$VERBOSE" "fromjson? | $PRETTY"
+    loop_note_reaped "$TRANSCRIPT"
 
     # The goal's closing result event is empty; the step's answer is the last non-empty one.
     FINAL=$(jq -Rc 'fromjson? | select(.type == "result" and (.result // "") != "")' "$TRANSCRIPT" 2>/dev/null | tail -1)

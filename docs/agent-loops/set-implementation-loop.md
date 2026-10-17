@@ -47,6 +47,8 @@ loop that is already running; `LOOP_TUI=0` keeps the plain streamed output. With
 `touch .claude/loop-runs/ecl.stop` also stops after the current job, including while waiting on CI.
 `just loops` shows what every loop (set, assay, commander) is doing now, its last result, and its open
 PR. A launcher streams only the milestones a session reports; `LOOP_VERBOSE=1` adds every tool call.
+A Claude session that has answered its protocol line but stays alive on a background task it left running
+(a poll loop that never ends) is stopped, with that task, after `LOOP_LINGER_GRACE` idle seconds (default 120).
 Codex launch failures stop with a transcript path; usage limits wait 30 minutes before retrying.
 Its JSON stream and final-message file follow the
 [Codex non-interactive interface](https://learn.chatgpt.com/docs/non-interactive-mode).

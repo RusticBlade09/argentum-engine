@@ -24,7 +24,9 @@ class SetLoopTest(unittest.TestCase):
         self.stub("resolve-set", 'echo ecl')
         self.stub("git", 'echo "$TEST_ROOT/.git"')
         self.stub("gh", "exit 0")
-        self.stub("sleep", 'echo "$1" >> "$TEST_ROOT/sleeps"; touch "$TEST_ROOT/.claude/loop-runs/ecl.stop"')
+        # The session reaper ticks every LOOP_REAP_TICK seconds; those aren't the loop's waits.
+        self.stub("sleep", '[ "$1" = "$LOOP_REAP_TICK" ] && exit 0; '
+                           'echo "$1" >> "$TEST_ROOT/sleeps"; touch "$TEST_ROOT/.claude/loop-runs/ecl.stop"')
         self.stub("codex", """
 printf '%s\\n' "$@" > "$TEST_ROOT/args"
 while [ "$#" -gt 0 ]; do
@@ -52,7 +54,7 @@ echo '{"type":"result","result":"SET_COMPLETE","num_turns":1,"duration_ms":1000}
 
     def run_loop(self, *args, model="", mode="", verdict="SET_COMPLETE", set_code="ecl"):
         env = dict(os.environ, PATH=f"{self.bin}:{os.environ['PATH']}",
-                   TEST_ROOT=str(self.root), HOME=str(self.root), MODEL=model, MODE=mode, VERDICT=verdict)
+                   TEST_ROOT=str(self.root), HOME=str(self.root), LOOP_REAP_TICK="1", MODEL=model, MODE=mode, VERDICT=verdict)
         return subprocess.run(["bash", str(self.bin / "set-loop"), set_code, *args],
                               cwd=self.root, env=env, capture_output=True, text=True, timeout=10)
 
