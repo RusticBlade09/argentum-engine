@@ -141,39 +141,46 @@ class SetCoverageServiceTest : FunSpec({
     }
 
     context("cards we've decided never to implement") {
-        test("drop out of the denominator, so Antiquities is complete with Bronze Tablet unbuilt") {
-            // Bronze Tablet needs the ante zone the engine will never carry. Left in the total it
-            // would peg ATQ at 84/85 forever; excluded, the set reads done because everything we
+        test("drop out of the denominator, so Arabian Nights is complete with Shahrazad unbuilt") {
+            // Shahrazad needs a Magic subgame the engine will never carry. Left in the total it
+            // would peg ARN one short forever; excluded, the set reads done because everything we
             // intend to build is built.
-            val atq = coverage.find { it.code == "ATQ" }.shouldNotBeNull()
-            atq.notPlanned shouldBe 1
-            atq.implemented shouldBe atq.total
-            atq.percent shouldBe 100.0
+            val arn = coverage.find { it.code == "ARN" }.shouldNotBeNull()
+            arn.notPlanned shouldBe 1
+            arn.implemented shouldBe arn.total
+            arn.percent shouldBe 100.0
         }
 
         test("are still listed in the detail view, each carrying its reason") {
-            val detail = service.detail("ATQ").shouldNotBeNull()
-            val tablet = detail.draft.find { it.name == "Bronze Tablet" }.shouldNotBeNull()
-            tablet.implemented shouldBe false
-            tablet.notPlanned.shouldNotBeNull().kind shouldBe "ante"
+            val detail = service.detail("ARN").shouldNotBeNull()
+            val shahrazad = detail.draft.find { it.name == "Shahrazad" }.shouldNotBeNull()
+            shahrazad.implemented shouldBe false
+            shahrazad.notPlanned.shouldNotBeNull().kind shouldBe "subgame"
             // Exclusion is carried as its reason, so a flagged card can never lack an explanation.
-            tablet.notPlanned.shouldNotBeNull().why.shouldNotBeEmpty()
+            shahrazad.notPlanned.shouldNotBeNull().why.shouldNotBeEmpty()
             detail.notPlanned shouldBe 1
             detail.total shouldBe detail.draft.count { it.notPlanned == null }
+            // An excused set still names what it isn't counting, so a set that reads 100% can
+            // always say which cards it excused to get there.
+            detail.draft.filter { it.notPlanned != null }.map { it.name } shouldBe listOf("Shahrazad")
         }
 
-        test("an excused set still names what it isn't counting — Arabian Nights and its two exclusions") {
-            // ARN's only remaining holes are two policy exclusions (Jeweled Bird = ante, Shahrazad
-            // = subgame); every card we intend to build is built, City in a Bottle included. The
-            // exclusions drop out of the denominator but stay named in the detail view, so a set
-            // that reads 100% can always say which cards it excused to get there.
-            val arn = coverage.find { it.code == "ARN" }.shouldNotBeNull()
-            arn.notPlanned shouldBe 2
-            arn.implemented shouldBe arn.total
-            arn.percent shouldBe 100.0
-            val detail = service.detail("ARN").shouldNotBeNull()
-            detail.draft.filter { it.notPlanned != null }.map { it.name } shouldBe
-                listOf("Jeweled Bird", "Shahrazad")
+        test("an ante card stops being excused once it is built — Antiquities and Arabian Nights") {
+            // Bronze Tablet and Jeweled Bird were excluded while the engine had no ante zone. With
+            // playing for ante supported they are built, so they count as ordinary implemented
+            // cards: Antiquities is complete with nothing excused at all.
+            val atq = coverage.find { it.code == "ATQ" }.shouldNotBeNull()
+            atq.notPlanned shouldBe 0
+            atq.implemented shouldBe atq.total
+            atq.percent shouldBe 100.0
+            val tablet = service.detail("ATQ").shouldNotBeNull().draft
+                .find { it.name == "Bronze Tablet" }.shouldNotBeNull()
+            tablet.implemented shouldBe true
+            tablet.notPlanned shouldBe null
+            val bird = service.detail("ARN").shouldNotBeNull().draft
+                .find { it.name == "Jeweled Bird" }.shouldNotBeNull()
+            bird.implemented shouldBe true
+            bird.notPlanned shouldBe null
         }
 
         test("a set that reaches 100% is no longer flagged incomplete") {
@@ -192,8 +199,8 @@ class SetCoverageServiceTest : FunSpec({
 
         test("summary counts them once across every set that prints them") {
             val summary = service.summary()
-            // Exclusions key on card name, so Contract from Below is one not-planned card whether
-            // it shows up in Alpha, Beta or Unlimited.
+            // Exclusions key on card name, so Chaos Orb is one not-planned card whether it shows
+            // up in Alpha or Beta.
             summary.distinctNotPlanned shouldBeGreaterThanOrEqualTo 1
             summary.setsComplete shouldBe coverage.count { it.percent >= 100.0 }
         }
