@@ -105,6 +105,29 @@ export function GraveyardTargetCallout({
     />
   )
 
+  // One source for every card (the usual case — a single spell or ability) is said once, under the
+  // row; mixed sources are labelled per card.
+  const sharedSources = targets.every((t) => sameNames(t.sourceNames, targets[0]?.sourceNames ?? []))
+    ? (targets[0]?.sourceNames ?? [])
+    : null
+  const sourceLine = (names: readonly string[], maxWidth: number) => (
+    <div
+      style={{
+        maxWidth,
+        color: '#ffb366',
+        fontSize: 9,
+        lineHeight: 1.25,
+        textAlign: 'center',
+        overflow: 'hidden',
+        display: '-webkit-box',
+        WebkitLineClamp: 2,
+        WebkitBoxOrient: 'vertical',
+      }}
+    >
+      by {names.join(', ')}
+    </div>
+  )
+
   return createPortal(
     <div
       ref={panelRef}
@@ -117,7 +140,9 @@ export function GraveyardTargetCallout({
         zIndex: 900,
         visibility: placement ? 'visible' : 'hidden',
         display: 'flex',
-        gap: compact ? 6 : 10,
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 4,
         padding: compact ? '6px 6px 5px' : '8px 10px 7px',
         background: 'rgba(28, 16, 6, 0.94)',
         border: `1.5px solid ${TARGET_ORANGE}`,
@@ -129,81 +154,72 @@ export function GraveyardTargetCallout({
       }}
     >
       {notch}
-      {targets.map(({ card, sourceNames }) => (
-        <div
-          key={card.id}
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: cardWidth }}
-        >
+      <div
+        style={{
+          color: TARGET_ORANGE,
+          fontSize: compact ? 8 : 9,
+          fontWeight: 800,
+          letterSpacing: 1.2,
+          textTransform: 'uppercase',
+        }}
+      >
+        {targets.length > 1 ? `${targets.length} targeted` : 'Targeted'}
+      </div>
+      <div style={{ display: 'flex', gap: compact ? 6 : 10, alignItems: 'flex-start' }}>
+        {targets.map(({ card, sourceNames }) => (
           <div
-            style={{
-              color: TARGET_ORANGE,
-              fontSize: compact ? 8 : 9,
-              fontWeight: 800,
-              letterSpacing: 1.2,
-              textTransform: 'uppercase',
-            }}
+            key={card.id}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: cardWidth }}
           >
-            Targeted
-          </div>
-          <div
-            data-card-id={card.id}
-            role="button"
-            title={`${card.name} — targeted by ${sourceNames.join(', ')}. Click to view the graveyard.`}
-            onClick={onOpen}
-            onMouseEnter={(e) => hoverCard(card.id, { x: e.clientX, y: e.clientY })}
-            onMouseLeave={() => hoverCard(null)}
-            style={{
-              width: cardWidth,
-              height: cardHeight,
-              borderRadius: compact ? 4 : 6,
-              overflow: 'hidden',
-              cursor: 'pointer',
-              pointerEvents: 'auto',
-              animation: 'graveyardTargetPulse 1.4s ease-in-out infinite alternate',
-            }}
-          >
-            <img
-              src={getCardImageUrl(card.name, card.imageUri, 'normal')}
-              alt={card.name}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-              onError={(e) => handleImageError(e, card.name, 'normal')}
-            />
-          </div>
-          <div
-            style={{
-              maxWidth: cardWidth + 8,
-              color: '#fff',
-              fontSize: compact ? 9 : 11,
-              fontWeight: 700,
-              lineHeight: 1.2,
-              textAlign: 'center',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {card.name}
-          </div>
-          {!compact && sourceNames.length > 0 && (
+            <div
+              data-card-id={card.id}
+              role="button"
+              title={`${card.name} — targeted by ${sourceNames.join(', ')}. Click to view the graveyard.`}
+              onClick={onOpen}
+              onMouseEnter={(e) => hoverCard(card.id, { x: e.clientX, y: e.clientY })}
+              onMouseLeave={() => hoverCard(null)}
+              style={{
+                width: cardWidth,
+                height: cardHeight,
+                borderRadius: compact ? 4 : 6,
+                overflow: 'hidden',
+                cursor: 'pointer',
+                pointerEvents: 'auto',
+                animation: 'graveyardTargetPulse 1.4s ease-in-out infinite alternate',
+              }}
+            >
+              <img
+                src={getCardImageUrl(card.name, card.imageUri, 'normal')}
+                alt={card.name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                onError={(e) => handleImageError(e, card.name, 'normal')}
+              />
+            </div>
             <div
               style={{
                 maxWidth: cardWidth + 8,
-                color: '#ffb366',
-                fontSize: 9,
-                lineHeight: 1.25,
+                color: '#fff',
+                fontSize: compact ? 9 : 11,
+                fontWeight: 700,
+                lineHeight: 1.2,
                 textAlign: 'center',
+                whiteSpace: 'nowrap',
                 overflow: 'hidden',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
+                textOverflow: 'ellipsis',
               }}
             >
-              by {sourceNames.join(', ')}
+              {card.name}
             </div>
-          )}
-        </div>
-      ))}
+            {!compact && !sharedSources && sourceNames.length > 0 && sourceLine(sourceNames, cardWidth + 8)}
+          </div>
+        ))}
+      </div>
+      {!compact && sharedSources && sharedSources.length > 0 && sourceLine(sharedSources, Math.max(cardWidth + 8, 180))}
     </div>,
     document.body,
   )
+}
+
+function sameNames(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((n, i) => n === b[i])
 }

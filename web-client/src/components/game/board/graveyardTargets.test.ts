@@ -53,4 +53,12 @@ describe('zoneCardTargetLabels', () => {
       'Craw Wurm (in exile)',
     ])
   })
+
+  it('names the zone once for several targets in it', () => {
+    const more = { ...cards, elves: inGraveyard('Llanowar Elves', 'p2') }
+    const stackCard = targeting('s', 'Rag Dealer', 'bears', 'elves')
+    expect(zoneCardTargetLabels(stackCard, more, entityId('p1'), name)).toEqual([
+      "Grizzly Bears, Llanowar Elves (Bob's graveyard)",
+    ])
+  })
 })

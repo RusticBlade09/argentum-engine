@@ -41,9 +41,10 @@ export function collectGraveyardTargets(
 
 /**
  * Readable names for a stack object's card targets that sit in a public zone (graveyard, exile),
- * e.g. "Grizzly Bears (your graveyard)". Permanents and players already get an unambiguous arrow;
- * a card in a pile doesn't, so the stack's text box spells these out. Cards in hidden zones are
- * skipped — the client can't (and mustn't) name them.
+ * e.g. "Grizzly Bears (your graveyard)". Targets in the same zone share one suffix:
+ * "Serra Angel, Counterspell (Alice's graveyard)". Permanents and players already get an
+ * unambiguous arrow; a card in a pile doesn't, so the stack's text box spells these out. Cards in
+ * hidden zones are skipped — the client can't (and mustn't) name them.
  */
 export function zoneCardTargetLabels(
   stackCard: ClientCard,
@@ -51,18 +52,23 @@ export function zoneCardTargetLabels(
   viewerId: EntityId | null,
   playerName: (playerId: EntityId) => string,
 ): string[] {
-  const labels: string[] = []
+  const groups: { zone: string; names: string[] }[] = []
   for (const target of stackCard.targets ?? []) {
     if (target.type !== 'Card') continue
     const card = cards[target.cardId]
     const zone = card?.zone
     if (!card || !zone) continue
-    const zoneName = zone.zoneType === ZoneType.GRAVEYARD ? 'graveyard'
-      : zone.zoneType === ZoneType.EXILE ? 'exile'
-      : null
-    if (!zoneName) continue
-    const owner = zone.ownerId === viewerId ? 'your' : `${playerName(zone.ownerId)}'s`
-    labels.push(zoneName === 'exile' ? `${card.name} (in exile)` : `${card.name} (${owner} ${zoneName})`)
+    let zoneLabel: string
+    if (zone.zoneType === ZoneType.GRAVEYARD) {
+      zoneLabel = `${zone.ownerId === viewerId ? 'your' : `${playerName(zone.ownerId)}'s`} graveyard`
+    } else if (zone.zoneType === ZoneType.EXILE) {
+      zoneLabel = 'in exile'
+    } else {
+      continue
+    }
+    const group = groups.find((g) => g.zone === zoneLabel)
+    if (group) group.names.push(card.name)
+    else groups.push({ zone: zoneLabel, names: [card.name] })
   }
-  return labels
+  return groups.map((g) => `${g.names.join(', ')} (${g.zone})`)
 }
