@@ -38,6 +38,16 @@ export const ANNOUNCEMENTS: readonly Announcement[] = [
       'Raise the stakes the old-fashioned way. Turn on Play for ante in a lobby and each player antes a random card from their deck before the opening draw — the winner takes the pile. In a sealed or draft tournament the cards you win join your pool for the rest of the event; anywhere else they go up as trophies in the new Spoils panel on your profile. It also unlocks the ante cards: Contract from Below, Darkpact, Demonic Attorney, Jeweled Bird and Bronze Tablet. Ranked games never play for ante.',
   },
   {
+    id: 'set-pip',
+    date: '2026-10-17',
+    kind: 'set',
+    setCode: 'PIP',
+    title: 'Fallout is complete',
+    body:
+      'All four Fallout Commander decks are playable in the Wasteland: rad counters mill players and drain their life, Junk tokens dig for one more card, energy fuels Science! decks, and Vault locations and V.A.T.S. spells reward you for the long game. Dogmeat suits up Auras and Equipment, Caesar marches out a legion of tokens, and the Wise Mothman feeds mutants off the rads.',
+    tryIf: 'Commander precons, rad-counter mill and Aura-and-Equipment voltron',
+  },
+  {
     id: 'feature-card-browser',
     date: '2026-10-14',
     kind: 'feature',

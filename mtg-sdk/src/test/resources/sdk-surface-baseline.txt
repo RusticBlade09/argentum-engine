@@ -89,7 +89,6 @@ CardPredicate.CardTypeEqualsChosenComponent — CardPredicate
 CardPredicate.ColoredManaSymbolsAtLeast — CardPredicate
 CardPredicate.CompareNumericProperty — CardPredicate
 CardPredicate.ConvokedSource — CardPredicate
-CardPredicate.CouldEnchant — CardPredicate
 CardPredicate.CouldProduceColorlessMana — CardPredicate
 CardPredicate.DoesNotShareCreatureTypeWithPermanentYouControl — CardPredicate
 CardPredicate.DoesNotShareLandTypeWithPermanentYouControl — CardPredicate
@@ -621,7 +620,6 @@ CreateGlobalTriggeredAbilityEffect — Effect
 CreatePermanentEmblemEffect — Effect
 CreatePredefinedTokenEffect — Effect
 CreateRandomCreatureTokenWithManaValueEffect — Effect
-CreateRoleTokenEffect — Effect
 CreateTokenCopyOfChosenPermanentEffect — Effect
 CreateTokenCopyOfEquippedCreatureEffect — Effect
 CreateTokenCopyOfSourceEffect — Effect
@@ -1630,6 +1628,7 @@ AdaptAsThoughNoCountersEffect — Effect — Biomancer's Familiar — Regenerate
 AdaptEffect — Effect — Biomancer's Familiar — AddCountersEffect, ConditionalEffect — adapt was spelled If(Not(SourceHasCounter), AddCounters) on ten MH3 cards (migrated here); a generic If can't be seen as "this creature adapts", which AdaptAsThoughNoCounters must key to and consume, and AddCounters has no "only if it has none" axis that wouldn't fork its meaning
 CantAttackYou — StaticAbility — Promise of Loyalty — CantBeAttackedBy, CantAttack — CantBeAttackedBy is defender-anchored (read off the defending player's board, attackers named by a class filter) so it can't name one creature or ride a per-creature "while it has a vow counter" grant, and it never covers planeswalkers; CantAttack is absolute and lowers to a projected flag, which can't carry which player is protected
 CardPredicate.ChosenBySource — CardPredicate — Scheming Fence — Scope.ChosenCreature, EffectTarget.ChosenCreature — both read the same CREATURE slot, but Scope is a GroupFilter scope and EffectTarget an effect target; PreventActivatedAbilities and GainActivatedAbilitiesOfPermanents take a GameObjectFilter, which only a CardPredicate can narrow to the source's chosen permanent
+CardPredicate.CouldAttachTo — CardPredicate — Mantle of the Ancients — CouldEnchant (renamed into this), EquipmentAttachRestriction — renames and widens CouldEnchant from Aura cards to Aura, Equipment and Fortification cards (no net new type); EquipmentAttachRestriction is a static on the Equipment itself, not a filter a search or move can ask of any card
 CardPredicate.SharesColorWithTriggeringMana — CardPredicate — C.A.M.P. — CardPredicate.SharesColorWithRecipient, CardPredicate.SharesColorWith — SharesColorWith compares against an object (an EffectTarget), and SharesColorWithRecipient against the in-flight damage recipient; mana isn't an object either can reference, so the colors of the mana a land produced come from the trigger context through their own context-relative sibling
 ChangeOwnershipEffect — Effect — Darkpact — GainControlEffect, ExchangeControlEffect — both change control, a Layer 2 continuous effect on a permanent with a duration; ownership is no layer, reaches cards in any zone (Darkpact's is in the ante) and never reverts, and only the ante cards change it (CR 407.3)
 CompanionCondition.DeckSizeAboveMinimum — CompanionCondition — none yet (Yorion, Sky Nomad prints it) — CompanionCondition.EachCard, CompanionCondition.DistinctNames — Yorion counts the starting deck against the format's minimum size, a property of the deck as a whole that no per-card filter can read
@@ -1638,6 +1637,7 @@ CompanionCondition.EachCard — CompanionCondition — Zirda, the Dawnwaker — 
 CompanionCondition.ShareACardType — CompanionCondition — none yet (Umori, the Collector prints it) — CompanionCondition.EachCard, CompanionCondition.DistinctNames — "share a card type" needs one type common to all matching cards (an intersection over the deck), which no single-card filter expresses
 ControllerPredicate.OwnedByReferencedPlayer — ControllerPredicate — Gemrazer (every mutate spell's target) — ControllerPredicate.ControlledByReferencedPlayer, ControllerPredicate.OwnedByYou — ControlledByReferencedPlayer reads control, not ownership; OwnedByYou is fixed to the asking ability's controller, and a mutating spell targets a creature with the spell's *owner* (CR 702.140a), which differs once someone casts a card they don't own
 CouldCastSorcery — Condition — Teferi, Time Raveler — IsInPhase, IsYourTurn — CR 307.5's sorcery timing is your main phase *and* an empty stack; IsInPhase reads only the phase (a stack axis on a phase check would fork its meaning), and an AllConditions(IsInPhase, stack-empty) spelling needs a stack-empty leaf no other card uses and reads as two clauses where the printed text is one
+CreateAuraTokenEffect — Effect — Preston Garvey, Minuteman — CreateRoleTokenEffect (renamed into this), CreatePredefinedTokenEffect — renames and widens CreateRoleTokenEffect from Role tokens to any named predefined Aura token (no net new type), adding the CR 303.4i legality check; CreatePredefinedTokenEffect creates unattached tokens in counts and has no host to attach to or enchant restriction to check
 CreateTokenBatchEffect — Effect — Mr. House, President and CEO — CreateTokenEffect, CompositeEffect — a single template cannot carry mixed token characteristics; a sequential composite cannot share one token-creation event and its replacements
 DelayedTriggerExpiry.EndOfPlayersNextTurn — DelayedTriggerExpiry — Nuka-Nuke Launcher — DelayedTriggerExpiry.UntilControllersNextTurn, DelayedTriggerExpiry.EndOfTurn — UntilControllersNextTurn ends at the beginning of the trigger controller's next turn (after untap), sharing the Duration.UntilYourNextTurn hook; a named-player, end-of-that-turn window is a different moment keyed to a different player, and EndOfTurn has no turn floor
 DynamicAmount.CommanderColorIdentityCount — DynamicAmount — War Room — EntityNumericProperty.ColorCount, AggregateBattlefield(DISTINCT_COLORS) — both count colors an object has right now (one entity's projected colors, the distinct colors among matching permanents); a commander's color identity is fixed before the game begins (CR 903.4a), read off its card in any zone and unioned across a Partner pair, and is undefined with no commander (CR 903.4f) — an axis on either would fork what they read

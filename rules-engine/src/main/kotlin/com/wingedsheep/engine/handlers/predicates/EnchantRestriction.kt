@@ -25,7 +25,7 @@ import com.wingedsheep.sdk.scripting.targets.TargetRequirement
  *
  * Only the requirement's *filter* is evaluated — never targeting legality — because both callers
  * ask about an Aura that isn't being cast: the enchant state-based action (CR 704.5m, an attached
- * Aura isn't re-targeted, so hexproof/shroud don't dislodge it) and `CardPredicate.CouldEnchant`
+ * Aura isn't re-targeted, so hexproof/shroud don't dislodge it) and `CardPredicate.CouldAttachTo`
  * ("an Aura card that could enchant it" — an Aura put onto the battlefield doesn't target,
  * CR 303.4f).
  */
@@ -47,7 +47,7 @@ object EnchantRestriction {
      * enchant restriction **and** doesn't have protection from one of the Aura's colors (CR 702.16c —
      * a permanent with protection can't be enchanted by Auras with that quality). The one question
      * behind "an Aura card that could enchant it" and an effect that names an Aura's host
-     * (`MoveCollectionEffect.attachTo`): an Aura that fails it stays where it is (CR 303.4g) rather
+     * (`MoveCollectionEffect.attachTo`): an Aura that fails it stays where it is (CR 303.4i) rather
      * than attaching and then being put into the graveyard. Fails closed (false) when the restriction
      * can't be judged.
      */
