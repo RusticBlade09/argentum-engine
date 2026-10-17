@@ -5,6 +5,7 @@ import com.wingedsheep.engine.core.AlternativeCostType
 import com.wingedsheep.engine.core.CastSpell
 import com.wingedsheep.engine.handlers.PredicateEvaluator
 import com.wingedsheep.engine.handlers.effects.TargetResolutionUtils.toEntityId
+import com.wingedsheep.engine.mechanics.CastCharacteristics
 import com.wingedsheep.engine.mechanics.DisturbCasts
 import com.wingedsheep.engine.mechanics.EmergeCasts
 import com.wingedsheep.engine.mechanics.FlashbackGrants
@@ -130,7 +131,7 @@ internal class CastCostTotaller(
         // caster declined.
         if (cardDef != null && !playForFree) {
             effectiveCost = SpellCosts.applyManaSurcharges(
-                effectiveCost, cardDef.script.additionalCosts, action.additionalCostPayment
+                effectiveCost, CastCharacteristics.scriptForCast(cardDef, action).additionalCosts, action.additionalCostPayment
             )
         }
 
@@ -183,7 +184,7 @@ internal class CastCostTotaller(
         // "You may sacrifice / tap / exile any number of …; this spell costs {N} less for each"
         // (Torgaar, Explosive Singularity, the Marches): the declared picks take generic mana off.
         if (cardDef != null && action.additionalCostPayment != null) {
-            for (cost in cardDef.script.additionalCosts) {
+            for (cost in CastCharacteristics.scriptForCast(cardDef, action).additionalCosts) {
                 if (cost is AdditionalCost.AnyNumberForCostReduction) {
                     val picks = AnyNumberForCostReductionCostKind.chosen(cost, action.additionalCostPayment)
                     val reduction = picks.size * cost.reductionPerUnit

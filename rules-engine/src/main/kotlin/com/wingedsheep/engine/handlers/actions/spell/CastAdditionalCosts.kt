@@ -67,12 +67,14 @@ class CastAdditionalCosts(
                 add(com.wingedsheep.sdk.dsl.Costs.additional.PayLife(it))
             }
         }
-        val costDefinition = if (action.alternativeCostType == AlternativeCostType.ESCAPE) {
-            action.faceIndex?.let { cardDef?.cardFaces?.getOrNull(it) }
-                ?.let { face -> cardDef?.let { costCalculator.faceCharacteristics(it, face) } } ?: cardDef
-        } else cardDef
+        // A face cast owes the announced face's printed additional costs, not the primary's —
+        // Allure of Power's sacrifice, never My Precious's (CR 715.3a / 720.3a).
+        val faceDefinition = action.faceIndex?.let { cardDef?.cardFaces?.getOrNull(it) }
+            ?.let { face -> cardDef?.let { costCalculator.faceCharacteristics(it, face) } }
+        val costDefinition = faceDefinition ?: cardDef
         if (costDefinition != null) addAll(additionalCostsForModes(costDefinition, action))
-        declaredSlotCost(state, action, costDefinition)?.let { add(it) }
+        val slotDefinition = if (action.alternativeCostType == AlternativeCostType.ESCAPE) costDefinition else cardDef
+        declaredSlotCost(state, action, slotDefinition)?.let { add(it) }
         if (action.useAlternativeCost && cardDef != null) {
             // Each bundled additional cost is gated by the chosen alternative-cost type so a
             // collision (e.g. granted warp on a card also being evoked) doesn't drag in the

@@ -29,6 +29,7 @@ import com.wingedsheep.engine.legalactions.utils.TargetEnumerationUtils
 import com.wingedsheep.engine.mechanics.cost.VariablePermanentsCost
 import com.wingedsheep.engine.mechanics.EscalateCosts
 import com.wingedsheep.engine.mechanics.ModalChooseCounts
+import com.wingedsheep.engine.mechanics.CastCharacteristics
 import com.wingedsheep.engine.mechanics.ModalDfcCasts
 import com.wingedsheep.engine.mechanics.SpliceCasts
 import com.wingedsheep.engine.state.GameState
@@ -1559,7 +1560,8 @@ class CastSpellEnumerator(
             val cs = la.action as? CastSpell
             val choice = if (cs != null && la.actionType == "CastSpell" && la.affordable) {
                 val name = state.getEntity(cs.cardId)?.get<CardComponent>()?.name
-                name?.let { context.cardRegistry.getCard(it) }?.script?.additionalCosts
+                name?.let { context.cardRegistry.getCard(it) }
+                    ?.let { CastCharacteristics.scriptForCast(it, cs).additionalCosts }
                     ?.filterIsInstance<AdditionalCost.Choice>()?.firstOrNull()
             } else null
             if (cs == null || choice == null) {
@@ -1605,7 +1607,9 @@ class CastSpellEnumerator(
             val cardDef = if (cs != null && sacInfo != null && cs.xValue == null) {
                 state.getEntity(cs.cardId)?.get<CardComponent>()?.name?.let { context.cardRegistry.getCard(it) }
             } else null
-            val sacCost = cardDef?.takeIf { !it.manaCost.hasX }?.script?.additionalCosts
+            val castManaCost = cs?.faceIndex?.let { cardDef?.cardFaces?.getOrNull(it)?.manaCost } ?: cardDef?.manaCost
+            val sacCost = cardDef?.takeIf { castManaCost?.hasX == false }
+                ?.let { CastCharacteristics.scriptForCast(it, cs!!).additionalCosts }
                 ?.firstNotNullOfOrNull { (it as? AdditionalCost.Atom)?.atom as? CostAtom.Sacrifice }
                 ?.takeIf { TargetEnumerationUtils.filterUsesManaValueEqualsX(it.filter) }
             if (cs == null || sacInfo == null || cardDef == null || sacCost == null) {
@@ -2970,9 +2974,9 @@ class CastSpellEnumerator(
      * [CastSpell.faceIndex] = 0.
      *
      * Supports mana cost (including an {X} in the face's own cost), instant/sorcery timing, and
-     * per-face target requirements. Additional costs declared on the face's script are honoured
-     * for affordability but the full additional-cost UX (sacrifice picker, blight, etc.) is not
-     * yet wired for these faces — cards that need that can extend this method later.
+     * per-face target requirements. The face's own additional costs (Allure of Power's "sacrifice
+     * a creature") gate the offer and ride on it as the same [AdditionalCostData] picker the
+     * primary cast publishes — only the face is evaluated (CR 715.3a / 720.3a).
      *
      * @param primaryFaceAffordable Whether the card's primary (creature) face is affordable.
      *        When the secondary face is unaffordable but the primary is affordable, a grayed-out
@@ -3112,11 +3116,19 @@ class CastSpellEnumerator(
         val effectiveCost = context.costCalculator
             .calculateFaceCastCost(state, cardDef, face, playerId)
         val cachedSources = context.availableManaSources
+        // The face's own additional costs, enumerated like the primary cast's: an unpayable one
+        // makes the face uncastable, a payable one publishes its picker on the offer.
+        val faceCosts = face.script.additionalCosts
+        val costOffer = SpellCostOffer()
+        val costsPayable = SpellCosts.enumerateAll(SpellCostEnumeration(context, cardId), faceCosts, costOffer)
+        val costInfo = if (costsPayable && faceCosts.isNotEmpty()) {
+            buildAdditionalCostData(faceCosts, costOffer, state = state, payerId = playerId, castCardId = cardId)
+        } else null
         // Same payment context `CastSpellHandler.validatePayment` builds for this cast, so
         // conditional mana ("spend only to cast …") is judged identically on both sides and the
         // X ceiling below can never offer more than validation will accept.
         val spellContext = spellPaymentContextFor(cardComponent)
-        val canAfford = context.manaSolver
+        val canAfford = costsPayable && context.manaSolver
             .canPay(state, playerId, effectiveCost, precomputedSources = cachedSources, spellContext = spellContext)
         if (!canAfford) {
             // Secondary face is unaffordable. If the primary face is affordable, still surface
@@ -3169,6 +3181,7 @@ class CastSpellEnumerator(
                     maxAffordableX = maxAffordableX,
                     manaCostString = manaCostString,
                     autoTapPreview = autoTapPreview,
+                    additionalCostInfo = costInfo,
                 )
             )
             return true
@@ -3198,6 +3211,7 @@ class CastSpellEnumerator(
                 maxAffordableX = maxAffordableX,
                 manaCostString = manaCostString,
                 autoTapPreview = autoTapPreview,
+                additionalCostInfo = costInfo,
             )
         )
         return true
