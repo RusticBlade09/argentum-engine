@@ -81,6 +81,13 @@ export interface ClientGameState {
   readonly playingForAnte?: boolean
 
   /**
+   * Set while this state is a Magic subgame (Shahrazad, CR 729): the board, zones and life totals
+   * are the subgame's. Describes the games waiting on it, outermost first. Absent in an ordinary
+   * game.
+   */
+  readonly subgame?: ClientSubgame | null
+
+  /**
    * If non-null, the affected player whose choices the viewing player is currently driving
    * (turn, combat or stack-resolution control). Drives the controller banner and promoting their hand to
    * face-up. Null in normal play.
@@ -1102,4 +1109,29 @@ export function sharesPriorityTeam(
   if (!seatA?.teamSharedTurns || seatA.teamIndex == null) return false
   const seatB = state.players.find((p) => p.playerId === b)
   return seatB?.teamIndex === seatA.teamIndex
+}
+
+/** A Magic subgame in progress (CR 729). */
+export interface ClientSubgame {
+  /** 1 for a subgame of the main game, 2 for a subgame within that one (CR 729.6). */
+  readonly depth: number
+  /** The games discontinued while it's played, outermost first. The last one created it. */
+  readonly waitingGames: readonly ClientWaitingGame[]
+}
+
+/** A game discontinued while the subgame it created is played. All public. */
+export interface ClientWaitingGame {
+  /** The spell that created the subgame this game waits on (Shahrazad). */
+  readonly sourceName?: string | null
+  readonly sourceImageUri?: string | null
+  /** That spell's rules text — what happens when the subgame is over. */
+  readonly sourceOracleText?: string | null
+  readonly players: readonly ClientWaitingPlayer[]
+}
+
+/** A player's life total in a waiting game, and whether they've already left it. */
+export interface ClientWaitingPlayer {
+  readonly playerId: EntityId
+  readonly life: number
+  readonly hasLost?: boolean
 }

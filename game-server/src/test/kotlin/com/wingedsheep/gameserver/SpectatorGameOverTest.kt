@@ -28,7 +28,7 @@ class SpectatorGameOverTest : GameServerTestBase() {
                 spectator.messages.any { it is ServerMessage.SpectatorStateUpdate } shouldBe true
             }
 
-            ctx.player1.client.send(ClientMessage.Concede)
+            ctx.player1.client.send(ClientMessage.Concede())
 
             eventually(5.seconds) {
                 spectator.messages.any { it is ServerMessage.GameOver } shouldBe true

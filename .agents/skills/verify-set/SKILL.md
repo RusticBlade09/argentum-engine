@@ -74,7 +74,7 @@ curl -s "https://api.scryfall.com/cards/search?order=set&unique=prints&q=e%3A$CO
   cannot support Stage 2.
 
 `scripts/card-status` also decides *which* cards are in scope: it partitions on Scryfall `booster` into
-draft cards and extras, and drops `coverage/card-exclusions.json` entries (ante, subgames, dexterity) out
+draft cards and extras, and drops `coverage/card-exclusions.json` entries (ante, dexterity) out
 of the denominator. Take its numbers as the set's definition of done, not the raw dump size.
 
 ## Stage 1 — completeness

@@ -981,7 +981,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       { kind: 'p', text: 'The badge says whether you are on the play or on the draw. After a mulligan the screen tells you how many cards you will bottom; once you keep, click that many cards and press Confirm. View Battlefield hides the screen so you can look at the table first.' },
       { kind: 'p', text: 'In a bracket the round number and both players’ records are shown above your hand. While your opponent decides, you see “Waiting for your opponent”.' },
     ],
-    related: ['game-table', 'pass-button'],
+    related: ['game-table', 'pass-button', 'subgames'],
   },
   {
     id: 'game-table',
@@ -1013,7 +1013,21 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       ] },
       { kind: 'p', text: 'Opponent decisions are shown as they happen — “<name> is choosing…”, with the card that asked.' },
     ],
-    related: ['phase-bar', 'card-badges', 'zone-browsers', 'card-preview', 'multiplayer-camera', 'dungeons-initiative'],
+    related: ['phase-bar', 'card-badges', 'zone-browsers', 'card-preview', 'multiplayer-camera', 'dungeons-initiative', 'subgames'],
+  },
+  {
+    id: 'subgames',
+    section: 'playing',
+    title: 'Subgames (Shahrazad)',
+    summary:
+      'Shahrazad makes the players play a whole separate game of Magic, with their libraries as their decks. The table switches to that game, framed in gold with a SUBGAME badge, until it is over — then the main game picks up where it stopped.',
+    body: [
+      { kind: 'p', text: 'When the subgame starts, a short card announces it and who goes first (chosen at random). You then see your opening hand for the subgame and can mulligan as usual. Everything on the table — life totals, battlefield, graveyard — is the subgame’s; nothing from the main game is there, and nothing that happens in the subgame touches the main game.' },
+      { kind: 'p', text: 'Hover or tap the SUBGAME badge beside the phase bar to see the card that started it, what it does when the subgame ends, and each player’s life total in the main game that is waiting.' },
+      { kind: 'p', text: 'When the subgame ends, every card in it goes back into its owner’s library in the main game, which is shuffled, and the spell finishes resolving — for Shahrazad, everyone who didn’t win loses half their life, rounded up.' },
+      { kind: 'tip', text: 'Concede offers two choices during a subgame: Concede subgame gives up just this game (the main game resumes), while Concede the game leaves the whole table.' },
+    ],
+    related: ['game-table', 'mulligan'],
   },
   {
     id: 'dungeons-initiative',

@@ -69,6 +69,9 @@ export type {
   ClientChosenTarget,
   ClientPerModeTargetGroup,
   ClientDeckCard,
+  ClientSubgame,
+  ClientWaitingGame,
+  ClientWaitingPlayer,
 } from './gameState'
 export {
   totalMana,

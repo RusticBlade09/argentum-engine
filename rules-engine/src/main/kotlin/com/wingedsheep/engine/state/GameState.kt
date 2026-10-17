@@ -552,6 +552,22 @@ data class GameState(
      */
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val restartFollowUp: com.wingedsheep.engine.core.TurnStartFollowUp? = null,
+
+    /**
+     * A resolved "play a Magic subgame" (CR 729). Recorded while the creating spell resolves, the
+     * settle boundary then starts the subgame through [com.wingedsheep.engine.core.Subgames]; the
+     * discontinued main game keeps it until the subgame is over, to finish the spell's text.
+     */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val pendingSubgame: com.wingedsheep.engine.core.SubgameRequest? = null,
+
+    /**
+     * Set only on a subgame (CR 729): the main game, discontinued exactly as it was when the
+     * subgame began, which resumes when the subgame ends (CR 729.1a). Nothing in the subgame reads
+     * it — no effect or definition of one game has meaning in the other (CR 729.1b).
+     */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val mainGame: GameState? = null,
 ) {
     /**
      * Cached projection of the game state with all continuous effects (Rule 613) applied.

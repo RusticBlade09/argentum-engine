@@ -155,7 +155,13 @@ class EngineServices(
         effectExecutor = effectExecutorRegistry::execute,
         gameRestarter = GameRestarter(cardRegistry) { state, events ->
             mulliganHandler.beginFirstTurn(state, events, turnManager)
-        }
+        },
+        subgames = Subgames(
+            cardRegistry,
+            beginFirstTurn = { state, events -> mulliganHandler.beginFirstTurn(state, events, turnManager) },
+            effectExecutor = effectExecutorRegistry::execute,
+            drainAutomatic = continuationHandler::drainAutomatic,
+        )
     )
 
     /** The cast pipeline (CR 601.2). Built last: it draws on nearly every service above. */

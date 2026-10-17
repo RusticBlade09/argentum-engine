@@ -3923,6 +3923,69 @@
     ]
 }
 
+// Shahrazad
+{
+    "name": "Shahrazad",
+    "manaCost": "{W}{W}",
+    "typeLine": "Sorcery",
+    "oracleText": "Players play a Magic subgame, using their libraries as their decks. Each player who doesn't win the subgame loses half their life, rounded up.",
+    "script": {
+        "spellEffect": {
+            "type": "PlaySubgame",
+            "nonWinners": "subgameNonWinners",
+            "afterSubgame": {
+                "type": "ForEach",
+                "space": {
+                    "type": "IterationSpace.Players",
+                    "players": {
+                        "type": "InCollection",
+                        "collection": "subgameNonWinners"
+                    }
+                },
+                "body": {
+                    "type": "LoseLife",
+                    "amount": {
+                        "type": "Divide",
+                        "numerator": {
+                            "type": "LifeTotal",
+                            "player": "You"
+                        },
+                        "denominator": {
+                            "type": "Fixed",
+                            "amount": 2
+                        }
+                    },
+                    "target": "Controller"
+                }
+            }
+        }
+    },
+    "setCode": "ARN",
+    "metadata": {
+        "collectorNumber": "10",
+        "rarity": "RARE",
+        "artist": "Kaja Foglio",
+        "imageUri": "https://cards.scryfall.io/normal/front/0/0/0014def3-4063-4929-ac51-76aef1bb2a68.jpg?1783948393",
+        "rulings": [
+            {
+                "date": "2007-07-15",
+                "text": "At the end of a subgame, each player puts all cards they own that are in the subgame into their library in the main game, then shuffles them. This includes cards in the subgame's Exile zone."
+            },
+            {
+                "date": "2004-10-04",
+                "text": "At the start of the sub-game both players draw their initial hand (usually 7 cards). If one player has fewer cards than required, that player loses. If both have fewer than required, both players lose."
+            },
+            {
+                "date": "2004-10-04",
+                "text": "Events in a Shahrazad sub-game do not normally trigger abilities in the main game. And continuous effects in the main game do not carry over into the sub-game."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
 // Sindbad
 {
     "name": "Sindbad",

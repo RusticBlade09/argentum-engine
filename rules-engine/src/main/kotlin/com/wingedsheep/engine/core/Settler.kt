@@ -59,10 +59,26 @@ class Settler(
      */
     private val effectExecutor: ((GameState, Effect, EffectContext) -> EffectResult)? = null,
     /** Carries out a "restart the game" once the resolution that asked for it is over (CR 727). */
-    private val gameRestarter: GameRestarter? = null
+    private val gameRestarter: GameRestarter? = null,
+    /** Starts a subgame once the effect that created it has run, and ends it when it's over (CR 729). */
+    private val subgames: Subgames? = null
 ) {
 
+    /**
+     * Settle [executed] in its game. A subgame that is over hands its result to the main game it
+     * was created from (CR 729.5), and the main game settles in turn: its own triggers and
+     * state-based actions only see the events of its own game. The events returned are every
+     * game's, in order, for the players to see.
+     */
     fun settle(executed: ExecutionResult): ExecutionResult {
+        val settled = settleThisGame(executed)
+        if (settled.outcome is Outcome.Rejected || !settled.state.gameOver) return settled
+        val ended = subgames?.takeIf { settled.state.mainGame != null }?.end(settled.state) ?: return settled
+        val main = settle(ended)
+        return main.copy(events = settled.events + main.events)
+    }
+
+    private fun settleThisGame(executed: ExecutionResult): ExecutionResult {
         if (executed.outcome is Outcome.Rejected) return executed
         if (executed.state.gameOver) return executed.copy(state = executed.state.withoutPendingTriggers())
         val current = restartIfRequested(executed)
@@ -88,7 +104,19 @@ class Settler(
         if (detected.pendingDecision != null) {
             return ExecutionResult.propagatePause(detected, result.events)
         }
+        if (detected.pendingSubgame != null && subgames != null) return startSubgame(detected, result.events)
         return drain(detected, result.events)
+    }
+
+    /**
+     * The resolving spell created a subgame (CR 729). The main game is discontinued mid-resolution,
+     * so it performs no state-based action and puts no waiting trigger on the stack — those wait in
+     * it until it resumes. The subgame starts and settles as a game of its own.
+     */
+    private fun startSubgame(main: GameState, mainEvents: List<GameEvent>): ExecutionResult {
+        val started = subgames!!.start(main)
+        val sub = settleThisGame(started)
+        return sub.copy(events = mainEvents + sub.events)
     }
 
     /**

@@ -38,7 +38,7 @@ import { usePooledBattlefieldLayout } from './board/usePooledBattlefieldLayout'
 import { CardPreview } from './card'
 import { EmotePicker } from '../tableTalk/EmotePicker'
 import { ChatButton } from '@/components/messages/ChatButton'
-import { TargetingOverlay, ManaColorSelectionOverlay, LifeDisplay, ActiveEffectsBadges, SpeedGauge, DayNightBadge, ConcedeButton, FullscreenButton, GamePreferencesButton, SpectatorCountBadge, TeamLifeBanner, EliminationNotice } from './overlay'
+import { TargetingOverlay, ManaColorSelectionOverlay, LifeDisplay, ActiveEffectsBadges, SpeedGauge, DayNightBadge, SubgameBadge, SubgameFrame, ConcedeButton, FullscreenButton, GamePreferencesButton, SpectatorCountBadge, TeamLifeBanner, EliminationNotice } from './overlay'
 import { HelpDrawer, HelpDrawerButton } from '../help/HelpDrawer'
 import { markLearnSignal } from '@/learn/signals'
 import { styles } from './board/styles'
@@ -884,6 +884,8 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
           : `${oppHandReservation}px minmax(0, 1fr) auto 0px 0px`
         : `${oppHandReservation}px minmax(0, ${opponentRowWeight}fr) auto minmax(0, ${playerRowWeight}fr) ${playerHandReservation}px`,
     }}>
+      {/* A Magic subgame (Shahrazad, CR 729): the whole table is framed as a game within the game. */}
+      <SubgameFrame depth={gameState.subgame?.depth} />
       {/* Fullscreen button (top-left) */}
       <FullscreenButton />
       {/* Preferences gear (top-left, next to fullscreen) — stacking, stops, motion mid-game */}
@@ -1343,6 +1345,8 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
         <DayNightBadge designation={gameState.dayNight} />
         {/* "For ante" chip (CR 407) — fixed for the whole game, so it never shifts the HUD mid-game. */}
         <AnteIndicator />
+        {/* A subgame in progress (CR 729) — what started it and what's waiting outside it. */}
+        <SubgameBadge gameState={gameState} />
         <StepStrip
           phase={gameState.currentPhase}
           step={gameState.currentStep}

@@ -526,6 +526,23 @@ object Effects {
         com.wingedsheep.sdk.scripting.effects.RestartGameEffect(exempt?.key, afterRestart)
 
     /**
+     * Players play a Magic subgame using their libraries as their decks (CR 729). [afterSubgame]
+     * builds the rest of the spell's text from the players who didn't win the subgame (a plural
+     * collection — read it with [CollectionSlot.asPlayers]); it runs in the main game once the
+     * subgame is over. Must be the ability's last instruction (Shahrazad).
+     */
+    fun PlaySubgame(afterSubgame: ((nonWinners: CollectionSlot) -> Effect)? = null): Effect {
+        val nonWinners = CollectionSlot(SUBGAME_NON_WINNERS)
+        return com.wingedsheep.sdk.scripting.effects.PlaySubgameEffect(
+            nonWinners = nonWinners.key.takeIf { afterSubgame != null },
+            afterSubgame = afterSubgame?.invoke(nonWinners),
+        )
+    }
+
+    /** The pipeline collection [PlaySubgame] records the players who didn't win the subgame in. */
+    const val SUBGAME_NON_WINNERS: String = "subgameNonWinners"
+
+    /**
      * Take an extra turn after this one (Time Walk, Lost Isle Calling). When [loseAtEndStep]
      * is true, the player loses the game at the beginning of that turn's end step (Last Chance,
      * Final Fortune). When [powerUpAbilitiesCantBeActivated] is true, no player may activate a

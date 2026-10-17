@@ -272,8 +272,13 @@ export interface StateDelta {
   readonly roundNumber?: number | null
   readonly isGameOver?: boolean | null
   readonly winnerId?: EntityId | null
-  /** Day/night designation (CR 731). Null means unchanged — the game never returns to neither. */
+  /** Day/night designation (CR 731). Null means unchanged — a game never returns to neither. */
   readonly dayNight?: ClientGameState['dayNight'] | null
+  /** True when the designation went back to neither — a subgame started or ended (CR 729). */
+  readonly dayNightCleared?: boolean | null
+  /** The subgame in progress (CR 729). Present = changed; `subgameCleared` = the main game resumed. */
+  readonly subgame?: ClientGameState['subgame'] | null
+  readonly subgameCleared?: boolean | null
   /** Whether the Void condition holds this turn. Null means unchanged. */
   readonly voidActive?: boolean | null
   /** Combat state changes */
@@ -2403,10 +2408,12 @@ export interface ClientChooseBottomCardsMessage {
 }
 
 /**
- * Concede the current game.
+ * Concede the current game. During a Magic subgame (CR 729), `subgameOnly` concedes just the
+ * subgame and the main game resumes; otherwise the player concedes the main game too.
  */
 export interface ConcedeMessage {
   readonly type: 'concede'
+  readonly subgameOnly?: boolean
 }
 
 /**
@@ -2609,8 +2616,8 @@ export function createChooseBottomCardsMessage(cardIds: readonly EntityId[]): Cl
   return { type: 'chooseBottomCards', cardIds }
 }
 
-export function createConcedeMessage(): ConcedeMessage {
-  return { type: 'concede' }
+export function createConcedeMessage(subgameOnly = false): ConcedeMessage {
+  return subgameOnly ? { type: 'concede', subgameOnly } : { type: 'concede' }
 }
 
 export function createCancelGameMessage(): CancelGameMessage {

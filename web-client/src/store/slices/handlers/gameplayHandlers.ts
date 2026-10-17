@@ -22,6 +22,7 @@ import type {
   CoinFlipAnimation,
   TargetReselectedAnimation,
   GameStore,
+  SubgameTransition,
 } from '../types'
 
 /**
@@ -47,6 +48,7 @@ function getEventPlayerId(event: { type: string; playerId?: string; casterId?: s
     case 'coinFlipped': return event.playerId as EntityId
     case 'turnChanged': return event.activePlayerId as EntityId
     case 'gameRestarted': return event.startingPlayerId as EntityId
+    case 'subgameStarted': return event.startingPlayerId as EntityId
     case 'permanentsSacrificed': return event.playerId as EntityId
     case 'cardCycled': return event.playerId as EntityId
     case 'libraryShuffled': return event.playerId as EntityId
@@ -105,7 +107,9 @@ function appendGameLogTail(
 function getEventLogType(eventType: string): 'action' | 'turn' | 'combat' | 'system' {
   switch (eventType) {
     case 'turnChanged':
-    case 'gameRestarted': return 'turn'
+    case 'gameRestarted':
+    case 'subgameStarted':
+    case 'subgameEnded': return 'turn'
     case 'creatureAttacked':
     case 'creatureBlocked': return 'combat'
     case 'abilityFizzled':
@@ -312,6 +316,45 @@ export function syncSeatTeams(state: ClientGameState, get: GetState): void {
   store.setSeatTeams(next, sharedLife, sharedTurns)
 }
 
+/**
+ * The interstitial for a subgame that began or ended in [events] (CR 729), if any — the last such
+ * event wins, so a subgame that ended in the same update it began announces its end. The spell's
+ * art comes from whichever state still describes the subgame: the new one as it starts, the
+ * previous one as it ends.
+ */
+function subgameTransitionFor(
+  events: readonly ClientEvent[],
+  next: ClientGameState,
+  previous: ClientGameState | null,
+): SubgameTransition | null {
+  const event = [...events].reverse().find((e) => e.type === 'subgameStarted' || e.type === 'subgameEnded')
+  if (!event) return null
+  const nameOf = (id: EntityId) =>
+    id === next.viewingPlayerId ? 'You' : next.players.find((p) => p.playerId === id)?.name ?? 'Opponent'
+  if (event.type === 'subgameStarted') {
+    const creator = next.subgame?.waitingGames[next.subgame.waitingGames.length - 1]
+    return {
+      kind: 'start',
+      depth: event.depth,
+      sourceName: event.sourceName ?? null,
+      sourceImageUri: creator?.sourceImageUri ?? null,
+      firstPlayerName: nameOf(event.startingPlayerId),
+      youGoFirst: event.startingPlayerId === next.viewingPlayerId,
+    }
+  }
+  if (event.type !== 'subgameEnded') return null
+  const creator = previous?.subgame?.waitingGames[previous.subgame.waitingGames.length - 1]
+  return {
+    kind: 'end',
+    depth: event.depth,
+    sourceName: event.sourceName ?? null,
+    sourceImageUri: creator?.sourceImageUri ?? null,
+    winnerNames: event.winnerIds.map(nameOf),
+    youWon: event.youWon === true,
+    nonWinnerNames: event.nonWinnerIds.map(nameOf),
+  }
+}
+
 function processStateUpdate(
   resolvedState: ClientGameState,
   msg: StateUpdateEnvelope,
@@ -330,6 +373,20 @@ function processStateUpdate(
   // never receives it and would render a team game as a free-for-all. Doing it here covers every
   // entry path with one write, and it's a no-op (reference-stable) once the map already matches.
   syncSeatTeams(resolvedState, get)
+
+  // A Magic subgame beginning or ending (CR 729) turns the table into a different game; announce it.
+  const subgameTransition = subgameTransitionFor(msg.events, resolvedState, get().gameState)
+  if (subgameTransition) {
+    // The hovered or selected card belongs to the game being left. Its hand may have unmounted
+    // under the cursor (the subgame opens on its mulligan), so no mouse-leave ever cleared it, and
+    // the card would pop up again as a stray preview the moment that game came back.
+    set({
+      hoveredCardId: null,
+      hoverPosition: null,
+      selectedCardId: null,
+      ...(suppressAnimations ? {} : { subgameTransition }),
+    })
+  }
 
   // Animations spawned by this update are collected here and committed with the state itself,
   // in one store write. Each separate write re-runs every subscriber's selector across the

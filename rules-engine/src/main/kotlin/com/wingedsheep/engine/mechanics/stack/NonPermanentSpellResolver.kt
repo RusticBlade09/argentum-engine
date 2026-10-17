@@ -162,6 +162,12 @@ internal class NonPermanentSpellResolver(
                 // The finalizer is below all effect and splice frames; no zone change yet.
                 return ExecutionResult.propagatePause(effectResult.state, events + effectResult.events)
             }
+            if (effectResult.state.pendingSubgame != null) {
+                // The spell created a subgame (CR 729). It finishes resolving only once the subgame
+                // is over and the rest of its text has run (CR 729.5), so it stays on the stack and
+                // the finalizer waits, as it does beneath a question.
+                return ExecutionResult.success(effectResult.state, events + effectResult.events)
+            }
 
             // Always apply state changes from effect execution, even on partial
             // failure. Per MTG rules, when a spell resolves, you do as much as

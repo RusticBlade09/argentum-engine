@@ -92,6 +92,8 @@ val engineSerializersModule = SerializersModule {
         subclass(StepChangedEvent::class)
         subclass(TurnEndedByEffectEvent::class)
         subclass(GameRestartedEvent::class)
+        subclass(SubgameStartedEvent::class)
+        subclass(SubgameEndedEvent::class)
         subclass(TurnSkippedEvent::class)
         subclass(TurnChangedEvent::class)
         subclass(DayNightChangedEvent::class)
