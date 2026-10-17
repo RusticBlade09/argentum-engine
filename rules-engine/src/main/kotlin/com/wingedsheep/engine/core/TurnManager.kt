@@ -856,7 +856,7 @@ class TurnManager(
                 newState = damageResult.newState
                 events.addAll(damageResult.events)
                 val sbaHelperResult = StepActionHelper.applySbasAndCheckGameOver(newState, activePlayer, sbaChecker, events)
-                if (sbaHelperResult.outcome is Outcome.Paused) return sbaHelperResult
+                if (sbaHelperResult.outcome !is Outcome.Done) return sbaHelperResult
                 newState = sbaHelperResult.newState
                 // events already updated by helper
                 if (!newState.gameOver) {
@@ -878,7 +878,7 @@ class TurnManager(
                 newState = damageResult.newState
                 events.addAll(damageResult.events)
                 val sbaHelperResult = StepActionHelper.applySbasAndCheckGameOver(newState, activePlayer, sbaChecker, events)
-                if (sbaHelperResult.outcome is Outcome.Paused) return sbaHelperResult
+                if (sbaHelperResult.outcome !is Outcome.Done) return sbaHelperResult
                 newState = sbaHelperResult.newState
                 if (!newState.gameOver) {
                     newState = newState.withPriority(activePlayer)

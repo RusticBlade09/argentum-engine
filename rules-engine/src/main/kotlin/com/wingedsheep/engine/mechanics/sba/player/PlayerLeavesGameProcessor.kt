@@ -5,6 +5,7 @@ import com.wingedsheep.engine.core.ExecutionResult
 import com.wingedsheep.engine.core.FinishResolvingAbilityContinuation
 import com.wingedsheep.engine.core.FinishResolvingSpellContinuation
 import com.wingedsheep.engine.core.GameEndReason
+import com.wingedsheep.engine.core.PendingTriggersContinuation
 import com.wingedsheep.engine.core.PlayerLeftGameEvent
 import com.wingedsheep.engine.handlers.effects.ZoneTransitionService
 import com.wingedsheep.engine.mechanics.layers.SerializableModification
@@ -213,8 +214,8 @@ object PlayerLeavesGameProcessor {
     /**
      * Abandon a pending decision addressed to [leaver]. The decision is cleared and the resolution
      * waiting on it ends early: every frame that needs the answer is dropped (the frames beneath
-     * the one waiting on this decision belong to the same paused resolution — or to triggers
-     * deferred behind it — and none of them can be resumed without it), but the resolution's
+     * the one waiting on this decision belong to the same paused resolution, and none of them can
+     * be resumed without it), but the resolution's
      * final part still happens. A stack object is removed from the stack as the final part of
      * its resolution (CR 608.2n), so the frames that perform it are kept, in order, and run
      * through [finishAbandonedResolution]:
@@ -224,6 +225,12 @@ object PlayerLeavesGameProcessor {
      *   leaves the stack and reports resolving exactly once. One that already left (with the
      *   leaver, or moved by its own effect) didn't resolve and is dropped.
      * - [EndResolutionControlContinuation], which ends the resolution's player-control window.
+     *
+     * Triggers that were waiting beneath the abandoned decision to be put on the stack
+     * ([PendingTriggersContinuation] — the rest of a batch whose first trigger was choosing
+     * targets) don't need the answer either: they go back to [GameState.pendingTriggers], so the
+     * settle boundary places the surviving players' ones in APNAP order (CR 603.3b) and drops the
+     * leaver's.
      *
      * Dropping them instead would leave a surviving player's resolving object on the stack with
      * nothing to finish it, so it would resolve a second time. Only abilities and nonpermanent
@@ -253,7 +260,13 @@ object PlayerLeavesGameProcessor {
                 else -> false
             }
         }
-        val cleared = state.copy(continuationStack = finalPart)
+        val waitingTriggers = state.continuationStack
+            .filterIsInstance<PendingTriggersContinuation>()
+            .flatMap { it.remainingTriggers }
+        val cleared = state.copy(
+            continuationStack = finalPart,
+            pendingTriggers = waitingTriggers + state.pendingTriggers,
+        )
         val finished = if (finalPart.isEmpty()) ExecutionResult.success(cleared)
             else finishAbandonedResolution(cleared)
         if (finished.outcome !is com.wingedsheep.engine.core.Outcome.Done) return finished

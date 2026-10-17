@@ -539,9 +539,30 @@ class LeaveTheGameTest : FunSpec({
         }
     }
 
+    // "Whenever a player casts a spell, target player loses 1 life." Its controller picks the target.
+    val targetedCastWatcher = card("Leave Test Targeted Cast Watcher") {
+        manaCost = "{1}"
+        typeLine = "Enchantment"
+        triggeredAbility {
+            trigger = Triggers.anyPlayer.casts()
+            val victim = target(Targets.Player)
+            effect = com.wingedsheep.sdk.dsl.Effects.LoseLife(1, victim)
+        }
+    }
+
+    // "Whenever a player casts a spell, you gain 1 life."
+    val castWatcher = card("Leave Test Cast Watcher") {
+        manaCost = "{1}"
+        typeLine = "Enchantment"
+        triggeredAbility {
+            trigger = Triggers.anyPlayer.casts()
+            effect = com.wingedsheep.sdk.dsl.Effects.GainLife(1)
+        }
+    }
+
     fun threePlayerDriver(): Pair<GameTestDriver, List<EntityId>> {
         val driver = GameTestDriver()
-        driver.registerCards(TestCards.all + castDiscarder)
+        driver.registerCards(TestCards.all + castDiscarder + targetedCastWatcher + castWatcher)
         val players = driver.initMultiplayer(List(3) { Deck.of("Swamp" to 40) })
         driver.passPriorityUntil(Step.PRECOMBAT_MAIN)
         return driver to players
@@ -600,5 +621,54 @@ class LeaveTheGameTest : FunSpec({
         (mindRot in d.getGraveyard(a)).shouldBeTrue()
         d.state.continuationStack shouldContainExactly emptyList()
         d.events.count { it is ResolvedEvent && it.entityId == mindRot } shouldBe 1
+    }
+
+    test("an ability whose controller is also its chooser leaves with them and never reports resolving") {
+        val (d, players) = threePlayerDriver()
+        val (a, _, _) = players
+
+        val spell = d.putCardInHand(a, "Leave Test Cast Discarder")
+        d.giveColorlessMana(a, 1)
+        d.castSpell(a, spell).error shouldBe null
+        d.submitTargetSelection(a, listOf(a))
+        val trigger = d.state.stack.last()
+
+        while (d.pendingDecision == null) d.passPriority(d.state.priorityPlayerId!!).error shouldBe null
+        (d.pendingDecision as SelectCardsDecision).playerId shouldBe a
+        d.state.stack shouldContainExactly listOf(spell, trigger)
+
+        d.submit(Concede(a)).outcome shouldBe Outcome.Done
+        d.pendingDecision.shouldBeNull()
+        // The trigger left the game with its controller (CR 800.4a): its finish frame is dropped,
+        // so it never reports resolving.
+        d.state.hasEntity(trigger) shouldBe false
+        d.state.stack shouldContainExactly emptyList()
+        d.state.continuationStack shouldContainExactly emptyList()
+        d.events.none { it is AbilityResolvedEvent && it.sourceId == spell }.shouldBeTrue()
+        d.state.priorityPlayerId shouldNotBe a
+    }
+
+    test("a surviving player's trigger waiting behind the leaver's target choice still goes on the stack") {
+        val (d, players) = threePlayerDriver()
+        val (a, b, c) = players
+        d.putPermanentOnBattlefield(b, "Leave Test Targeted Cast Watcher")
+        d.putPermanentOnBattlefield(c, "Leave Test Cast Watcher")
+
+        val mindRot = d.putCardInHand(a, "Mind Rot")
+        d.giveMana(a, Color.BLACK, 1)
+        d.giveColorlessMana(a, 2)
+        d.castSpellWithTargets(a, mindRot, listOf(ChosenTarget.Player(c))).error shouldBe null
+
+        // APNAP: B's targeted trigger is placed first and waits on B's target; C's waits behind it.
+        d.pendingDecision?.playerId shouldBe b
+
+        d.submit(Concede(b)).outcome shouldBe Outcome.Done
+        d.pendingDecision.shouldBeNull()
+        val triggerControllers = d.state.stack.mapNotNull {
+            d.state.getEntity(it)?.get<TriggeredAbilityOnStackComponent>()?.controllerId
+        }
+        triggerControllers shouldContainExactly listOf(c)
+        d.state.stack.first() shouldBe mindRot
+        d.state.pendingTriggers shouldContainExactly emptyList()
     }
 })

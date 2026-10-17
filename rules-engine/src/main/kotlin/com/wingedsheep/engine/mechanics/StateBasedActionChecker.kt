@@ -96,8 +96,8 @@ class StateBasedActionChecker(
             }
 
             val riders = runReplacementRiders(result)
-            if (riders.outcome is Outcome.Paused) {
-                return ExecutionResult.propagatePause(riders.state, allEvents + riders.events)
+            if (riders.outcome !is Outcome.Done) {
+                return riders.copy(events = allEvents + riders.events)
             }
 
             actionsApplied = riders.events.isNotEmpty()
