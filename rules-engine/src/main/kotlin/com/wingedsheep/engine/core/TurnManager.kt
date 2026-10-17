@@ -1318,7 +1318,7 @@ class TurnManager(
 
         val request = state.getEntity(activePlayer)?.get<EndTheTurnRequestedComponent>()
         var newState = state.updateEntity(activePlayer) { it.without<EndTheTurnRequestedComponent>() }
-            .copy(pendingTriggers = emptyList())
+            .copy(pendingTriggers = emptyList(), triggersBeingPlaced = emptyList())
         val events = mutableListOf<GameEvent>(TurnEndedByEffectEvent(activePlayer))
 
         // CR 724.1c: state-based actions are checked. (Creatures destroyed by a preceding board

@@ -126,19 +126,6 @@ data class TriggerDamageDistributionContinuation(
 ) : AnswerContinuation
 
 /**
- * Stores remaining pending triggers that still need to be processed.
- *
- * When multiple triggered abilities fire from the same event and the first
- * requires target selection (pausing execution), the remaining triggers are
- * stored in this continuation frame. After the first trigger's targets are
- * selected, the remaining triggers are processed.
- */
-@Serializable
-data class PendingTriggersContinuation(
-    val remainingTriggers: List<PendingTrigger>
-) : AutomaticContinuation
-
-/**
  * Resume spell resolution after target or mode selection.
  *
  * @property spellId The spell entity on the stack

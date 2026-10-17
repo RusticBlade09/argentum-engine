@@ -49,10 +49,9 @@ import com.wingedsheep.sdk.model.EntityId
  * [RepeatWhileContinuation] takes only [collections], into its `bodyCollections` slot — the repeat
  * condition reads collection outputs, and there is no numeric equivalent for it to read.
  *
- * The consumer is always the top of the continuation stack here: a deferred
- * [PendingTriggersContinuation] queued by a mid-resolution trigger is inserted *beneath* the
- * frames of the in-flight resolution (see `SubmitDecisionHandler`), so it never sits between a
- * producer and its consumer.
+ * The consumer is always the top of the continuation stack here: triggers waiting to go on the
+ * stack live in the state ([GameState.triggersBeingPlaced], [GameState.pendingTriggers]), never
+ * on the continuation stack, so nothing sits between a producer and its consumer.
  */
 fun exposeCollectionsToNextFrame(
     state: GameState,

@@ -22,9 +22,8 @@ import com.wingedsheep.engine.core.Outcome
  *    populated, which is what emits the `BecomesTargetEvent`s ward keys on.
  *
  * Neither pause is cancellable: unlike a cast, a trigger is already on its way to the stack and
- * the player has no legal way to back out. Both hand off to `checkForMore` afterwards so any
- * sibling triggers waiting on a [com.wingedsheep.engine.core.PendingTriggersContinuation] still
- * reach the stack.
+ * the player has no legal way to back out. Both hand off to `checkForMore` afterwards; sibling
+ * triggers waiting in [GameState.triggersBeingPlaced] reach the stack when the game settles.
  */
 class ModalTriggerContinuationResumer(
     private val services: EngineServices

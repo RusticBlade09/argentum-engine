@@ -34,6 +34,11 @@ import com.wingedsheep.sdk.scripting.EventPattern
  * 3. **Drain.** Perform state-based actions and queue the triggers they cause. Then put the whole
  *    queue on the stack in APNAP order (CR 603.3b). Repeat until nothing is left.
  *
+ * Putting a wave on the stack can stop for a choice (a trigger's targets or modes). The rest of
+ * that wave waits in [GameState.triggersBeingPlaced], and the drain after the answer places it
+ * first, before any state-based action. Triggers that trigger in the meantime (ward, on the
+ * answer's targets) join [GameState.pendingTriggers], the next wave, so they end up above it.
+ *
  * Handlers only set who receives priority afterwards: an actor keeps it (CR 117.3c), and a
  * resolved stack object hands it on. Settling after it placed triggers only resets the passes,
  * because an object joined the stack (CR 117.4).
@@ -94,7 +99,8 @@ class Settler(
         // A lone priority pass changes nothing on the board, so there is nothing to detect,
         // check, or put on the stack. Skip the full SBA and poll sweep on the engine's most
         // frequent action.
-        if (state.pendingTriggers.isEmpty() && result.events.all { it is PriorityChangedEvent }) return result
+        if (state.pendingTriggers.isEmpty() && state.triggersBeingPlaced.isEmpty() &&
+            result.events.all { it is PriorityChangedEvent }) return result
 
         // Once the triggers are queued, a Siege's defeat trigger spares it on its own (CR 704.5v);
         // the pre-detection marker combat damage armed is spent.
@@ -204,27 +210,33 @@ class Settler(
         var placedAny = false
 
         while (true) {
-            val sba = sbaChecker.checkAndApply(
-                state,
-                state.pendingTriggers.mapNotNull { it.objectReferences.origin }.toSet()
-            )
-            events += sba.events
-            state = sba.state
-            // SBA-caused triggers join the queue whether or not the SBA stopped for a choice (the
-            // legend rule); the ones already waiting stay put until the choice is answered.
-            state = ControlHistory.record(CounterHistory.record(state, sba.events), sba.events)
-            state = state.enqueue(triggerDetector.detectTriggers(state, sba.events))
-            if (sba.outcome is Outcome.Rejected) return ExecutionResult(state, events, sba.outcome)
-            if (sba.pendingDecision != null) return ExecutionResult.propagatePause(state, events)
-            if (state.gameOver) return ExecutionResult.success(state.withoutPendingTriggers(), events)
+            // The rest of a wave whose placement stopped for a choice goes on the stack before
+            // anything else happens: it was already ordered, and no player has received priority.
+            val resuming = state.triggersBeingPlaced.isNotEmpty()
+            if (!resuming) {
+                val sba = sbaChecker.checkAndApply(
+                    state,
+                    state.pendingTriggers.mapNotNull { it.objectReferences.origin }.toSet()
+                )
+                events += sba.events
+                state = sba.state
+                // SBA-caused triggers join the queue whether or not the SBA stopped for a choice (the
+                // legend rule); the ones already waiting stay put until the choice is answered.
+                state = ControlHistory.record(CounterHistory.record(state, sba.events), sba.events)
+                state = state.enqueue(triggerDetector.detectTriggers(state, sba.events))
+                if (sba.outcome is Outcome.Rejected) return ExecutionResult(state, events, sba.outcome)
+                if (sba.pendingDecision != null) return ExecutionResult.propagatePause(state, events)
+                if (state.gameOver) return ExecutionResult.success(state.withoutPendingTriggers(), events)
 
-            val poll = stateTriggerPoller.poll(state)
-            state = poll.newState.enqueue(poll.pendingTriggers)
+                val poll = stateTriggerPoller.poll(state)
+                state = poll.newState.enqueue(poll.pendingTriggers)
 
-            if (state.pendingTriggers.isEmpty()) break
+                if (state.pendingTriggers.isEmpty()) break
+            }
 
-            val waiting = apnapOrder(state, state.pendingTriggers)
-            val placementState = state.withoutPendingTriggers()
+            val waiting = if (resuming) state.triggersBeingPlaced else apnapOrder(state, state.pendingTriggers)
+            val placementState =
+                if (resuming) state.copy(triggersBeingPlaced = emptyList()) else state.copy(pendingTriggers = emptyList())
             val placed = triggerProcessor.processTriggers(placementState, waiting)
             events += placed.events
             if (placed.outcome is Outcome.Rejected) return ExecutionResult(placed.state, events, placed.outcome)
@@ -280,5 +292,6 @@ class Settler(
         })
 
     private fun GameState.withoutPendingTriggers(): GameState =
-        if (pendingTriggers.isEmpty()) this else copy(pendingTriggers = emptyList())
+        if (pendingTriggers.isEmpty() && triggersBeingPlaced.isEmpty()) this
+        else copy(pendingTriggers = emptyList(), triggersBeingPlaced = emptyList())
 }

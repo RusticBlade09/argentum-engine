@@ -5,7 +5,6 @@ import com.wingedsheep.engine.core.ExecutionResult
 import com.wingedsheep.engine.core.FinishResolvingAbilityContinuation
 import com.wingedsheep.engine.core.FinishResolvingSpellContinuation
 import com.wingedsheep.engine.core.GameEndReason
-import com.wingedsheep.engine.core.PendingTriggersContinuation
 import com.wingedsheep.engine.core.PlayerLeftGameEvent
 import com.wingedsheep.engine.handlers.effects.ZoneTransitionService
 import com.wingedsheep.engine.mechanics.layers.SerializableModification
@@ -226,11 +225,10 @@ object PlayerLeavesGameProcessor {
      *   leaver, or moved by its own effect) didn't resolve and is dropped.
      * - [EndResolutionControlContinuation], which ends the resolution's player-control window.
      *
-     * Triggers that were waiting beneath the abandoned decision to be put on the stack
-     * ([PendingTriggersContinuation] — the rest of a batch whose first trigger was choosing
-     * targets) don't need the answer either: they go back to [GameState.pendingTriggers], so the
-     * settle boundary places the surviving players' ones in APNAP order (CR 603.3b) and drops the
-     * leaver's.
+     * Triggers that were waiting to be put on the stack after the abandoned decision
+     * ([GameState.triggersBeingPlaced] — the rest of a wave whose trigger was choosing targets)
+     * don't need the answer either: they stay where they are, so the settle boundary places the
+     * surviving players' ones in order and drops the leaver's.
      *
      * Dropping them instead would leave a surviving player's resolving object on the stack with
      * nothing to finish it, so it would resolve a second time. Only abilities and nonpermanent
@@ -260,13 +258,7 @@ object PlayerLeavesGameProcessor {
                 else -> false
             }
         }
-        val waitingTriggers = state.continuationStack
-            .filterIsInstance<PendingTriggersContinuation>()
-            .flatMap { it.remainingTriggers }
-        val cleared = state.copy(
-            continuationStack = finalPart,
-            pendingTriggers = waitingTriggers + state.pendingTriggers,
-        )
+        val cleared = state.copy(continuationStack = finalPart)
         val finished = if (finalPart.isEmpty()) ExecutionResult.success(cleared)
             else finishAbandonedResolution(cleared)
         if (finished.outcome !is com.wingedsheep.engine.core.Outcome.Done) return finished

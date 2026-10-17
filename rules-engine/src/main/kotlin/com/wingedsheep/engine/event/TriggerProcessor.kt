@@ -71,7 +71,8 @@ class TriggerProcessor(
      * Process a list of pending triggers, placing them on the stack.
      *
      * Triggers are processed in APNAP order (active player first, then others).
-     * If a trigger requires targets, execution pauses for player input.
+     * If a trigger requires targets, execution pauses for player input, and the triggers after it
+     * wait in [GameState.triggersBeingPlaced].
      *
      * @param state The current game state
      * @param triggers List of pending triggers in APNAP order
@@ -106,28 +107,10 @@ class TriggerProcessor(
             }
 
             if (result.outcome is Outcome.Paused) {
-                // This trigger requires target selection
-                // Store the remaining triggers to process after the decision
-                val remainingTriggers = liveTriggers.drop(index + 1)
-
-                // Push remaining triggers as a continuation so they are processed
-                // after this trigger's target selection is resolved
-                var stateWithContinuations = result.state
-                if (remainingTriggers.isNotEmpty()) {
-                    val pendingContinuation = PendingTriggersContinuation(
-                        remainingTriggers = remainingTriggers
-                    )
-                    // The question and its answer occupy one top suspension; keep the automatic
-                    // trigger queue beneath it so the current trigger completes first.
-                    val stack = stateWithContinuations.continuationStack
-                    val newStack = stack.dropLast(1) + pendingContinuation + stack.last()
-                    stateWithContinuations = stateWithContinuations.copy(continuationStack = newStack)
-                }
-
-                return ExecutionResult.propagatePause(
-                    stateWithContinuations,
-                    allEvents + result.events
-                )
+                // This trigger stopped for a choice (targets, modes). The rest of the wave waits
+                // in the state and goes on the stack once the choice is answered.
+                val waiting = result.state.copy(triggersBeingPlaced = liveTriggers.drop(index + 1))
+                return ExecutionResult.propagatePause(waiting, allEvents + result.events)
             }
 
             currentState = result.newState
