@@ -90,7 +90,7 @@ import com.wingedsheep.sdk.scripting.values.CardNumericProperty
 class PredicateEvaluator(
     /**
      * Printed definitions, for the few predicates that read a candidate's script rather than its
-     * components (an Aura's enchant restriction for [CardPredicate.CouldEnchant]). Those predicates
+     * components (an Aura's enchant restriction for [CardPredicate.CouldAttachTo]). Those predicates
      * fail closed on an evaluator built without one — which only the pure-data layers that have no
      * engine to ask (the layer projection behind [GameState.projectedState]) should build. Everything
      * in the engine graph shares [com.wingedsheep.engine.core.EngineServices.predicateEvaluator].
@@ -217,8 +217,8 @@ class PredicateEvaluator(
      * [com.wingedsheep.engine.state.components.stack.captureEntitySnapshots] overload** (the
      * `(ids, state)` one), and populate [EntitySnapshot.typeLine] and [EntitySnapshot.keywords] on
      * top of it. The unanswerable-reports-null discipline above cannot cover
-     * [EntitySnapshot.wasToken], [EntitySnapshot.keywords], [EntitySnapshot.wasAttacking] or
-     * [EntitySnapshot.wasBlocking]: each defaults to a *legitimate* value
+     * [EntitySnapshot.wasToken], [EntitySnapshot.keywords], [EntitySnapshot.wasAttacking],
+     * [EntitySnapshot.wasBlocking] or [EntitySnapshot.wasModified]: each defaults to a *legitimate* value
      * (`false` / empty) with no "was never captured" state, so a snapshot taken by the projection-
      * only overload answers `IsToken` false, `IsNontoken` true and every `HasKeyword` false with
      * full confidence rather than reporting unknown. There is one caller today
@@ -311,13 +311,15 @@ class PredicateEvaluator(
     /**
      * Tri-state evaluation of one [StatePredicate] against frozen last-known information — the
      * state-predicate sibling of [matchesSnapshotPredicate], with the same null-means-unknown
-     * discipline. Only the combat status [EntitySnapshot] freezes is answered: attacking
-     * ([EntitySnapshot.wasAttacking]) and blocking ([EntitySnapshot.wasBlocking]).
+     * discipline. Only the status [EntitySnapshot] freezes is answered: attacking
+     * ([EntitySnapshot.wasAttacking]), blocking ([EntitySnapshot.wasBlocking]) and modified
+     * ([EntitySnapshot.wasModified]).
      */
     private fun matchesSnapshotState(snapshot: EntitySnapshot, predicate: StatePredicate): Boolean? =
         when (predicate) {
             StatePredicate.IsAttacking -> snapshot.wasAttacking
             StatePredicate.IsBlocking -> snapshot.wasBlocking
+            StatePredicate.IsModified -> snapshot.wasModified
             is StatePredicate.Not -> matchesSnapshotState(snapshot, predicate.predicate)?.not()
             is StatePredicate.And -> {
                 val results = predicate.predicates.map { matchesSnapshotState(snapshot, it) }
@@ -436,7 +438,7 @@ class PredicateEvaluator(
             is CardPredicate.OriginallyPrintedInSet,
             is CardPredicate.PowerAtLeast,
             is CardPredicate.PowerAtMost,
-            is CardPredicate.CouldEnchant,
+            is CardPredicate.CouldAttachTo,
             is CardPredicate.PowerAtMostEntity,
             is CardPredicate.PowerEquals,
             is CardPredicate.PowerEqualsDynamic,
@@ -1085,12 +1087,11 @@ class PredicateEvaluator(
             // "An Aura card that could enchant it" (Auratouched Mage). Reads the candidate's printed
             // enchant restriction off its definition and evaluates it against the referenced
             // permanent — the same reading the enchant SBA uses. Fails closed with no registry.
-            is CardPredicate.CouldEnchant -> {
-                if (!card.typeLine.isAura) return false
+            is CardPredicate.CouldAttachTo -> {
                 val hostId = resolveEntity(state, predicate.reference, context, projected) ?: return false
                 val registry = cardRegistry ?: return false
-                com.wingedsheep.engine.handlers.predicates.EnchantRestriction.couldAttach(
-                    state, projected, this, registry, entityId, card, hostId,
+                com.wingedsheep.engine.handlers.effects.permanent.attachments.AttachmentMover.couldAttachCard(
+                    state, this, registry, entityId, card, hostId,
                     controllerId = context?.controllerId ?: return false
                 )
             }
@@ -2282,8 +2283,12 @@ class PredicateEvaluator(
                 playerMatchesControlLeaf(state, projected, protector, predicate.protector, ctx)
             }
 
+            // Live on the battlefield; once the permanent has left, the frozen last-known snapshot
+            // (CR 608.2h) answers, as for IsAttacking — Ian the Reckless's "if it's modified" is
+            // rechecked on resolution against the creature as it last existed (ruling 2024-03-08).
             StatePredicate.IsModified ->
-                com.wingedsheep.engine.handlers.predicates.isModified(state, entityId) { projected.getController(it) }
+                com.wingedsheep.engine.handlers.predicates.isModified(state, entityId) { projected.getController(it) } ||
+                    container.get<LastKnownPermanentComponent>()?.snapshot?.wasModified == true
 
             // Attached-to-type — entity has an AttachedToComponent and the referenced
             // permanent currently has the requested CardType (Pyramids: "Aura attached
@@ -2631,7 +2636,7 @@ class PredicateEvaluator(
             is CardPredicate.PowerOrToughnessAtMost,
             is CardPredicate.TotalPowerAndToughnessAtMost,
             is CardPredicate.PowerGreaterThanEntity,
-            is CardPredicate.CouldEnchant,
+            is CardPredicate.CouldAttachTo,
             is CardPredicate.PowerAtMostEntity,
             is CardPredicate.PowerLessThanEntity,
             is CardPredicate.CompareNumericProperty,
@@ -2753,6 +2758,13 @@ data class PredicateContext(
     val chosenValues: Map<String, String> = emptyMap(),
     /** Named string lists stored by pipeline effects (e.g., chosen creature types). */
     val storedStringLists: Map<String, List<String>> = emptyMap(),
+    /**
+     * Named numbers stored by pipeline effects ([com.wingedsheep.engine.handlers.PipelineState.storedNumbers]).
+     * Lets a target filter's dynamic cap read a value a reflexive trigger's action half stored when
+     * the trigger's targets are chosen — Unleash the Inferno's "mana value less than or equal to that
+     * amount of excess damage" (`manaValueAtMostDynamic(VariableReference("excess"))`).
+     */
+    val storedNumbers: Map<String, Int> = emptyMap(),
     /**
      * Named lists of subtype sets stored by pipeline effects — one `Set<String>` per
      * source entity. Populated by `GatherSubtypesEffect`. Used by
@@ -2884,6 +2896,7 @@ data class PredicateContext(
                 chosenValues = chosenValues,
                 storedStringLists = storedStringLists,
                 storedSubtypeGroups = storedSubtypeGroups,
+                storedNumbers = storedNumbers,
             ),
         )
     }
@@ -2912,6 +2925,7 @@ data class PredicateContext(
                 chosenValues = context.pipeline.chosenValues,
                 storedStringLists = context.pipeline.storedStringLists,
                 storedSubtypeGroups = context.pipeline.storedSubtypeGroups,
+                storedNumbers = context.pipeline.storedNumbers,
                 storedCollections = context.pipeline.storedCollections,
                 targets = context.targets,
                 namedTargets = context.pipeline.namedTargets,

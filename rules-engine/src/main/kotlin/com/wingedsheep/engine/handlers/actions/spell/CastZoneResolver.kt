@@ -173,7 +173,13 @@ class CastZoneResolver(
                 val inNamedZone = ability.zones.any { zone ->
                     cardId in state.getZone(ZoneKey(playerId, zone))
                 }
-                inNamedZone && castsUsing(action, ability.castUsing) && (ability.condition == null ||
+                inNamedZone && castsUsing(action, ability.castUsing) &&
+                    // A permission priced as an alternative cost carries only a cast that announces
+                    // it, so a plain cast from the same zone can still go through another permission
+                    // (Muldrotha) at the printed cost — and never one announcing a different
+                    // alternative cost (only one alternative cost per spell).
+                    (ability.alternativeManaCost == null || announcesSelfZoneCost(action)) &&
+                    (ability.condition == null ||
                     conditionEvaluator.evaluate(
                         state,
                         ability.condition!!,
@@ -181,6 +187,9 @@ class CastZoneResolver(
                     ))
             }
     }
+
+    private fun announcesSelfZoneCost(action: CastSpell?): Boolean =
+        action != null && action.useAlternativeCost && action.altAllows(AlternativeCostType.SELF_ZONE)
 
     /**
      * Whether [action] casts the card using the [keyword] casting ability a
@@ -856,13 +865,61 @@ class CastZoneResolver(
                 if (unwrapped !is CastSpellTypesFromTopOfLibrary ||
                     !matchesCardFilter(cardComponent, unwrapped.filter, state, entityId)
                 ) continue
-                val maxCasts = unwrapped.maxCastsPerTurn ?: return null
+                // An unlimited cost-free grant wins outright. An unlimited *costed* one (Falco Spara)
+                // doesn't: a limited free grant covering the card is what waives that cost, so its
+                // use must be spent.
+                val maxCasts = unwrapped.maxCastsPerTurn
+                    ?: if (unwrapped.additionalCost == null) return null else continue
                 val uses = state.getEntity(entityId)
                     ?.get<CastFromTopOfLibraryUsesThisTurnComponent>()?.uses ?: 0
                 if (uses < maxCasts && limitedSource == null) limitedSource = entityId
             }
         }
         return limitedSource
+    }
+
+    /**
+     * The additional cost a top-of-library cast of [cardId] owes through a costed
+     * [CastSpellTypesFromTopOfLibrary] permission — Falco Spara, Pactweaver's "by removing a counter
+     * from a creature you control in addition to paying their other costs" — or null. A cost-free
+     * permission covering the same card (Future Sight, Gwenom, a costless grant, a card-specific
+     * MayPlay) is the one the cast goes through, so nothing is owed then. Mirrors the enumerator's
+     * `topGrantAdditionalCost`.
+     */
+    fun topOfLibraryGrantAdditionalCost(
+        state: GameState,
+        playerId: EntityId,
+        cardId: EntityId
+    ): AdditionalCost? {
+        if (state.getLibrary(playerId).firstOrNull() != cardId) return null
+        val cardComponent = state.getEntity(cardId)?.get<CardComponent>() ?: return null
+        if (state.hasMayPlayFor(cardId, playerId, conditionEvaluator, cardRegistry)) return null
+        if (hasPlayFromTopOfLibrary(state, playerId)) return null
+        var owed: AdditionalCost? = null
+        for (entityId in state.getBattlefield(playerId)) {
+            val sourceCard = state.getEntity(entityId)?.get<CardComponent>() ?: continue
+            val cardDef = cardRegistry.getCard(sourceCard.cardDefinitionId) ?: continue
+            for (ability in cardDef.liveStaticAbilities(state, entityId)) {
+                val unwrapped = if (ability is ConditionalStaticAbility) {
+                    val ctx = EffectContext(sourceId = entityId, controllerId = playerId)
+                    if (!conditionEvaluator.evaluate(state, ability.condition, ctx)) continue
+                    ability.ability
+                } else ability
+                if (unwrapped is PlayLandsAndCastFilteredFromTopOfLibrary &&
+                    unwrapped.spellFilter?.let { matchesCardFilter(cardComponent, it) } == true
+                ) return null
+                if (unwrapped !is CastSpellTypesFromTopOfLibrary ||
+                    !matchesCardFilter(cardComponent, unwrapped.filter, state, entityId)
+                ) continue
+                val maxCasts = unwrapped.maxCastsPerTurn
+                val uses = state.getEntity(entityId)
+                    ?.get<CastFromTopOfLibraryUsesThisTurnComponent>()?.uses ?: 0
+                if (maxCasts != null && uses >= maxCasts) continue
+                val cost = unwrapped.additionalCost ?: return null
+                if (owed == null) owed = cost
+            }
+        }
+        return owed
     }
 
     private fun hasPlayFromTopOfLibrary(state: GameState, playerId: EntityId): Boolean {
@@ -1156,7 +1213,7 @@ class CastZoneResolver(
                 is CardPredicate.PowerEqualsDynamic,
                 is CardPredicate.PowerAtMostDynamic,
                 is CardPredicate.ToughnessEqualsDynamic,
-                is CardPredicate.CouldEnchant,
+                is CardPredicate.CouldAttachTo,
                 CardPredicate.CouldProduceColorlessMana,
                 is CardPredicate.PowerAtMostEntity,
                 is CardPredicate.PowerGreaterThanEntity,

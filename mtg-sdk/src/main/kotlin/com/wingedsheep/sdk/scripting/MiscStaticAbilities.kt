@@ -2,6 +2,7 @@ package com.wingedsheep.sdk.scripting
 
 import com.wingedsheep.sdk.core.Color
 import com.wingedsheep.sdk.core.Keyword
+import com.wingedsheep.sdk.core.ManaCost
 import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.scripting.conditions.Condition
 import com.wingedsheep.sdk.scripting.effects.Effect
@@ -582,6 +583,10 @@ data class PlayFromTopWithAlternativeCost(
  * Used for Precognition Field (instant and sorcery only).
  *
  * @property filter The filter that spells on top of library must match to be castable
+ * @property additionalCost A cost paid in addition to the spell's other costs when it is cast
+ *   through this permission — Falco Spara, Pactweaver's "by removing a counter from a creature you
+ *   control in addition to paying their other costs". Not owed when another cost-free permission
+ *   (Future Sight, a costless grant) also covers the card. Null for none.
  */
 @SerialName("CastSpellTypesFromTopOfLibrary")
 @Serializable
@@ -592,17 +597,24 @@ data class CastSpellTypesFromTopOfLibrary(
      * Null means unlimited. Usage belongs to the granting object, so a permanent that leaves
      * and returns supplies a fresh permission.
      */
-    val maxCastsPerTurn: Int? = null
+    val maxCastsPerTurn: Int? = null,
+    val additionalCost: AdditionalCost? = null,
 ) : StaticAbility {
-    override val description: String =
+    override val description: String = buildString {
         if (maxCastsPerTurn == 1) {
-            "Once each turn, you may cast a ${filter.description} spell from the top of your library."
+            append("Once each turn, you may cast a ${filter.description} spell from the top of your library")
         } else {
-            "You may cast ${filter.description} spells from the top of your library."
+            append("You may cast ${filter.description} spells from the top of your library")
         }
+        if (additionalCost != null) {
+            append(" by ${additionalCost.description.replaceFirstChar { it.lowercase() }} in addition to paying their other costs")
+        }
+        append(".")
+    }
     override fun applyTextReplacement(replacer: TextReplacer): StaticAbility {
         val newFilter = filter.applyTextReplacement(replacer)
-        return if (newFilter !== filter) copy(filter = newFilter) else this
+        val newCost = additionalCost?.applyTextReplacement(replacer)
+        return if (newFilter !== filter || newCost !== additionalCost) copy(filter = newFilter, additionalCost = newCost) else this
     }
 }
 
@@ -780,12 +792,23 @@ data object OpponentsPlayWithHandsRevealed : StaticAbility {
  * card could be cast from), never for its normal mana cost. The engine reads only keywords it knows
  * how to cast with ([Keyword.BESTOW], [Keyword.BLITZ]); any other keyword authorizes nothing.
  *
+ * When [alternativeManaCost] is non-null the permission's cast pays that cost *rather than* the
+ * card's mana cost — an alternative cost (CR 118.9), so it can't be combined with another one, and
+ * cost increases and reductions still apply on top of it. It is how the keywordless "You may cast
+ * this card from your graveyard by paying {2}{W} rather than paying its mana cost" reads (Raffine's
+ * Guidance) — `MayCastSelfFromZones(listOf(Zone.GRAVEYARD), alternativeManaCost = ManaCost.parse("{2}{W}"))`;
+ * a non-mana half ("and exiling four other cards from your graveyard", Squee, Dubious Monarch) is
+ * [additionalCost]. Unlike escape (CR 702.138) the cast confers no "escaped" designation and the
+ * card isn't exiled on resolution. Exclusive with [castUsing], whose ability names its own price.
+ *
  * @property zones The zones from which this card may be cast.
- * @property condition Optional gate; null = always available (the Squee shape).
- * @property additionalCost Optional additional cost required alongside the card's mana cost when
- *   cast through this permission; null = no additional cost (the Squee/Gravecrawler shape).
+ * @property condition Optional gate; null = always available.
+ * @property additionalCost Optional additional cost required alongside the card's mana cost (or
+ *   [alternativeManaCost]) when cast through this permission; null = no additional cost.
  * @property castUsing The casting ability this permission is restricted to; null = an ordinary
  *   cast (and any alternative cost the card offers).
+ * @property alternativeManaCost The mana paid instead of the card's mana cost when cast through
+ *   this permission; null = the card's own mana cost.
  */
 @SerialName("MayCastSelfFromZones")
 @Serializable
@@ -793,13 +816,25 @@ data class MayCastSelfFromZones(
     val zones: List<Zone>,
     val condition: Condition? = null,
     val additionalCost: AdditionalCost? = null,
-    val castUsing: Keyword? = null
+    val castUsing: Keyword? = null,
+    val alternativeManaCost: ManaCost? = null
 ) : StaticAbility {
+    init {
+        require(castUsing == null || alternativeManaCost == null) {
+            "MayCastSelfFromZones: castUsing names its own price; it can't also carry an alternativeManaCost"
+        }
+    }
+
     override val description: String = buildString {
         append("You may cast this card from ${zones.joinToString(" or ") { it.displayName }}")
         if (castUsing != null) append(" using its ${castUsing.displayName.lowercase()} ability")
-        if (additionalCost != null) append(" by ${additionalCost.description.lowercase()} in addition to paying its other costs")
-        if (condition != null) append(" ${condition.description}")
+        if (alternativeManaCost != null) {
+            if (condition != null) append(" ${condition.description}")
+            append(" by paying $alternativeManaCost")
+            if (additionalCost != null) append(" and ${additionalCost.description.lowercase()}")
+            append(" rather than paying its mana cost")
+        } else if (additionalCost != null) append(" by ${additionalCost.description.lowercase()} in addition to paying its other costs")
+        if (condition != null && alternativeManaCost == null) append(" ${condition.description}")
         append(".")
     }
 
