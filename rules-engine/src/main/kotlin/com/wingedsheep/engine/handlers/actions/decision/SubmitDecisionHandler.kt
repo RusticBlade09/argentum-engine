@@ -57,13 +57,16 @@ class SubmitDecisionHandler(
 
         // The answer finished the work that asked it. If that work carried the game into another
         // step (an untap or cleanup choice, the last opening-hand leyline), the step machine has
-        // already handed priority to the active player. Otherwise the answering player gets it.
-        // After a resolution that is not always CR 117.3b's active player; see the open bug on
-        // priority landing on the last decision's answerer.
+        // already handed priority to the active player. If it was a stack object's resolution —
+        // whose bottom frame was waiting beneath the question — the active player receives
+        // priority (CR 117.3b), whoever answered last. Otherwise the work was the answering
+        // player's own announcement or special action, and they keep priority (CR 117.3c).
         val finishedInStep = result.state.turnNumber == state.turnNumber && result.state.step == state.step
         val answer = (state.continuationStack.lastOrNull() as? Suspension)?.answer
         val finishedBlockerPiles = answer is BlockerPilesContinuation || answer is BlockerPileRestrictionChoiceContinuation
-        val settled = if (finishedInStep && !finishedBlockerPiles) result.state.withPriority(action.playerId) else result.state
+        val finishedResolution = state.continuationStack.any { it is EndResolutionControlContinuation }
+        val recipient = if (finishedResolution) result.state.activePlayerId ?: action.playerId else action.playerId
+        val settled = if (finishedInStep && !finishedBlockerPiles) result.state.withPriority(recipient) else result.state
         return ExecutionResult.success(settled, events)
     }
 
