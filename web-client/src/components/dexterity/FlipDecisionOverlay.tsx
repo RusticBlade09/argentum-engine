@@ -4,7 +4,7 @@ import type { EntityId, FlipOntoBattlefieldDecision } from '@/types'
 import { getCardImageUrl } from '@/utils/cardImages.ts'
 import { FlipTableStage, type CardMark, type StagePointerKind } from './FlipTableStage'
 import { FlipOrb } from './FlipOrb'
-import { carryDrift, carryPoint, driftLabel, makeFlipView, previewTouches, releaseQuality, scatterSigma, type Point } from './flipGeometry'
+import { carryDrift, carryPoint, driftLabel, makeFlipView, swayPull, previewTouches, releaseQuality, scatterSigma, type Point } from './flipGeometry'
 import decisionStyles from '../decisions/DecisionUI.module.css'
 import styles from './Flip.module.css'
 
@@ -13,6 +13,11 @@ const FIRST_SWING_MS = 1700
 /** The quickest the swing gets, and how fast it gets there (ms of period lost per ms held). */
 const FASTEST_SWING_MS = 850
 const SWING_SPEEDUP = 0.28
+/** One sway of the hand, left and back; out of step with the meter so the two rarely line up. */
+const SWAY_MS = 1150
+/** How far the hand sways at first (fraction of a full sway), and how fast that widens per ms. */
+const SWAY_START = 0.4
+const SWAY_GROWTH = 0.00035
 /** How long the hand stays steady before it starts to shake. */
 const STEADY_MS = 900
 const GAUGE_HEIGHT = 220
@@ -28,6 +33,12 @@ function phaseAt(elapsed: number): number {
 /** The meter's strength at [elapsed] ms into the swing: a 0 → 1 → 0 ping-pong that keeps speeding up. */
 function meterAt(elapsed: number): number {
   return (1 - Math.cos(phaseAt(elapsed))) / 2
+}
+
+/** The hand's sideways sway (-1 left .. 1 right) [elapsed] ms into a swing that began at [phase]. */
+function swayAt(elapsed: number, phase: number): number {
+  const amp = Math.min(1, SWAY_START + elapsed * SWAY_GROWTH)
+  return amp * Math.sin((2 * Math.PI * elapsed) / SWAY_MS + phase)
 }
 
 /** The hand's drift (mm) at [elapsed] ms: nearly steady at first, then a growing tremble. */
@@ -60,6 +71,8 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
   /** What the ghost covers mid-swing, where the release would carry it right now. */
   const [swingCovered, setSwingCovered] = useState<readonly EntityId[]>([])
   const swingStart = useRef(0)
+  /** Where in its sway the hand starts each swing — different every time. */
+  const swayPhase = useRef(0)
   const aimRef = useRef<Point | null>(null)
   const submitted = useRef(false)
 
@@ -68,6 +81,7 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
   const crossRef = useRef<HTMLDivElement>(null)
   const needleRef = useRef<HTMLDivElement>(null)
   const readoutRef = useRef<HTMLDivElement>(null)
+  const swayDotRef = useRef<HTMLDivElement>(null)
   const orbRef = useRef<HTMLDivElement>(null)
 
   const playerName = useCallback(
@@ -78,9 +92,9 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
   // Place the crosshair at the aim [p] (table mm), and the ghost and scatter ring where a release
   // of [strength] would carry to — on the aim at the sweet spot, short or long of it otherwise.
   const placeAim = useCallback(
-    (p: Point, strength: number, locked: boolean) => {
+    (p: Point, strength: number, locked: boolean, sway = 0) => {
       const c = view.toStage(p)
-      const landsAt = carryPoint(table, release, p, strength)
+      const landsAt = carryPoint(table, release, p, strength, sway)
       const s = view.toStage(landsAt)
       const sigma = scatterSigma(table, release, p, strength)
       const r = 2 * sigma + 31.5
@@ -111,10 +125,11 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
     const tick = () => {
       const elapsed = performance.now() - swingStart.current
       const v = meterAt(elapsed)
+      const sway = swayAt(elapsed, swayPhase.current)
       const base = aimRef.current
       if (base) {
         const d = tremorAt(elapsed)
-        const landsAt = placeAim({ x: base.x + d.x, y: base.y + d.y }, v, true)
+        const landsAt = placeAim({ x: base.x + d.x, y: base.y + d.y }, v, true, sway)
         const now = table.cards.filter((c) => previewTouches(landsAt, c)).map((c) => c.entityId)
         const key = now.join(',')
         if (key !== coveredKey) {
@@ -125,8 +140,14 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
       if (needleRef.current) needleRef.current.style.top = `${(1 - v) * GAUGE_HEIGHT}px`
       if (readoutRef.current) {
         const drift = carryDrift(release, v)
-        readoutRef.current.textContent = driftLabel(drift)
-        readoutRef.current.dataset.tone = Math.abs(drift) < 20 ? 'good' : 'off'
+        const pull = swayPull(release, sway)
+        readoutRef.current.textContent = driftLabel(drift, pull)
+        readoutRef.current.dataset.tone = Math.hypot(drift, pull) < 20 ? 'good' : 'off'
+      }
+      const dot = swayDotRef.current
+      if (dot) {
+        dot.style.left = `${50 + 50 * sway}%`
+        dot.dataset.tone = Math.abs(sway) < 0.18 ? 'good' : 'off'
       }
       if (orbRef.current) {
         orbRef.current.style.transform = `translateY(${-v * 26}px) rotateX(${v * 38}deg) rotateZ(-6deg) scale(${1 + v * 0.08})`
@@ -150,6 +171,7 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
     if (submitted.current) return
     aimRef.current = p
     setAim(p)
+    swayPhase.current = Math.random() * 2 * Math.PI
     swingStart.current = performance.now()
     setSwinging(true)
   }, [])
@@ -163,10 +185,11 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
     if (submitted.current || !aimRef.current) return
     const elapsed = performance.now() - swingStart.current
     const strength = meterAt(elapsed)
+    const sway = swayAt(elapsed, swayPhase.current)
     const d = tremorAt(elapsed)
     submitted.current = true
     setSwinging(false)
-    submitFlipThrow(decision.id, aimRef.current.x + d.x, aimRef.current.y + d.y, strength)
+    submitFlipThrow(decision.id, aimRef.current.x + d.x, aimRef.current.y + d.y, strength, sway)
   }, [decision.id, submitFlipThrow])
 
   const onPointer = (kind: StagePointerKind, p: Point, e: ReactPointerEvent<HTMLDivElement>) => {
@@ -303,6 +326,15 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
           <FlipOrb ref={orbRef} imageUrl={orbImage} className={styles.orbInHand} faceClassName={styles.orbGlow} />
         </div>
 
+        <div className={styles.sway} style={{ left: hand.x, top: hand.y + 54, opacity: swinging ? 1 : 0.35 }} aria-hidden>
+          <span className={styles.swayEnd}>left</span>
+          <div className={styles.swayTrack}>
+            <div className={styles.swayCentre} />
+            <div ref={swayDotRef} className={styles.swayDot} style={{ left: '50%' }} />
+          </div>
+          <span className={styles.swayEnd}>right</span>
+        </div>
+
         <div className={styles.gauge} style={{ left: gaugeX, top: hand.y + 44 - GAUGE_HEIGHT, height: GAUGE_HEIGHT }}>
           <div className={styles.gaugeTrack}>
             <div className={`${styles.gaugeZone} ${styles.zoneSoft}`} style={{ top: (1 - soft) * GAUGE_HEIGHT, bottom: 5 }} />
@@ -332,12 +364,12 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
             <span className={styles.stepNum}>2</span>Press and hold — the swing starts at once
           </span>
           <span className={`${styles.step} ${swinging ? styles.stepActive : ''}`}>
-            <span className={styles.stepNum}>3</span>Let go on the gold line
+            <span className={styles.stepNum}>3</span>Let go on the gold line, hand centred
           </span>
         </div>
         <span className={styles.subtitle}>
           {swinging
-            ? 'Early falls short, late sails long · each swing is quicker and your hand starts to shake · Esc to stop'
+            ? 'Early falls short, late sails long · your hand sways left and right too · Esc to stop'
             : 'Aim first — your first click starts the swing · Space works too'}
         </span>
       </div>

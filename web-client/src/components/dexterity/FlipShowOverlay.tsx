@@ -174,8 +174,14 @@ function FlipShowView({ show }: { show: FlipShow }) {
       return c?.controllerId === viewerId ? `${name} (yours)` : name
     })
     const then = `Then ${show.sourceName} is destroyed.`
-    const cm = Math.round(Math.abs(result.landing.drift ?? 0) / 10)
-    const carry = cm < 3 ? '' : (result.landing.drift ?? 0) < 0 ? `Let go early — it fell ${cm} cm short. ` : `Let go late — it sailed ${cm} cm long. `
+    const drift = result.landing.drift ?? 0
+    const pull = result.landing.pull ?? 0
+    const cm = Math.round(Math.abs(drift) / 10)
+    const sideCm = Math.round(Math.abs(pull) / 10)
+    // Left and right are the thrower's; anyone else just sees it go wide.
+    const side = sideCm < 3 ? null : show.isYours ? `pulled ${sideCm} cm ${pull < 0 ? 'left' : 'right'}` : `pulled ${sideCm} cm wide`
+    const depth = cm < 3 ? null : drift < 0 ? `Let go early — it fell ${cm} cm short` : `Let go late — it sailed ${cm} cm long`
+    const carry = depth && side ? `${depth} and ${side}. ` : depth ? `${depth}. ` : side ? `The hand swayed — it ${side}. ` : ''
     if (!result.turnedOver) {
       return {
         title: `${whose} ${show.sourceName} didn't turn over`,

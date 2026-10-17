@@ -86,6 +86,8 @@ data class FlipLanding(
     val halfTurns: Int,
     /** How far (mm) the release carried it short (negative) of the aim or past it, before scatter. */
     val drift: Double = 0.0,
+    /** How far (mm) the hand's sway pulled it sideways, to the thrower's right (positive) or left. */
+    val pull: Double = 0.0,
     /** Where the thrower aimed, so every viewer can tell a hit on the intended card from a stray. */
     val aimX: Double? = null,
     val aimY: Double? = null,

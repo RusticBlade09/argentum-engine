@@ -85,7 +85,7 @@ class MiscContinuationResumer(
         val table = continuation.table
         val (landing, rolled) = state.nextRandom {
             com.wingedsheep.engine.mechanics.dexterity.FlipPhysics.land(
-                table, response.aimX, response.aimY, response.strength, this
+                table, response.aimX, response.aimY, response.strength, this, sway = response.sway
             )
         }
         val touched = com.wingedsheep.engine.mechanics.dexterity.FlipPhysics.touched(table, landing)

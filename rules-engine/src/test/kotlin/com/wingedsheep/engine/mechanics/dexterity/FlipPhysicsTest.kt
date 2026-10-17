@@ -130,6 +130,20 @@ class FlipPhysicsTest : FunSpec({
             (x - 650.0) shouldBe ((370.0 - y) plusOrMinus 1e-9)
         }
 
+        test("the hand's sway pulls it to the thrower's left or right of the line, never along it") {
+            // Hand straight below the aim: the thrower's right is +x.
+            val (rx, ry) = FlipPhysics.carry(t, 350.0, 200.0, FlipPhysics.SWEET_SPOT, sway = 1.0)
+            rx shouldBe (350.0 + FlipPhysics.SIDE_PER_SWAY plusOrMinus 1e-9)
+            ry shouldBe (200.0 plusOrMinus 1e-9)
+            FlipPhysics.carry(t, 350.0, 200.0, FlipPhysics.SWEET_SPOT, sway = -0.5).first shouldBe
+                (350.0 - FlipPhysics.SIDE_PER_SWAY / 2 plusOrMinus 1e-9)
+            // Out-of-range sway is clamped to the edge of the swing.
+            FlipPhysics.pull(7.0) shouldBe FlipPhysics.SIDE_PER_SWAY
+            val landing = FlipPhysics.land(t, 350.0, 200.0, FlipPhysics.SWEET_SPOT, GameRng.seeded(3), sway = -1.0).first
+            landing.pull shouldBe -FlipPhysics.SIDE_PER_SWAY
+            landing.x shouldBeLessThan 350.0 - 60.0
+        }
+
         test("a clean release lands nearly square, so the aim ghost shows what it covers; a sloppy one skews") {
             fun skew(strength: Double) = (0L until 200L).map {
                 val r = FlipPhysics.land(t, 350.0, 200.0, strength, GameRng.seeded(it)).first.rotation

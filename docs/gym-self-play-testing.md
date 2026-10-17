@@ -223,7 +223,7 @@ empty. Post a typed `DecisionResponse` to `POST /envs/{id}/decision`. The JSON d
 | `ASSIGN_DAMAGE` | `DamageAssignmentResponse` | `assignments: { "<entityId>": int }` |
 | `SELECT_MANA_SOURCES` | `ManaSourcesSelectedResponse` | `selectedSources: ["<id>",…]`, `autoPay: true`, or `declined: true` |
 | `BUDGET_MODAL` | `BudgetModalResponse` | `selectedModeIndices: [int, …]` |
-| `FLIP_ONTO_BATTLEFIELD` | `FlipThrowResponse` | `aimX: float, aimY: float` (table millimetres), `strength: 0..1` |
+| `FLIP_ONTO_BATTLEFIELD` | `FlipThrowResponse` | `aimX: float, aimY: float` (table millimetres), `strength: 0..1`, optional `sway: -1..1` (0 = straight) |
 
 Every response also needs `decisionId` (copy it from `pendingDecision.decisionId`). The
 `pendingDecision.shape` field carries the constraints (`minSelections`, `maxSelections`,

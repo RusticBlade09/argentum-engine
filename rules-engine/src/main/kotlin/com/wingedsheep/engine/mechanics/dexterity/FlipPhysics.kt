@@ -17,7 +17,8 @@ import kotlin.math.sqrt
  * The release meter the flipping player plays against, sent with the decision so the client draws
  * exactly the zones and scatter the engine scores. Strength runs 0..1; a release at [sweetSpot]
  * carries exactly to the aim, and every bit of strength either side of it drifts the landing
- * [depthPerStrength] mm short of the aim or past it. Inside [cleanFrom]..[cleanTo] the hand is as
+ * [depthPerStrength] mm short of the aim or past it, and the hand's sideways sway at release pulls
+ * it up to [sidePerSway] mm to either side. Inside [cleanFrom]..[cleanTo] the hand is as
  * steady as it gets; below [tooSoftBelow] the card is unlikely to turn over. The scatter terms are
  * [FlipPhysics.scatter]'s, for the aim preview.
  */
@@ -25,6 +26,7 @@ import kotlin.math.sqrt
 data class FlipReleaseProfile(
     val sweetSpot: Double = FlipPhysics.SWEET_SPOT,
     val depthPerStrength: Double = FlipPhysics.DEPTH_PER_STRENGTH,
+    val sidePerSway: Double = FlipPhysics.SIDE_PER_SWAY,
     val cleanFrom: Double = FlipPhysics.CLEAN_FROM,
     val cleanTo: Double = FlipPhysics.CLEAN_TO,
     val tooSoftBelow: Double = FlipPhysics.TOO_SOFT_BELOW,
@@ -40,7 +42,9 @@ data class FlipReleaseProfile(
  * The player supplies an aim point and a release strength; the engine supplies the hand's
  * unsteadiness. The release decides how far the card carries: early falls short along the line
  * from the hand (often onto the thrower's own permanents), late sails long, so a mistimed flip
- * comes down on some other card rather than just "a bit off". The aim is the player's to get
+ * comes down on some other card rather than just "a bit off". The hand also sways from side to
+ * side while it swings, and wherever the sway is at release pulls the card that far to the
+ * thrower's left or right of the line. The aim is the player's to get
  * right: a clean release lands within a few millimetres of it, so random scatter stays small —
  * growing a little with distance from the hand and more with a sloppy release — and the number
  * of half-turns grows with strength. All randomness comes from the game's seeded RNG, so a flip
@@ -54,6 +58,8 @@ object FlipPhysics {
 
     /** How far (mm) a release carries short or long per unit of strength off the sweet spot. */
     const val DEPTH_PER_STRENGTH = 800.0
+    /** How far (mm) a release at the very edge of the hand's sway pulls to that side. */
+    const val SIDE_PER_SWAY = 110.0
 
     /** Scatter (one standard deviation, mm) of a clean release, before distance. */
     const val BASE_SCATTER = 3.0
@@ -89,17 +95,23 @@ object FlipPhysics {
 
     /**
      * Where a release of [strength] aimed at ([aimX], [aimY]) carries to before scatter: the aim
-     * point, pushed along the line from the hand by the release's distance from the sweet spot.
+     * point, pushed along the line from the hand by the release's distance from the sweet spot,
+     * and across it by the hand's [sway] (positive is the thrower's right).
      */
-    fun carry(table: FlipTable, aimX: Double, aimY: Double, strength: Double): Pair<Double, Double> {
+    fun carry(table: FlipTable, aimX: Double, aimY: Double, strength: Double, sway: Double = 0.0): Pair<Double, Double> {
         val dx = aimX - table.handX
         val dy = aimY - table.handY
         val length = hypot(dx, dy)
         // Aiming at the hand itself: the throw still goes away from the thrower.
         val (ux, uy) = if (length < 1.0) 0.0 to -1.0 else dx / length to dy / length
         val drift = drift(strength)
-        return (aimX + ux * drift) to (aimY + uy * drift)
+        // The thrower faces along (ux, uy); their right-hand side is (-uy, ux).
+        val pull = pull(sway)
+        return (aimX + ux * drift - uy * pull) to (aimY + uy * drift + ux * pull)
     }
+
+    /** Sideways carry error (mm) of a release: positive pulls to the thrower's right. */
+    fun pull(sway: Double): Double = sway.coerceIn(-1.0, 1.0) * SIDE_PER_SWAY
 
     /** Signed carry error (mm) of a release: negative falls short, positive sails long. */
     fun drift(strength: Double): Double = (strength.coerceIn(0.0, 1.0) - SWEET_SPOT) * DEPTH_PER_STRENGTH
@@ -111,12 +123,20 @@ object FlipPhysics {
     }
 
     /** Roll where the flip lands. Returns the landing and the advanced RNG. */
-    fun land(table: FlipTable, aimX: Double, aimY: Double, strength: Double, rng: GameRng): Pair<FlipLanding, GameRng> {
+    fun land(
+        table: FlipTable,
+        aimX: Double,
+        aimY: Double,
+        strength: Double,
+        rng: GameRng,
+        sway: Double = 0.0,
+    ): Pair<FlipLanding, GameRng> {
         val ax = aimX.coerceIn(-AIM_SLACK, table.width + AIM_SLACK)
         val ay = aimY.coerceIn(-AIM_SLACK, table.height + AIM_SLACK)
         val s = strength.coerceIn(0.0, 1.0)
         val sigma = scatter(table, ax, ay, s)
-        val (cx, cy) = carry(table, ax, ay, s)
+        val w = if (sway.isFinite()) sway.coerceIn(-1.0, 1.0) else 0.0
+        val (cx, cy) = carry(table, ax, ay, s, w)
 
         var r = rng
         fun uniform(): Double { val (d, next) = r.nextDouble(); r = next; return d }
@@ -134,7 +154,7 @@ object FlipPhysics {
         val skew = CLEAN_SKEW + SLOPPY_SKEW * (1.0 - releaseQuality(s))
         val rotation = ((gaussian() * skew) % 360.0 + 360.0) % 360.0
         val halfTurns = floor(max(0.0, HALF_TURNS_AT_ZERO + HALF_TURNS_PER_STRENGTH * s + gaussian() * HALF_TURN_NOISE)).toInt()
-        return FlipLanding(x = x, y = y, rotation = rotation, halfTurns = halfTurns, drift = drift(s), aimX = ax, aimY = ay) to r
+        return FlipLanding(x = x, y = y, rotation = rotation, halfTurns = halfTurns, drift = drift(s), pull = pull(w), aimX = ax, aimY = ay) to r
     }
 
     /**

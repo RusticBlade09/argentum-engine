@@ -53,14 +53,19 @@ class ChaosOrbScenarioTest : ScenarioTestBase() {
         x: Double,
         y: Double,
         strength: Double = clean,
+        sway: Double = 0.0,
     ): CardFlippedOntoBattlefieldEvent {
-        val result = submitDecision(FlipThrowResponse(decision.id, x, y, strength))
+        val result = submitDecision(FlipThrowResponse(decision.id, x, y, strength, sway))
         withClue("Throwing should succeed: ${result.error}") { result.error shouldBe null }
         return result.events.filterIsInstance<CardFlippedOntoBattlefieldEvent>().single()
     }
 
-    private fun TestGame.throwAtCard(decision: FlipOntoBattlefieldDecision, id: EntityId, strength: Double = clean) =
-        decision.table.cards.single { it.entityId == id }.let { throwAt(decision, it.x, it.y, strength) }
+    private fun TestGame.throwAtCard(
+        decision: FlipOntoBattlefieldDecision,
+        id: EntityId,
+        strength: Double = clean,
+        sway: Double = 0.0,
+    ) = decision.table.cards.single { it.entityId == id }.let { throwAt(decision, it.x, it.y, strength, sway) }
 
     /** Everything the flip counts is destroyed; every other permanent on the table is untouched. */
     private fun TestGame.assertBoardMatches(event: CardFlippedOntoBattlefieldEvent) {
@@ -132,6 +137,29 @@ class ChaosOrbScenarioTest : ScenarioTestBase() {
                 event.affected shouldContain giant
                 event.affected shouldNotContain bears
                 game.isInGraveyard(1, "Hill Giant").shouldBeTrue()
+                game.isOnBattlefield("Grizzly Bears").shouldBeTrue()
+                game.assertBoardMatches(event)
+            }
+
+            test("let go mid-sway and it pulls sideways — onto the creature next to your target") {
+                val game = baseScenario()
+                    .withCardOnBattlefield(2, "Grizzly Bears")
+                    .withCardOnBattlefield(2, "Hill Giant")
+                    .build()
+                val bears = game.findPermanent("Grizzly Bears")!!
+                val giant = game.findPermanent("Hill Giant")!!
+
+                val decision = game.activateOrb()
+                val target = decision.table.cards.single { it.entityId == bears }
+                val neighbour = decision.table.cards.single { it.entityId == giant }
+                // From the thrower's seat, +x is their right: sway towards the neighbour by exactly the gap.
+                val sway = (neighbour.x - target.x) / decision.release.sidePerSway
+                val event = game.throwAtCard(decision, bears, sway = sway)
+
+                kotlin.math.abs(event.landing.pull) shouldBeGreaterThan 60.0
+                event.affected shouldContain giant
+                event.affected shouldNotContain bears
+                game.isInGraveyard(2, "Hill Giant").shouldBeTrue()
                 game.isOnBattlefield("Grizzly Bears").shouldBeTrue()
                 game.assertBoardMatches(event)
             }

@@ -877,6 +877,8 @@ export interface FlipReleaseProfile {
   readonly sweetSpot: number
   /** Millimetres a release carries short of the aim (below the sweet spot) or past it, per unit of strength. */
   readonly depthPerStrength: number
+  /** Millimetres the hand's sway pulls a release sideways at the very edge of the swing. */
+  readonly sidePerSway: number
   readonly cleanFrom: number
   readonly cleanTo: number
   readonly tooSoftBelow: number
@@ -894,6 +896,8 @@ export interface FlipLanding {
   readonly halfTurns: number
   /** How far (mm) the release carried it short of the aim (negative) or past it; absent when on target. */
   readonly drift?: number
+  /** How far (mm) the hand's sway pulled it to the thrower's right (positive) or left; absent when straight. */
+  readonly pull?: number
   /** Where the thrower aimed. */
   readonly aimX?: number | null
   readonly aimY?: number | null

@@ -68,21 +68,35 @@ export function carryDrift(profile: FlipReleaseProfile, strength: number): numbe
   return (Math.min(1, Math.max(0, strength)) - profile.sweetSpot) * profile.depthPerStrength
 }
 
-/** Where a release of [strength] aimed at [aim] carries to before scatter — along the line from the hand. */
-export function carryPoint(table: FlipTable, profile: FlipReleaseProfile, aim: Point, strength: number): Point {
+/** Sideways carry error (mm) of a release at hand sway [sway] (-1..1): positive pulls to the thrower's right. */
+export function swayPull(profile: FlipReleaseProfile, sway: number): number {
+  return Math.min(1, Math.max(-1, sway)) * profile.sidePerSway
+}
+
+/**
+ * Where a release of [strength] at hand sway [sway] aimed at [aim] carries to before scatter —
+ * along the line from the hand, and across it (mirrors the engine's carry).
+ */
+export function carryPoint(table: FlipTable, profile: FlipReleaseProfile, aim: Point, strength: number, sway = 0): Point {
   const dx = aim.x - table.handX
   const dy = aim.y - table.handY
   const length = Math.hypot(dx, dy)
   const [ux, uy] = length < 1 ? [0, -1] : [dx / length, dy / length]
   const drift = carryDrift(profile, strength)
-  return { x: aim.x + ux * drift, y: aim.y + uy * drift }
+  // The thrower faces along (ux, uy); their right-hand side is (-uy, ux).
+  const pull = swayPull(profile, sway)
+  return { x: aim.x + ux * drift - uy * pull, y: aim.y + uy * drift + ux * pull }
 }
 
-/** A carry error as the player reads it: "on target", "6 cm short", "4 cm long". */
-export function driftLabel(drift: number): string {
-  const cm = Math.round(Math.abs(drift) / 10)
-  if (cm === 0) return 'on target'
-  return `${cm} cm ${drift < 0 ? 'short' : 'long'}`
+/** A carry error as the player reads it: "on target", "6 cm short · 3 cm left", "4 cm long". */
+export function driftLabel(drift: number, pull = 0): string {
+  const depth = Math.round(Math.abs(drift) / 10)
+  const side = Math.round(Math.abs(pull) / 10)
+  const parts = [
+    ...(depth === 0 ? [] : [`${depth} cm ${drift < 0 ? 'short' : 'long'}`]),
+    ...(side === 0 ? [] : [`${side} cm ${pull < 0 ? 'left' : 'right'}`]),
+  ]
+  return parts.length === 0 ? 'on target' : parts.join(' · ')
 }
 
 /** One standard deviation of scatter (mm) for a throw at [aim] — the engine's formula, its numbers. */

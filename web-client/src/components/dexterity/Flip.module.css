@@ -357,6 +357,56 @@
   color: #ffd36e;
 }
 
+.sway {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 23;
+}
+
+.swayEnd {
+  font-size: 8.5px;
+  color: rgba(255, 236, 200, 0.6);
+}
+
+.swayTrack {
+  position: relative;
+  width: 120px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 226, 160, 0.35);
+}
+
+.swayCentre {
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  background: #ffd36e;
+  box-shadow: 0 0 5px rgba(255, 211, 110, 0.9);
+}
+
+.swayDot {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.9);
+}
+
+.swayDot[data-tone='off'] {
+  background: #ffb39a;
+}
+
 /* ---- The orb ------------------------------------------------------------------------------ */
 
 .orbAnchor {

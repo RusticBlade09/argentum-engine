@@ -990,8 +990,10 @@ data class FlipOntoBattlefieldDecision(
 ) : PendingDecision
 
 /**
- * Response to [FlipOntoBattlefieldDecision]: the aim point in table millimetres and the release
- * strength (0..1). Out-of-range values are clamped by the engine, never trusted.
+ * Response to [FlipOntoBattlefieldDecision]: the aim point in table millimetres, the release
+ * strength (0..1) and where the throwing hand's sideways sway was at release (-1 full left ..
+ * 1 full right, from the thrower's seat; 0 is straight). Out-of-range values are clamped by the
+ * engine, never trusted.
  */
 @Serializable
 @SerialName("FlipThrowResponse")
@@ -1000,6 +1002,7 @@ data class FlipThrowResponse(
     val aimX: Double,
     val aimY: Double,
     val strength: Double,
+    val sway: Double = 0.0,
 ) : DecisionResponse
 
 /**

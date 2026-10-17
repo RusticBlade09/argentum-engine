@@ -73,7 +73,7 @@ export interface GameplaySliceActions {
   submitOptionDecision: (decisionId: string, optionIndex: number) => void
   submitReplacementDecision: (decisionId: string, fromIndex: number, toIndex: number) => void
   submitBudgetModalDecision: (decisionId: string, selectedModeIndices: readonly number[]) => void
-  submitFlipThrow: (decisionId: string, aimX: number, aimY: number, strength: number) => void
+  submitFlipThrow: (decisionId: string, aimX: number, aimY: number, strength: number, sway: number) => void
   submitDistributeDecision: (decisionId: string, distribution: Record<EntityId, number>) => void
   submitDamageAssignmentDecision: (decisionId: string, assignments: Record<EntityId, number>) => void
   submitCombatResolutionDecision: (decisionId: string, edges: ReadonlyArray<{ edgeId: string; amount: number }>) => void
@@ -356,7 +356,7 @@ export const createGameplaySlice: SliceCreator<GameplaySlice> = (set, get) => ({
     get().submitAction(action, decisionInteractionEpoch(action.response.decisionId))
   },
 
-  submitFlipThrow: (decisionId, aimX, aimY, strength) => {
+  submitFlipThrow: (decisionId, aimX, aimY, strength, sway) => {
     const { pendingDecision } = get()
     if (!pendingDecision || pendingDecision.id !== decisionId || pendingDecision.type !== 'FlipOntoBattlefieldDecision') return
 
@@ -381,6 +381,7 @@ export const createGameplaySlice: SliceCreator<GameplaySlice> = (set, get) => ({
         aimX,
         aimY,
         strength,
+        sway,
       },
     }
     get().submitAction(action, decisionInteractionEpoch(action.response.decisionId))

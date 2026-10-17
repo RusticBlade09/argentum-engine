@@ -32,17 +32,12 @@ val ChaosOrb = card("Chaos Orb") {
 
     activatedAbility {
         cost = Costs.Composite(Costs.Mana("{1}"), Costs.Tap)
-        effect = Effects.Composite(
-            listOf(
-                Effects.If(
-                    Conditions.SourceInZone(Zone.BATTLEFIELD),
-                    Effects.Pipeline {
-                        destroy(flipOntoBattlefield(GameObjectFilter.Permanent.nontoken()))
-                    },
-                ),
-                Effects.Destroy(EffectTarget.Self),
-            )
-        )
+        effect = Effects.If(
+            Conditions.SourceInZone(Zone.BATTLEFIELD),
+            Effects.Pipeline {
+                destroy(flipOntoBattlefield(GameObjectFilter.Permanent.nontoken()))
+            },
+        ) then Effects.Destroy(EffectTarget.Self)
         description = "{1}, {T}: If this artifact is on the battlefield, flip it onto the battlefield from a height of " +
             "at least one foot. If this artifact turns over completely at least once during the flip, destroy all " +
             "nontoken permanents it touches. Then destroy this artifact."
