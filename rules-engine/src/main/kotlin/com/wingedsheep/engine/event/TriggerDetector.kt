@@ -959,6 +959,8 @@ class TriggerDetector(
      * [SuppressEntersTriggers.filter] in projected state (continuous effects apply), not what the
      * watching trigger's text names. Replacement effects (enters with counters/tapped) and
      * "as it enters" choices are untouched because they never become [PendingTrigger]s.
+     * A suppressor that has lost all abilities in projected state (Infinite Coursework on Karn,
+     * Argent Defender) is inert: the lock is the permanent's own ability.
      *
      * Operates as a final filter over the already-detected batch, so it covers the per-permanent
      * ETB path ([detectTriggersForEvent]), the "one or more permanents entered" batch path
@@ -990,7 +992,7 @@ class TriggerDetector(
         val suppressors = mutableListOf<Suppressor>()
         for (permanentId in state.getBattlefield()) {
             val container = state.getEntity(permanentId) ?: continue
-            if (container.has<FaceDownComponent>()) continue
+            if (container.has<FaceDownComponent>() || projected.hasLostAllAbilities(permanentId)) continue
             val cardDef = container.get<CardComponent>()
                 ?.let { cardRegistry.getCard(it.cardDefinitionId) } ?: continue
             for (ability in cardDef.script.staticAbilities) {
@@ -4166,7 +4168,7 @@ class TriggerDetector(
         for (permanentId in state.getBattlefield()) {
             val container = state.getEntity(permanentId) ?: continue
             val card = container.get<CardComponent>() ?: continue
-            if (container.has<FaceDownComponent>()) continue
+            if (container.has<FaceDownComponent>() || projected.hasLostAllAbilities(permanentId)) continue
             val controllerId = projected.getController(permanentId) ?: continue
             val cardDef = registry.getCard(card.cardDefinitionId) ?: continue
 
@@ -4329,7 +4331,7 @@ class TriggerDetector(
         for (permanentId in state.getBattlefield()) {
             val container = state.getEntity(permanentId) ?: continue
             val card = container.get<CardComponent>() ?: continue
-            if (container.has<FaceDownComponent>()) continue
+            if (container.has<FaceDownComponent>() || projected.hasLostAllAbilities(permanentId)) continue
             val controllerId = projected.getController(permanentId) ?: continue
             val cardDef = registry.getCard(card.cardDefinitionId) ?: continue
             val classLevel = container.get<ClassLevelComponent>()?.currentLevel
@@ -4421,7 +4423,7 @@ class TriggerDetector(
         for (permanentId in state.getBattlefield()) {
             val container = state.getEntity(permanentId) ?: continue
             val card = container.get<CardComponent>() ?: continue
-            if (container.has<FaceDownComponent>()) continue
+            if (container.has<FaceDownComponent>() || projected.hasLostAllAbilities(permanentId)) continue
             val controllerId = projected.getController(permanentId) ?: continue
             val cardDef = cardRegistry.getCard(card.cardDefinitionId) ?: continue
             val classLevel = container.get<ClassLevelComponent>()?.currentLevel
@@ -4551,7 +4553,7 @@ class TriggerDetector(
         for (permanentId in battlefield) {
             val container = state.getEntity(permanentId) ?: continue
             val card = container.get<CardComponent>() ?: continue
-            if (container.has<FaceDownComponent>()) continue
+            if (container.has<FaceDownComponent>() || projected.hasLostAllAbilities(permanentId)) continue
             val controllerId = projected.getController(permanentId) ?: continue
             collect(
                 permanentId, controllerId, card.cardDefinitionId,
@@ -4659,7 +4661,7 @@ class TriggerDetector(
         for (permanentId in state.getBattlefield()) {
             val container = state.getEntity(permanentId) ?: continue
             val card = container.get<CardComponent>() ?: continue
-            if (container.has<FaceDownComponent>()) continue
+            if (container.has<FaceDownComponent>() || projected.hasLostAllAbilities(permanentId)) continue
             val controllerId = projected.getController(permanentId) ?: continue
             val cardDef = registry.getCard(card.cardDefinitionId) ?: continue
             // Route through RoomFaceStatics so a doubler printed on an *unlocked* Room face
