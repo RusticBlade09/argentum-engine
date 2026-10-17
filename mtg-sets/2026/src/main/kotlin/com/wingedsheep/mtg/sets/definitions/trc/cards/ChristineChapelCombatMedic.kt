@@ -14,7 +14,7 @@ import com.wingedsheep.sdk.scripting.targets.EffectTarget
  * Legendary Creature — Human Doctor
  * 2/2
  *
- * Strange new worlds — When Christine Chapel enters, you gain life 
+ * Strange new worlds — When Christine Chapel enters, you gain life
  * equal to the number of differently named lands you control.
  *
  * Whenever you gain life, put two +1/+1 counters on Christine Chapel.
@@ -24,7 +24,7 @@ val ChristineChapelCombatMedic = card("Christine Chapel, Combat Medic") {
     colorIdentity = "G"
     typeLine = "Legendary Creature — Human Doctor"
     oracleText = "Strange new worlds — When Christine Chapel enters, you gain life " +
-            "equal to the number of differently named lands you control. " +
+            "equal to the number of differently named lands you control.\n" +
             "Whenever you gain life, put two +1/+1 counters on Christine Chapel."
     power = 2
     toughness = 2
@@ -41,7 +41,7 @@ val ChristineChapelCombatMedic = card("Christine Chapel, Combat Medic") {
 
     metadata {
         rarity = Rarity.RARE
-        collectorNumber = "300"
+        collectorNumber = "78"
         artist = "Pauline Voss"
         flavorText = ""
         imageUri = "https://cards.scryfall.io/normal/front/f/2/f2efcab5-3aad-4edd-87d1-289978e8855e.jpg?1786395991"

@@ -1,3 +1,56 @@
+// Christine Chapel, Combat Medic
+{
+    "name": "Christine Chapel, Combat Medic",
+    "manaCost": "{3}{G}",
+    "typeLine": "Legendary Creature — Human Doctor",
+    "oracleText": "Strange new worlds — When Christine Chapel enters, you gain life equal to the number of differently named lands you control.\nWhenever you gain life, put two +1/+1 counters on Christine Chapel.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 2
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Christine Chapel, Combat Medic:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "GainLife",
+                    "amount": {
+                        "type": "AggregateBattlefield",
+                        "player": "You",
+                        "filter": "land",
+                        "aggregation": "DISTINCT_NAMES"
+                    }
+                }
+            },
+            {
+                "id": "Christine Chapel, Combat Medic:2",
+                "trigger": "LifeGainEvent",
+                "binding": "ANY",
+                "effect": {
+                    "type": "AddCounters",
+                    "counterType": "PLUS_ONE_PLUS_ONE",
+                    "count": 2,
+                    "target": "Self"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "78",
+        "rarity": "RARE",
+        "artist": "Pauline Voss",
+        "flavorText": "",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/2/f2efcab5-3aad-4edd-87d1-289978e8855e.jpg?1786395991"
+    },
+    "colorIdentityOverride": [
+        "GREEN"
+    ]
+}
+
 // Defense Force Aggressor
 {
     "name": "Defense Force Aggressor",
