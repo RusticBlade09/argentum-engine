@@ -198,7 +198,7 @@ import com.wingedsheep.sdk.scripting.effects.Mode
 import com.wingedsheep.sdk.scripting.effects.CREATED_TOKENS
 import com.wingedsheep.sdk.scripting.effects.CreatePredefinedTokenEffect
 import com.wingedsheep.sdk.scripting.effects.InvestigateEffect
-import com.wingedsheep.sdk.scripting.effects.CreateRoleTokenEffect
+import com.wingedsheep.sdk.scripting.effects.CreateAuraTokenEffect
 import com.wingedsheep.sdk.scripting.effects.CounterAllOnStackEffect
 import com.wingedsheep.sdk.scripting.effects.CounterCondition
 import com.wingedsheep.sdk.scripting.effects.CounterDestination
@@ -3317,6 +3317,10 @@ object Effects {
     /**
      * Create a token that's a copy of a targeted permanent.
      * "Create a token that's a copy of target creature, except it's 1/1."
+     *
+     * @param attackDefender What an [attacking] copy attacks: the source's defending player
+     *   (default) or, with `CONTROLLER_CHOOSES`, a player / planeswalker / battle its controller
+     *   picks per token as it enters (CR 508.4).
      */
     fun CreateTokenCopyOfTarget(
         target: EffectTarget,
@@ -3347,6 +3351,8 @@ object Effects {
         stampCreator: Boolean = false,
         attachedTo: EffectTarget? = null,
         attackedPlayer: EffectTarget? = null,
+        attackDefender: com.wingedsheep.sdk.scripting.effects.EnteringAttackDefender =
+            com.wingedsheep.sdk.scripting.effects.EnteringAttackDefender.JOIN_SOURCE,
         basePower: DynamicAmount? = null,
         baseToughness: DynamicAmount? = null,
     ): Effect = CreateTokenCopyOfTarget(
@@ -3377,6 +3383,7 @@ object Effects {
         stampCreator = stampCreator,
         attachedTo = attachedTo,
         attackedPlayer = attackedPlayer,
+        attackDefender = attackDefender,
         basePower = basePower,
         baseToughness = baseToughness,
     )
@@ -3414,6 +3421,8 @@ object Effects {
         stampCreator: Boolean = false,
         attachedTo: EffectTarget? = null,
         attackedPlayer: EffectTarget? = null,
+        attackDefender: com.wingedsheep.sdk.scripting.effects.EnteringAttackDefender =
+            com.wingedsheep.sdk.scripting.effects.EnteringAttackDefender.JOIN_SOURCE,
         basePower: DynamicAmount? = null,
         baseToughness: DynamicAmount? = null,
     ): Effect = CreateTokenCopyOfTargetEffect(
@@ -3444,6 +3453,7 @@ object Effects {
         stampCreator = stampCreator,
         attachedTo = attachedTo,
         attackedPlayer = attackedPlayer,
+        attackDefender = attackDefender,
         basePower = basePower,
         baseToughness = baseToughness,
     )
@@ -3746,7 +3756,18 @@ object Effects {
      * @param target The creature to attach the Role to
      */
     fun CreateRoleToken(roleName: String, target: EffectTarget): Effect =
-        CreateRoleTokenEffect(roleName, target)
+        CreateAuraTokenEffect(roleName, target)
+
+    /**
+     * Create a named, predefined Aura token attached to a target object — "create a green Aura
+     * enchantment token named Settlement attached to up to one target land you control". No token
+     * is created when the target is unchosen or can't legally be enchanted by it (CR 303.4i).
+     *
+     * @param tokenName The registered token name (e.g. "Settlement")
+     * @param target The object to attach the token to
+     */
+    fun CreateAuraToken(tokenName: String, target: EffectTarget): Effect =
+        CreateAuraTokenEffect(tokenName, target)
 
     /**
      * Incubate N (CR 701.51). Create an Incubator token with N +1/+1 counters on it

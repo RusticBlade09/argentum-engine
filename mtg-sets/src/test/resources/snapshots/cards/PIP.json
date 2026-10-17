@@ -2174,6 +2174,181 @@
     }
 }
 
+// Cait, Cage Brawler
+{
+    "name": "Cait, Cage Brawler",
+    "manaCost": "{R}{G}",
+    "typeLine": "Legendary Creature — Human Warrior",
+    "oracleText": "During your turn, Cait has indestructible.\nWhenever Cait attacks, you and defending player each draw a card, then discard a card. Put two +1/+1 counters on Cait if you discarded the card with the greatest mana value among those cards or tied for greatest.",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 1
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Cait, Cage Brawler:1",
+                "trigger": "AttackEvent",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            }
+                        },
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            },
+                            "target": {
+                                "type": "PlayerRef",
+                                "player": "DefendingPlayer"
+                            }
+                        },
+                        {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "GatherCards",
+                                    "source": {
+                                        "type": "FromZone",
+                                        "zone": "Hand"
+                                    },
+                                    "storeAs": "gathered0"
+                                },
+                                {
+                                    "type": "SelectFromCollection",
+                                    "from": "gathered0",
+                                    "selection": {
+                                        "type": "ChooseExactly",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "storeSelected": "selected1",
+                                    "prompt": "Choose a card to discard"
+                                },
+                                {
+                                    "type": "GatherCards",
+                                    "source": {
+                                        "type": "FromZone",
+                                        "zone": "Hand",
+                                        "player": "DefendingPlayer"
+                                    },
+                                    "storeAs": "gathered2"
+                                },
+                                {
+                                    "type": "SelectFromCollection",
+                                    "from": "gathered2",
+                                    "selection": {
+                                        "type": "ChooseExactly",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "chooser": "DefendingPlayer",
+                                    "storeSelected": "selected3",
+                                    "prompt": "Choose a card to discard"
+                                },
+                                {
+                                    "type": "MoveCollection",
+                                    "from": "selected1",
+                                    "destination": {
+                                        "type": "ToZone",
+                                        "zone": "Graveyard"
+                                    },
+                                    "moveType": "Discard"
+                                },
+                                {
+                                    "type": "MoveCollection",
+                                    "from": "selected3",
+                                    "destination": {
+                                        "type": "ToZone",
+                                        "zone": "Graveyard",
+                                        "player": "DefendingPlayer"
+                                    },
+                                    "moveType": "Discard"
+                                },
+                                {
+                                    "type": "Gated",
+                                    "gate": {
+                                        "type": "Gate.WhenCondition",
+                                        "condition": {
+                                            "type": "All",
+                                            "conditions": [
+                                                {
+                                                    "type": "CollectionContainsMatch",
+                                                    "collection": "selected1"
+                                                },
+                                                {
+                                                    "type": "Compare",
+                                                    "left": {
+                                                        "type": "StoredCardManaValue",
+                                                        "collectionName": "selected1"
+                                                    },
+                                                    "operator": "GTE",
+                                                    "right": {
+                                                        "type": "StoredCardManaValue",
+                                                        "collectionName": "selected3"
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "then": {
+                                        "type": "AddCounters",
+                                        "counterType": "PLUS_ONE_PLUS_ONE",
+                                        "count": 2,
+                                        "target": "Self"
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "descriptionOverride": "Whenever Cait attacks, you and defending player each draw a card, then discard a card. Put two +1/+1 counters on Cait if you discarded the card with the greatest mana value among those cards or tied for greatest."
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "ConditionalStaticAbility",
+                "ability": {
+                    "type": "GrantKeyword",
+                    "keyword": "INDESTRUCTIBLE",
+                    "filter": {
+                        "baseFilter": "permanent",
+                        "scope": "Self"
+                    }
+                },
+                "condition": "IsYourTurn"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "96",
+        "rarity": "RARE",
+        "artist": "Joseph Meehan",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/c/fca61d02-2819-483f-9d30-862f0650ab0a.jpg?1783912393",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "If a card you discard has {X} in its mana cost, X is considered to be 0."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If you somehow can't discard a card (probably because you had no cards in hand and another effect prevented you from drawing cards), you won't put any counters on Cait no matter whether or not the defending player discarded a card or what that card's mana value is."
+            }
+        ]
+    }
+}
+
 // Cass, Hand of Vengeance
 {
     "name": "Cass, Hand of Vengeance",
@@ -4714,6 +4889,101 @@
     }
 }
 
+// Grim Reaper's Sprint
+{
+    "name": "Grim Reaper's Sprint",
+    "manaCost": "{4}{R}",
+    "typeLine": "Enchantment — Aura",
+    "oracleText": "Morbid — This spell costs {3} less to cast if a creature died this turn.\nEnchant creature\nWhen this Aura enters, untap each creature you control. If it's your main phase, there is an additional combat phase after this phase.\nEnchanted creature gets +2/+2 and has haste.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Grim Reaper's Sprint:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "ForEach",
+                            "space": {
+                                "type": "IterationSpace.Group",
+                                "filter": {
+                                    "baseFilter": "creature ctrl:you"
+                                }
+                            },
+                            "body": {
+                                "type": "TapUntap",
+                                "target": "IterationEntity",
+                                "tap": false
+                            }
+                        },
+                        {
+                            "type": "Gated",
+                            "gate": {
+                                "type": "Gate.WhenCondition",
+                                "condition": {
+                                    "type": "IsInPhase",
+                                    "phases": [
+                                        "PRECOMBAT_MAIN",
+                                        "POSTCOMBAT_MAIN"
+                                    ]
+                                }
+                            },
+                            "then": "AddCombatPhase"
+                        }
+                    ]
+                }
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "ModifySpellCost",
+                "target": "SelfCast",
+                "modification": {
+                    "type": "ReduceGenericBy",
+                    "source": {
+                        "type": "FixedIfCreatureDiedThisTurn",
+                        "amount": 3
+                    }
+                }
+            },
+            {
+                "type": "ModifyStats",
+                "powerBonus": 2,
+                "toughnessBonus": 2
+            },
+            {
+                "type": "GrantKeyword",
+                "keyword": "HASTE"
+            }
+        ],
+        "auraTarget": {
+            "type": "TargetObject",
+            "filter": {
+                "baseFilter": "creature"
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "58",
+        "rarity": "RARE",
+        "artist": "Anton Solovianchyk",
+        "imageUri": "https://cards.scryfall.io/normal/front/1/8/18e76286-9e06-42de-b322-eb8aa2cdca3a.jpg?1783912404",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "If the creature Grim Reaper's Sprint would enchant is an illegal target by the time Grim Reaper's Sprint would resolve, the entire spell doesn't resolve. It's put into the graveyard from the stack, so its triggered ability won't trigger, and you won't untap your creatures or get an additional combat phase."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "RED"
+    ]
+}
+
 // Gunner Conscript
 {
     "name": "Gunner Conscript",
@@ -5093,6 +5363,78 @@
     }
 }
 
+// Ian the Reckless
+{
+    "name": "Ian the Reckless",
+    "manaCost": "{1}{R}",
+    "typeLine": "Legendary Creature — Human Warrior",
+    "oracleText": "Whenever Ian the Reckless attacks, if it's modified, you may have it deal damage equal to its power to you and any target. (Equipment, Auras you control, and counters are modifications.)",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 1
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Ian the Reckless:1",
+                "trigger": "AttackEvent",
+                "effect": {
+                    "type": "Gated",
+                    "gate": "Gate.MayDecide",
+                    "then": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "DealDamage",
+                                "amount": {
+                                    "type": "EntityProperty",
+                                    "entity": "Self",
+                                    "numericProperty": "Power"
+                                },
+                                "target": "Controller"
+                            },
+                            {
+                                "type": "DealDamage",
+                                "amount": {
+                                    "type": "EntityProperty",
+                                    "entity": "Self",
+                                    "numericProperty": "Power"
+                                },
+                                "target": {
+                                    "type": "BoundVariable",
+                                    "name": "t0"
+                                }
+                            }
+                        ]
+                    }
+                },
+                "targetRequirement": {
+                    "type": "AnyTarget",
+                    "id": "t0"
+                },
+                "interveningIf": "SourceIsModified"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "59",
+        "rarity": "UNCOMMON",
+        "artist": "Lorenzo Mastroianni",
+        "flavorText": "\"I may not be a very good fighter any more, but I'm good enough to best the likes of you!\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/4/c/4cd46b6a-eb20-4ffa-94e0-47d1d2d46087.jpg?1783912404",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "If Ian the Reckless isn't modified when it attacks, its ability won't trigger at all. When its ability tries to resolve, if it isn't modified at that time, the ability won't resolve."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If Ian the Reckless leaves the battlefield before its last ability resolves, as long as it was modified when it was last on the battlefield, use its power as it last existed on the battlefield to determine how much damage that ability deals."
+            }
+        ]
+    }
+}
+
 // Idolized
 {
     "name": "Idolized",
@@ -5358,6 +5700,62 @@
             }
         ]
     }
+}
+
+// James, Wandering Dad
+{
+    "name": "James, Wandering Dad",
+    "manaCost": "{2}{U}",
+    "typeLine": "Legendary Creature — Human Scientist",
+    "oracleText": "{T}: Add {C}{C}. Spend this mana only to activate abilities.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 4
+    },
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "James, Wandering Dad:1",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "AddColorlessMana",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 2
+                    },
+                    "restriction": "AbilityActivationOnly"
+                },
+                "timing": "ManaAbility",
+                "isManaAbility": true,
+                "descriptionOverride": "{T}: Add {C}{C}. Spend this mana only to activate abilities."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "31",
+        "rarity": "RARE",
+        "artist": "Wonchun Choi",
+        "flavorText": "\"So long as we've got each other, that's all that matters.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/3/1/31fed516-04e1-4453-b955-dfbd32bab2f3.jpg?1783912413"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ],
+    "layout": "ADVENTURE",
+    "cardFaces": [
+        {
+            "name": "Follow Him",
+            "manaCost": "{X}{U}{U}",
+            "typeLine": "Instant — Adventure",
+            "oracleText": "Investigate X times. (Then exile this card. You may cast the creature later from exile.)",
+            "script": {
+                "spellEffect": {
+                    "type": "Investigate",
+                    "count": "XValue"
+                }
+            }
+        }
+    ]
 }
 
 // Jason Bright, Glowing Prophet
@@ -6932,6 +7330,75 @@
     }
 }
 
+// Mutational Advantage
+{
+    "name": "Mutational Advantage",
+    "manaCost": "{1}{G}{U}",
+    "typeLine": "Instant",
+    "oracleText": "Permanents you control with counters on them gain hexproof and indestructible until end of turn. Prevent all damage that would be dealt to those permanents this turn. Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "ForEach",
+                    "space": {
+                        "type": "IterationSpace.Group",
+                        "filter": {
+                            "baseFilter": {
+                                "cardPredicates": [
+                                    "IsPermanent"
+                                ],
+                                "statePredicates": [
+                                    "HasAnyCounter"
+                                ],
+                                "controllerPredicate": "ControlledByYou"
+                            }
+                        }
+                    },
+                    "body": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "GrantKeyword",
+                                "keyword": "HEXPROOF",
+                                "target": "IterationEntity"
+                            },
+                            {
+                                "type": "GrantKeyword",
+                                "keyword": "INDESTRUCTIBLE",
+                                "target": "IterationEntity"
+                            },
+                            {
+                                "type": "PreventDamageShield",
+                                "target": "IterationEntity"
+                            }
+                        ]
+                    }
+                },
+                "Proliferate"
+            ]
+        }
+    },
+    "metadata": {
+        "collectorNumber": "111",
+        "rarity": "RARE",
+        "artist": "Maxim Kostin",
+        "flavorText": "\"Ow, my pipe!\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/b/1/b1ff92f1-9dc7-48e6-9e7c-9ef4a88518cb.jpg?1783912387",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "The set of permanents affected by Mutational Advantage is determined at the time Mutational Advantage resolves. Permanents that gain counters later in the turn won't become affected by this effect, and permanents that lose all of their counters later in the turn won't stop being affected."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "GREEN",
+        "BLUE"
+    ]
+}
+
 // Mysterious Stranger
 {
     "name": "Mysterious Stranger",
@@ -7476,6 +7943,106 @@
         "artist": "Uriah Voth",
         "imageUri": "https://cards.scryfall.io/normal/front/6/8/68d5835b-c206-4884-bdcf-38c7cdc703f4.jpg?1783912377"
     }
+}
+
+// Overencumbered
+{
+    "name": "Overencumbered",
+    "manaCost": "{1}{W}",
+    "typeLine": "Enchantment — Aura",
+    "oracleText": "Enchant opponent\nWhen this Aura enters, enchanted opponent creates a Clue token, a Food token, and a Junk token.\nAt the beginning of combat on enchanted opponent's turn, that player may pay {1} for each artifact they control. If they don't, creatures can't attack this combat.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Overencumbered:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "CreatePredefinedToken",
+                            "tokenType": "Clue",
+                            "controller": {
+                                "type": "PlayerRef",
+                                "player": "EnchantedPlayer"
+                            }
+                        },
+                        {
+                            "type": "CreatePredefinedToken",
+                            "tokenType": "Food",
+                            "controller": {
+                                "type": "PlayerRef",
+                                "player": "EnchantedPlayer"
+                            }
+                        },
+                        {
+                            "type": "CreatePredefinedToken",
+                            "tokenType": "Junk",
+                            "controller": {
+                                "type": "PlayerRef",
+                                "player": "EnchantedPlayer"
+                            }
+                        }
+                    ]
+                },
+                "descriptionOverride": "When this Aura enters, enchanted opponent creates a Clue token, a Food token, and a Junk token."
+            },
+            {
+                "id": "Overencumbered:2",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "BEGIN_COMBAT",
+                    "player": "EnchantedPlayer"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.MayPay",
+                        "cost": {
+                            "type": "PayDynamicManaCost",
+                            "amount": {
+                                "type": "AggregateBattlefield",
+                                "player": "TriggeringPlayer",
+                                "filter": "artifact"
+                            },
+                            "payer": "TriggeringPlayer"
+                        }
+                    },
+                    "then": {
+                        "type": "Composite",
+                        "effects": []
+                    },
+                    "otherwise": {
+                        "type": "CantAttackGroup",
+                        "filter": {
+                            "baseFilter": "creature"
+                        },
+                        "duration": "EndOfCombat"
+                    },
+                    "decisionMaker": {
+                        "type": "PlayerRef",
+                        "player": "TriggeringPlayer"
+                    },
+                    "descriptionOverride": "Pay {1} for each artifact you control? If you don't, creatures can't attack this combat."
+                },
+                "descriptionOverride": "At the beginning of combat on enchanted opponent's turn, that player may pay {1} for each artifact they control. If they don't, creatures can't attack this combat."
+            }
+        ],
+        "auraTarget": "TargetOpponent"
+    },
+    "metadata": {
+        "collectorNumber": "18",
+        "rarity": "RARE",
+        "artist": "Elizabeth Peiró",
+        "imageUri": "https://cards.scryfall.io/normal/front/4/7/47058eaa-348d-4bbb-8df5-b931eba067f3.jpg?1783912418"
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
 }
 
 // Overflowing Basin
@@ -8620,6 +9187,88 @@
             {
                 "date": "2024-03-08",
                 "text": "If Pre-War Formalwear can't be attached to the permanent returned to the battlefield by its first ability (perhaps because it's not currently a creature), Pre-War Formalwear will remain on the battlefield unattached."
+            }
+        ]
+    }
+}
+
+// Preston Garvey, Minuteman
+{
+    "name": "Preston Garvey, Minuteman",
+    "manaCost": "{2}{R}{G}{W}",
+    "typeLine": "Legendary Creature — Human Soldier",
+    "oracleText": "At the beginning of combat on your turn, create a green Aura enchantment token named Settlement attached to up to one target land you control. It has enchant land and \"Enchanted land has '{T}: Add one mana of any color.'\"\nWhenever Preston Garvey attacks, untap each enchanted permanent you control.",
+    "creatureStats": {
+        "power": 4,
+        "toughness": 4
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Preston Garvey, Minuteman:1",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "BEGIN_COMBAT"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "CreateAuraToken",
+                    "tokenName": "Settlement",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "optional": true,
+                    "filter": {
+                        "baseFilter": "land ctrl:you"
+                    },
+                    "id": "t0"
+                }
+            },
+            {
+                "id": "Preston Garvey, Minuteman:2",
+                "trigger": "AttackEvent",
+                "effect": {
+                    "type": "ForEach",
+                    "space": {
+                        "type": "IterationSpace.Group",
+                        "filter": {
+                            "baseFilter": {
+                                "cardPredicates": [
+                                    "IsPermanent"
+                                ],
+                                "statePredicates": [
+                                    "IsEnchanted"
+                                ],
+                                "controllerPredicate": "ControlledByYou"
+                            }
+                        }
+                    },
+                    "body": {
+                        "type": "TapUntap",
+                        "target": "IterationEntity",
+                        "tap": false
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "8",
+        "rarity": "MYTHIC",
+        "artist": "Leonardo Borazio",
+        "imageUri": "https://cards.scryfall.io/normal/front/2/2/22b60168-1e7b-4c80-bb93-6841c1e961bb.jpg?1783912420",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "If the target land is an illegal target as Preston Garvey's first ability tries to resolve, it won't resolve and none of its effects happen. The Settlement token won't be created."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "In the rare case that the target land is a legal target as Preston Garvey's first ability resolves but the target land can't legally be enchanted by the Settlement token, the token won't be created at all."
             }
         ]
     }
@@ -9773,6 +10422,142 @@
     ]
 }
 
+// Shaun, Father of Synths
+{
+    "name": "Shaun, Father of Synths",
+    "manaCost": "{3}{U}{R}",
+    "typeLine": "Legendary Creature — Human Scientist",
+    "oracleText": "Whenever you attack, you may create a tapped and attacking token that's a copy of target attacking legendary creature you control other than Shaun, except it's not legendary and it's a Synth artifact creature in addition to its other types.\nWhen Shaun leaves the battlefield, exile all Synth tokens you control.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 4
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Shaun, Father of Synths:1",
+                "trigger": "YouAttackEvent",
+                "binding": "ANY",
+                "effect": {
+                    "type": "Gated",
+                    "gate": "Gate.MayDecide",
+                    "then": {
+                        "type": "CreateTokenCopyOfTarget",
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t0"
+                        },
+                        "tapped": true,
+                        "attacking": true,
+                        "exceptions": {
+                            "removedSupertypes": [
+                                "LEGENDARY"
+                            ],
+                            "addedCardTypes": [
+                                "ARTIFACT",
+                                "CREATURE"
+                            ],
+                            "addedSubtypes": [
+                                "Synth"
+                            ]
+                        },
+                        "attackDefender": "CONTROLLER_CHOOSES"
+                    }
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                "IsCreature",
+                                "IsLegendary"
+                            ],
+                            "statePredicates": [
+                                "IsAttacking"
+                            ],
+                            "controllerPredicate": "ControlledByYou"
+                        },
+                        "excludeSelf": true
+                    },
+                    "id": "t0"
+                }
+            },
+            {
+                "id": "Shaun, Father of Synths:2",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "from": "Battlefield"
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "BattlefieldMatching",
+                                "filter": "permanent token Synth ctrl:you"
+                            },
+                            "storeAs": "gathered0"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "gathered0",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Exile"
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "119",
+        "rarity": "RARE",
+        "artist": "Zuzanna Wużyk",
+        "imageUri": "https://cards.scryfall.io/normal/front/6/8/68af449f-3c30-43ea-be60-d85061d7adbd.jpg?1783912382",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "Except for the noted exceptions, the token copies exactly what was printed on the original creature and nothing else (unless that creature is copying something else or is a token; see below). It doesn't copy whether that creature is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the copied creature has {X} in its mana cost, X is 0."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the copied creature is a token, the token that's created copies the original characteristics of that token as stated by the effect that created that token, with the noted exceptions."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the copied creature is copying something else, then the token enters the battlefield as whatever that creature copied, with the noted exceptions."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Any enters-the-battlefield abilities of the copied creature will trigger when the token enters the battlefield. Any \"as [this creature] enters the battlefield\" or \"[this creature] enters the battlefield with\" abilities of the copied creature will also work."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Although the token is attacking, it was never declared as an attacking creature. This means that abilities that trigger whenever a creature attacks won't trigger when it enters the battlefield attacking."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "You declare which player, planeswalker, or battle the token is attacking as you put it onto the battlefield. It doesn't have to be attacking the same player, planeswalker, or battle that Shaun is attacking."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Shaun's last ability will exile all Synth tokens you control, not just Synth tokens created by its first ability."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE",
+        "RED"
+    ]
+}
+
 // Sierra, Nuka's Biggest Fan
 {
     "name": "Sierra, Nuka's Biggest Fan",
@@ -10681,6 +11466,76 @@
     ]
 }
 
+// Synth Infiltrator
+{
+    "name": "Synth Infiltrator",
+    "manaCost": "{3}{U}{U}",
+    "typeLine": "Artifact Creature — Synth",
+    "oracleText": "Improvise (Your artifacts can help cast this spell. Each artifact you tap after you're done activating mana abilities pays for {1}.)\nYou may have this creature enter as a copy of any creature on the battlefield, except it's a Synth artifact creature in addition to its other types.",
+    "creatureStats": {
+        "power": 0,
+        "toughness": 0
+    },
+    "keywords": [
+        "IMPROVISE"
+    ],
+    "script": {
+        "replacementEffects": [
+            {
+                "type": "EntersAsCopy",
+                "exceptions": {
+                    "addedCardTypes": [
+                        "ARTIFACT",
+                        "CREATURE"
+                    ],
+                    "addedSubtypes": [
+                        "Synth"
+                    ]
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "40",
+        "rarity": "RARE",
+        "artist": "Leonardo Borazio",
+        "imageUri": "https://cards.scryfall.io/normal/front/3/f/3fe16bc4-8457-4c5f-902a-0746112e80a4.jpg?1783912409",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "Improvise doesn't change Synth Infiltrator's mana cost or mana value, and it can't reduce Synth Infiltrator's cost below {U}{U}."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Except for being a Synth artifact creature in addition to its other types, Synth Infiltrator copies exactly what was printed on the original creature and nothing else (unless that creature is copying something else or is a token; see below). It doesn't copy whether that creature is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the copied creature has {X} in its mana cost, X is 0."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the copied creature is a token, Synth Infiltrator copies the original characteristics of that token as stated by the effect that created that token, with the noted exceptions."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the copied creature is copying something else, then Synth Infiltrator enters the battlefield as whatever that creature copied, with the noted exceptions."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Any enters-the-battlefield abilities of the copied creature will trigger when Synth Infiltrator enters the battlefield. Any \"as [this creature] enters the battlefield\" or \"[this creature] enters the battlefield with\" abilities of the copied creature will also work."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "You can choose not to have Synth Infiltrator enter the battlefield as a copy of another creature. If you do, it will probably die due to having 0 toughness. (This is probably not the kind of innovation the Institute would approve of.)"
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // T-45 Power Armor
 {
     "name": "T-45 Power Armor",
@@ -11270,6 +12125,85 @@
     }
 }
 
+// The Prydwen, Steel Flagship
+{
+    "name": "The Prydwen, Steel Flagship",
+    "manaCost": "{4}{W}{W}",
+    "typeLine": "Legendary Artifact — Vehicle",
+    "oracleText": "Flying\nWhenever another nontoken artifact you control enters, create a 2/2 white Human Knight creature token with \"This token gets +2/+2 as long as an artifact entered the battlefield under your control this turn.\"\nCrew 2",
+    "creatureStats": {
+        "power": 6,
+        "toughness": 6
+    },
+    "keywords": [
+        "FLYING",
+        "CREW"
+    ],
+    "keywordAbilities": [
+        {
+            "type": "Numeric",
+            "keyword": "CREW",
+            "n": 2
+        }
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "The Prydwen, Steel Flagship:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "filter": "artifact nontoken ctrl:you",
+                    "to": "Battlefield"
+                },
+                "binding": "OTHER",
+                "effect": {
+                    "type": "CreateToken",
+                    "power": 2,
+                    "toughness": 2,
+                    "colors": [
+                        "WHITE"
+                    ],
+                    "creatureTypes": [
+                        "Human",
+                        "Knight"
+                    ],
+                    "imageUri": "https://cards.scryfall.io/normal/front/5/4/546bda77-e3a8-4f2a-ba9c-94fb0b9ff183.jpg?1783912048",
+                    "staticAbilities": [
+                        {
+                            "type": "ConditionalStaticAbility",
+                            "ability": {
+                                "type": "ModifyStats",
+                                "powerBonus": 2,
+                                "toughnessBonus": 2,
+                                "filter": {
+                                    "baseFilter": "permanent",
+                                    "scope": "Self"
+                                }
+                            },
+                            "condition": {
+                                "type": "PermanentTypeEnteredBattlefieldThisTurn",
+                                "cardType": "ARTIFACT"
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "22",
+        "rarity": "RARE",
+        "artist": "Victor Harmatiuk",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/c/9c0a8eda-bfeb-4fd9-9e41-12fce02883d8.jpg?1783912416",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "Once an artifact enters the battlefield under your control in a given turn, it doesn't matter what happens to it later. A Knight token created by The Prydwen, Steel Flagship's second ability will still get +2/+2 for the rest of that turn."
+            }
+        ]
+    }
+}
+
 // The Wise Mothman
 {
     "name": "The Wise Mothman",
@@ -11377,6 +12311,107 @@
             }
         ]
     }
+}
+
+// Three Dog, Galaxy News DJ
+{
+    "name": "Three Dog, Galaxy News DJ",
+    "manaCost": "{1}{R}{W}",
+    "typeLine": "Legendary Creature — Human Bard",
+    "oracleText": "Whenever you attack, you may pay {2} and sacrifice an Aura attached to Three Dog. When you sacrifice an Aura this way, for each other attacking creature you control, create a token that's a copy of that Aura attached to that creature.",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 5
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Three Dog, Galaxy News DJ:1",
+                "trigger": "YouAttackEvent",
+                "binding": "ANY",
+                "effect": {
+                    "type": "ReflexiveTrigger",
+                    "action": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "PayManaCost",
+                                "cost": "{2}"
+                            },
+                            {
+                                "type": "Sacrifice",
+                                "filter": {
+                                    "cardPredicates": [
+                                        "IsEnchantment",
+                                        {
+                                            "type": "HasSubtype",
+                                            "subtype": "Aura"
+                                        }
+                                    ],
+                                    "statePredicates": [
+                                        "IsAttachedToSource"
+                                    ]
+                                }
+                            }
+                        ]
+                    },
+                    "reflexiveEffect": {
+                        "type": "ForEach",
+                        "space": {
+                            "type": "IterationSpace.Group",
+                            "filter": {
+                                "baseFilter": "creature attacking ctrl:you",
+                                "excludeSelf": true
+                            }
+                        },
+                        "body": {
+                            "type": "CreateTokenCopyOfTarget",
+                            "target": "SacrificedAsCost",
+                            "attachedTo": "IterationEntity"
+                        }
+                    },
+                    "descriptionOverride": "For each other attacking creature you control, create a token that's a copy of the sacrificed Aura attached to that creature."
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "120",
+        "rarity": "RARE",
+        "artist": "Elizabeth Peiró",
+        "flavorText": "\"You're listening to Galaxy News Radio, bringing you the truth, no matter how bad it hurts.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/a/b/ab34e869-be7a-4632-95b3-5f200b4edcca.jpg?1783912383",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "Since Three Dog's reflexive triggered ability doesn't target, Aura tokens created by that ability will be attached to attacking creatures you control with shroud."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If one of the Aura tokens being created couldn't legally be attached to the appropriate attacking creature (because of an ability like protection from enchantments), that Aura token won't be created."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "The tokens copy exactly what was printed on the original Aura and nothing else (unless that Aura was itself copying something else; see below). It doesn't copy whether that Aura was tapped or untapped, whether it had any counters on it or Auras attached to it, or any non-copy effects that changed its types, color, and so on."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the copied Aura was copying something else, the tokens enter the battlefield as whatever that Aura was copying."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "If the copied Aura had {X} in its mana cost, X is 0."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Any enters-the-battlefield abilities of the copied Aura will trigger when the tokens enter the battlefield. Any \"as [this Aura] enters the battlefield\" or \"[this Aura] enters the battlefield with\" abilities of the Aura will also work."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "RED",
+        "WHITE"
+    ]
 }
 
 // Thrill-Kill Disciple
@@ -12149,6 +13184,365 @@
     }
 }
 
+// Vault 13: Dweller's Journey
+{
+    "name": "Vault 13: Dweller's Journey",
+    "manaCost": "{3}{W}",
+    "typeLine": "Enchantment — Saga",
+    "oracleText": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — For each player, exile up to one other target enchantment or creature that player controls until this Saga leaves the battlefield.\nII — You gain 2 life and scry 2.\nIII — Return two cards exiled with this Saga to the battlefield under their owners' control and put the rest on the bottom of their owners' libraries.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Vault 13: Dweller's Journey:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "from": "Battlefield"
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": "FromLinkedExile",
+                            "storeAs": "linked_return"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "linked_return",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Battlefield"
+                            },
+                            "underOwnersControl": true
+                        }
+                    ]
+                }
+            }
+        ],
+        "sagaChapters": [
+            {
+                "chapter": 1,
+                "effect": {
+                    "type": "ForEach",
+                    "space": "IterationSpace.Targets",
+                    "body": {
+                        "type": "ExileUntilLeaves",
+                        "target": {
+                            "type": "ContextTarget",
+                            "index": 0
+                        }
+                    }
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "optional": true,
+                    "filter": {
+                        "baseFilter": "creature|enchantment",
+                        "excludeSelf": true
+                    },
+                    "id": "t0",
+                    "dynamicMaxCount": {
+                        "type": "PlayerCount",
+                        "scope": "Each"
+                    },
+                    "differentControllers": true
+                }
+            },
+            {
+                "chapter": 2,
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GainLife",
+                            "amount": {
+                                "type": "Fixed",
+                                "amount": 2
+                            }
+                        },
+                        {
+                            "type": "Scry",
+                            "count": 2
+                        }
+                    ]
+                }
+            },
+            {
+                "chapter": 3,
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": "FromLinkedExile",
+                            "storeAs": "gathered0"
+                        },
+                        {
+                            "type": "SelectFromCollection",
+                            "from": "gathered0",
+                            "selection": {
+                                "type": "ChooseExactly",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 2
+                                }
+                            },
+                            "storeSelected": "selected1",
+                            "storeRemainder": "remainder1",
+                            "prompt": "Choose two cards to return to the battlefield",
+                            "selectedLabel": "Return to the battlefield",
+                            "remainderLabel": "Put on the bottom of its owner's library"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "selected1",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Battlefield"
+                            },
+                            "underOwnersControl": true
+                        },
+                        {
+                            "type": "ForEach",
+                            "space": {
+                                "type": "IterationSpace.Players",
+                                "players": "OwnersOfLinkedExile"
+                            },
+                            "body": {
+                                "type": "Composite",
+                                "effects": [
+                                    {
+                                        "type": "GatherCards",
+                                        "source": "FromLinkedExile",
+                                        "storeAs": "gathered0"
+                                    },
+                                    {
+                                        "type": "FilterCollection",
+                                        "from": "gathered0",
+                                        "filter": "own:you",
+                                        "storeMatching": "matching1"
+                                    },
+                                    {
+                                        "type": "MoveCollection",
+                                        "from": "matching1",
+                                        "destination": {
+                                            "type": "ToZone",
+                                            "zone": "Library",
+                                            "placement": "Bottom"
+                                        },
+                                        "order": "OwnerChooses"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "26",
+        "rarity": "RARE",
+        "artist": "Gaboleps",
+        "imageUri": "https://cards.scryfall.io/normal/front/a/2/a22ad436-215a-4da1-b12e-1faac474f948.jpg?1783912414",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "If Vault 13 leaves the battlefield before its first chapter ability resolves, the target permanents won't be exiled at all."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "In the unusual case where one player owns multiple cards exiled with Vault 13 that are being put on the bottom of their library with its third chapter ability, the owner of those cards chooses the order in which they are put on the bottom of their library."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
+// Vault 21: House Gambit
+{
+    "name": "Vault 21: House Gambit",
+    "manaCost": "{1}{R}",
+    "typeLine": "Enchantment — Saga",
+    "oracleText": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI, II — Discard a card, then draw a card.\nIII — Reveal up to five nonland cards from your hand. For each of those cards that has the same mana value as another card revealed this way, create a Treasure token.",
+    "script": {
+        "sagaChapters": [
+            {
+                "chapter": 1,
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "FromZone",
+                                "zone": "Hand"
+                            },
+                            "storeAs": "hand"
+                        },
+                        {
+                            "type": "SelectFromCollection",
+                            "from": "hand",
+                            "selection": {
+                                "type": "ChooseExactly",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            "storeSelected": "discarded",
+                            "prompt": "Choose 1 card to discard"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "discarded",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Graveyard"
+                            },
+                            "moveType": "Discard"
+                        },
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "chapter": 2,
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "FromZone",
+                                "zone": "Hand"
+                            },
+                            "storeAs": "hand"
+                        },
+                        {
+                            "type": "SelectFromCollection",
+                            "from": "hand",
+                            "selection": {
+                                "type": "ChooseExactly",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            "storeSelected": "discarded",
+                            "prompt": "Choose 1 card to discard"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "discarded",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Graveyard"
+                            },
+                            "moveType": "Discard"
+                        },
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "chapter": 3,
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "FromZone",
+                                "zone": "Hand",
+                                "filter": "nonland"
+                            },
+                            "storeAs": "gathered0"
+                        },
+                        {
+                            "type": "SelectFromCollection",
+                            "from": "gathered0",
+                            "selection": {
+                                "type": "ChooseUpTo",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 5
+                                }
+                            },
+                            "storeSelected": "selected1",
+                            "prompt": "Reveal up to five nonland cards from your hand",
+                            "selectedLabel": "Reveal"
+                        },
+                        {
+                            "type": "RevealCollection",
+                            "from": "selected1",
+                            "fromZone": "Hand"
+                        },
+                        {
+                            "type": "ForEach",
+                            "space": {
+                                "type": "IterationSpace.Collection",
+                                "collection": "selected1"
+                            },
+                            "body": {
+                                "type": "Composite",
+                                "effects": [
+                                    {
+                                        "type": "ConditionalOnCollection",
+                                        "collection": "selected1",
+                                        "ifNotEmpty": {
+                                            "type": "CreatePredefinedToken",
+                                            "tokenType": "Treasure"
+                                        },
+                                        "minSize": 2,
+                                        "filter": {
+                                            "cardPredicates": [
+                                                {
+                                                    "type": "SharesManaValueWith",
+                                                    "entity": "IterationEntity"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "69",
+        "rarity": "RARE",
+        "artist": "Kieran Yanner",
+        "imageUri": "https://cards.scryfall.io/normal/front/4/0/40972644-a284-4c7c-a451-d70eff7488ab.jpg?1783912400",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "If a card in your hand has {X} in its mana cost, X is 0."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "RED"
+    ]
+}
+
 // Vault 75: Middle School
 {
     "name": "Vault 75: Middle School",
@@ -12225,6 +13619,116 @@
         "artist": "Victor Harmatiuk",
         "imageUri": "https://cards.scryfall.io/normal/front/3/9/3992e262-0491-4379-b74b-13cc8b63065e.jpg?1783912413"
     }
+}
+
+// Vault 87: Forced Evolution
+{
+    "name": "Vault 87: Forced Evolution",
+    "manaCost": "{3}{G}{U}",
+    "typeLine": "Enchantment — Saga",
+    "oracleText": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Gain control of target non-Mutant creature for as long as you control this Saga.\nII — Put a +1/+1 counter on target creature you control. It becomes a Mutant in addition to its other types.\nIII — Draw cards equal to the greatest power among Mutants you control.",
+    "script": {
+        "sagaChapters": [
+            {
+                "chapter": 1,
+                "effect": {
+                    "type": "GainControl",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "duration": {
+                        "type": "WhileYouControlSource",
+                        "sourceDescription": "this Saga"
+                    }
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                "IsCreature",
+                                {
+                                    "type": "NotSubtype",
+                                    "subtype": "Mutant"
+                                }
+                            ]
+                        }
+                    },
+                    "id": "t0"
+                }
+            },
+            {
+                "chapter": 2,
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "AddCounters",
+                            "counterType": "PLUS_ONE_PLUS_ONE",
+                            "count": 1,
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t1"
+                            }
+                        },
+                        {
+                            "type": "AddCreatureType",
+                            "subtype": "Mutant",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t1"
+                            }
+                        }
+                    ]
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": "creature ctrl:you"
+                    },
+                    "id": "t1"
+                }
+            },
+            {
+                "chapter": 3,
+                "effect": {
+                    "type": "DrawCards",
+                    "count": {
+                        "type": "AggregateBattlefield",
+                        "player": "You",
+                        "filter": "creature Mutant",
+                        "aggregation": "MAX",
+                        "property": "POWER"
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "122",
+        "rarity": "RARE",
+        "artist": "Nicholas Gregory",
+        "imageUri": "https://cards.scryfall.io/normal/front/3/3/33bf267b-f41c-447a-aa35-0c01aad8a489.jpg?1783912383",
+        "rulings": [
+            {
+                "date": "2024-03-08",
+                "text": "If Vault 87 leaves the battlefield before its first chapter ability resolves, you won't gain control of the target creature at all."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "The target of Vault 87's first chapter ability only needs to be a non-Mutant when that ability is put onto the stack and when that ability resolves. The control effect won't end if it later becomes a Mutant (perhaps because of the effect of the second chapter ability)."
+            },
+            {
+                "date": "2024-03-08",
+                "text": "Use the greatest power among Mutants you control as Vault 87's last ability resolves to determine how many cards to draw."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "GREEN",
+        "BLUE"
+    ]
 }
 
 // Veronica, Dissident Scribe

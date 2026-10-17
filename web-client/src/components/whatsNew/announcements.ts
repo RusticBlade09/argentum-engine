@@ -38,6 +38,16 @@ export const ANNOUNCEMENTS: readonly Announcement[] = [
       'Arabian Nights’ Shahrazad now works as printed: cast it and everyone plays a whole subgame of Magic, using their libraries as their decks — fresh life, fresh hands, mulligans and all — while the main game waits with the spell still on the stack. A gilded frame and a SUBGAME badge show which game you are in and what is waiting outside it. When it is over, the cards go home, and everyone who didn’t win loses half their life. You can even cast Shahrazad inside a subgame.',
   },
   {
+    id: 'set-pip',
+    date: '2026-10-17',
+    kind: 'set',
+    setCode: 'PIP',
+    title: 'Fallout is complete',
+    body:
+      'All four Fallout Commander decks are playable in the Wasteland: rad counters mill players and drain their life, Junk tokens dig for one more card, energy fuels Science! decks, and Vault locations and V.A.T.S. spells reward you for the long game. Dogmeat suits up Auras and Equipment, Caesar marches out a legion of tokens, and the Wise Mothman feeds mutants off the rads.',
+    tryIf: 'Commander precons, rad-counter mill and Aura-and-Equipment voltron',
+  },
+  {
     id: 'feature-card-browser',
     date: '2026-10-14',
     kind: 'feature',

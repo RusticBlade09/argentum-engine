@@ -145,14 +145,15 @@ data object IsFirstEndStepOfTurn : Condition {
 /**
  * Condition: "If it's the first combat phase of the turn."
  *
- * True while the active player is in a combat phase that is *not* an extra combat phase inserted by
- * [com.wingedsheep.sdk.scripting.effects.AddCombatPhaseEffect]. This is the intervening-if / loop
+ * True while the active player is in a combat phase and no combat phase has ended yet this turn — an
+ * extra combat phase inserted by [com.wingedsheep.sdk.scripting.effects.AddCombatPhaseEffect] before
+ * the natural one is the turn's first, and the natural one after it is not. This is the intervening-if / loop
  * guard for "after this phase, there is an additional combat phase" riders (Balthier and Fran, Éomer,
  * Genji Glove, Raph & Leo): the rider only adds an extra combat phase during the first one, so the
  * additional combat phase it spawns doesn't spawn another. The combat analog of
  * [IsFirstEndStepOfTurn].
  *
- * Board-derived (reads `state.phase` and the active player's "in an additional combat phase" marker),
+ * Board-derived (reads `state.phase` and the active player's "a combat phase ended this turn" marker),
  * so it evaluates identically at resolution and under projection.
  */
 @SerialName("IsFirstCombatPhaseOfTurn")
@@ -165,8 +166,9 @@ data object IsFirstCombatPhaseOfTurn : Condition {
  * Condition: "before attackers are declared" this turn — the game hasn't yet reached the declare
  * attackers step of the turn's first combat phase (Master Warcraft's ruling: with several combat
  * phases, it can only be cast before the first one's declare attackers step). True from the start
- * of the turn through the beginning of combat step of the first combat; false from its declare
- * attackers step on, including the postcombat main phase and any additional combat phase.
+ * of the turn through the beginning of combat step of the first combat; false from the first
+ * combat's declare attackers step on, through every later phase of the turn. An extra combat inserted
+ * before the natural one (CR 500.8) is the first combat.
  */
 @SerialName("BeforeAttackersDeclaredThisTurn")
 @Serializable

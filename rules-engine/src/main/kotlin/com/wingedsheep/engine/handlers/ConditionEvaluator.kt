@@ -40,7 +40,7 @@ import com.wingedsheep.engine.state.components.identity.ControllerComponent
 import com.wingedsheep.engine.state.components.identity.FaceDownComponent
 import com.wingedsheep.engine.state.components.identity.LifeTotalComponent
 import com.wingedsheep.engine.state.components.identity.RingBearerComponent
-import com.wingedsheep.engine.state.components.player.InAdditionalCombatPhaseComponent
+import com.wingedsheep.engine.state.components.player.CombatPhaseEndedThisTurnComponent
 import com.wingedsheep.engine.state.components.player.InAdditionalEndStepComponent
 import com.wingedsheep.engine.state.components.player.LandDropsComponent
 import com.wingedsheep.engine.state.components.player.PlayerTurnsTakenComponent
@@ -468,25 +468,21 @@ class ConditionEvaluator(
                     } != true
             }
 
-            // True while we're in the turn's *natural* combat phase — i.e. a combat phase the active
-            // player hasn't yet marked as an inserted extra (AddCombatPhaseEffect). Board-derived, so
-            // it reads the same at resolution and under projection. The loop guard for the
-            // "additional combat phase" riders (Balthier and Fran, Genji Glove, Raph & Leo).
             // Before the declare attackers step of the turn's *first* combat (Master Warcraft's
             // ruling): the step order puts every earlier step of the turn below DECLARE_ATTACKERS,
-            // and an inserted extra combat's beginning step is excluded by its marker.
+            // and once any combat phase has ended (CombatPhaseEndedThisTurnComponent) attackers have
+            // been declared — whether that combat was natural or inserted.
             is com.wingedsheep.sdk.scripting.conditions.BeforeAttackersDeclaredThisTurn -> {
-                state.step.ordinal < Step.DECLARE_ATTACKERS.ordinal &&
-                    state.activePlayerId?.let {
-                        state.getEntity(it)?.has<InAdditionalCombatPhaseComponent>()
-                    } != true
+                state.step.ordinal < Step.DECLARE_ATTACKERS.ordinal && !combatPhaseEndedThisTurn(state)
             }
 
+            // True during the turn's first combat phase — no combat phase has ended yet this turn.
+            // An inserted combat phase that comes before the natural one (Grim Reaper's Sprint cast
+            // precombat) is the first. Board-derived, so it reads the same at resolution and under
+            // projection. The loop guard for the "additional combat phase" riders (Balthier and Fran,
+            // Genji Glove, Raph & Leo).
             is IsFirstCombatPhaseOfTurn -> {
-                state.phase == Phase.COMBAT &&
-                    state.activePlayerId?.let {
-                        state.getEntity(it)?.has<InAdditionalCombatPhaseComponent>()
-                    } != true
+                state.phase == Phase.COMBAT && !combatPhaseEndedThisTurn(state)
             }
 
             // Reads the controller's PlayerTurnsTakenComponent (incremented in
@@ -1001,6 +997,9 @@ class ConditionEvaluator(
         }
     }
 
+    private fun combatPhaseEndedThisTurn(state: GameState): Boolean =
+        state.activePlayerId?.let { state.getEntity(it)?.has<CombatPhaseEndedThisTurnComponent>() } == true
+
     /** Standard primality test: 0 and 1 are not prime; 2 is the only even prime (CR-agnostic). */
     private fun isPrime(n: Int): Boolean {
         if (n < 2) return false
@@ -1347,7 +1346,16 @@ class ConditionEvaluator(
 
     private fun evaluateSourceIsModifiedCtx(state: GameState, ctx: ConditionEvaluationContext): Boolean {
         val sourceId = ctx.sourceId ?: return false
+        // Last-known information (CR 608.2h): once the source has left the battlefield, an
+        // intervening-if rechecked on resolution (CR 603.4) reads it as it last existed — Ian the
+        // Reckless's "if it's modified" (ruling 2024-03-08). The ability's own departure snapshot
+        // comes first, so a source that blinked back as a new object isn't read live.
+        if (ctx is Resolution) {
+            ctx.effectContext.lastKnownSourceSnapshot?.takeIf { it.entityId == sourceId }
+                ?.let { return it.wasModified }
+        }
         val entity = state.getEntity(sourceId) ?: return false
+        entity.get<LastKnownPermanentComponent>()?.snapshot?.let { return it.wasModified }
         val controllerId = ctx.controllerId
 
         val counters = entity.get<com.wingedsheep.engine.state.components.battlefield.CountersComponent>()

@@ -343,22 +343,26 @@ data class InvestigateEffect(
 }
 
 /**
- * Create an Aura Role token of the specified type attached to a target creature.
+ * Create a named Aura token attached to a target object: a Role ("create a Wicked Role token
+ * attached to up to one target creature") or any other predefined Aura token ("create a green Aura
+ * enchantment token named Settlement attached to up to one target land you control").
  *
- * Role tokens are Enchantment — Aura Role tokens defined in PredefinedTokens.
- * Role replacement rule: if the target already has a Role controlled by the same
- * player, the old Role is put into the graveyard before the new one enters.
+ * The token's characteristics — its enchant restriction above all — come from the token
+ * `CardDefinition` registered under [tokenName] (PredefinedTokens). No token is created when the
+ * object is undefined (an unchosen "up to one" target) or the token couldn't legally enchant it
+ * (CR 303.4i). A Role replaces any Role the same player already controls on that object
+ * (CR 303.7a).
  *
- * @property roleName The name of the Role token (e.g., "Sorcerer Role")
- * @property target The creature to attach the Role to
+ * @property tokenName The token's registered name (e.g. "Sorcerer Role", "Settlement")
+ * @property target The object to attach the token to
  */
-@SerialName("CreateRoleToken")
+@SerialName("CreateAuraToken")
 @Serializable
-data class CreateRoleTokenEffect(
-    val roleName: String,
+data class CreateAuraTokenEffect(
+    val tokenName: String,
     val target: EffectTarget = EffectTarget.ContextTarget(0)
 ) : Effect {
-    override val description: String = "Create a $roleName token attached to ${target.description}"
+    override val description: String = "Create a $tokenName token attached to ${target.description}"
 }
 
 /**
@@ -685,6 +689,16 @@ data class CreateTokenCopyOfTargetEffect(
      */
     val attackedPlayer: EffectTarget? = null,
     /**
+     * What an [attacking] copy attacks when the effect names no defender — see
+     * [EnteringAttackDefender]. The default joins the source's attack against a player and asks
+     * nothing; [EnteringAttackDefender.CONTROLLER_CHOOSES] is CR 508.4 as printed for a bare
+     * "tapped and attacking" (Shaun, Father of Synths): the copy's controller picks a defending
+     * player, planeswalker or battle per token. Needs [attacking], no [attackedPlayer], and the
+     * effect's controller as the token controller. An Aura copy (whose host is chosen first)
+     * keeps the default.
+     */
+    val attackDefender: EnteringAttackDefender = EnteringAttackDefender.JOIN_SOURCE,
+    /**
      * The copies' base power, **computed at resolution** — the dynamic form of [overridePower] for
      * an "except its power is …" clause whose number depends on the game (CR 707.9b: a copy
      * exception that sets power is a copiable value). Saw in Half: "except their power is half
@@ -700,6 +714,10 @@ data class CreateTokenCopyOfTargetEffect(
 ) : Effect {
     init {
         require(attackedPlayer == null || attacking) { "attackedPlayer needs attacking = true" }
+        require(attackDefender == EnteringAttackDefender.JOIN_SOURCE ||
+            (attacking && attackedPlayer == null && controller == null)) {
+            "attackDefender = CONTROLLER_CHOOSES needs attacking = true, no attackedPlayer and the effect controller as token controller"
+        }
         require((basePower == null) == (baseToughness == null)) {
             "basePower and baseToughness are set together"
         }
