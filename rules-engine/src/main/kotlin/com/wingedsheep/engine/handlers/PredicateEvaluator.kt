@@ -29,6 +29,7 @@ import com.wingedsheep.engine.state.components.battlefield.LastKnownPermanentCom
 import com.wingedsheep.engine.state.components.battlefield.DealtCombatDamageToPlayersThisTurnComponent
 import com.wingedsheep.engine.state.components.battlefield.HasDealtCombatDamageToPlayerComponent
 import com.wingedsheep.engine.state.components.battlefield.DamageDealtToCreaturesThisTurnComponent
+import com.wingedsheep.engine.state.components.battlefield.DamagedBySourcesThisTurnComponent
 import com.wingedsheep.engine.state.components.battlefield.WasDealtDamageThisTurnComponent
 import com.wingedsheep.engine.state.components.battlefield.PreparedComponent
 import com.wingedsheep.engine.state.components.battlefield.TappedComponent
@@ -2047,6 +2048,14 @@ class PredicateEvaluator(
                 sourceId != null && state.getEntity(sourceId)
                     ?.get<DamageDealtToCreaturesThisTurnComponent>()
                     ?.creatureIds?.contains(entityId) == true
+            }
+
+            // Dealt damage this turn by a matching source: the candidate's own record of its damage
+            // sources, each frozen as it dealt the damage. Inert with no source context.
+            is StatePredicate.WasDealtDamageThisTurnBy -> {
+                val you = context?.controllerId
+                you != null && container.get<DamagedBySourcesThisTurnComponent>()
+                    ?.matchesAny(predicate.sourceFilter, you) == true
             }
 
             StatePredicate.ControlledSinceTurnBegan ->

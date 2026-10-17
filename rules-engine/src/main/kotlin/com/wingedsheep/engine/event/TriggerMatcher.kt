@@ -324,6 +324,7 @@ class TriggerMatcher(
                 if (!matchesPlayer(state, trigger.player, event.controllerId, controllerId)) return false
                 if (trigger.requireLoyalty && !event.isLoyalty) return false
                 if (event.loyaltyCountersRemoved < trigger.minLoyaltyRemoved) return false
+                if (trigger.keyword != null && event.keyword != trigger.keyword) return false
                 if (trigger.requireExhaust) {
                     if (!event.isExhaust) return false
                     // Plain "whenever you activate an exhaust ability" counts an exhaust mana
@@ -2769,6 +2770,7 @@ class TriggerMatcher(
         com.wingedsheep.sdk.scripting.predicates.StatePredicate.DealtCombatDamageToSourceControllerThisTurn,
         com.wingedsheep.sdk.scripting.predicates.StatePredicate.ControllerDealtCombatDamageBySourceThisTurn,
         com.wingedsheep.sdk.scripting.predicates.StatePredicate.WasDealtDamageBySourceThisTurn,
+        is com.wingedsheep.sdk.scripting.predicates.StatePredicate.WasDealtDamageThisTurnBy,
         com.wingedsheep.sdk.scripting.predicates.StatePredicate.DealtDamageToSourceControllerThisTurn,
         com.wingedsheep.sdk.scripting.predicates.StatePredicate.AttackedThisTurn,
         com.wingedsheep.sdk.scripting.predicates.StatePredicate.AttackedABattleThisTurn,

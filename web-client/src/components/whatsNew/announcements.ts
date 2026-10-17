@@ -48,14 +48,6 @@ export const ANNOUNCEMENTS: readonly Announcement[] = [
       'Raise the stakes the old-fashioned way. Turn on Play for ante in a lobby and each player antes a random card from their deck before the opening draw — the winner takes the pile. In a sealed or draft tournament the cards you win join your pool for the rest of the event; anywhere else they go up as trophies in the new Spoils panel on your profile. It also unlocks the ante cards: Contract from Below, Darkpact, Demonic Attorney, Jeweled Bird and Bronze Tablet. Ranked games never play for ante.',
   },
   {
-    id: 'feature-subgames-shahrazad',
-    date: '2026-10-17',
-    kind: 'feature',
-    title: 'Shahrazad: a game within the game',
-    body:
-      'Arabian Nights’ Shahrazad now works as printed: cast it and everyone plays a whole subgame of Magic, using their libraries as their decks — fresh life, fresh hands, mulligans and all — while the main game waits with the spell still on the stack. A gilded frame and a SUBGAME badge show which game you are in and what is waiting outside it. When it is over, the cards go home, and everyone who didn’t win loses half their life. You can even cast Shahrazad inside a subgame.',
-  },
-  {
     id: 'set-pip',
     date: '2026-10-17',
     kind: 'set',
