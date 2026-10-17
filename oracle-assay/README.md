@@ -478,6 +478,10 @@ explore/    the browser UI — a loopback HTTP server over the live grammar and 
 cli/        assay parse | explain | compile | gate | report | differential | explore | corpus
 ```
 
+`syntax/`, `grammar/`, `normalize/` and `compile/` (plus `mtg-sdk` and the card validator) are also
+compiled to Kotlin/Wasm by the standalone browser checker in [`browser/`](browser/README.md). Keep
+them free of JVM-only APIs; the `assay-wasm` CI job fails when one slips in.
+
 ## The three things that make this different
 
 **The grammar runs backwards.** A rule registers `build` (text→model) and `match` (model→text)

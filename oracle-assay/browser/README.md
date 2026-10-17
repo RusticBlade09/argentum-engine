@@ -33,3 +33,6 @@ CLI, filesystem, HTTP, corpus and explorer modules never enter the browser build
 
 The target requires browser Wasm GC and exception handling. Test the emitted optimized artifact in
 supported browsers; do not enable Binaryen's experimental stringref feature.
+
+CI builds this target and runs `test.mjs` in the `assay-wasm` job (outside the required `backend`
+gate), so a JVM-only API slipping into a shared source shows up as a red check on the PR.
