@@ -14,25 +14,41 @@ import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.random.Random
 
 /**
  * Where the AI throws a dexterity flip (Chaos Orb).
  *
- * The AI's hand is as steady as the clean release zone allows, but it still scatters like anyone
- * else's, so it scores each candidate aim point by its *expected* haul: the value of the opponents'
- * permanents it would destroy minus a little more than the value of its own, averaged over a fixed
- * spread of landings drawn from the engine's own scatter model. Candidates are each counted
- * permanent and the midpoints of nearby pairs (an Orb on the seam between two cards takes both).
- * When nothing scores above zero it throws the Orb off the table rather than hurt itself.
+ * The AI plays the mini-game with a human's hands: it picks a goal, then lets go a little early
+ * or late and with its hand a little off-centre, like a decent player does — so it usually hits
+ * what it aims at, sometimes clips the card beside it, and now and then misses outright. It
+ * scores each candidate aim point by its *expected* haul under that unsteadiness plus the
+ * engine's own scatter: the value of the opponents' permanents it would destroy minus a little
+ * more than the value of its own. Candidates are each counted permanent and the midpoints of
+ * nearby pairs (an Orb on the seam between two cards takes both). When nothing scores above
+ * zero it throws the Orb off the table rather than hurt itself.
  */
 object FlipAim {
-    private const val STRENGTH = FlipPhysics.SWEET_SPOT
+    /** The AI's timing error (one standard deviation of release strength) — about a human's. */
+    const val RELEASE_SPREAD = 0.06
+    /** The AI's sideways error (one standard deviation of hand sway at release). */
+    const val SWAY_SPREAD = 0.3
     private const val OWN_LOSS_WEIGHT = 1.25
     private const val PAIR_REACH = 140.0
     private val ROTATIONS = listOf(-FlipPhysics.CLEAN_SKEW, 0.0, FlipPhysics.CLEAN_SKEW)
 
-    /** [samples] landings per candidate per rotation; fewer for playouts, more for the real move. */
-    fun respond(state: GameState, decision: FlipOntoBattlefieldDecision, playerId: EntityId, samples: Int = 16): FlipThrowResponse {
+    /**
+     * [samples] landings per candidate per rotation; fewer for playouts, more for the real move.
+     * [hand] draws the release error; by default it is seeded from the decision, so the same
+     * decision always gets the same throw.
+     */
+    fun respond(
+        state: GameState,
+        decision: FlipOntoBattlefieldDecision,
+        playerId: EntityId,
+        samples: Int = 16,
+        hand: Random = Random(decision.id.hashCode()),
+    ): FlipThrowResponse {
         val table = decision.table
         val projected = state.projectedState
         val worth = table.cards.filter { it.eligible }.associate { card ->
@@ -51,8 +67,9 @@ object FlipAim {
         }
 
         val offsets = spread(samples)
+        val releaseSigma = hypot(RELEASE_SPREAD * FlipPhysics.DEPTH_PER_STRENGTH, SWAY_SPREAD * FlipPhysics.SIDE_PER_SWAY)
         fun expected(x: Double, y: Double): Double {
-            val sigma = FlipPhysics.scatter(table, x, y, STRENGTH)
+            val sigma = hypot(FlipPhysics.scatter(table, x, y, FlipPhysics.SWEET_SPOT), releaseSigma)
             var total = 0.0
             for ((dx, dy) in offsets) for (rotation in ROTATIONS) {
                 val landing = FlipLanding(x + dx * sigma, y + dy * sigma, rotation, halfTurns = 2)
@@ -66,8 +83,13 @@ object FlipAim {
 
         val best = candidates.map { it to expected(it.first, it.second) }.maxByOrNull { it.second }
         val (x, y) = if (best != null && best.second > 0.0) best.first else table.width / 2 to -2 * table.height
-        return FlipThrowResponse(decision.id, x, y, STRENGTH)
+        val strength = (FlipPhysics.SWEET_SPOT + gaussian(hand) * RELEASE_SPREAD).coerceIn(0.0, 1.0)
+        val sway = (gaussian(hand) * SWAY_SPREAD).coerceIn(-1.0, 1.0)
+        return FlipThrowResponse(decision.id, x, y, strength, sway)
     }
+
+    private fun gaussian(random: Random): Double =
+        sqrt(-2.0 * kotlin.math.ln(1.0 - random.nextDouble())) * cos(2.0 * PI * random.nextDouble())
 
     private fun centre(card: FlipTableCard) = card.x to (card.hitTop + card.hitBottom) / 2
 
