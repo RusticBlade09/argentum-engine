@@ -349,6 +349,14 @@
   color: rgba(255, 255, 255, 0.9);
 }
 
+.aimHint {
+  display: block;
+  margin-top: 2px;
+  text-align: center;
+  font-size: 8.5px;
+  color: #ffd36e;
+}
+
 /* ---- The orb ------------------------------------------------------------------------------ */
 
 .orbAnchor {

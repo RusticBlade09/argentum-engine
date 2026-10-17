@@ -295,6 +295,7 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
         {stageAim && aimLabel && (
           <div className={styles.aimLabel} style={{ left: stageAim.x, top: stageAim.y }}>
             {aimLabel}
+            <span className={styles.aimHint}>Pressing starts the swing</span>
           </div>
         )}
 
@@ -328,7 +329,7 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
             <span className={styles.stepNum}>1</span>Aim over the table
           </span>
           <span className={`${styles.step} ${!swinging && aim ? styles.stepActive : ''}`}>
-            <span className={styles.stepNum}>2</span>Press and hold to swing
+            <span className={styles.stepNum}>2</span>Press and hold — the swing starts at once
           </span>
           <span className={`${styles.step} ${swinging ? styles.stepActive : ''}`}>
             <span className={styles.stepNum}>3</span>Let go on the gold line
@@ -337,7 +338,7 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
         <span className={styles.subtitle}>
           {swinging
             ? 'Early falls short, late sails long · each swing is quicker and your hand starts to shake · Esc to stop'
-            : 'Space works too · the dashed card is where a perfect release lands'}
+            : 'Aim first — your first click starts the swing · Space works too'}
         </span>
       </div>
     </div>
