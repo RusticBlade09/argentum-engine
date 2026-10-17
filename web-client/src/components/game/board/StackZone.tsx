@@ -12,6 +12,7 @@ import { useOpenCardMenuOnTap } from '@/hooks/useOpenCardMenuOnTap.ts'
 import { useResponsiveContext, handleImageError } from './shared'
 import { styles } from './styles'
 import { chosenModeGroupsForStack, groupStackCards, type StackGroup } from './stackGrouping'
+import { zoneCardTargetLabels } from './graveyardTargets'
 import { YieldContextMenu } from './YieldContextMenu'
 
 /**
@@ -692,7 +693,16 @@ export function StackDisplay() {
       }
 
       const displayText = isAbility ? topCard.oracleText : topCard.stackText
-      if (!displayText) return null
+      // A card targeted in a graveyard or exile is a thumbnail in a pile at best, so name it here.
+      const zoneTargets = gameState
+        ? zoneCardTargetLabels(
+            topCard,
+            gameState.cards,
+            gameState.viewingPlayerId,
+            (id) => gameState.players.find((p) => p.playerId === id)?.name ?? 'Unknown',
+          )
+        : []
+      if (!displayText && zoneTargets.length === 0) return null
       return (
         <div style={{
           padding: responsive.isMobile ? '4px 6px' : '6px 10px',
@@ -713,8 +723,20 @@ export function StackDisplay() {
             WebkitLineClamp: 5,
             WebkitBoxOrient: 'vertical',
           }}>
-            <AbilityText text={displayText} size={responsive.isMobile ? 9 : 10} />
+            {displayText && <AbilityText text={displayText} size={responsive.isMobile ? 9 : 10} />}
           </div>
+          {zoneTargets.length > 0 && (
+            <div style={{
+              marginTop: displayText ? 4 : 0,
+              color: '#ffcc66',
+              fontSize: responsive.isMobile ? 8 : 9,
+              lineHeight: 1.3,
+              textAlign: 'center',
+              fontStyle: 'italic',
+            }}>
+              → {zoneTargets.join(', ')}
+            </div>
+          )}
         </div>
       )
     })()}

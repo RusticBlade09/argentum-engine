@@ -10,6 +10,8 @@ import { useResponsiveContext, handleImageError, getStashCounters, getTimeCounte
 import { DeckBrowser } from './DeckBrowser'
 import { counterManaClass } from '@/assets/icons/keywords'
 import { styles, passiveCounterBadgeStyle } from './styles'
+import { collectGraveyardTargets, type GraveyardTarget } from './graveyardTargets'
+import { GraveyardTargetCallout } from './GraveyardTargetCallout'
 
 /** Stable empty array so the `ownDeck` selector doesn't hand Zustand a new reference each render. */
 const EMPTY_DECK: readonly ClientDeckCard[] = []
@@ -156,24 +158,12 @@ export function ZonePile({
   const showLabels = fit.showLabels
   const effectivePileHeight = Math.round(effectivePileWidth * CARD_RATIO)
 
-  // Find any graveyard cards that are being targeted by spells on the stack
-  const targetedGraveyardCards = React.useMemo(() => {
-    const targeted: ClientCard[] = []
-    const seenIds = new Set<string>()
-    for (const stackCard of stackCards) {
-      if (!stackCard.targets) continue
-      for (const target of stackCard.targets) {
-        if (target.type === 'Card') {
-          const card = graveyardCards.find((c) => c.id === target.cardId)
-          if (card && !seenIds.has(card.id)) {
-            seenIds.add(card.id)
-            targeted.push(card)
-          }
-        }
-      }
-    }
-    return targeted
-  }, [stackCards, graveyardCards])
+  // Graveyard cards that objects on the stack target — pulled out beside the pile by the callout.
+  const graveyardTargets = React.useMemo(
+    () => collectGraveyardTargets(stackCards, graveyardCards),
+    [stackCards, graveyardCards],
+  )
+  const graveyardPileRef = useRef<HTMLDivElement>(null)
 
   const pileStyle = {
     width: effectivePileWidth,
@@ -277,8 +267,14 @@ export function ZonePile({
       {/* Graveyard */}
       <div style={styles.zoneStack}>
         <div
+          ref={graveyardPileRef}
           data-graveyard-id={player.playerId}
-          style={{ ...styles.graveyardPile, ...pileStyle, cursor: graveyardCards.length > 0 ? 'pointer' : 'default' }}
+          style={{
+            ...styles.graveyardPile,
+            ...pileStyle,
+            cursor: graveyardCards.length > 0 ? 'pointer' : 'default',
+            ...(graveyardTargets.length > 0 ? styles.graveyardPileTargeted : null),
+          }}
           onClick={() => { if (graveyardCards.length > 0) setBrowsingGraveyard(true) }}
           onMouseEnter={(e) => { if (topGraveyardCard) hoverCard(topGraveyardCard.id, { x: e.clientX, y: e.clientY }) }}
           onMouseLeave={() => hoverCard(null)}
@@ -296,38 +292,15 @@ export function ZonePile({
           {player.graveyardSize > 0 && (
             <div style={{ ...styles.pileCount, fontSize: responsive.fontSize.small }}>{player.graveyardSize}</div>
           )}
-          {/* Show targeted cards fanned out when a spell is targeting cards in this graveyard */}
-          {targetedGraveyardCards.map((card, index) => {
-            const fanOffset = targetedGraveyardCards.length > 1
-              ? (index - (targetedGraveyardCards.length - 1) / 2) * (responsive.isMobile ? 14 : 20)
-              : 0
-            return (
-              <div
-                key={card.id}
-                data-card-id={card.id}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  zIndex: 10 + index,
-                  boxShadow: '0 0 12px 4px rgba(255, 136, 0, 0.8)',
-                  borderRadius: responsive.isMobile ? 4 : 6,
-                  transform: `translateX(${fanOffset}px)`,
-                }}
-              >
-                <img
-                  src={getCardImageUrl(card.name, card.imageUri, 'normal')}
-                  alt={card.name}
-                  style={{ ...styles.pileImage, borderRadius: responsive.isMobile ? 4 : 6 }}
-                  onError={(e) => handleImageError(e, card.name, 'normal')}
-                />
-              </div>
-            )
-          })}
         </div>
         {showLabels && <span style={zoneLabelStyle}>Graveyard</span>}
+        {graveyardTargets.length > 0 && (
+          <GraveyardTargetCallout
+            targets={graveyardTargets}
+            pileRef={graveyardPileRef}
+            onOpen={() => setBrowsingGraveyard(true)}
+          />
+        )}
       </div>
 
       {/* Exile */}
@@ -484,6 +457,7 @@ export function ZonePile({
       {browsingGraveyard && createPortal(
         <GraveyardBrowser
           cards={graveyardCards}
+          targets={graveyardTargets}
           ownerLabel={ownerLabel('Graveyard')}
           onClose={() => setBrowsingGraveyard(false)}
         />,
@@ -538,7 +512,12 @@ export function ZonePile({
 /**
  * Full-screen overlay for browsing graveyard cards.
  */
-function GraveyardBrowser({ cards, ownerLabel, onClose }: { cards: readonly ClientCard[], ownerLabel: string, onClose: () => void }) {
+function GraveyardBrowser({ cards, targets, ownerLabel, onClose }: {
+  cards: readonly ClientCard[]
+  targets: readonly GraveyardTarget[]
+  ownerLabel: string
+  onClose: () => void
+}) {
   const hoverCard = useGameStore((state) => state.hoverCard)
   const responsive = useResponsiveContext()
   const [minimized, setMinimized] = useState(false)
@@ -598,21 +577,36 @@ function GraveyardBrowser({ cards, ownerLabel, onClose }: { cards: readonly Clie
           <button style={styles.graveyardCloseButton} onClick={onClose}>✕</button>
         </div>
         <div style={styles.graveyardCardGrid}>
-          {cards.map((card) => (
-            <div
-              key={card.id}
-              style={{ width: cardWidth, height: cardHeight, borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}
-              onMouseEnter={(e) => hoverCard(card.id, { x: e.clientX, y: e.clientY })}
-              onMouseLeave={() => hoverCard(null)}
-            >
-              <img
-                src={getCardImageUrl(card.name, card.imageUri, 'normal')}
-                alt={card.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                onError={(e) => handleImageError(e, card.name, 'normal')}
-              />
-            </div>
-          ))}
+          {cards.map((card) => {
+            const sourceNames = targets.find((t) => t.card.id === card.id)?.sourceNames
+            return (
+              <div key={card.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                <div
+                  style={{
+                    width: cardWidth,
+                    height: cardHeight,
+                    borderRadius: 6,
+                    overflow: 'hidden',
+                    ...(sourceNames ? { animation: 'graveyardTargetPulse 1.4s ease-in-out infinite alternate' } : null),
+                  }}
+                  onMouseEnter={(e) => hoverCard(card.id, { x: e.clientX, y: e.clientY })}
+                  onMouseLeave={() => hoverCard(null)}
+                >
+                  <img
+                    src={getCardImageUrl(card.name, card.imageUri, 'normal')}
+                    alt={card.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => handleImageError(e, card.name, 'normal')}
+                  />
+                </div>
+                {sourceNames && (
+                  <div style={{ ...styles.graveyardTargetTag, maxWidth: cardWidth }}>
+                    Targeted by {sourceNames.join(', ')}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
         {/* Action buttons */}
         <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>

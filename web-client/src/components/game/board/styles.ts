@@ -201,6 +201,21 @@ export const styles: Record<string, React.CSSProperties> = {
     boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
     backgroundColor: 'rgba(255, 255, 255, 0.025)',
   },
+  /** The pile a target was pulled out of — ties it to the GraveyardTargetCallout beside it. */
+  graveyardPileTargeted: {
+    boxShadow: '0 0 0 2px #ff8800, 0 0 10px 2px rgba(255, 136, 0, 0.55)',
+  },
+  graveyardTargetTag: {
+    padding: '2px 8px',
+    borderRadius: 999,
+    background: 'rgba(255, 136, 0, 0.16)',
+    border: '1px solid rgba(255, 136, 0, 0.7)',
+    color: '#ffb366',
+    fontSize: 11,
+    fontWeight: 600,
+    lineHeight: 1.3,
+    textAlign: 'center',
+  },
   pileImage: {
     width: '100%',
     height: '100%',
