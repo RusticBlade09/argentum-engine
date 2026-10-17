@@ -52,7 +52,10 @@ export type ClientEvent =
   | CardFlippedOntoBattlefieldEvent
   | TurnChangedEvent
   | GameRestartedEvent
+  | SubgameStartedEvent
+  | SubgameEndedEvent
   | ControlChangedEvent
+  | OwnershipChangedEvent
   | CardCycledEvent
   | LibraryShuffledEvent
   | AbilityFizzledEvent
@@ -492,6 +495,29 @@ export interface GameRestartedEvent {
   readonly description: string
 }
 
+/** A Magic subgame began (Shahrazad, CR 729); the state now shows it. */
+export interface SubgameStartedEvent {
+  readonly type: 'subgameStarted'
+  readonly startingPlayerId: EntityId
+  /** 1 for a subgame of the main game, 2 for one within it (CR 729.6). */
+  readonly depth: number
+  readonly sourceName?: string | null
+  readonly isYourTurn: boolean | null
+  readonly description: string
+}
+
+/** A Magic subgame ended (CR 729.5) and its main game resumed. */
+export interface SubgameEndedEvent {
+  readonly type: 'subgameEnded'
+  /** Empty for a draw. */
+  readonly winnerIds: readonly EntityId[]
+  readonly nonWinnerIds: readonly EntityId[]
+  readonly depth: number
+  readonly sourceName?: string | null
+  readonly youWon: boolean | null
+  readonly description: string
+}
+
 // ============================================================================
 // Control Events
 // ============================================================================
@@ -501,6 +527,18 @@ export interface ControlChangedEvent {
   readonly permanentName: string
   readonly newControllerId: EntityId
   readonly isYours: boolean | null
+  readonly description: string
+}
+
+/**
+ * A card permanently changed owner — an ante effect such as Darkpact or Bronze Tablet (CR 407).
+ * Unlike [ControlChangedEvent] this outlives the game; `description` reads "You now own …".
+ */
+export interface OwnershipChangedEvent {
+  readonly type: 'ownershipChanged'
+  readonly cardName: string
+  readonly newOwnerId: EntityId
+  readonly isYours?: boolean | null
   readonly description: string
 }
 

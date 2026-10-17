@@ -123,6 +123,7 @@ import com.wingedsheep.sdk.scripting.effects.FilterCollectionEffect
 import com.wingedsheep.sdk.scripting.effects.ForceSacrificeEffect
 import com.wingedsheep.sdk.scripting.effects.SacrificeTargetEffect
 import com.wingedsheep.sdk.scripting.effects.ExchangeControlEffect
+import com.wingedsheep.sdk.scripting.effects.ChangeOwnershipEffect
 import com.wingedsheep.sdk.scripting.effects.CreatureStat
 import com.wingedsheep.sdk.scripting.effects.ExchangeLifeAndStatEffect
 import com.wingedsheep.sdk.scripting.effects.GainControlByRankEffect
@@ -523,6 +524,23 @@ object Effects {
      */
     fun RestartGame(exempt: CollectionSlot? = null, afterRestart: Effect? = null): Effect =
         com.wingedsheep.sdk.scripting.effects.RestartGameEffect(exempt?.key, afterRestart)
+
+    /**
+     * Players play a Magic subgame using their libraries as their decks (CR 729). [afterSubgame]
+     * builds the rest of the spell's text from the players who didn't win the subgame (a plural
+     * collection — read it with [CollectionSlot.asPlayers]); it runs in the main game once the
+     * subgame is over. Must be the ability's last instruction (Shahrazad).
+     */
+    fun PlaySubgame(afterSubgame: ((nonWinners: CollectionSlot) -> Effect)? = null): Effect {
+        val nonWinners = CollectionSlot(SUBGAME_NON_WINNERS)
+        return com.wingedsheep.sdk.scripting.effects.PlaySubgameEffect(
+            nonWinners = nonWinners.key.takeIf { afterSubgame != null },
+            afterSubgame = afterSubgame?.invoke(nonWinners),
+        )
+    }
+
+    /** The pipeline collection [PlaySubgame] records the players who didn't win the subgame in. */
+    const val SUBGAME_NON_WINNERS: String = "subgameNonWinners"
 
     /**
      * Take an extra turn after this one (Time Walk, Lost Isle Calling). When [loseAtEndStep]
@@ -4241,6 +4259,15 @@ object Effects {
     /** The active player gains control of [target] (Contested Game Ball, Risky Move). */
     fun GainControlByActivePlayer(target: EffectTarget = EffectTarget.Self): Effect =
         com.wingedsheep.sdk.scripting.effects.GainControlByActivePlayerEffect(target)
+
+    /**
+     * [newOwner] becomes the owner of [card] (CR 407.3) — "You own target card in the ante"
+     * (Darkpact). The card stays put; only the ante cards change ownership.
+     */
+    fun ChangeOwnership(
+        card: EffectTarget = EffectTarget.ContextTarget(0),
+        newOwner: EffectTarget = EffectTarget.Controller
+    ): Effect = ChangeOwnershipEffect(card, newOwner)
 
     /**
      * Exchange control of two target creatures.

@@ -31,7 +31,7 @@ import { computeCoverage } from '../decisions/manaCoverage'
 // Import extracted components
 import { SeatPortrait, useHasSeatPortrait } from './SeatPortrait'
 import { useResponsiveContext } from './board/shared'
-import { Battlefield, CardRow, CommandZone, OpponentBoardArea, BoardNamePlate, HandCountBadge, CollapsedBoardTab, COLLAPSED_TAB_WIDTH, CELL_PLATE_BAND, useCellHandMetrics, StackDisplay, ZonePile, ResponsiveContext } from './board'
+import { Battlefield, CardRow, CommandZone, AnteZone, AnteIndicator, OpponentBoardArea, BoardNamePlate, HandCountBadge, CollapsedBoardTab, COLLAPSED_TAB_WIDTH, CELL_PLATE_BAND, useCellHandMetrics, StackDisplay, ZonePile, ResponsiveContext } from './board'
 import { RenderProfiler } from '@/utils/renderProfiler'
 import { PooledBattlefieldLayoutContext } from './board/shared'
 import { useBoardGroups } from './board/useBoardGroups'
@@ -39,7 +39,7 @@ import { usePooledBattlefieldLayout } from './board/usePooledBattlefieldLayout'
 import { CardPreview } from './card'
 import { EmotePicker } from '../tableTalk/EmotePicker'
 import { ChatButton } from '@/components/messages/ChatButton'
-import { TargetingOverlay, ManaColorSelectionOverlay, LifeDisplay, ActiveEffectsBadges, SpeedGauge, DayNightBadge, ConcedeButton, FullscreenButton, GamePreferencesButton, SpectatorCountBadge, TeamLifeBanner, EliminationNotice } from './overlay'
+import { TargetingOverlay, ManaColorSelectionOverlay, LifeDisplay, ActiveEffectsBadges, SpeedGauge, DayNightBadge, SubgameBadge, SubgameFrame, ConcedeButton, FullscreenButton, GamePreferencesButton, SpectatorCountBadge, TeamLifeBanner, EliminationNotice } from './overlay'
 import { HelpDrawer, HelpDrawerButton } from '../help/HelpDrawer'
 import { markLearnSignal } from '@/learn/signals'
 import { styles } from './board/styles'
@@ -885,6 +885,8 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
           : `${oppHandReservation}px minmax(0, 1fr) auto 0px 0px`
         : `${oppHandReservation}px minmax(0, ${opponentRowWeight}fr) auto minmax(0, ${playerRowWeight}fr) ${playerHandReservation}px`,
     }}>
+      {/* A Magic subgame (Shahrazad, CR 729): the whole table is framed as a game within the game. */}
+      <SubgameFrame depth={gameState.subgame?.depth} />
       {/* Fullscreen button (top-left) */}
       <FullscreenButton />
       {/* Preferences gear (top-left, next to fullscreen) — stacking, stops, motion mid-game */}
@@ -1342,6 +1344,10 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
         {/* Game-level day/night designation (CR 731) — one badge for the whole table, not per-player.
             Renders nothing until a designation exists, so most games never show it. */}
         <DayNightBadge designation={gameState.dayNight} />
+        {/* "For ante" chip (CR 407) — fixed for the whole game, so it never shifts the HUD mid-game. */}
+        <AnteIndicator />
+        {/* A subgame in progress (CR 729) — what started it and what's waiting outside it. */}
+        <SubgameBadge gameState={gameState} />
         <StepStrip
           phase={gameState.currentPhase}
           step={gameState.currentStep}
@@ -1431,6 +1437,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
           )}
           <div style={styles.playerRowWithZones}>
             <CommandZone player={eliminatedBottomSeat} />
+            <AnteZone player={eliminatedBottomSeat} />
             <div style={styles.playerMainArea}>
               <Battlefield isOpponent={false} playerId={eliminatedBottomSeat.playerId} spectatorMode />
             </div>
@@ -1551,6 +1558,8 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
           <div style={styles.playerRowWithZones}>
             {/* Player command zone (left side) — Commander format only; renders nothing otherwise. */}
             {effectiveViewingPlayer && <CommandZone player={effectiveViewingPlayer} />}
+            {/* The player's ante (CR 407) — only in a game played for ante; renders nothing otherwise. */}
+            {effectiveViewingPlayer && <AnteZone player={effectiveViewingPlayer} />}
 
             <div ref={playerSlotRef} style={{
               ...styles.playerMainArea,
@@ -2691,6 +2700,7 @@ function SelfBottomCell({
       {!plateAtBottom && <div style={{ height: CELL_PLATE_BAND + handBand, flexShrink: 0 }} aria-hidden />}
       <div style={{ ...styles.playerRowWithZones, alignItems: 'flex-start', flex: 1 }}>
         <CommandZone player={player} compact />
+        <AnteZone player={player} compact />
         <div style={{ ...styles.playerMainArea, ...(hijackedSurfaceStyle ?? null) }}>
           <Battlefield isOpponent={false} spectatorMode={spectatorMode} />
         </div>

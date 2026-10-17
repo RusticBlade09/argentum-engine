@@ -45,6 +45,7 @@ class ZonesExecutors(
         PutOntoBattlefieldAsAuraExecutor(zones, cardRegistry),
         PutOntoBattlefieldAttachedToChosenExecutor(zones, cardRegistry, targetFinder),
         ExileOpponentsGraveyardsExecutor(),
-        DestroyAllEquipmentOnTargetExecutor(zones)
+        DestroyAllEquipmentOnTargetExecutor(zones),
+        ChangeOwnershipExecutor()
     )
 }

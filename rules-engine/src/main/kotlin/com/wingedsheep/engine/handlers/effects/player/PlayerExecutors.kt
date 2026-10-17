@@ -58,6 +58,7 @@ class PlayerExecutors(
         EachPlayerChoosesCreatureTypeExecutor(),
         EndTheTurnExecutor(),
         RestartGameExecutor(),
+        PlaySubgameExecutor(),
         GainCitysBlessingExecutor(),
         TakeDesignationExecutor(),
         VentureIntoTheDungeonExecutor(),

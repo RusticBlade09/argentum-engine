@@ -1697,6 +1697,23 @@ uses `Patterns.Exile.impulse()`; playing the card follows ordinary costs and tim
   ids public in the old game don't name cards in new hands. The server re-sends each seat its mulligan decision on
   the `GameRestartedEvent`. **Karn Liberated** −14:
   `Pipeline { val exiled = gather(CardSource.FromLinkedExile()); val kept = filter(exiled, Permanent.notSubtype(AURA)); run(Effects.RestartGame(kept, afterRestart = Pipeline { move(kept, ToZone(BATTLEFIELD, Player.You)) })) }`.
+- `PlaySubgame { nonWinners -> afterSubgame }` — players play a Magic subgame using their libraries as their decks
+  (CR 729; `PlaySubgameEffect`). Every player still in the game takes part; each one's main-game library becomes
+  their subgame deck and nothing else crosses over (a commander in the command zone and a vanguard do, CR
+  729.2b–c; the sideboard is shared, CR 729.4). The subgame begins like any game — random first player, starting
+  life, seven-card hands, its own mulligans (a game set up with `skipMulligans` skips them again) — and a player
+  whose library can't supply seven cards loses it at its first upkeep (CR 729.3). The main game is discontinued
+  whole, kept as the subgame's `GameState.mainGame`: no trigger, effect or designation reaches across (CR 729.1b).
+  When the subgame ends, every card the players own in it (exile included) goes into its owner's main-game
+  library, which is shuffled; tokens, counters and the subgame's zones are gone (CR 729.5). The players who didn't
+  win (everyone, after a draw) are passed to the builder as a plural collection — read it with
+  `nonWinners.asPlayers` — and `afterSubgame` runs in the main game with the effect's controller as controller;
+  only then does the spell finish resolving and go to the graveyard (it waits on the stack throughout). Like
+  `RestartGame`, the executor only records a request (`GameState.pendingSubgame`) that the settle boundary carries
+  out through `Subgames`, so it must be the **last** instruction. A subgame can be created within a subgame (CR
+  729.6), and restarting a subgame leaves its main game alone (CR 727.6). `Concede(player, includingMainGames)`
+  concedes just the subgame or the whole table. **Shahrazad**:
+  `Effects.PlaySubgame { nonWinners -> Effects.ForEachPlayer(nonWinners.asPlayers, Effects.LoseHalfLife(roundUp = true)) }`.
 - `ForceExileMultiZone(count, target)` — exile from hand/battlefield/graveyard combined (Lich's Mastery shape).
 
 ### Cards (draw / discard)
@@ -3015,6 +3032,17 @@ wrappers: Word of Command composes it inside `WithManaAbilitySources` and
   the condition fails — so a pump that wears off, a re-tap, or a re-acquired source never
   re-grabs the creature.
 - `ExchangeControlEffect(target1, target2)` — swap control of two permanents.
+- `ChangeOwnershipEffect(card = ContextTarget(0), newOwner = Controller)` (facade `Effects.ChangeOwnership(card, newOwner)`) —
+  `newOwner` becomes the **owner** of `card` (CR 407.3), the one thing only the ante cards do: Darkpact's "You
+  own target card in the ante", Bronze Tablet's "that player owns this card and you own the other exiled card"
+  (`newOwner = PlayerRef(Player.OwnerOf(...))` hands the Tablet to the target's owner — sequence it *before* the
+  target's own change, since `OwnerOf` reads the target's current owner). Not control: no layer, no duration, any
+  zone. The card doesn't move — the executor keeps `OwnerComponent`, `CardComponent.ownerId` and the owner-keyed
+  zone it sits in (exile, ante, graveyard, …) in step without minting a new object, emits `OwnershipChangedEvent`,
+  and stamps `OriginalOwnerComponent` so `AnteSettlement` can report the change "for keeps" when the game ends
+  (a card that comes back to its first owner reports nothing). Follow it with an ordinary move to act on the
+  card as its new owner's ("…exchange that card with the top card of your library" → `Effects.Move(card,
+  Zone.LIBRARY, placement = Top)` lands in *your* library).
   Triggered abilities with mandatory single-permanent target slots may compare a later target to an
   earlier one using `EffectTarget.ContextTarget(index)` (Spawnbroker: `powerAtMostEntity(ContextTarget(0))`).
   The engine asks for these targets sequentially, offers only choices that can complete the remaining
@@ -4411,6 +4439,18 @@ one-off pipeline belongs inline in the card file via `Effects.Pipeline { }` (§5
     `val kept = runStoringCollection { Patterns.Library.surveil(1, storeGraveyardAs = it) }` then
     `move(kept, ToZone(HAND), filter = Any.manaValueAtMostDynamic(lifeGainedThisTurn()))`.
 - `mill(count)` — top N cards into graveyard.
+- `anteTop(target = Controller)` — ante the top card of a player's library: put it into `Zone.ANTE`
+  (CR 407.4). Same Gather → Move pipeline as `exileTop`, destination the ante. Contract from Below
+  (`discardHand() then anteTop() then DrawCards(7)`), Demonic Attorney (`ForEachPlayer(ActivePlayerFirst,
+  anteTop())` — each player antes their own top card, since only an owner can ante a card). **The ante zone**
+  (`Zone.ANTE`) exists only in a game played for ante (`GameConfig.playingForAnte`, the lobby's "Play for ante"):
+  public and shared (CR 400.1/400.2), keyed by owner like exile, so `CardSource.FromZone(Zone.ANTE, Player.You)`
+  is "the cards you own in the ante" (Jeweled Bird) and `TargetFilter(Any, zone = Zone.ANTE)` is "target card in
+  the ante" (Darkpact). Each player antes a random card of their deck before the opening draw (CR 407.2), a
+  leaving player's ante cards stay (CR 800.4n), and at game end `AnteSettlement` hands the winner everything in
+  it. The cards that read "Remove this card from your deck before playing if you're not playing for ante"
+  (`CardDefinition.requiresAnte`) are legal only in such games — deck validation enforces it (CR 407.3), so the
+  card script just omits that line's behaviour.
 - `exileTop(count, target = Controller)` — top N cards of a player's library into exile (Malboro's
   "exiles the top three cards of their library"). Same Gather → Move pipeline as `mill`, destination
   exile. `count` is an `Int` or `DynamicAmount`. Pass a `target` (e.g. a `Player.You` rebind under

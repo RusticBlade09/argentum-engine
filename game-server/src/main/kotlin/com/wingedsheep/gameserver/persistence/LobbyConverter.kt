@@ -87,7 +87,8 @@ fun TournamentLobby.toPersistent(): PersistentTournamentLobby {
         randomTeams = randomTeams,
         teamAssignments = teamAssignments.mapKeys { it.key.value },
         ffaGameSessionId = ffaGameSessionId,
-        ffaGamesPlayed = ffaGamesPlayed
+        ffaGamesPlayed = ffaGamesPlayed,
+        playingForAnte = playingForAnte,
     )
 }
 
@@ -139,7 +140,8 @@ fun restoreTournamentLobby(
             .getOrDefault(LobbyGameMode.TOURNAMENT),
         chosenAttackMode = persistent.attackMode
             ?.let { runCatching { com.wingedsheep.sdk.core.AttackMode.valueOf(it) }.getOrNull() },
-        randomTeams = persistent.randomTeams
+        randomTeams = persistent.randomTeams,
+        playingForAnte = persistent.playingForAnte,
     )
     lobby.bannedCardNames = persistent.bannedCardNames
     lobby.includedSetProducts = persistent.includedSetProducts

@@ -699,6 +699,9 @@ object CardLinter {
         put("FilterCollection" to "storeMatching", write(Space.COLLECTION))
         put("FilterCollection" to "storeNonMatching", write(Space.COLLECTION))
         put("ExileLibraryUntilManaValue" to "storeAs", write(Space.COLLECTION))
+        // A subgame (CR 729) publishes the players who didn't win it for its `afterSubgame` text
+        // (Shahrazad's "each player who doesn't win the subgame loses half their life").
+        put("PlaySubgame" to "nonWinners", write(Space.COLLECTION))
         // The contest publishes the winning *player* as a one-entry collection and every card it
         // exiled, in every round, as another.
         put("ExileTopCardContest" to "storeWinnerAs", write(Space.COLLECTION))

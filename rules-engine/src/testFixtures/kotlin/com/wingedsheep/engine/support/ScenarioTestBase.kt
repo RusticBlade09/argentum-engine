@@ -383,6 +383,23 @@ abstract class ScenarioTestBase : FunSpec() {
         }
 
         /**
+         * Add a card a player owns to the ante (CR 407). Pair with [playingForAnte] — the ante
+         * only exists in a game played for ante.
+         */
+        fun withCardInAnte(playerNumber: Int, cardName: String): ScenarioBuilder {
+            val playerId = if (playerNumber == 1) player1Id!! else player2Id!!
+            val cardId = createCard(cardName, playerId)
+            state = state.addToZone(ZoneKey(playerId, Zone.ANTE), cardId)
+            return this
+        }
+
+        /** Mark the game as played for ante (CR 407), as the lobby option does. */
+        fun playingForAnte(): ScenarioBuilder {
+            state = state.copy(playingForAnte = true)
+            return this
+        }
+
+        /**
          * Add a card to a player's sideboard ("outside the game", CR 100.4 / 400.11a). Used to
          * set up "wish" effects (Burning Wish, …) that fetch from the sideboard.
          */
@@ -1201,6 +1218,20 @@ abstract class ScenarioTestBase : FunSpec() {
         fun sideboardSize(playerNumber: Int): Int {
             val playerId = if (playerNumber == 1) player1Id else player2Id
             return state.getZone(playerId, Zone.SIDEBOARD).size
+        }
+
+        /** Check if a card with the given name, owned by the player, is in the ante (CR 407). */
+        fun isInAnte(playerNumber: Int, cardName: String): Boolean {
+            val playerId = if (playerNumber == 1) player1Id else player2Id
+            return state.getZone(playerId, Zone.ANTE).any { entityId ->
+                state.getEntity(entityId)?.get<CardComponent>()?.name == cardName
+            }
+        }
+
+        /** Number of cards the player owns in the ante. */
+        fun anteSize(playerNumber: Int): Int {
+            val playerId = if (playerNumber == 1) player1Id else player2Id
+            return state.getZone(playerId, Zone.ANTE).size
         }
 
         /**

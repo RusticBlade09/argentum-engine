@@ -104,6 +104,7 @@ class ScenarioBuilderService(
             checkZone("$label library", config.library)
             checkZone("$label exile", config.exile)
             checkZone("$label sideboard", config.sideboard)
+            checkZone("$label ante", config.ante)
             checkZone("$label commanders", config.commanders)
             config.dungeon?.let { staged ->
                 val dungeon = com.wingedsheep.sdk.dungeons.Dungeons.byName(staged.name)
@@ -177,6 +178,9 @@ class ScenarioBuilderService(
         request.priorityPlayer?.let { builder.withPriorityPlayer(it) }
         request.teams?.let { builder.withTeams(it, teamVsTeam = request.teamVsTeam == true) }
         request.attackMode?.let { builder.withAttackMode(it) }
+        if (request.playingForAnte == true || seats.any { !it.second?.ante.isNullOrEmpty() }) {
+            builder.playingForAnte()
+        }
         request.monarch?.let { builder.withDesignation(it, com.wingedsheep.sdk.core.PlayerDesignation.MONARCH) }
         request.initiative?.let { builder.withDesignation(it, com.wingedsheep.sdk.core.PlayerDesignation.INITIATIVE) }
 
@@ -208,6 +212,7 @@ class ScenarioBuilderService(
         config.library?.forEach { builder.withCardInLibrary(n, it) }
         config.exile?.forEach { builder.withCardInExile(n, it) }
         config.sideboard?.forEach { builder.withCardInSideboard(n, it) }
+        config.ante?.forEach { builder.withCardInAnte(n, it) }
         config.dungeon?.let { builder.withDungeon(n, it.name, it.room) }
         config.completedDungeons?.takeIf { it.isNotEmpty() }?.let { builder.withCompletedDungeons(n, it) }
         config.companion?.let { builder.withCompanion(n, it) }
@@ -416,6 +421,20 @@ class ScenarioBuilderService(
             val playerId = playerFor(playerNumber)
             val cardId = createCard(cardName, playerId)
             state = state.addToZone(ZoneKey(playerId, Zone.SIDEBOARD), cardId)
+            return this
+        }
+
+        /** Put a card the player owns into the ante (CR 407). */
+        fun withCardInAnte(playerNumber: Int, cardName: String): ScenarioBuilder {
+            val playerId = playerFor(playerNumber)
+            val cardId = createCard(cardName, playerId)
+            state = state.addToZone(ZoneKey(playerId, Zone.ANTE), cardId)
+            return this
+        }
+
+        /** Mark the game as played for ante (CR 407), as the lobby option does. */
+        fun playingForAnte(): ScenarioBuilder {
+            state = state.copy(playingForAnte = true)
             return this
         }
 

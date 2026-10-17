@@ -248,6 +248,7 @@ class TargetEnumerationUtils(
             Zone.BATTLEFIELD -> findValidPermanentTargets(state, playerId, filter, sourceId, targetingSourceType)
             Zone.GRAVEYARD -> findValidGraveyardTargets(state, playerId, filter, sourceId)
             Zone.EXILE -> findValidExileTargets(state, playerId, filter, sourceId)
+            Zone.ANTE -> findValidOwnerKeyedZoneTargets(state, playerId, filter, sourceId)
             Zone.STACK -> findValidSpellTargets(state, playerId, filter)
             else -> emptyList()
         }
@@ -264,6 +265,18 @@ class TargetEnumerationUtils(
         playerId: EntityId,
         filter: TargetFilter,
         sourceId: EntityId? = null
+    ): List<EntityId> = findValidOwnerKeyedZoneTargets(state, playerId, filter, sourceId)
+
+    /**
+     * Targets among the cards in [filter]'s zone, for a public zone the engine keys by owner —
+     * exile, and the ante ("target card in the ante", Darkpact). Scans only the targeting player's
+     * copy when the filter restricts to cards they own or control.
+     */
+    fun findValidOwnerKeyedZoneTargets(
+        state: GameState,
+        playerId: EntityId,
+        filter: TargetFilter,
+        sourceId: EntityId? = null
     ): List<EntityId> {
         val playerIds = when (filter.baseFilter.controllerPredicate) {
             ControllerPredicate.ControlledByYou, ControllerPredicate.OwnedByYou -> listOf(playerId)
@@ -271,7 +284,7 @@ class TargetEnumerationUtils(
         }
         val context = PredicateContext(controllerId = playerId, sourceId = sourceId)
         return playerIds.flatMap { pid ->
-            state.getExile(pid).filter { entityId ->
+            state.getZone(pid, filter.zone).filter { entityId ->
                 if (filter.excludeSelf && entityId == sourceId) return@filter false
                 predicateEvaluator.matches(state, state.projectedState, entityId, filter.baseFilter, context)
             }
@@ -317,6 +330,7 @@ class TargetEnumerationUtils(
                     Zone.HAND -> "Hand"
                     Zone.LIBRARY -> "Library"
                     Zone.COMMAND -> "Command"
+                    Zone.ANTE -> "Ante"
                     else -> null
                 }
             }

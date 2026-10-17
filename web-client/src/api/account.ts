@@ -668,6 +668,41 @@ export async function fetchTournamentDetail(id: number): Promise<TournamentDetai
   return (await res.json()) as TournamentDetail
 }
 
+/** One card that changed hands in a game played for ante (CR 407). */
+export interface Spoil {
+  readonly cardName: string
+  readonly imageUri: string | null
+  /** The other side of the transfer: who it was won from, or lost to. */
+  readonly opponentName: string
+  readonly gameId: string | null
+  /** ISO-8601 timestamp of the game's end. */
+  readonly at: string
+}
+
+export interface Spoils {
+  readonly won: readonly Spoil[]
+  readonly lost: readonly Spoil[]
+}
+
+const NO_SPOILS: Spoils = { won: [], lost: [] }
+
+/**
+ * The signed-in user's ante winnings and losses. A server without the endpoint (404) or with
+ * accounts disabled reads as "no spoils yet" rather than an error — the panel just shows its
+ * empty state.
+ */
+export async function fetchSpoils(): Promise<Spoils> {
+  const res = await fetch('/api/stats/me/spoils', { headers: authHeaders() })
+  if (res.status === 401) throw new UnauthorizedError()
+  if (res.status === 404 || res.status === 503) return NO_SPOILS
+  if (!res.ok) throw new Error(`Failed to load spoils (${res.status})`)
+  const body = (await res.json().catch(() => null)) as Partial<Spoils> | null
+  return {
+    won: Array.isArray(body?.won) ? body.won : [],
+    lost: Array.isArray(body?.lost) ? body.lost : [],
+  }
+}
+
 /** Both seats' decklists for one of the user's finished games (for the recent-games deck viewer). */
 export async function fetchGameDecks(gameId: string): Promise<GameDecks> {
   const res = await fetch(`/api/stats/me/history/${encodeURIComponent(gameId)}/decks`, {

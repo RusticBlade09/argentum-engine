@@ -506,13 +506,16 @@ export enum ZoneType {
   STACK = 'Stack',
   EXILE = 'Exile',
   COMMAND = 'Command',
+  // The ante zone (CR 407): cards wagered in a game played for ante. Public, and keyed per owner
+  // like exile/command so each player's stake renders beside their board.
+  ANTE = 'Ante',
   // Cards owned "outside the game" (CR 100.4 / 400.11a) — a player's sideboard, reachable in-game
   // only by wish effects. Private to its owner; opponents never see it.
   SIDEBOARD = 'Sideboard',
 }
 
 export function isPublicZone(zoneType: ZoneType): boolean {
-  return [ZoneType.BATTLEFIELD, ZoneType.GRAVEYARD, ZoneType.STACK, ZoneType.EXILE, ZoneType.COMMAND].includes(zoneType)
+  return [ZoneType.BATTLEFIELD, ZoneType.GRAVEYARD, ZoneType.STACK, ZoneType.EXILE, ZoneType.COMMAND, ZoneType.ANTE].includes(zoneType)
 }
 
 export function isHiddenZone(zoneType: ZoneType): boolean {
@@ -520,7 +523,7 @@ export function isHiddenZone(zoneType: ZoneType): boolean {
 }
 
 export function isSharedZone(zoneType: ZoneType): boolean {
-  return [ZoneType.BATTLEFIELD, ZoneType.STACK, ZoneType.EXILE].includes(zoneType)
+  return [ZoneType.BATTLEFIELD, ZoneType.STACK, ZoneType.EXILE, ZoneType.ANTE].includes(zoneType)
 }
 
 /**

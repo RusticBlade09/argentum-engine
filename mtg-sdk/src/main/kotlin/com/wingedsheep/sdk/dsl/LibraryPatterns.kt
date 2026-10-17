@@ -1009,6 +1009,30 @@ object LibraryPatterns {
         )
     }
 
+    /**
+     * Ante the top card of a player's library — put it into the ante (CR 407.4): "ante the top
+     * card of your library" (Contract from Below), "each player antes the top card of their
+     * library" (Demonic Attorney, under `Effects.ForEachPlayer`). Same Gather → Move pipeline as
+     * [exileTop], destination [Zone.ANTE]. Only the owner can ante a card (407.4), which a
+     * library top always satisfies. Only meaningful in a game played for ante — the only games
+     * these cards are legal in (407.3).
+     */
+    fun anteTop(target: EffectTarget = EffectTarget.Controller): CompositeEffect {
+        val player = effectTargetToPlayer(target)
+        return CompositeEffect(
+            listOf(
+                GatherCardsEffect(
+                    source = CardSource.TopOfLibrary(DynamicAmount.Fixed(1), player),
+                    storeAs = "anted_top"
+                ),
+                MoveCollectionEffect(
+                    from = "anted_top",
+                    destination = CardDestination.ToZone(Zone.ANTE, player)
+                )
+            )
+        )
+    }
+
     fun shuffleGraveyardIntoLibrary(target: EffectTarget): CompositeEffect {
         val player = effectTargetToPlayer(target)
         return CompositeEffect(

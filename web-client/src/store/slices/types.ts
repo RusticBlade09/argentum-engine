@@ -250,6 +250,8 @@ export interface GameOverState {
    * of the game) alongside the exit buttons.
    */
   eliminated?: boolean
+  /** The ante settlement (CR 407) when the game was played for ante. */
+  ante?: import('../../types').AnteResult | null
 }
 
 /**
@@ -775,6 +777,8 @@ export interface SpectatorGameOver {
   reason: GameOverReason
   /** Server-written end-of-game text (e.g. a stalled game's explanation), preferred when present. */
   message: string | null
+  /** The ante settlement (CR 407) when the game was played for ante. */
+  ante?: import('../../types').AnteResult | null
 }
 
 /**
@@ -792,6 +796,33 @@ export interface MatchIntro {
   playerRecord?: string
   opponentRecord?: string
 }
+
+/**
+ * The interstitial shown as a Magic subgame (Shahrazad, CR 729) begins or ends: the table is about
+ * to become a different game, and the players should see that happen rather than find it.
+ */
+export type SubgameTransition =
+  | {
+      kind: 'start'
+      /** 1 for a subgame of the main game, 2 for one within it. */
+      depth: number
+      sourceName: string | null
+      sourceImageUri: string | null
+      /** The randomly chosen first player: "You" or their name. */
+      firstPlayerName: string
+      youGoFirst: boolean
+    }
+  | {
+      kind: 'end'
+      depth: number
+      sourceName: string | null
+      sourceImageUri: string | null
+      /** Empty for a draw. */
+      winnerNames: string[]
+      youWon: boolean
+      /** The players who didn't win — what the spell does to them next, it says itself. */
+      nonWinnerNames: string[]
+    }
 
 /**
  * A log entry for the game log panel.
@@ -1060,7 +1091,11 @@ export type GameStore = {
   mulligan: () => void
   chooseBottomCards: (cardIds: readonly EntityId[]) => void
   toggleMulliganCard: (cardId: EntityId) => void
-  concede: () => void
+  /**
+   * Concede. During a Magic subgame (CR 729), `subgameOnly` concedes just the subgame — the main
+   * game then resumes — instead of the main game as well.
+   */
+  concede: (subgameOnly?: boolean) => void
   requestUndo: () => void
   toggleAutoTap: () => void
   cancelGame: () => void
@@ -1079,7 +1114,7 @@ export type GameStore = {
   tournamentState: TournamentState | null
   ffaState: FfaState | null
   spectatingState: SpectatingState | null
-  createTournamentLobby: (setCodes: string[], format?: TournamentFormat, boosterCount?: number, maxPlayers?: number, pickTimeSeconds?: number, isPublic?: boolean, gameMode?: LobbyGameMode, rules?: GameRules) => void
+  createTournamentLobby: (setCodes: string[], format?: TournamentFormat, boosterCount?: number, maxPlayers?: number, pickTimeSeconds?: number, isPublic?: boolean, gameMode?: LobbyGameMode, rules?: GameRules, playingForAnte?: boolean) => void
   joinLobby: (lobbyId: string) => void
   startLobby: () => void
   leaveLobby: () => void
@@ -1114,7 +1149,7 @@ export type GameStore = {
 
   // Quick Game Lobby slice
   quickGameLobbyState: QuickGameLobbyStateMessage | null
-  createQuickGameLobby: (vsAi?: boolean, setCode?: string, isPublic?: boolean, format?: DeckFormat, momirBasic?: boolean, ranked?: boolean) => void
+  createQuickGameLobby: (vsAi?: boolean, setCode?: string, isPublic?: boolean, format?: DeckFormat, momirBasic?: boolean, ranked?: boolean, playingForAnte?: boolean) => void
   addQuickGameAi: () => void
   removeQuickGameAi: () => void
   joinQuickGameLobby: (lobbyId: string) => void
@@ -1132,6 +1167,7 @@ export type GameStore = {
   setQuickGameLobbySetCode: (setCodes: readonly string[]) => void
   setQuickGameLobbyPublic: (isPublic: boolean) => void
   setQuickGameLobbyRanked: (ranked: boolean) => void
+  setQuickGameLobbyAnte: (playingForAnte: boolean) => void
   setQuickGameLobbyFormat: (format: DeckFormat | null, momirBasic?: boolean) => void
   /** Host-only: choose what the AI opponent plays (auto / built from sets / an exact list). */
   setQuickGameAiDeck: (spec: AiDeckSpec) => void
@@ -1426,4 +1462,6 @@ export type GameStore = {
   matchIntro: MatchIntro | null
   setMatchIntro: (intro: MatchIntro) => void
   clearMatchIntro: () => void
+  subgameTransition: SubgameTransition | null
+  clearSubgameTransition: () => void
 }

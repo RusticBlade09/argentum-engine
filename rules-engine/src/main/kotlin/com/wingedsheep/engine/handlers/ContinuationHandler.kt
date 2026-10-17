@@ -138,6 +138,14 @@ class ContinuationHandler(
     }
 
     /**
+     * Run the automatic work waiting on top of [state]'s continuation stack — for a main game
+     * resuming after its subgame (CR 729.5), whose creating spell still has to finish resolving.
+     * Stops at the first question, as after any answer.
+     */
+    fun drainAutomatic(state: GameState, events: List<GameEvent>): ExecutionResult =
+        checkForMoreContinuations(state, events)
+
+    /**
      * Drain the automatic work a resumer uncovered, then report where execution ended up.
      *
      * `pendingDecision` is derived from the stack, so a resumer that installed a suspension and

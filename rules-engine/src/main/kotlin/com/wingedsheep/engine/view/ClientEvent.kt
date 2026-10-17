@@ -843,9 +843,65 @@ sealed interface ClientEvent {
         }
     ) : ClientEvent
 
+    /** A Magic subgame began (CR 729); the board now shows it until [SubgameEnded]. */
+    @Serializable
+    @SerialName("subgameStarted")
+    data class SubgameStarted(
+        val startingPlayerId: EntityId,
+        val depth: Int,
+        val sourceName: String? = null,
+        val isYourTurn: Boolean? = null,
+        override val description: String = buildString {
+            append("--- ")
+            sourceName?.let { append("$it: ") }
+            append(if (depth > 1) "a subgame within the subgame begins" else "a subgame begins")
+            when (isYourTurn) {
+                true -> append(" (you go first)")
+                false -> append(" (opponent goes first)")
+                null -> {}
+            }
+            append(" ---")
+        }
+    ) : ClientEvent
+
+    /** A Magic subgame ended (CR 729.5) and its main game resumed. */
+    @Serializable
+    @SerialName("subgameEnded")
+    data class SubgameEnded(
+        val winnerIds: List<EntityId>,
+        val nonWinnerIds: List<EntityId>,
+        val depth: Int,
+        val sourceName: String? = null,
+        /** Whether the viewing player won the subgame; null for a spectator. */
+        val youWon: Boolean? = null,
+        override val description: String = buildString {
+            append("--- The subgame is over")
+            when {
+                winnerIds.isEmpty() -> append(" — it's a draw")
+                youWon == true -> append(" — you won it")
+                youWon == false -> append(" — you didn't win it")
+            }
+            append("; the main game resumes ---")
+        }
+    ) : ClientEvent
+
     // =========================================================================
     // Control Events
     // =========================================================================
+
+    /** A card changed owner — only the ante cards do this (CR 407.3). */
+    @Serializable
+    @SerialName("ownershipChanged")
+    data class OwnershipChanged(
+        val cardName: String,
+        val newOwnerId: EntityId,
+        val isYours: Boolean? = null,
+        override val description: String = when (isYours) {
+            true -> "You now own $cardName"
+            false -> "Opponent now owns $cardName"
+            null -> "Ownership of $cardName changed"
+        }
+    ) : ClientEvent
 
     @Serializable
     @SerialName("controlChanged")
@@ -1600,6 +1656,21 @@ object ClientEventTransformer {
                 isYourTurn = event.startingPlayerId == viewingPlayerId
             )
 
+            is SubgameStartedEvent -> ClientEvent.SubgameStarted(
+                startingPlayerId = event.startingPlayerId,
+                depth = event.depth,
+                sourceName = event.sourceName,
+                isYourTurn = event.startingPlayerId == viewingPlayerId,
+            )
+
+            is SubgameEndedEvent -> ClientEvent.SubgameEnded(
+                winnerIds = event.winnerIds,
+                nonWinnerIds = event.nonWinnerIds,
+                depth = event.depth,
+                sourceName = event.sourceName,
+                youWon = viewingPlayerId in event.winnerIds,
+            )
+
             is TurnChangedEvent -> ClientEvent.TurnChanged(
                 turnNumber = event.turnNumber,
                 activePlayerId = event.activePlayerId,
@@ -1620,6 +1691,12 @@ is PermanentsSacrificedEvent -> {
                     )
                 } else null
             }
+
+            is com.wingedsheep.engine.core.OwnershipChangedEvent -> ClientEvent.OwnershipChanged(
+                cardName = event.cardName,
+                newOwnerId = event.newOwnerId,
+                isYours = event.newOwnerId == viewingPlayerId
+            )
 
             is ControlChangedEvent -> ClientEvent.ControlChanged(
                 permanentName = event.permanentName,

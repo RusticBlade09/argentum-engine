@@ -749,6 +749,7 @@ Families:
 - `ChangeColorToChosenEffect(target: EffectTarget, duration: Duration)` — Replace the target's colors with the color(s) chosen earlier in this resolution (read from `EffectContext.chosenColors`, falling back to the single `chosenColor`).
 - `ChangeCreatureTypeTextEffect(target: EffectTarget, excludedTypes: List<String>)` — Change the text of target spell or permanent by replacing all instances of one creature type with another.
 - `ChangeGroupColorEffect(colors: Set<String>, filter: GroupFilter, duration: Duration)` — Change color for a group of creatures.
+- `ChangeOwnershipEffect(card: EffectTarget, newOwner: EffectTarget)` — newOwner becomes the owner of card — "You own target card in the ante" (Darkpact), "that player owns this card and you own the other exiled card" (Bronze Tablet).
 - `ChangeSpeedEffect(target: EffectTarget, amount: DynamicAmount, minimum: Int)` — Changes the target player's **speed** by a signed amount (Aetherdrift, CR 702.179).
 - `ChangeSpellTargetEffect(targetMustBeSource: Boolean)` — Change the target of a spell that has exactly one target, and that target is a creature, to another creature.
 - `ChangeTargetEffect(newTargetMustBePlayer: Boolean, onlyIfCurrentTargetIsController: Boolean, newTarget: EffectTarget?)` — Change the target of target spell or ability with a single target.
@@ -976,6 +977,7 @@ Families:
 - `PhaseOutUntilLeavesEffect(target: EffectTarget, tapOnPhaseIn: Boolean)` — Phase a target permanent out **indefinitely**, linked to the effect's source: it stays phased out (it does not phase in at its controller's untap step) until the source leaves the battlefield, at w…
 - `PlayAdditionalLandsEffect(count: Int)` — You may play additional lands this turn.
 - `PlayFromCollectionWithoutPayingCostEffect(from: String)` — Play the first card in from during this effect's resolution without paying its mana cost.
+- `PlaySubgameEffect(nonWinners: String?, afterSubgame: Effect?)` — Players play a Magic subgame (CR 729) — a completely separate game, using their libraries as their decks.
 - `PlayerGuessesConditionEffect(condition: Condition, prompt: String, storeGuessedRightAs: String, guesser: Chooser, promptNameVariable: String?)` — "guesser guesses whether condition is true." The answer is compared to reality and `1` or `0` is stored under storeGuessedRightAs, leaving the payoff for a right or a wrong guess to the card rather…
 - `PreventDamageEffect(target: EffectTarget, recipientGroup: GameObjectFilter?, recipientGroupIncludesController: Boolean, amount: DynamicAmount?, scope: PreventionScope, direction: PreventionDirection, sourceFilter: PreventionSourceFilter, onPrevented: Effect?, gainLifeFromColors: Set<Color>, duration: Duration, preventDamage: Boolean, nextInstanceOnly: Boolean, halvePreventedDamage: Boolean, gainLifeFromPrevented: Boolean, toPlayersOnly: Boolean)` — Unified damage prevention effect.
 - `PreventLandPlaysThisTurnEffect(target: EffectTarget)` — Prevent the target player from playing lands for the rest of this turn.

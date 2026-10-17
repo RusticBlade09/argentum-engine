@@ -214427,7 +214427,7 @@
         "img": "https://cards.scryfall.io/normal/front/9/0/90643766-c92f-4a25-bd02-227f3c91f391.jpg",
         "notPlanned": {
           "kind": "ante",
-          "why": "Ante is not supported — the engine has no ante zone, and ante play is banned in every sanctioned format."
+          "why": "Playing for ante is supported, but this card's ante effect isn't implemented yet."
         }
       },
       {
@@ -214509,7 +214509,7 @@
         "img": "https://cards.scryfall.io/normal/front/7/6/764ec6a8-a878-446c-b7e4-6026c2a3e9a4.jpg",
         "notPlanned": {
           "kind": "ante",
-          "why": "Ante is not supported — the engine has no ante zone, and ante play is banned in every sanctioned format."
+          "why": "Playing for ante is supported, but this card's ante effect isn't implemented yet."
         }
       },
       {
@@ -217743,7 +217743,7 @@
         "img": "https://cards.scryfall.io/normal/front/a/0/a0d3ce01-e344-4608-b709-320be3600019.jpg",
         "notPlanned": {
           "kind": "ante",
-          "why": "Ante is not supported — the engine has no ante zone, and ante play is banned in every sanctioned format."
+          "why": "Playing for ante is supported, but this card's ante effect isn't implemented yet."
         }
       },
       {
@@ -217935,7 +217935,7 @@
         "img": "https://cards.scryfall.io/normal/front/e/b/eb562143-fdf0-4eed-83ac-551627c576d2.jpg",
         "notPlanned": {
           "kind": "ante",
-          "why": "Ante is not supported — the engine has no ante zone, and ante play is banned in every sanctioned format."
+          "why": "Playing for ante is supported, but this card's ante effect isn't implemented yet."
         }
       },
       {
@@ -218206,11 +218206,7 @@
       },
       {
         "name": "Bronze Tablet",
-        "img": "https://cards.scryfall.io/normal/front/6/f/6fb10552-dd47-4f8a-ac7c-8c2b61e56736.jpg",
-        "notPlanned": {
-          "kind": "ante",
-          "why": "Ante is not supported — the engine has no ante zone, and ante play is banned in every sanctioned format."
-        }
+        "img": "https://cards.scryfall.io/normal/front/6/f/6fb10552-dd47-4f8a-ac7c-8c2b61e56736.jpg"
       },
       {
         "name": "Candelabra of Tawnos",
@@ -218672,11 +218668,7 @@
       },
       {
         "name": "Jeweled Bird",
-        "img": "https://cards.scryfall.io/normal/front/b/f/bfffb65d-851d-4dc9-9233-d53abf955dcd.jpg",
-        "notPlanned": {
-          "kind": "ante",
-          "why": "Ante is not supported — the engine has no ante zone, and ante play is banned in every sanctioned format."
-        }
+        "img": "https://cards.scryfall.io/normal/front/b/f/bfffb65d-851d-4dc9-9233-d53abf955dcd.jpg"
       },
       {
         "name": "Jihad",
@@ -218784,11 +218776,7 @@
       },
       {
         "name": "Shahrazad",
-        "img": "https://cards.scryfall.io/normal/front/0/0/0014def3-4063-4929-ac51-76aef1bb2a68.jpg",
-        "notPlanned": {
-          "kind": "subgame",
-          "why": "Playing a Magic subgame inside a game is out of scope for the engine."
-        }
+        "img": "https://cards.scryfall.io/normal/front/0/0/0014def3-4063-4929-ac51-76aef1bb2a68.jpg"
       },
       {
         "name": "Sindbad",
@@ -219006,11 +218994,7 @@
       },
       {
         "name": "Contract from Below",
-        "img": "https://cards.scryfall.io/normal/front/6/2/62f96e43-aebd-4de2-969a-37cd1d62f127.jpg",
-        "notPlanned": {
-          "kind": "ante",
-          "why": "Ante is not supported — the engine has no ante zone, and ante play is banned in every sanctioned format."
-        }
+        "img": "https://cards.scryfall.io/normal/front/6/2/62f96e43-aebd-4de2-969a-37cd1d62f127.jpg"
       },
       {
         "name": "Control Magic",
@@ -219062,11 +219046,7 @@
       },
       {
         "name": "Darkpact",
-        "img": "https://cards.scryfall.io/normal/front/0/9/09b12bcb-a935-48be-a5e8-abbb890e91ca.jpg",
-        "notPlanned": {
-          "kind": "ante",
-          "why": "Ante is not supported — the engine has no ante zone, and ante play is banned in every sanctioned format."
-        }
+        "img": "https://cards.scryfall.io/normal/front/0/9/09b12bcb-a935-48be-a5e8-abbb890e91ca.jpg"
       },
       {
         "name": "Death Ward",
@@ -219082,11 +219062,7 @@
       },
       {
         "name": "Demonic Attorney",
-        "img": "https://cards.scryfall.io/normal/front/6/0/60f37eac-e8fa-48d3-b936-74461ea1853c.jpg",
-        "notPlanned": {
-          "kind": "ante",
-          "why": "Ante is not supported — the engine has no ante zone, and ante play is banned in every sanctioned format."
-        }
+        "img": "https://cards.scryfall.io/normal/front/6/0/60f37eac-e8fa-48d3-b936-74461ea1853c.jpg"
       },
       {
         "name": "Demonic Hordes",
@@ -220192,11 +220168,7 @@
       },
       {
         "name": "Contract from Below",
-        "img": "https://cards.scryfall.io/normal/front/9/8/9853b0ce-4763-4877-9741-f9145a3659c6.jpg",
-        "notPlanned": {
-          "kind": "ante",
-          "why": "Ante is not supported — the engine has no ante zone, and ante play is banned in every sanctioned format."
-        }
+        "img": "https://cards.scryfall.io/normal/front/9/8/9853b0ce-4763-4877-9741-f9145a3659c6.jpg"
       },
       {
         "name": "Control Magic",
@@ -220248,11 +220220,7 @@
       },
       {
         "name": "Darkpact",
-        "img": "https://cards.scryfall.io/normal/front/e/7/e78db688-93a2-47f5-9aa5-9158a72cd973.jpg",
-        "notPlanned": {
-          "kind": "ante",
-          "why": "Ante is not supported — the engine has no ante zone, and ante play is banned in every sanctioned format."
-        }
+        "img": "https://cards.scryfall.io/normal/front/e/7/e78db688-93a2-47f5-9aa5-9158a72cd973.jpg"
       },
       {
         "name": "Death Ward",
@@ -220268,11 +220236,7 @@
       },
       {
         "name": "Demonic Attorney",
-        "img": "https://cards.scryfall.io/normal/front/f/d/fd891fc6-d9d6-494e-ae65-8bea8f44b575.jpg",
-        "notPlanned": {
-          "kind": "ante",
-          "why": "Ante is not supported — the engine has no ante zone, and ante play is banned in every sanctioned format."
-        }
+        "img": "https://cards.scryfall.io/normal/front/f/d/fd891fc6-d9d6-494e-ae65-8bea8f44b575.jpg"
       },
       {
         "name": "Demonic Hordes",

@@ -179,6 +179,18 @@ enum class LobbyState {
     TOURNAMENT_COMPLETE
 }
 
+/** One card that changed pools after a game played for ante — see [TournamentLobby.transferAnteCard]. */
+data class AntePoolChange(
+    val cardName: String,
+    val fromPlayerId: EntityId,
+    val toPlayerId: EntityId,
+    /** The basic land added to the loser's deck to keep it at 40 cards, if one was needed. */
+    val refilledWith: String? = null,
+)
+
+private val BASIC_LAND_NAMES = setOf("Plains", "Island", "Swamp", "Mountain", "Forest")
+private const val MIN_LIMITED_DECK_SIZE = 40
+
 /**
  * Direction to pass packs during draft.
  */
@@ -407,6 +419,12 @@ class TournamentLobby(
      * a logged-in human (no AI). Re-validated at start. Ignored for FFA / team modes.
      */
     var ranked: Boolean = false,
+    /**
+     * Whether this lobby's games are played for ante (CR 407): each player antes a random card
+     * before the opening draw, and ante cards ([CardDefinition.requiresAnte]) become legal in decks
+     * (CR 407.3). Never on together with [ranked] — the handlers clear one when the other is set.
+     */
+    var playingForAnte: Boolean = false,
 ) {
     var cube: ResolvedCube? = null
         private set
@@ -1961,6 +1979,66 @@ class TournamentLobby(
     }
 
     /**
+     * Whether a game this lobby plays for ante settles into the players' card pools — the event
+     * equivalent of playing "for keeps" (CR 407.1): the winner adds the card to their pool for
+     * the rest of the event and the loser loses it. Only for 1v1 Limited tournaments, where a pool
+     * is the player's collection; constructed decks, Jumpstart's fixed pair of packs and Pool
+     * Play's shared cube have nothing to win or lose, so those settle as spoils only.
+     */
+    val anteSettlesIntoPools: Boolean
+        get() = playingForAnte && gameMode == LobbyGameMode.TOURNAMENT &&
+            format != TournamentFormat.PREMADE_DECKS && !isJumpstart && !isCubePoolPlay
+
+    /**
+     * Move one copy of [cardName] from [fromPlayerId]'s pool to [toPlayerId]'s, after a game
+     * played for ante (see [anteSettlesIntoPools]). The card came out of the loser's deck — every
+     * anted or traded card starts in the library — so their submitted deck loses that copy; if
+     * that leaves it short of the 40-card minimum it is topped up with one more of the basic land
+     * it already runs most, so the next round can start without a rebuild. Both sideboards are
+     * re-derived (pool − deck, CR 100.4b): the winner's new card waits in their sideboard until
+     * they choose to build it in.
+     *
+     * Basic lands are supplied, not opened, so winning one changes nobody's pool; a commander
+     * never leaves its owner's deck. Returns what changed, or null when nothing did.
+     */
+    fun transferAnteCard(fromPlayerId: EntityId, toPlayerId: EntityId, cardName: String): AntePoolChange? {
+        if (cardName in BASIC_LAND_NAMES) return null
+        val loser = players[fromPlayerId] ?: return null
+        val winner = players[toPlayerId] ?: return null
+        if (cardName == loser.commander || cardName == loser.secondCommander) return null
+        val index = loser.cardPool.indexOfFirst { it.name == cardName }
+        if (index < 0) return null
+        val card = loser.cardPool[index]
+        val loserPool = loser.cardPool.toMutableList().apply { removeAt(index) }
+
+        var refill: String? = null
+        val loserDeck = loser.submittedDeck?.let { deck ->
+            val copies = deck[cardName] ?: 0
+            val trimmed = if (copies <= 1) deck - cardName else deck + (cardName to copies - 1)
+            if (copies > 0 && trimmed.values.sum() < MIN_LIMITED_DECK_SIZE) {
+                val basic = trimmed.filterKeys { it in BASIC_LAND_NAMES }.maxByOrNull { it.value }?.key
+                    ?: BASIC_LAND_NAMES.first()
+                refill = basic
+                trimmed + (basic to (trimmed[basic] ?: 0) + 1)
+            } else trimmed
+        }
+        players[fromPlayerId] = loser.copy(
+            cardPool = loserPool,
+            submittedDeck = loserDeck,
+            submittedSideboard = loserDeck?.let { SideboardDerivation.fromPool(loserPool, it) }
+                ?: loser.submittedSideboard,
+        )
+
+        val winnerPool = winner.cardPool + card
+        players[toPlayerId] = winner.copy(
+            cardPool = winnerPool,
+            submittedSideboard = winner.submittedDeck?.let { SideboardDerivation.fromPool(winnerPool, it) }
+                ?: winner.submittedSideboard,
+        )
+        return AntePoolChange(cardName, fromPlayerId, toPlayerId, refilledWith = refill)
+    }
+
+    /**
      * Build a lobby update message for a specific player.
      */
     fun buildLobbyUpdate(forPlayerId: EntityId, isAiPlayer: (EntityId) -> Boolean = { false }): ServerMessage.LobbyUpdate {
@@ -2047,6 +2125,7 @@ class TournamentLobby(
                 teamAssignments = teamAssignments.mapKeys { it.key.value },
                 ranked = ranked,
                 rankedEligible = rankedEligible,
+                playingForAnte = playingForAnte,
             ),
             isHost = isHost(forPlayerId)
         )
@@ -2101,6 +2180,10 @@ class TournamentLobby(
 
         val basicLandNames = setOf("Plains", "Island", "Swamp", "Mountain", "Forest")
         val unlimitedCopies = isCubePoolPlay
+        // CR 407.3 bars ante cards from the sideboard too, but a Limited sideboard is the whole
+        // unused pool (derived, not chosen), so an opened ante card may sit there harmlessly. Only
+        // playing one in the main deck needs a game played for ante.
+        val anteOnlyNames = if (playingForAnte) emptySet() else pool.filter { it.requiresAnte }.mapTo(HashSet()) { it.name }
 
         for ((cardName, count) in deckList) {
             if (count <= 0) continue
@@ -2109,6 +2192,9 @@ class TournamentLobby(
             val availableInPool = poolCounts[cardName] ?: 0
             if (availableInPool == 0) {
                 return if (unlimitedCopies) "Card not in cube: $cardName" else "Card not in pool: $cardName"
+            }
+            if (cardName in anteOnlyNames) {
+                return "$cardName can only be played in a game played for ante"
             }
             if (!unlimitedCopies && count > availableInPool) {
                 return "Not enough copies of $cardName in pool (have $availableInPool, trying to use $count)"

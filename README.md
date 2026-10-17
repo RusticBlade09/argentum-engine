@@ -423,8 +423,8 @@ time (it's how Invasion was done):
    body, and the [`assay-loop`](.agents/skills/assay-loop/SKILL.md) widens the grammar to read it as its
    own measured band.
 
-A set can also finish with a card or two deliberately left out — Antiquities' Bronze Tablet needs the
-ante zone, Arabian Nights' Shahrazad needs a whole subgame. Add those to
+A set can also finish with a card or two deliberately left out — Legends' Falling Star needs physical
+dexterity the Chaos Orb table-flip doesn't cover. Add those to
 [`coverage/card-exclusions.json`](coverage/card-exclusions.json) with a reason (required) and re-run
 `scripts/gen-set-totals`: they drop out of the denominator and show as "not planned" on the
 [set completion tracker](https://magic.wingedsheep.com/set-completion), so completion means

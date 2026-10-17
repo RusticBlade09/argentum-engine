@@ -92,8 +92,15 @@ class GameSession(
     @Volatile
     private var gameState: GameState? = null
         set(value) {
+            val previousDepth = field?.subgameDepth
             field = value
             if (value != null) recordEliminations(value)
+            // A Magic subgame starting or ending (CR 729) swaps in a whole different game: every
+            // seat gets it as a full state rather than as a delta against the other game.
+            if (previousDepth != null && value != null && value.subgameDepth != previousDepth) {
+                lastSentState.clear()
+                stateVersions.clear()
+            }
         }
 
     /**
@@ -105,9 +112,11 @@ class GameSession(
     private val eliminationOrder = CopyOnWriteArrayList<EntityId>()
 
     private fun recordEliminations(state: GameState) {
-        for (playerId in state.turnOrder) {
+        // Losing a subgame (CR 729) isn't leaving the table: only the main game decides who's out.
+        val main = state.outermostGame
+        for (playerId in main.turnOrder) {
             if (playerId in eliminationOrder) continue
-            if (state.getEntity(playerId)?.has<PlayerLostComponent>() == true) {
+            if (main.getEntity(playerId)?.has<PlayerLostComponent>() == true) {
                 eliminationOrder.add(playerId)
             }
         }
@@ -118,7 +127,7 @@ class GameSession(
 
     /** Player seats that have not been eliminated yet. */
     fun getActivePlayerIds(): List<EntityId> = synchronized(stateLock) {
-        val state = gameState ?: return@synchronized emptyList()
+        val state = gameState?.outermostGame ?: return@synchronized emptyList()
         players.keys.mapNotNull { playerId ->
             playerId.takeUnless { state.getEntity(it)?.has<PlayerLostComponent>() == true }
         }
@@ -144,7 +153,7 @@ class GameSession(
      * for a seat with no loss marker — same fallback [getGameOverReason] uses.
      */
     fun getEliminationReason(playerId: EntityId): GameOverReason =
-        gameOverReasonFor(gameState?.getEntity(playerId)?.get<PlayerLostComponent>()?.reason)
+        gameOverReasonFor(gameState?.outermostGame?.getEntity(playerId)?.get<PlayerLostComponent>()?.reason)
 
     /** Checkpoint for undoing the last non-respondable action (e.g., play land, declare attackers) */
     @Volatile
@@ -221,6 +230,14 @@ class GameSession(
      */
     @Volatile
     var attackMode: com.wingedsheep.sdk.core.AttackMode = com.wingedsheep.sdk.core.AttackMode.MULTIPLE
+
+    /**
+     * Whether this game is played for ante (CR 407). Set by the lobby handler before [startGame]
+     * and forwarded to [GameConfig.playingForAnte]; never true for ranked games. Recorded in the
+     * [com.wingedsheep.gameserver.replay.ReplaySetup] because anteing consumes RNG.
+     */
+    @Volatile
+    var playingForAnte: Boolean = false
 
     /**
      * Team partitioning for team variants (Two-Headed Giant — CR 810), as lists of seat indices
@@ -616,7 +633,8 @@ class GameSession(
      * same value for both teammates; in non-team games this is the player's own total.
      */
     fun getLifeTotals(): List<Int> {
-        val state = gameState ?: return emptyList()
+        // The match's life totals, not those of a subgame being played inside it (CR 729).
+        val state = gameState?.outermostGame ?: return emptyList()
         return getPlayers().map { player ->
             if (state.getEntity(player.playerId)?.get<LifeTotalComponent>() != null) {
                 state.lifeTotal(player.playerId)
@@ -630,7 +648,9 @@ class GameSession(
      * when given, flags that recipient's own seat ([PlayerSeatInfo.isYou]); spectators pass null.
      */
     fun seatInfos(viewerId: EntityId? = null): List<ServerMessage.PlayerSeatInfo> {
-        val state = gameState
+        // Seats are the main game's: a subgame (CR 729) starts its turn order elsewhere, and leaves
+        // out anyone already out of the main game, but nobody changes chairs.
+        val state = gameState?.outermostGame
         val turnOrder = state?.turnOrder
         val seated = getPlayers()
         return seated.mapIndexed { joinIndex, player ->
@@ -693,6 +713,7 @@ class GameSession(
             useHandSmoother = useHandSmoother,
             format = engineFormat,
             attackMode = attackMode,
+            playingForAnte = playingForAnte,
             // Team partitioning for Two-Headed Giant (CR 810); null for non-team games. The seat
             // indices line up with playerConfigs, which preserves the join/turn order of `players`.
             teams = teams,
@@ -710,6 +731,7 @@ class GameSession(
             preserveGraveyardOrder = result.state.preserveGraveyardOrder,
             format = engineFormat,
             attackMode = attackMode,
+            playingForAnte = config.playingForAnte,
             startingHandSize = config.startingHandSize,
             skipMulligans = config.skipMulligans,
             useHandSmoother = config.useHandSmoother,
@@ -1097,13 +1119,24 @@ class GameSession(
      * Synchronized to prevent lost updates.
      */
     fun playerConcedes(playerId: EntityId): GameState? = synchronized(stateLock) {
-        val state = gameState ?: return null
-        val action = Concede(playerId)
+        concede(playerId)
+        gameState
+    }
+
+    /**
+     * [playerId] concedes. During a Magic subgame (CR 729) a player may concede just the subgame
+     * ([subgameOnly]) — the main game then resumes, with whatever the subgame's loss costs them
+     * there — or, by default, the main game too, leaving the table. Returns the events, so a
+     * subgame that ends this way reaches the log like any other.
+     */
+    fun concede(playerId: EntityId, subgameOnly: Boolean = false): List<GameEvent> = synchronized(stateLock) {
+        val state = gameState ?: return emptyList()
+        val action = Concede(playerId, includingMainGames = !subgameOnly)
         val result = actionProcessor.process(state, action).result
 
         gameState = result.state
         if (result.error == null) recordAction(action)
-        result.state
+        result.events
     }
 
     /**

@@ -352,7 +352,7 @@ contain nothing new and never appear. Sectioning only partitions the extras: it 
 in or out of `extraTotal` / `extraImplemented`. Sets with no booster at all have no extras and so no
 sections.
 
-**Cards we won't implement.** A card needing a mechanic the engine will never carry (ante, subgames,
+**Cards we won't implement.** A card needing a mechanic the engine will never carry (ante,
 physical dexterity) is listed in the repo-root `coverage/card-exclusions.json` manifest, keyed by name
 so one entry covers every set that prints it. `scripts/gen-set-totals` bakes the flag onto the card as
 `"notPlanned": { "kind": "ante", "why": "…" }` — exclusion is carried *as* its reason, so a not-planned
@@ -579,6 +579,22 @@ sealed, or premade), then one N-player game".
   reopen that same seat to a human. `QuickGameLobbyState.vsAi` reports the current occupant rather
   than a separate lobby kind; the create message's `vsAi` remains a shortcut for initially filling
   the seat.
+
+## 3e. Playing for Ante (WebSocket / REST)
+
+An opt-in lobby setting (CR 407), never on together with ranked. Lobby fields: `LobbySettings.playingForAnte`
+(set with `updateLobbySettings { playingForAnte }`), `QuickGameLobbyState.playingForAnte` (set with
+**`setQuickGameLobbyAnte`** `{ playingForAnte }`), and `playingForAnte` on both create messages. In game,
+`ClientGameState.playingForAnte` is true and each player's anted cards arrive as an ordinary public zone,
+`{ ownerId, zoneType: "Ante" }`. Deck submission rejects ante-only cards outside such games with error code
+`REQUIRES_ANTE`.
+
+**`gameOver.ante`** — null unless the game was for ante:
+`{ scope: "EVENT" | "SPOILS", transfers: [{ cardName, imageUri, fromPlayerId, fromPlayerName, toPlayerId,
+toPlayerName, cause: "ANTE" | "OWNERSHIP", refilledWith? }] }`. `EVENT` (a 1v1 Limited tournament) means the cards
+moved between the players' pools for the rest of the event; `refilledWith` names the basic land added to keep the
+loser's deck at 40. `SPOILS` means they were recorded on signed-in players' profiles, readable with
+`GET /api/stats/me/spoils` → `{ won: Spoil[], lost: Spoil[] }`, `Spoil = { cardName, imageUri, opponentName, gameId, at }`.
 
 ## 4. Scenario Builder Payload (REST / HTTP)
 

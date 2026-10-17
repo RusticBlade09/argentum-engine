@@ -272,8 +272,13 @@ export interface StateDelta {
   readonly roundNumber?: number | null
   readonly isGameOver?: boolean | null
   readonly winnerId?: EntityId | null
-  /** Day/night designation (CR 731). Null means unchanged — the game never returns to neither. */
+  /** Day/night designation (CR 731). Null means unchanged — a game never returns to neither. */
   readonly dayNight?: ClientGameState['dayNight'] | null
+  /** True when the designation went back to neither — a subgame started or ended (CR 729). */
+  readonly dayNightCleared?: boolean | null
+  /** The subgame in progress (CR 729). Present = changed; `subgameCleared` = the main game resumed. */
+  readonly subgame?: ClientGameState['subgame'] | null
+  readonly subgameCleared?: boolean | null
   /** Whether the Void condition holds this turn. Null means unchanged. */
   readonly voidActive?: boolean | null
   /** Combat state changes */
@@ -1498,6 +1503,38 @@ export interface GameOverMessage {
   readonly reason: GameOverReason
   readonly message?: string
   readonly gameId?: string
+  /** What changed hands because the game was played for ante (CR 407). Absent/null otherwise. */
+  readonly ante?: AnteResult | null
+}
+
+/**
+ * The ante settlement of a finished game.
+ *
+ * `EVENT` — the cards moved between pools for the rest of this Limited tournament; `SPOILS` — the
+ * transfer is a trophy record on the winner's profile only. `transfers` is empty when nothing
+ * changed hands (a draw, or a winner whose only ante card was their own).
+ */
+export interface AnteResult {
+  readonly scope: AnteScope
+  readonly transfers: readonly AnteTransfer[]
+}
+
+export type AnteScope = 'SPOILS' | 'EVENT'
+
+export interface AnteTransfer {
+  readonly cardName: string
+  readonly imageUri: string | null
+  readonly fromPlayerId: string
+  readonly fromPlayerName: string
+  readonly toPlayerId: string
+  readonly toPlayerName: string
+  /** `ANTE` — won from the ante; `OWNERSHIP` — changed hands mid-game by a card (Darkpact, Bronze Tablet). */
+  readonly cause: 'ANTE' | 'OWNERSHIP'
+  /**
+   * EVENT scope only: the basic land (e.g. "Swamp") added to the loser's deck to keep it at the
+   * 40-card minimum after losing this card. Absent/null when no refill was needed.
+   */
+  readonly refilledWith?: string | null
 }
 
 /**
@@ -1730,6 +1767,12 @@ export interface LobbySettings {
   readonly ranked?: boolean
   /** Whether ranked may be enabled: a TOURNAMENT-mode bracket (1v1 matches). */
   readonly rankedEligible?: boolean
+  /**
+   * Play for ante (CR 407), host-controlled. Every game this lobby starts antes a random card from
+   * each deck; the winner takes the ante. The server forces it off while [ranked] is on. Absent on
+   * an older server.
+   */
+  readonly playingForAnte?: boolean
 }
 
 export type LobbyGameMode = 'TOURNAMENT' | 'FREE_FOR_ALL' | 'TWO_HEADED_GIANT' | 'TEAM_VS_TEAM'
@@ -2343,6 +2386,7 @@ export type ClientMessage =
   | SetQuickGameLobbySetCodeMessage
   | SetQuickGameLobbyPublicMessage
   | SetQuickGameLobbyRankedMessage
+  | SetQuickGameLobbyAnteMessage
   | SetQuickGameAiDeckMessage
   | AddQuickGameAiMessage
   | RemoveQuickGameAiMessage
@@ -2448,10 +2492,12 @@ export interface ClientChooseBottomCardsMessage {
 }
 
 /**
- * Concede the current game.
+ * Concede the current game. During a Magic subgame (CR 729), `subgameOnly` concedes just the
+ * subgame and the main game resumes; otherwise the player concedes the main game too.
  */
 export interface ConcedeMessage {
   readonly type: 'concede'
+  readonly subgameOnly?: boolean
 }
 
 /**
@@ -2654,8 +2700,8 @@ export function createChooseBottomCardsMessage(cardIds: readonly EntityId[]): Cl
   return { type: 'chooseBottomCards', cardIds }
 }
 
-export function createConcedeMessage(): ConcedeMessage {
-  return { type: 'concede' }
+export function createConcedeMessage(subgameOnly = false): ConcedeMessage {
+  return subgameOnly ? { type: 'concede', subgameOnly } : { type: 'concede' }
 }
 
 export function createCancelGameMessage(): CancelGameMessage {
@@ -2710,6 +2756,13 @@ export interface CreateTournamentLobbyMessage {
   readonly gameMode?: LobbyGameMode
   /** Rules axis. Omit and the server derives it from `format` (a Commander pack shape ⇒ Commander). */
   readonly rules?: GameRules
+  /**
+   * Ranked toggle. The server defaults it to true for a TOURNAMENT-mode lobby, so a create that
+   * asks for ante sends `false` here — ranked forces ante off.
+   */
+  readonly ranked?: boolean
+  /** Start the lobby playing for ante (CR 407). Omit for the default (off); requires `ranked: false`. */
+  readonly playingForAnte?: boolean
 }
 
 export interface JoinLobbyMessage {
@@ -2821,6 +2874,8 @@ export interface UpdateLobbySettingsMessage {
   readonly teamAssignments?: Readonly<Record<string, number>>
   /** Toggle ranked play (TOURNAMENT mode only). Omit to leave unchanged. */
   readonly ranked?: boolean
+  /** Toggle playing for ante (CR 407). Ignored while ranked is on. Omit to leave unchanged. */
+  readonly playingForAnte?: boolean
 }
 
 // Tournament Client Messages
@@ -2989,9 +3044,14 @@ export function createCreateTournamentLobbyMessage(
   pickTimeSeconds: number = 45,
   isPublic: boolean = false,
   gameMode: LobbyGameMode = 'TOURNAMENT',
-  rules: GameRules = 'STANDARD'
+  rules: GameRules = 'STANDARD',
+  playingForAnte: boolean = false,
 ): CreateTournamentLobbyMessage {
-  return { type: 'createTournamentLobby', setCodes, format, boosterCount, maxPlayers, pickTimeSeconds, isPublic, gameMode, rules }
+  return {
+    type: 'createTournamentLobby', setCodes, format, boosterCount, maxPlayers, pickTimeSeconds, isPublic, gameMode, rules,
+    // Ranked defaults on server-side for a bracket and forces ante off, so ante opts out of it.
+    ...(playingForAnte ? { playingForAnte, ranked: false } : {}),
+  }
 }
 
 // Backwards compatibility alias
@@ -3086,6 +3146,7 @@ export function createUpdateLobbySettingsMessage(
     randomTeams?: boolean
     teamAssignments?: Readonly<Record<string, number>>
     ranked?: boolean
+    playingForAnte?: boolean
   }
 ): UpdateLobbySettingsMessage {
   return { type: 'updateLobbySettings', ...settings }
@@ -3321,6 +3382,11 @@ export interface QuickGameLobbyStateMessage {
   readonly aiDeck?: AiDeckSpecView | null
   /** Matchmaking made this lobby: its format and ranked setting are fixed by the queue. */
   readonly matchmade?: boolean
+  /**
+   * Play for ante (CR 407), host-controlled: the game antes a random card from each deck and the
+   * winner takes the ante. The server forces it off while [ranked] is on. Absent on an older server.
+   */
+  readonly playingForAnte?: boolean
 }
 
 /**
@@ -3544,6 +3610,8 @@ export interface CreateQuickGameLobbyMessage {
   readonly momirBasic?: boolean
   /** Request a ranked lobby (honored only for a standard 1v1 human-vs-human lobby). */
   readonly ranked?: boolean
+  /** Start the lobby playing for ante (CR 407). Ignored for a ranked lobby. */
+  readonly playingForAnte?: boolean
 }
 
 export interface JoinQuickGameLobbyMessage {
@@ -3611,6 +3679,12 @@ export interface SetQuickGameLobbyRankedMessage {
   readonly ranked: boolean
 }
 
+/** Host toggles playing for ante (CR 407). The server ignores it while the lobby is ranked. */
+export interface SetQuickGameLobbyAnteMessage {
+  readonly type: 'setQuickGameLobbyAnte'
+  readonly playingForAnte: boolean
+}
+
 export interface JoinMatchmakingMessage {
   readonly type: 'joinMatchmaking'
   readonly mode: MatchmakingMode
@@ -3635,6 +3709,7 @@ export function createCreateQuickGameLobbyMessage(
   format?: DeckFormat,
   momirBasic?: boolean,
   ranked?: boolean,
+  playingForAnte?: boolean,
 ): CreateQuickGameLobbyMessage {
   return {
     type: 'createQuickGameLobby',
@@ -3644,6 +3719,7 @@ export function createCreateQuickGameLobbyMessage(
     ...(format ? { format } : {}),
     ...(momirBasic ? { momirBasic } : {}),
     ...(ranked ? { ranked } : {}),
+    ...(playingForAnte ? { playingForAnte } : {}),
   }
 }
 export function createJoinQuickGameLobbyMessage(lobbyId: string): JoinQuickGameLobbyMessage {
@@ -3694,6 +3770,10 @@ export function createRemoveQuickGameAiMessage(): RemoveQuickGameAiMessage {
 }
 export function createSetQuickGameLobbyRankedMessage(ranked: boolean): SetQuickGameLobbyRankedMessage {
   return { type: 'setQuickGameLobbyRanked', ranked }
+}
+
+export function createSetQuickGameLobbyAnteMessage(playingForAnte: boolean): SetQuickGameLobbyAnteMessage {
+  return { type: 'setQuickGameLobbyAnte', playingForAnte }
 }
 export function createJoinMatchmakingMessage(
   mode: MatchmakingMode,

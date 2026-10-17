@@ -105,7 +105,7 @@ export function GraveyardTargetingUI({
   // The list is homogenous-zone by construction (the caller's filter routes mixed-zone
   // sets elsewhere), so we read the first card's zone to pick wording for everything.
   const pileZoneType = graveyardCards[0]?.zone?.zoneType ?? ZoneType.GRAVEYARD
-  const pileNoun = pileZoneType === ZoneType.EXILE ? 'Exile' : 'Graveyard'
+  const pileNoun = pileZoneType === ZoneType.EXILE ? 'Exile' : pileZoneType === ZoneType.ANTE ? 'Ante' : 'Graveyard'
 
   // Get player names for tabs
   const getPlayerLabel = (ownerId: EntityId): string => {

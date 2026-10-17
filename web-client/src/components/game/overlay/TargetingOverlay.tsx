@@ -136,7 +136,7 @@ function ZoneCardTargetingOverlay({
 
   const getGroupLabel = (groupKey: string): string => {
     const [ownerId, zoneType = 'Graveyard'] = groupKey.split('|')
-    const zoneLabel = zoneType === 'Exile' ? 'Exile' : 'Graveyard'
+    const zoneLabel = zoneType === 'Exile' ? 'Exile' : zoneType === 'Ante' ? 'Ante' : 'Graveyard'
     if (ownerId === viewingPlayerId) return `Your ${zoneLabel}`
     const player = gameState?.players.find((p) => p.playerId === ownerId)
     return player ? `${player.name}'s ${zoneLabel}` : `Opponent's ${zoneLabel}`

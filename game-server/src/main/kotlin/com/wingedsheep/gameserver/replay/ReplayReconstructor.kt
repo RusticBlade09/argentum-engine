@@ -201,6 +201,7 @@ private class ReplayEngine(
             startingPlayerIndex = setup.startingPlayerIndex,
             format = setup.format,
             attackMode = setup.attackMode,
+            playingForAnte = setup.playingForAnte,
             teams = setup.teams,
             seed = setup.seed,
             preserveGraveyardOrder = setup.preserveGraveyardOrder,

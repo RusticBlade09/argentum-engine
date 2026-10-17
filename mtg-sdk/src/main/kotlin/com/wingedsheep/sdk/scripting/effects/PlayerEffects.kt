@@ -378,6 +378,37 @@ data class RestartGameEffect(
 }
 
 /**
+ * Players play a Magic subgame (CR 729) — a completely separate game, using their libraries as
+ * their decks. Every player still in the game takes part. Each one's main-game library becomes
+ * their subgame library (CR 729.2); nothing else crosses over, so the subgame starts from fresh
+ * zones, starting life totals, seven-card hands and mulligans, with a randomly chosen starting
+ * player. The main game is discontinued meanwhile: no effect or trigger of either game reaches the
+ * other (CR 729.1b).
+ *
+ * When the subgame ends, each player's cards in it — whichever zone, exile included — go into their
+ * main-game library, which is then shuffled (CR 729.5). The players who did not win it (a draw
+ * means nobody won) are recorded in the pipeline collection [nonWinners], and [afterSubgame], the
+ * rest of the spell's text, then runs in the main game before the spell finishes resolving. It runs
+ * with the effect's controller as its controller and the [nonWinners] collection readable.
+ *
+ * Like [RestartGameEffect], the engine starts the subgame once the effect has run, so this must be
+ * the last instruction of its ability — anything after it belongs in [afterSubgame].
+ * Shahrazad: "Players play a Magic subgame, using their libraries as their decks. Each player who
+ * doesn't win the subgame loses half their life, rounded up."
+ */
+@SerialName("PlaySubgame")
+@Serializable
+data class PlaySubgameEffect(
+    val nonWinners: String? = null,
+    val afterSubgame: Effect? = null
+) : Effect {
+    override val description: String = buildString {
+        append("Players play a Magic subgame, using their libraries as their decks")
+        if (afterSubgame != null) append(". Then ${afterSubgame.description.replaceFirstChar { it.lowercase() }}")
+    }
+}
+
+/**
  * "It becomes day" / "It becomes night" (CR 731.1) — set the game's day/night designation to
  * [designation].
  *

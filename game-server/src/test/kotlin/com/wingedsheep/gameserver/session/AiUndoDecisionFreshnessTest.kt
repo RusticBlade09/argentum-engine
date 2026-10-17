@@ -313,6 +313,7 @@ class AiUndoDecisionFreshnessTest : ScenarioTestBase() {
         aiGameManager = mockk(relaxed = true),
         matchResultSink = mockk(relaxed = true),
         rankedResultSink = mockk(relaxed = true),
-        deckProfiler = mockk(relaxed = true)
+        deckProfiler = mockk(relaxed = true),
+        anteSpoilsSink = mockk(relaxed = true),
     )
 }

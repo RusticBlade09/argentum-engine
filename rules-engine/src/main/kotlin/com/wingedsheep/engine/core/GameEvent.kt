@@ -1299,6 +1299,34 @@ data class GameRestartedEvent(
 ) : GameEvent
 
 /**
+ * A Magic subgame began (CR 729.2): the main game is discontinued and everything after this event,
+ * up to the matching [SubgameEndedEvent], belongs to the subgame. [startingPlayerId] was chosen at
+ * random to go first; [depth] is 1 for a subgame of the main game, 2 for a subgame of that one
+ * (CR 729.6). [sourceName] is the spell that created it.
+ */
+@Serializable
+@SerialName("SubgameStartedEvent")
+data class SubgameStartedEvent(
+    val startingPlayerId: EntityId,
+    val depth: Int,
+    val sourceName: String? = null,
+) : GameEvent
+
+/**
+ * A Magic subgame ended (CR 729.5) and its main game resumed. [winnerIds] won it — empty for a
+ * draw — and [nonWinnerIds] are the players who didn't. Everything after this event belongs to the
+ * main game again.
+ */
+@Serializable
+@SerialName("SubgameEndedEvent")
+data class SubgameEndedEvent(
+    val winnerIds: List<EntityId>,
+    val nonWinnerIds: List<EntityId>,
+    val depth: Int,
+    val sourceName: String? = null,
+) : GameEvent
+
+/**
  * An effect ended the turn (CR 724.1 — Ultima, Time Stop). Emitted once the expedited process has
  * reached the cleanup step, just before the next turn begins. Triggered abilities that triggered
  * before this point never go on the stack (CR 724.1a), so [com.wingedsheep.engine.core.Settler]
@@ -2297,6 +2325,21 @@ data class ControlChangedEvent(
     val permanentName: String,
     val oldControllerId: EntityId,
     val newControllerId: EntityId
+) : GameEvent
+
+/**
+ * A card's owner changed — something only the ante cards can do (CR 407.3): Darkpact's "You own
+ * target card in the ante", Bronze Tablet's swap. The card stays where it is; [zone] is where it
+ * sat when it changed hands.
+ */
+@Serializable
+@SerialName("OwnershipChangedEvent")
+data class OwnershipChangedEvent(
+    val cardId: EntityId,
+    val cardName: String,
+    val zone: Zone,
+    val oldOwnerId: EntityId,
+    val newOwnerId: EntityId
 ) : GameEvent
 
 // =============================================================================

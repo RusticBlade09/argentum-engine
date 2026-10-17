@@ -27,6 +27,8 @@ val TRAINING_OBSERVATION_ZONE_ORDER: List<Zone> = listOf(
     Zone.BATTLEFIELD,
     Zone.COMMAND,
     Zone.SIDEBOARD,
+    // Appended, not inserted: the order is model-facing. Empty unless the game is played for ante.
+    Zone.ANTE,
 )
 
 /**

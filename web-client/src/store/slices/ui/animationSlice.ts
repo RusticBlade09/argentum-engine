@@ -12,6 +12,7 @@ import type {
   FlipShow,
   TargetReselectedAnimation,
   MatchIntro,
+  SubgameTransition,
 } from '../types'
 
 const BEHOLD_PULSE_FLOOR_MS = 2000
@@ -72,6 +73,7 @@ export interface AnimationSliceState {
   targetReselectedAnimations: readonly TargetReselectedAnimation[]
   beholdPulses: readonly { cardId: EntityId; sourceName: string; floorUntil: number }[]
   matchIntro: MatchIntro | null
+  subgameTransition: SubgameTransition | null
 }
 
 export interface AnimationSliceActions {
@@ -98,6 +100,7 @@ export interface AnimationSliceActions {
   reconcileBeholdPulses: (stackItemNames: readonly string[]) => void
   setMatchIntro: (intro: MatchIntro) => void
   clearMatchIntro: () => void
+  clearSubgameTransition: () => void
 }
 
 export type AnimationSlice = AnimationSliceState & AnimationSliceActions
@@ -117,6 +120,7 @@ export const createAnimationSlice: SliceCreator<AnimationSlice> = (set, get) => 
   targetReselectedAnimations: [],
   beholdPulses: [],
   matchIntro: null,
+  subgameTransition: null,
 
   // Card selection actions
   selectCard: (cardId) => {
@@ -298,5 +302,9 @@ export const createAnimationSlice: SliceCreator<AnimationSlice> = (set, get) => 
 
   clearMatchIntro: () => {
     set({ matchIntro: null })
+  },
+
+  clearSubgameTransition: () => {
+    set({ subgameTransition: null })
   },
 })

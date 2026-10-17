@@ -47,6 +47,15 @@ data class GameState(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val preserveGraveyardOrder: Boolean = false,
 
+    /**
+     * Fixed at setup: this game is played for ante (CR 407). Each player anted a random card of
+     * their deck before the opening draw, and whoever wins becomes the owner of everything in the
+     * ante — [com.wingedsheep.engine.mechanics.ante.AnteSettlement] reads the result off the
+     * finished state.
+     */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val playingForAnte: Boolean = false,
+
     /** All entities in the game, keyed by their ID */
     val entities: Map<EntityId, ComponentContainer> = emptyMap(),
 
@@ -543,6 +552,22 @@ data class GameState(
      */
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val restartFollowUp: com.wingedsheep.engine.core.TurnStartFollowUp? = null,
+
+    /**
+     * A resolved "play a Magic subgame" (CR 729). Recorded while the creating spell resolves, the
+     * settle boundary then starts the subgame through [com.wingedsheep.engine.core.Subgames]; the
+     * discontinued main game keeps it until the subgame is over, to finish the spell's text.
+     */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val pendingSubgame: com.wingedsheep.engine.core.SubgameRequest? = null,
+
+    /**
+     * Set only on a subgame (CR 729): the main game, discontinued exactly as it was when the
+     * subgame began, which resumes when the subgame ends (CR 729.1a). Nothing in the subgame reads
+     * it — no effect or definition of one game has meaning in the other (CR 729.1b).
+     */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val mainGame: GameState? = null,
 ) {
     /**
      * Cached projection of the game state with all continuous effects (Rule 613) applied.
@@ -794,6 +819,25 @@ data class GameState(
             }
         }
         return result
+    }
+
+    /**
+     * Re-file [entityId] under [newOwnerId]'s copy of the owner-keyed zone it sits in, after its
+     * owner changed (CR 407.3 — Darkpact, Bronze Tablet). Not a zone change: the card stays the
+     * same object in the same zone, so no new object identity is minted and no exile link is
+     * forgotten — the engine merely keys owner-keyed zones by owner and must keep that true.
+     * Battlefield and stack membership follow controller, not owner, so they are left alone.
+     */
+    fun refileUnderOwner(entityId: EntityId, newOwnerId: EntityId): GameState {
+        val from = logicalZone(entityId) ?: return this
+        if (from.zoneType == Zone.BATTLEFIELD || from.zoneType == Zone.STACK) return this
+        if (from.ownerId == newOwnerId || entityId !in getZone(from)) return this
+        val to = ZoneKey(newOwnerId, from.zoneType)
+        val identity = objectIdentities.getValue(entityId)
+        return copy(
+            zones = zones + (from to getZone(from) - entityId) + (to to getZone(to) + entityId),
+            objectIdentities = objectIdentities + (entityId to identity.copy(logicalZone = to)),
+        )
     }
 
     /**
@@ -1770,7 +1814,7 @@ data class ActiveCounterPlacementModifier(
     val duration: com.wingedsheep.sdk.scripting.Duration,
 )
 
-private val SHARED_OBJECT_ZONES = setOf(Zone.BATTLEFIELD, Zone.STACK, Zone.EXILE, Zone.COMMAND)
+private val SHARED_OBJECT_ZONES = setOf(Zone.BATTLEFIELD, Zone.STACK, Zone.EXILE, Zone.COMMAND, Zone.ANTE)
 
 private fun initialObjectIdentities(
     entities: Map<EntityId, ComponentContainer>,

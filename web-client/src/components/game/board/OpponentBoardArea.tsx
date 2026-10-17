@@ -9,6 +9,7 @@ import { useResponsiveContext } from './shared'
 import { Battlefield } from './Battlefield'
 import { CardRow, HAND_FAN_EDGE_MARGIN } from './HandZone'
 import { CommandZone } from './CommandZone'
+import { AnteZone } from './AnteZone'
 import { ZonePile } from './ZonePiles'
 import { styles } from './styles'
 import { isLoneTargetRequirement } from '@/utils/targeting.ts'
@@ -301,6 +302,7 @@ export function OpponentBoardArea({
       <div style={{ ...styles.playerRowWithZones, alignItems: 'flex-start' }}>
         {/* Opponent command zone (left side) — Commander format only; renders nothing otherwise. */}
         <CommandZone player={opponent} isOpponent compact={layout === 'strip'} />
+        <AnteZone player={opponent} isOpponent compact={layout === 'strip'} />
 
         <div
           style={{

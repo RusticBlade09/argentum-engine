@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import overlay from '../game/overlay/GameOverlays.module.css'
+import { AnteResultPanel } from '../ante/AnteResultPanel'
 import { GameOverReason } from '@/types'
 import type { EntityId } from '@/types'
 import type { SpectatorGameOver } from '@/store/slices/types'
@@ -83,6 +84,7 @@ export function SpectatorGameOverBanner({
         <p className={overlay.eyebrow}>Game over</p>
         <h1 id="spectator-game-over-title" className={overlay.title} style={styles.title}>{title}</h1>
         <p className={overlay.reason}>{spectatorGameOverReason(gameOver, seats)}</p>
+        {gameOver.ante && <AnteResultPanel ante={gameOver.ante} viewerId={null} />}
         <div className={overlay.actions}>
           <button type="button" onClick={onBack} className={overlay.primary}>
             Back to Overview

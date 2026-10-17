@@ -105,6 +105,8 @@ export function useApplyRecipe(): (recipe: LobbyRecipe, notes?: readonly string[
         settings.deckFormat ?? undefined,
         spec.momirBasic,
         settings.ranked ?? false,
+        // Ranked forces ante off server-side; don't ask for both.
+        (settings.playingForAnte ?? false) && !(settings.ranked ?? false),
       )
       const aiDeck = aiDeckSpecFor(recipe)
       const randomSetCodes = recipe.deck.kind === 'RANDOM' ? recipe.deck.setCodes ?? [] : []
@@ -132,6 +134,8 @@ export function useApplyRecipe(): (recipe: LobbyRecipe, notes?: readonly string[
       settings.isPublic ?? false,
       spec.gameMode,
       settings.rules ?? spec.rules,
+      // Sends `ranked: false` with it — the bracket's ranked default would otherwise force ante off.
+      settings.playingForAnte ?? false,
     )
 
     const cube = cubeUpdateFor(settings)

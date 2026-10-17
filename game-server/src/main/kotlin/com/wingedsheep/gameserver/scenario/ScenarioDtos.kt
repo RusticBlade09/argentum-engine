@@ -63,6 +63,8 @@ data class ScenarioRequest(
      * Null keeps the engine default (`MULTIPLE`), so existing scenarios are unchanged.
      */
     val attackMode: com.wingedsheep.sdk.core.AttackMode? = null,
+    /** Play the scenario for ante (CR 407) — shows the ante zones and lets ante cards work. */
+    val playingForAnte: Boolean? = false,
     /**
      * Run the scenario as a Commander game (`Format.Commander`): 40 starting life for every seat
      * that sets no [PlayerConfig.lifeTotal], and commander damage tallied against the 21 threshold.
@@ -139,6 +141,8 @@ data class PlayerConfig(
      * Lesson half is simply unreachable without one.
      */
     val sideboard: List<String>? = null,
+    /** Cards this player owns in the ante (CR 407). Implies the game is played for ante. */
+    val ante: List<String>? = null,
     /**
      * Commander card names. Each name becomes a card in the player's command zone with
      * [CommanderComponent] attached and registered in [CommanderRegistryComponent].
