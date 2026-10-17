@@ -9,6 +9,7 @@ import io.kotest.matchers.doubles.shouldBeGreaterThan
 import io.kotest.matchers.doubles.shouldBeLessThan
 import io.kotest.matchers.ints.shouldBeGreaterThan as intShouldBeGreaterThan
 import io.kotest.matchers.ints.shouldBeLessThan as intShouldBeLessThan
+import io.kotest.matchers.doubles.plusOrMinus
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 
@@ -100,13 +101,42 @@ class FlipPhysicsTest : FunSpec({
             limpTurned intShouldBeLessThan 40
         }
 
-        test("a clean release lands close to the aim") {
+        test("a clean release lands where it was aimed: the aim, not luck, decides what it hits") {
             val misses = (0L until 400L).map {
                 val landing = FlipPhysics.land(t, 350.0, 200.0, 0.74, GameRng.seeded(it)).first
                 kotlin.math.hypot(landing.x - 350.0, landing.y - 200.0)
             }
-            misses.average() shouldBeLessThan 30.0
-            misses.count { it > 63.0 } intShouldBeLessThan 4
+            misses.average() shouldBeLessThan 15.0
+            // Within a card gap of the aim almost every time.
+            misses.count { it > 30.0 } intShouldBeLessThan 16
+        }
+
+        test("letting go early falls short towards the thrower; late sails long") {
+            // The hand is at y = 670, straight below the aim: short means a larger y.
+            fun meanY(strength: Double) = (0L until 200L).map {
+                FlipPhysics.land(t, 350.0, 200.0, strength, GameRng.seeded(it)).first.y
+            }.average()
+            meanY(0.60) shouldBeGreaterThan 200.0 + 90.0
+            meanY(0.90) shouldBeLessThan 200.0 - 90.0
+            FlipPhysics.drift(FlipPhysics.SWEET_SPOT) shouldBe 0.0
+            FlipPhysics.land(t, 350.0, 200.0, 0.60, GameRng.seeded(1)).first.drift shouldBeLessThan 0.0
+        }
+
+        test("the carry runs along the line from the hand, whichever way the throw goes") {
+            // Aimed up and to the right: a late release carries further up and further right.
+            val (x, y) = FlipPhysics.carry(t, 650.0, 370.0, 0.90)
+            x shouldBeGreaterThan 650.0
+            y shouldBeLessThan 370.0
+            (x - 650.0) shouldBe ((370.0 - y) plusOrMinus 1e-9)
+        }
+
+        test("a clean release lands nearly square, so the aim ghost shows what it covers; a sloppy one skews") {
+            fun skew(strength: Double) = (0L until 200L).map {
+                val r = FlipPhysics.land(t, 350.0, 200.0, strength, GameRng.seeded(it)).first.rotation
+                kotlin.math.abs(((r + 180.0) % 360.0) - 180.0)
+            }.average()
+            skew(0.74) shouldBeLessThan 12.0
+            skew(0.30) shouldBeGreaterThan skew(0.74) * 2
         }
 
         test("aim is clamped near the table, so no throw can reach an absurd point") {

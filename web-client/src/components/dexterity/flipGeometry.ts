@@ -63,6 +63,28 @@ export function releaseQuality(profile: FlipReleaseProfile, strength: number): n
   return 1 - Math.min(1, miss / profile.slopRange)
 }
 
+/** Signed carry error (mm) of a release: negative falls short of the aim, positive sails past it. */
+export function carryDrift(profile: FlipReleaseProfile, strength: number): number {
+  return (Math.min(1, Math.max(0, strength)) - profile.sweetSpot) * profile.depthPerStrength
+}
+
+/** Where a release of [strength] aimed at [aim] carries to before scatter — along the line from the hand. */
+export function carryPoint(table: FlipTable, profile: FlipReleaseProfile, aim: Point, strength: number): Point {
+  const dx = aim.x - table.handX
+  const dy = aim.y - table.handY
+  const length = Math.hypot(dx, dy)
+  const [ux, uy] = length < 1 ? [0, -1] : [dx / length, dy / length]
+  const drift = carryDrift(profile, strength)
+  return { x: aim.x + ux * drift, y: aim.y + uy * drift }
+}
+
+/** A carry error as the player reads it: "on target", "6 cm short", "4 cm long". */
+export function driftLabel(drift: number): string {
+  const cm = Math.round(Math.abs(drift) / 10)
+  if (cm === 0) return 'on target'
+  return `${cm} cm ${drift < 0 ? 'short' : 'long'}`
+}
+
 /** One standard deviation of scatter (mm) for a throw at [aim] — the engine's formula, its numbers. */
 export function scatterSigma(table: FlipTable, profile: FlipReleaseProfile, aim: Point, strength: number): number {
   const distance = Math.hypot(aim.x - table.handX, aim.y - table.handY)
@@ -81,12 +103,4 @@ export function previewTouches(p: Point, card: FlipTableCard): boolean {
     p.y + CARD_H / 2 >= card.hitTop &&
     p.y - CARD_H / 2 <= card.hitBottom
   )
-}
-
-/** Strength 0..1 as the drop height the meter shows: one foot up to three. */
-export function heightLabel(strength: number): string {
-  const inches = Math.round(12 + 24 * Math.min(1, Math.max(0, strength)))
-  const feet = Math.floor(inches / 12)
-  const rest = inches % 12
-  return rest === 0 ? `${feet} ft` : `${feet} ft ${rest} in`
 }

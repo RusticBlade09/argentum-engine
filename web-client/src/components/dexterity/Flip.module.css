@@ -492,6 +492,17 @@
   box-shadow: 0 0 6px rgba(255, 255, 255, 0.9);
 }
 
+.gaugeSweet {
+  position: absolute;
+  left: -3px;
+  right: -3px;
+  height: 2px;
+  margin-top: -1px;
+  background: #ffd36e;
+  box-shadow: 0 0 5px rgba(255, 211, 110, 0.9);
+  pointer-events: none;
+}
+
 .gaugeTick {
   position: absolute;
   left: 100%;
@@ -512,6 +523,10 @@
   font-size: 10px;
   color: #ffe9a8;
   white-space: nowrap;
+}
+
+.gaugeReadout[data-tone='off'] {
+  color: #ff9d7a;
 }
 
 /* ---- Footer ------------------------------------------------------------------------------- */

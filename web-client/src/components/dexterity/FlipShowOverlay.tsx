@@ -5,7 +5,7 @@ import type { EntityId } from '@/types'
 import { getCardImageUrl } from '@/utils/cardImages.ts'
 import { FlipTableStage, type CardMark } from './FlipTableStage'
 import { FlipOrb } from './FlipOrb'
-import { makeFlipView, type Point } from './flipGeometry'
+import { makeFlipView, previewTouches, type Point } from './flipGeometry'
 import styles from './Flip.module.css'
 
 const FLIGHT_MS = 1500
@@ -174,21 +174,33 @@ function FlipShowView({ show }: { show: FlipShow }) {
       return c?.controllerId === viewerId ? `${name} (yours)` : name
     })
     const then = `Then ${show.sourceName} is destroyed.`
+    const cm = Math.round(Math.abs(result.landing.drift ?? 0) / 10)
+    const carry = cm < 3 ? '' : (result.landing.drift ?? 0) < 0 ? `Let go early — it fell ${cm} cm short. ` : `Let go late — it sailed ${cm} cm long. `
     if (!result.turnedOver) {
       return {
         title: `${whose} ${show.sourceName} didn't turn over`,
-        body: `${result.landing.halfTurns === 0 ? 'It never turned in the air' : 'It only made a half turn in the air'}, so nothing it touched is destroyed. ${then}`,
+        body: `${carry}${result.landing.halfTurns === 0 ? 'It never turned in the air' : 'It only made a half turn in the air'}, so nothing it touched is destroyed. ${then}`,
       }
     }
     if (names.length > 0) {
+      // What the thrower meant to hit: the permanents a card resting square on the aim would cover.
+      const { aimX, aimY } = result.landing
+      const intended = aimX != null && aimY != null
+        ? show.table.cards.filter((c) => c.eligible && previewTouches({ x: aimX, y: aimY }, c)).map((c) => c.entityId)
+        : []
+      const strayed = intended.length > 0 && !intended.some((id) => result.affected.includes(id))
+      const friendlyFire = result.affected.some((id) => cardsById.get(id)?.controllerId === show.flipperId)
+      const title = strayed
+        ? friendlyFire ? 'Friendly fire!' : 'Off target!'
+        : names.length > 1 ? `Direct hit — ${names.length} permanents destroyed` : 'Direct hit!'
       return {
-        title: names.length > 1 ? `Direct hit — ${names.length} permanents destroyed` : 'Direct hit!',
-        body: `Destroyed: ${names.join(', ')}. ${then}`,
+        title,
+        body: `${carry}Destroyed: ${names.join(', ')}. ${then}`,
       }
     }
     return result.touched.length > 0
-      ? { title: 'Only tokens', body: `It landed on tokens, which Chaos Orb can't destroy. ${then}` }
-      : { title: 'Missed!', body: `It came down on bare felt. ${then}` }
+      ? { title: 'Only tokens', body: `${carry}It landed on tokens, which Chaos Orb can't destroy. ${then}` }
+      : { title: 'Missed!', body: `${carry}It came down on bare felt. ${then}` }
   })()
 
   const landingStage = show.result ? view.toStage(show.result.landing) : null

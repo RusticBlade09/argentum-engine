@@ -112,6 +112,30 @@ class ChaosOrbScenarioTest : ScenarioTestBase() {
                 game.assertBoardMatches(event)
             }
 
+            test("let go too early and it falls short — onto your own creature in front of you") {
+                val game = baseScenario()
+                    .withCardOnBattlefield(2, "Grizzly Bears")
+                    .withCardOnBattlefield(1, "Hill Giant")
+                    .build()
+                val bears = game.findPermanent("Grizzly Bears")!!
+                val giant = game.findPermanent("Hill Giant")!!
+
+                val decision = game.activateOrb()
+                val target = decision.table.cards.single { it.entityId == bears }
+                val own = decision.table.cards.single { it.entityId == giant }
+                // Short by exactly the distance between the two creatures, along the line of the throw.
+                val gap = kotlin.math.hypot(own.x - target.x, own.y - target.y)
+                val early = decision.release.sweetSpot - gap / decision.release.depthPerStrength
+                val event = game.throwAtCard(decision, bears, strength = early)
+
+                event.landing.drift shouldBeLessThan -100.0
+                event.affected shouldContain giant
+                event.affected shouldNotContain bears
+                game.isInGraveyard(1, "Hill Giant").shouldBeTrue()
+                game.isOnBattlefield("Grizzly Bears").shouldBeTrue()
+                game.assertBoardMatches(event)
+            }
+
             test("tokens it touches survive — it destroys only nontoken permanents") {
                 val game = baseScenario()
                     .withCardOnBattlefield(2, "Grizzly Bears", isToken = true)

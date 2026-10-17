@@ -3167,8 +3167,11 @@ wrappers: Word of Command composes it inside `WithManaAbilitySources` and
   (Chaos Orb). The engine lays the battlefield out as a physical table (`FlipTableLayout`: real card
   sizes in millimetres, creatures in front, lands at the back, tapped cards sideways, Auras/Equipment
   tucked behind their host with a strip showing), pauses with a `FlipOntoBattlefieldDecision`, and the
-  flipper answers with a `FlipThrowResponse` — an aim point and a release strength. `FlipPhysics` rolls
-  the scatter, resting angle and half-turns from the game's seeded RNG, and stores every touched
+  flipper answers with a `FlipThrowResponse` — an aim point and a release strength. The release
+  decides the carry: off the profile's sweet spot it lands short of the aim (back along the line from
+  the hand) or long of it, so a mistimed flip comes down on some other card. `FlipPhysics` then rolls
+  a small scatter, the resting angle (near-square on a clean release) and the half-turns from the
+  game's seeded RNG — a clean release lands within a few millimetres of the aim — and stores every touched
   permanent matching `filter` under the slot — **only if the card turned over completely**, since
   every printed dexterity flip conditions its result on that; a flip that didn't turn over or landed
   off the table stores an empty collection. The flipped card is the effect's source and is never on

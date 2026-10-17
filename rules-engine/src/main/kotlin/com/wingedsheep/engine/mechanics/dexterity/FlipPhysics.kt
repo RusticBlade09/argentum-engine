@@ -15,12 +15,16 @@ import kotlin.math.sqrt
 
 /**
  * The release meter the flipping player plays against, sent with the decision so the client draws
- * exactly the zones and scatter the engine scores. Strength runs 0..1; inside
- * [cleanFrom]..[cleanTo] the flip is as accurate as a hand gets, and below [tooSoftBelow] the card
- * is unlikely to turn over. The scatter terms are [FlipPhysics.scatter]'s, for the aim preview.
+ * exactly the zones and scatter the engine scores. Strength runs 0..1; a release at [sweetSpot]
+ * carries exactly to the aim, and every bit of strength either side of it drifts the landing
+ * [depthPerStrength] mm short of the aim or past it. Inside [cleanFrom]..[cleanTo] the hand is as
+ * steady as it gets; below [tooSoftBelow] the card is unlikely to turn over. The scatter terms are
+ * [FlipPhysics.scatter]'s, for the aim preview.
  */
 @Serializable
 data class FlipReleaseProfile(
+    val sweetSpot: Double = FlipPhysics.SWEET_SPOT,
+    val depthPerStrength: Double = FlipPhysics.DEPTH_PER_STRENGTH,
     val cleanFrom: Double = FlipPhysics.CLEAN_FROM,
     val cleanTo: Double = FlipPhysics.CLEAN_TO,
     val tooSoftBelow: Double = FlipPhysics.TOO_SOFT_BELOW,
@@ -34,23 +38,35 @@ data class FlipReleaseProfile(
  * How a flipped card flies and where it lands, given the player's intent.
  *
  * The player supplies an aim point and a release strength; the engine supplies the hand's
- * unsteadiness. Scatter grows with distance from the hand and with how far the release strayed
- * from the clean zone; the number of half-turns grows with strength. All randomness comes from the
- * game's seeded RNG, so a flip replays identically.
+ * unsteadiness. The release decides how far the card carries: early falls short along the line
+ * from the hand (often onto the thrower's own permanents), late sails long, so a mistimed flip
+ * comes down on some other card rather than just "a bit off". The aim is the player's to get
+ * right: a clean release lands within a few millimetres of it, so random scatter stays small —
+ * growing a little with distance from the hand and more with a sloppy release — and the number
+ * of half-turns grows with strength. All randomness comes from the game's seeded RNG, so a flip
+ * replays identically.
  */
 object FlipPhysics {
-    const val CLEAN_FROM = 0.66
-    const val CLEAN_TO = 0.82
+    const val SWEET_SPOT = 0.74
+    const val CLEAN_FROM = 0.70
+    const val CLEAN_TO = 0.78
     const val TOO_SOFT_BELOW = 0.2
 
+    /** How far (mm) a release carries short or long per unit of strength off the sweet spot. */
+    const val DEPTH_PER_STRENGTH = 800.0
+
     /** Scatter (one standard deviation, mm) of a clean release, before distance. */
-    const val BASE_SCATTER = 5.0
+    const val BASE_SCATTER = 3.0
     /** Extra scatter per mm between the hand and the aim point. */
-    const val SCATTER_PER_MM = 0.028
+    const val SCATTER_PER_MM = 0.016
     /** Extra scatter of the worst possible release. */
-    const val SLOPPY_SCATTER = 80.0
+    const val SLOPPY_SCATTER = 35.0
     /** How far outside the clean zone a release must stray to be as sloppy as it gets. */
     const val SLOP_RANGE = 0.4
+
+    /** Spread (degrees, one standard deviation) of the resting angle of a clean / the sloppiest release. */
+    const val CLEAN_SKEW = 7.0
+    const val SLOPPY_SKEW = 40.0
 
     /** Half-turns a release of strength 0 / 1 averages, and the spread around that. */
     private const val HALF_TURNS_AT_ZERO = 0.9
@@ -71,6 +87,23 @@ object FlipPhysics {
         return 1.0 - min(1.0, miss / SLOP_RANGE)
     }
 
+    /**
+     * Where a release of [strength] aimed at ([aimX], [aimY]) carries to before scatter: the aim
+     * point, pushed along the line from the hand by the release's distance from the sweet spot.
+     */
+    fun carry(table: FlipTable, aimX: Double, aimY: Double, strength: Double): Pair<Double, Double> {
+        val dx = aimX - table.handX
+        val dy = aimY - table.handY
+        val length = hypot(dx, dy)
+        // Aiming at the hand itself: the throw still goes away from the thrower.
+        val (ux, uy) = if (length < 1.0) 0.0 to -1.0 else dx / length to dy / length
+        val drift = drift(strength)
+        return (aimX + ux * drift) to (aimY + uy * drift)
+    }
+
+    /** Signed carry error (mm) of a release: negative falls short, positive sails long. */
+    fun drift(strength: Double): Double = (strength.coerceIn(0.0, 1.0) - SWEET_SPOT) * DEPTH_PER_STRENGTH
+
     /** Standard deviation (mm) of where a throw at ([aimX], [aimY]) with [strength] lands. */
     fun scatter(table: FlipTable, aimX: Double, aimY: Double, strength: Double): Double {
         val distance = hypot(aimX - table.handX, aimY - table.handY)
@@ -83,6 +116,7 @@ object FlipPhysics {
         val ay = aimY.coerceIn(-AIM_SLACK, table.height + AIM_SLACK)
         val s = strength.coerceIn(0.0, 1.0)
         val sigma = scatter(table, ax, ay, s)
+        val (cx, cy) = carry(table, ax, ay, s)
 
         var r = rng
         fun uniform(): Double { val (d, next) = r.nextDouble(); r = next; return d }
@@ -93,11 +127,14 @@ object FlipPhysics {
             return sqrt(-2.0 * ln(u1)) * cos(2.0 * Math.PI * u2)
         }
 
-        val x = ax + gaussian() * sigma
-        val y = ay + gaussian() * sigma
-        val rotation = uniform() * 360.0
+        val x = cx + gaussian() * sigma
+        val y = cy + gaussian() * sigma
+        // A clean release keeps the card nearly square to the thrower, so the aim ghost tells the
+        // truth about what it covers; a sloppy one can come down at any skew.
+        val skew = CLEAN_SKEW + SLOPPY_SKEW * (1.0 - releaseQuality(s))
+        val rotation = ((gaussian() * skew) % 360.0 + 360.0) % 360.0
         val halfTurns = floor(max(0.0, HALF_TURNS_AT_ZERO + HALF_TURNS_PER_STRENGTH * s + gaussian() * HALF_TURN_NOISE)).toInt()
-        return FlipLanding(x = x, y = y, rotation = rotation, halfTurns = halfTurns) to r
+        return FlipLanding(x = x, y = y, rotation = rotation, halfTurns = halfTurns, drift = drift(s), aimX = ax, aimY = ay) to r
     }
 
     /**

@@ -1025,16 +1025,16 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'playing',
     title: 'Flipping Chaos Orb',
     summary:
-      'Chaos Orb is played for real: the battlefield is laid out as a card table, you aim, press and hold to swing, and let go with the drop-height gauge in the gold. Where it lands decides what it destroys.',
+      'Chaos Orb is played for real: the battlefield is laid out as a card table, you aim, press and hold to swing, and let go with the needle on the gold line. Your aim and your timing decide what it destroys.',
     body: [
       { kind: 'p', text: 'When Chaos Orb’s ability resolves, a table opens with every permanent lying where it would on a paper battlefield — creatures in front, lands at the back, tapped cards sideways, Auras and Equipment peeking out from behind what they’re attached to. Your side is at the bottom; the Orb sits in your hand at the edge.' },
       { kind: 'ol', items: [
-        'Aim — move over the table. The dashed card shows where you’re aiming; anything under it lights up red, your own permanents amber, and tokens grey (Chaos Orb can’t destroy tokens). The ring shows how far a clean flip can stray.',
-        'Swing — press and hold. The gauge beside the table swings between one and three feet; the ring tightens when the needle is in the gold band and widens outside it. You can drag to adjust while you hold, but hold too long and your hand starts to shake.',
-        'Let go — release with the needle in the gold for your most accurate flip. Let go too low and the Orb may not turn over completely, which means it does nothing.',
+        'Aim — move over the table. The crosshair is your aim and the dashed card shows where a perfect release lands; anything under it lights up red, your own permanents amber, and tokens grey (Chaos Orb can’t destroy tokens). A clean flip lands within a few millimetres of your aim, so aim carefully.',
+        'Swing — press and hold. The needle swings up and down the gauge, and the dashed card slides with it: below the gold line the Orb falls short, back towards your own permanents; above it, it sails long. Every swing is quicker than the last, and hold too long and your hand starts to shake.',
+        'Let go — release with the needle on the gold line to land on your aim. Let go far too low and the Orb won’t turn over completely, which means it does nothing.',
       ] },
       { kind: 'p', text: 'The server decides where it lands from your aim and release, so every player sees the same flight. Everything the Orb touches is destroyed if it turned over — yours included — and then the Orb itself is destroyed. Your opponent watches the same flip from their side of the table.' },
-      { kind: 'tip', text: 'Aim at the seam between two cards to take both — but a wide ring means the seam can just as easily miss them both. Space works as the swing button too, and Esc stops a swing without throwing.' },
+      { kind: 'tip', text: 'Aim at the seam between two cards to take both — a precise aim and a clean release can. Your first swing is the slowest, so it’s usually the one to take. Space works as the swing button too, and Esc stops a swing without throwing.' },
     ],
     related: ['decisions', 'game-table'],
   },

@@ -4,26 +4,40 @@ import type { EntityId, FlipOntoBattlefieldDecision } from '@/types'
 import { getCardImageUrl } from '@/utils/cardImages.ts'
 import { FlipTableStage, type CardMark, type StagePointerKind } from './FlipTableStage'
 import { FlipOrb } from './FlipOrb'
-import { heightLabel, makeFlipView, previewTouches, releaseQuality, scatterSigma, type Point } from './flipGeometry'
+import { carryDrift, carryPoint, driftLabel, makeFlipView, previewTouches, releaseQuality, scatterSigma, type Point } from './flipGeometry'
 import decisionStyles from '../decisions/DecisionUI.module.css'
 import styles from './Flip.module.css'
 
-/** One full swing of the release meter, up and back down. */
-const SWING_MS = 2000
+/** The first full swing of the release meter, up and back down; every swing after it is quicker. */
+const FIRST_SWING_MS = 1700
+/** The quickest the swing gets, and how fast it gets there (ms of period lost per ms held). */
+const FASTEST_SWING_MS = 850
+const SWING_SPEEDUP = 0.28
 /** How long the hand stays steady before it starts to shake. */
-const STEADY_MS = 1100
+const STEADY_MS = 900
 const GAUGE_HEIGHT = 220
 
-/** The meter's strength at [elapsed] ms into the swing: a smooth 0 → 1 → 0 ping-pong. */
-function meterAt(elapsed: number): number {
-  return (1 - Math.cos((2 * Math.PI * elapsed) / SWING_MS)) / 2
+/** The meter's swing phase (radians) [elapsed] ms in: the period shrinks steadily to its floor. */
+function phaseAt(elapsed: number): number {
+  const rampEnd = (FIRST_SWING_MS - FASTEST_SWING_MS) / SWING_SPEEDUP
+  const ramp = Math.min(elapsed, rampEnd)
+  const phase = ((2 * Math.PI) / SWING_SPEEDUP) * Math.log(FIRST_SWING_MS / (FIRST_SWING_MS - SWING_SPEEDUP * ramp))
+  return phase + (elapsed > rampEnd ? (2 * Math.PI * (elapsed - rampEnd)) / FASTEST_SWING_MS : 0)
 }
 
-/** The hand's drift (mm) at [elapsed] ms: steady at first, then a growing tremble. */
+/** The meter's strength at [elapsed] ms into the swing: a 0 → 1 → 0 ping-pong that keeps speeding up. */
+function meterAt(elapsed: number): number {
+  return (1 - Math.cos(phaseAt(elapsed))) / 2
+}
+
+/** The hand's drift (mm) at [elapsed] ms: nearly steady at first, then a growing tremble. */
 function tremorAt(elapsed: number): Point {
   const t = elapsed / 1000
-  const amp = 1.2 + Math.max(0, elapsed - STEADY_MS) * 0.012
-  return { x: Math.min(26, amp) * Math.sin(5.1 * t + 0.3), y: Math.min(26, amp) * Math.cos(3.7 * t) }
+  const amp = Math.min(30, 0.8 + Math.max(0, elapsed - STEADY_MS) * 0.016)
+  return {
+    x: amp * (0.7 * Math.sin(5.1 * t + 0.3) + 0.3 * Math.sin(11.3 * t)),
+    y: amp * (0.7 * Math.cos(3.7 * t) + 0.3 * Math.sin(9.1 * t + 1.2)),
+  }
 }
 
 /**
@@ -43,6 +57,8 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
   const [aim, setAim] = useState<Point | null>(null)
   const [swinging, setSwinging] = useState(false)
   const [hidden, setHidden] = useState(false)
+  /** What the ghost covers mid-swing, where the release would carry it right now. */
+  const [swingCovered, setSwingCovered] = useState<readonly EntityId[]>([])
   const swingStart = useRef(0)
   const aimRef = useRef<Point | null>(null)
   const submitted = useRef(false)
@@ -59,16 +75,18 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
     [gameState],
   )
 
-  // Place the aim ghost, the scatter ring and the crosshair at [p] (table mm) for [strength].
+  // Place the crosshair at the aim [p] (table mm), and the ghost and scatter ring where a release
+  // of [strength] would carry to — on the aim at the sweet spot, short or long of it otherwise.
   const placeAim = useCallback(
     (p: Point, strength: number, locked: boolean) => {
-      const s = view.toStage(p)
+      const c = view.toStage(p)
+      const landsAt = carryPoint(table, release, p, strength)
+      const s = view.toStage(landsAt)
       const sigma = scatterSigma(table, release, p, strength)
       const r = 2 * sigma + 31.5
       const quality = releaseQuality(release, strength)
-      for (const el of [ghostRef.current, crossRef.current]) {
-        if (el) { el.style.left = `${s.x}px`; el.style.top = `${s.y}px` }
-      }
+      if (crossRef.current) { crossRef.current.style.left = `${c.x}px`; crossRef.current.style.top = `${c.y}px` }
+      if (ghostRef.current) { ghostRef.current.style.left = `${s.x}px`; ghostRef.current.style.top = `${s.y}px` }
       ghostRef.current?.classList.toggle(styles.ghostLocked!, locked)
       const ring = ringRef.current
       if (ring) {
@@ -79,24 +97,37 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
         ring.classList.toggle(styles.ringClean!, locked && quality >= 0.999)
         ring.classList.toggle(styles.ringSloppy!, locked && quality < 0.6)
       }
+      return landsAt
     },
     [view, table, release],
   )
 
-  // While swinging: run the meter, the trembling hand and the breathing scatter ring per frame.
+  // While swinging: run the meter, the trembling hand and the ghost sliding short and long per
+  // frame. What the ghost covers only re-renders when it changes.
   useEffect(() => {
     if (!swinging) return
     let frame = 0
+    let coveredKey = ''
     const tick = () => {
       const elapsed = performance.now() - swingStart.current
       const v = meterAt(elapsed)
       const base = aimRef.current
       if (base) {
         const d = tremorAt(elapsed)
-        placeAim({ x: base.x + d.x, y: base.y + d.y }, v, true)
+        const landsAt = placeAim({ x: base.x + d.x, y: base.y + d.y }, v, true)
+        const now = table.cards.filter((c) => previewTouches(landsAt, c)).map((c) => c.entityId)
+        const key = now.join(',')
+        if (key !== coveredKey) {
+          coveredKey = key
+          setSwingCovered(now)
+        }
       }
       if (needleRef.current) needleRef.current.style.top = `${(1 - v) * GAUGE_HEIGHT}px`
-      if (readoutRef.current) readoutRef.current.textContent = heightLabel(v)
+      if (readoutRef.current) {
+        const drift = carryDrift(release, v)
+        readoutRef.current.textContent = driftLabel(drift)
+        readoutRef.current.dataset.tone = Math.abs(drift) < 20 ? 'good' : 'off'
+      }
       if (orbRef.current) {
         orbRef.current.style.transform = `translateY(${-v * 26}px) rotateX(${v * 38}deg) rotateZ(-6deg) scale(${1 + v * 0.08})`
       }
@@ -104,15 +135,15 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
-  }, [swinging, placeAim])
+  }, [swinging, placeAim, table, release])
 
   useEffect(() => {
     if (orbRef.current) orbRef.current.style.transform = 'rotateZ(-6deg)'
   }, [])
 
-  // Idle aim: show the ring a clean release would give.
+  // Idle aim: show where a perfect release would land.
   useEffect(() => {
-    if (!swinging && aim) placeAim(aim, (release.cleanFrom + release.cleanTo) / 2, false)
+    if (!swinging && aim) placeAim(aim, release.sweetSpot, false)
   }, [aim, swinging, placeAim, release])
 
   const startSwing = useCallback((p: Point) => {
@@ -190,10 +221,13 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
   }, [swinging, hidden, aim, table, startSwing, cancelSwing, releaseSwing])
 
   // What the ghost currently covers, for the highlight and the label under it.
-  const covered = useMemo(
-    () => (aim ? table.cards.filter((c) => previewTouches(aim, c)) : []),
-    [aim, table],
-  )
+  const covered = useMemo(() => {
+    if (swinging) {
+      const ids = new Set(swingCovered)
+      return table.cards.filter((c) => ids.has(c.entityId))
+    }
+    return aim ? table.cards.filter((c) => previewTouches(aim, c)) : []
+  }, [aim, table, swinging, swingCovered])
   const marks = useMemo(() => {
     const m = new Map<EntityId, CardMark>()
     for (const c of covered) m.set(c.entityId, !c.eligible ? 'immune' : c.controllerId === viewerId ? 'own' : 'target')
@@ -277,12 +311,14 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
             />
           </div>
           <div ref={needleRef} className={styles.gaugeNeedle} style={{ top: GAUGE_HEIGHT, opacity: swinging ? 1 : 0.35 }} />
-          <div className={styles.gaugeTick} style={{ top: GAUGE_HEIGHT - 4 }}>1 ft</div>
-          <div className={styles.gaugeTick} style={{ top: (1 - (release.cleanFrom + release.cleanTo) / 2) * GAUGE_HEIGHT, color: '#ffe9a8' }}>
-            clean
+          <div className={styles.gaugeSweet} style={{ top: (1 - release.sweetSpot) * GAUGE_HEIGHT }} />
+          <div className={styles.gaugeTick} style={{ top: 6 }}>long</div>
+          <div className={styles.gaugeTick} style={{ top: (1 - release.sweetSpot) * GAUGE_HEIGHT, color: '#ffe9a8' }}>
+            on target
           </div>
-          <div className={styles.gaugeTick} style={{ top: 6 }}>3 ft</div>
-          <div ref={readoutRef} className={styles.gaugeReadout}>{swinging ? '' : 'drop height'}</div>
+          <div className={styles.gaugeTick} style={{ top: (1 - (release.sweetSpot + soft) / 2) * GAUGE_HEIGHT }}>short</div>
+          <div className={styles.gaugeTick} style={{ top: GAUGE_HEIGHT - 4 }}>no turn</div>
+          <div ref={readoutRef} className={styles.gaugeReadout}>{swinging ? '' : 'carry'}</div>
         </div>
       </FlipTableStage>
 
@@ -295,11 +331,13 @@ export function FlipDecisionOverlay({ decision }: { decision: FlipOntoBattlefiel
             <span className={styles.stepNum}>2</span>Press and hold to swing
           </span>
           <span className={`${styles.step} ${swinging ? styles.stepActive : ''}`}>
-            <span className={styles.stepNum}>3</span>Let go in the gold
+            <span className={styles.stepNum}>3</span>Let go on the gold line
           </span>
         </div>
         <span className={styles.subtitle}>
-          {swinging ? 'Drag to adjust · hold too long and your hand starts to shake · Esc to stop' : 'Space works too · the ring shows where it can land'}
+          {swinging
+            ? 'Early falls short, late sails long · each swing is quicker and your hand starts to shake · Esc to stop'
+            : 'Space works too · the dashed card is where a perfect release lands'}
         </span>
       </div>
     </div>

@@ -26,10 +26,10 @@ import kotlin.math.sqrt
  * When nothing scores above zero it throws the Orb off the table rather than hurt itself.
  */
 object FlipAim {
-    private const val STRENGTH = (FlipPhysics.CLEAN_FROM + FlipPhysics.CLEAN_TO) / 2
+    private const val STRENGTH = FlipPhysics.SWEET_SPOT
     private const val OWN_LOSS_WEIGHT = 1.25
     private const val PAIR_REACH = 140.0
-    private val ROTATIONS = listOf(0.0, 45.0, 90.0, 135.0)
+    private val ROTATIONS = listOf(-FlipPhysics.CLEAN_SKEW, 0.0, FlipPhysics.CLEAN_SKEW)
 
     /** [samples] landings per candidate per rotation; fewer for playouts, more for the real move. */
     fun respond(state: GameState, decision: FlipOntoBattlefieldDecision, playerId: EntityId, samples: Int = 16): FlipThrowResponse {

@@ -873,6 +873,10 @@ export interface FlipTable {
 
 /** The release meter and scatter the engine scores a throw against. */
 export interface FlipReleaseProfile {
+  /** The release that carries exactly to the aim. */
+  readonly sweetSpot: number
+  /** Millimetres a release carries short of the aim (below the sweet spot) or past it, per unit of strength. */
+  readonly depthPerStrength: number
   readonly cleanFrom: number
   readonly cleanTo: number
   readonly tooSoftBelow: number
@@ -888,6 +892,11 @@ export interface FlipLanding {
   readonly y: number
   readonly rotation: number
   readonly halfTurns: number
+  /** How far (mm) the release carried it short of the aim (negative) or past it; absent when on target. */
+  readonly drift?: number
+  /** Where the thrower aimed. */
+  readonly aimX?: number | null
+  readonly aimY?: number | null
 }
 
 /**
