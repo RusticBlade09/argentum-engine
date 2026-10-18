@@ -236,6 +236,7 @@ class TypecycleCardHandler(
         val effectContext = EffectContext(
             sourceId = action.cardId,
             controllerId = action.playerId,
+            programOrigin = com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(TypecycleCardHandler::class),
         )
 
         val searchResult = effectExecutorRegistry.execute(currentState, searchEffect, effectContext)

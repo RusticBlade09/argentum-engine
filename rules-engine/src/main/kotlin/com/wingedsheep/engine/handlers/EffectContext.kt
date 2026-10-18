@@ -421,6 +421,16 @@ data class EffectContext(
     /** A single group-move instruction orders its arrivals after every member has moved. */
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val deferGraveyardOrdering: Boolean = false,
+    /**
+     * Where the effect tree now running came from — the label an
+     * [com.wingedsheep.engine.core.EffectProgram] started under this context records as its
+     * `origin`. A stack resolver sets [com.wingedsheep.engine.core.ProgramOrigin.Resolving] for
+     * the resolving object's own effect; the interpreter hands each leaf it runs a
+     * [com.wingedsheep.engine.core.ProgramOrigin.BuiltBy] naming that leaf, so a program the leaf
+     * starts is labelled with the step that built it. A label only: nothing reads it to resolve.
+     */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val programOrigin: com.wingedsheep.engine.core.ProgramOrigin? = null,
 ) {
     val activatedAbilityId: com.wingedsheep.sdk.scripting.AbilityId?
         get() = activatedAbility?.id

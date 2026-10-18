@@ -6,7 +6,7 @@ import com.wingedsheep.engine.core.MayAbilityContinuation
 import com.wingedsheep.engine.core.ActionProcessor
 import com.wingedsheep.engine.core.Concede
 import com.wingedsheep.engine.core.DecisionContext
-import com.wingedsheep.engine.core.EffectContinuation
+import com.wingedsheep.engine.core.EffectProgram
 import com.wingedsheep.engine.core.PassPriority
 import com.wingedsheep.engine.core.YesNoDecision
 import com.wingedsheep.engine.handlers.EffectContext
@@ -458,10 +458,7 @@ class LeaveTheGameTest : FunSpec({
 
     /** Pause the game on a yes/no decision addressed to [chooser], with a resolution frame beneath it. */
     fun GameState.pausedOn(chooser: EntityId): GameState = pushContinuation(
-        EffectContinuation(
-            remainingEffects = emptyList(),
-            effectContext = EffectContext(sourceId = null, controllerId = chooser)
-        )
+        EffectProgram.queued(emptyList(), EffectContext(sourceId = null, controllerId = chooser), origin = com.wingedsheep.engine.core.ProgramOrigin.BuiltBy("Test", null))
     ).suspendForDecision(
         question = { id -> YesNoDecision(
             id = id,

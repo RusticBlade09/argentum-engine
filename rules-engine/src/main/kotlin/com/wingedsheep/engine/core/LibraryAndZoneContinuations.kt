@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
  * Used by SelectFromCollectionEffect: the player has chosen cards from a gathered
  * collection. The selected cards are stored under [storeSelected] and the remainder
  * (if [storeRemainder] is non-null) is stored under that name. Both collections are
- * injected into the next EffectContinuation's storedCollections.
+ * injected into the next EffectProgram's storedCollections.
  *
  * @property playerId The player who made the selection
  * @property sourceId The spell/ability that caused this effect
@@ -84,7 +84,7 @@ data class MoveCollectionOrderContinuation(
  *
  * Used by SelectTargetPipelineExecutor: the player has chosen a target from the
  * legal targets list. The selected target IDs are stored under [storeAs] and
- * injected into the next EffectContinuation's storedCollections.
+ * injected into the next EffectProgram's storedCollections.
  *
  * @property playerId The player who made the selection
  * @property sourceId The spell/ability that caused this effect
@@ -105,7 +105,7 @@ data class SelectTargetPipelineContinuation(
 /**
  * Resume after player chooses an option in a generic pipeline context.
  *
- * Stores the chosen value into the EffectContinuation below on the stack
+ * Stores the chosen value into the EffectProgram below on the stack
  * (via chosenValues map) so subsequent pipeline effects can access it
  * via EffectContext.chosenValues[storeAs].
  *
@@ -395,6 +395,10 @@ data class DiscoverMayCastContinuation(
     val thenEffect: com.wingedsheep.sdk.scripting.effects.Effect? = null,
     val objectReferences: com.wingedsheep.engine.handlers.ObjectReferenceEnvironment = com.wingedsheep.engine.handlers.ObjectReferenceEnvironment(),
     val resolvingTriggeredAbility: com.wingedsheep.sdk.scripting.TriggeredAbility? = null,
+    /** The label the discover ran under; the follow-up program keeps it, whichever path runs it. */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val programOrigin: ProgramOrigin? = null,
 ) : AnswerContinuation
 
 /**
@@ -459,10 +463,10 @@ enum class FreeCastFallback {
  *  - **0 cards** → the controller is done; the rest stay where they are (no lingering
  *    "you may cast it later" permission — per the rulings the casts can't wait).
  *  - **1 card** → it is cast for free by re-running, through
- *    [com.wingedsheep.engine.handlers.continuations.EffectContinuationRunner], the two-step
- *    chain `CastFromCollectionWithoutPayingCost(thisCard)` then the loop effect over the
- *    remaining cards. Because the runner pushes an `EffectContinuation` for the trailing loop
- *    step before each cast, a cast that pauses for targets / X / modes auto-resumes straight
+ *    [com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter], the two-step
+ *    chain `CastFromCollectionWithoutPayingCostEffect(thisCard)` then the loop effect over the
+ *    remaining cards. Because the interpreter pushes an `EffectProgram` beneath the cast while
+ *    the trailing loop step is still to come, a cast that pauses for targets / X / modes auto-resumes straight
  *    back into the next loop iteration.
  *
  * @property from The collection name the loop draws from.

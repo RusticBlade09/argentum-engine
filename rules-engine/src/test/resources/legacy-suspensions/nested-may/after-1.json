@@ -372,7 +372,12 @@
                         "storedStringLists": {},
                         "storedSubtypeGroups": {}
                     },
-                    "resolutionDepth": 1
+                    "resolutionDepth": 1,
+                    "programOrigin": {
+                        "type": "com.wingedsheep.engine.core.ProgramOrigin.BuiltBy",
+                        "step": "Gated",
+                        "parent": null
+                    }
                 }
             }
         }

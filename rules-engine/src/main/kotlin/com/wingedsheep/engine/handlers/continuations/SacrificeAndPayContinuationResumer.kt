@@ -135,7 +135,7 @@ class SacrificeAndPayContinuationResumer(
     }
 
     /**
-     * Publish [snapshots] of just-sacrificed permanents onto the enclosing [EffectContinuation]s
+     * Publish [snapshots] of just-sacrificed permanents onto the enclosing [EffectProgram]s
      * (and reflexive / gated-action frames) so
      * a sibling effect resolving after this paused sacrifice can read
      * `context.sacrificedPermanents` (Rise of the Witch-king's "if you sacrificed a creature this
@@ -152,7 +152,7 @@ class SacrificeAndPayContinuationResumer(
         )
         return state.copy(continuationStack = state.continuationStack.map { frame ->
             when (frame) {
-                is EffectContinuation -> frame.copy(effectContext = frame.effectContext.withSnapshots())
+                is EffectProgram -> frame.copy(effectContext = frame.effectContext.withSnapshots())
                 // "When you sacrifice an Aura this way" (Three Dog) reads what a paused sacrifice
                 // chose, as does a Gate.DoAction's payoff — both wait beneath the sacrifice.
                 is com.wingedsheep.engine.core.ReflexiveTriggerTargetContinuation ->
@@ -814,6 +814,7 @@ class SacrificeAndPayContinuationResumer(
         // (ability-controller) context, so this keeps both paths consistent. Falls back to the payer
         // for the common case where the payer is the controller.
         val context = EffectContext(
+            programOrigin = continuation.programOrigin ?: com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(com.wingedsheep.sdk.scripting.effects.PayOrSufferEffect::class),
             resolvingTriggeredAbility = continuation.resolvingTriggeredAbility,
             sourceId = sourceId,
             objectReferences = continuation.objectReferences,
@@ -934,6 +935,7 @@ class SacrificeAndPayContinuationResumer(
     ): ExecutionResult {
         if (consequence == null) return checkForMore(state, priorEvents)
         val context = EffectContext(
+            programOrigin = continuation.programOrigin ?: com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(com.wingedsheep.sdk.scripting.effects.AnyPlayerMayPayEffect::class),
             resolvingTriggeredAbility = continuation.resolvingTriggeredAbility,
             sourceId = continuation.sourceId,
             objectReferences = continuation.objectReferences.authorize(priorEvents),

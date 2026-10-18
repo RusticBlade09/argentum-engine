@@ -3,7 +3,6 @@ package com.wingedsheep.engine.handlers.continuations
 import com.wingedsheep.engine.core.AmassContinuation
 import com.wingedsheep.engine.core.CardsSelectedResponse
 import com.wingedsheep.engine.core.DecisionResponse
-import com.wingedsheep.engine.core.EffectContinuation
 import com.wingedsheep.engine.core.EngineServices
 import com.wingedsheep.engine.core.ExecutionResult
 import com.wingedsheep.engine.core.ReflexiveTriggerTargetContinuation

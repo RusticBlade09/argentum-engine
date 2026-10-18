@@ -1101,6 +1101,7 @@ class TurnManager(
                 ?: printed
             for (member in team) {
                 val context = EffectContext(sourceId = active.sourceId, controllerId = active.controllerId,
+                    programOrigin = com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(OptionalSkipTurnWith::class),
                     triggeringPlayerId = member,
                     objectReferences = ObjectReferenceEnvironment(
                         captured = true, origin = state.objectRef(active.sourceId), source = state.objectRef(active.sourceId)))

@@ -274,7 +274,8 @@ class MoveToZoneEffectExecutor(
         ) {
             val onEnterResult = PermanentEntryReplacements.runOnEnterRunEffect(
                 resultState, targetId, controllerId, cardRegistry, effectExecutor,
-                resolutionDepth = context.resolutionDepth
+                resolutionDepth = context.resolutionDepth,
+                parentOrigin = context.programOrigin,
             )
             if (onEnterResult != null) {
                 resultState = onEnterResult.state

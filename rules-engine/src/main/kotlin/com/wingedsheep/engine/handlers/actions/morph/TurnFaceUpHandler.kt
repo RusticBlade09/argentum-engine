@@ -448,6 +448,7 @@ class TurnFaceUpHandler(
                     origin = currentState.objectRef(action.sourceId), source = currentState.objectRef(action.sourceId),
                     resolutionKey = "face-up:${action.sourceId.value}:${currentState.objectRef(action.sourceId)?.generation}"),
                 controllerId = action.playerId,
+                programOrigin = com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(TurnFaceUpHandler::class),
             )
             val effectResult = effectExecutorRegistry.execute(currentState, faceUpEffect, effectContext)
             if (effectResult.error == null) {

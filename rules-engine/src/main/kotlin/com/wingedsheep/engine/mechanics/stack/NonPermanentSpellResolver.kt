@@ -222,6 +222,8 @@ internal class NonPermanentSpellResolver(
     ): EffectContext =
         EffectContext(
             sourceId = spellId,
+            // The spell's effect runs as a program whose origin is this resolving stack object.
+            programOrigin = state.objectRef(spellId)?.let { com.wingedsheep.engine.core.ProgramOrigin.Resolving(it) },
             objectReferences = com.wingedsheep.engine.handlers.ObjectReferenceEnvironment(
                 captured = true, origin = state.objectRef(spellId), source = state.objectRef(spellId),
                 resolutionKey = "$spellId:${state.objectRef(spellId)?.generation}",

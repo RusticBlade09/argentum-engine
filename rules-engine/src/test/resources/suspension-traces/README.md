@@ -73,3 +73,19 @@ permanent's projected colors, read by a color count of a permanent that has left
 The one snapshot in these traces — Naturalize's Sol Ring in `free-cast-target/after-3.json` —
 now carries `"colors": []`, Sol Ring being colorless. No action or event payload changed, and no
 gameplay was rerun.
+
+Representation-refreshed on 2026-10-17 when the effect interpreter's `EffectProgram` replaced
+`EffectContinuation` as the frame that holds the rest of a composite. The frozen `state.json`
+files are unchanged: `nested-may` and `repeat-while` still hold the retired frame, which the
+current reader converts on load to `EffectProgram(root = Composite(remainingEffects),
+origin = null, cursor = [Start], effectContext)`, so the remaining effects run from the first.
+`SuspensionTraceTest` now checks the re-encoded initial state against that conversion. Only two
+files changed. In `nested-may/after-1.json` and `repeat-while/after-1.json`, the one waiting frame
+(the converted `GainLife 3` and `GainLife 5` tails) changed from the old shape to the new one. In
+`nested-may/after-1.json`, the inner "may" frame's context also gained
+`programOrigin = BuiltBy("Gated", null)`: the registry now labels every leaf it runs with its
+step, and its parent is null because the outer frame was captured before labels existed. The
+expected states were re-derived by replaying the unchanged `actions.json`. Apart from those
+frames, every replayed state is what the engine before the change produces from the same input,
+every replayed event list is identical to it, and `events-N.json` is unchanged. No action or
+event payload changed.

@@ -101,7 +101,8 @@ object ReplacementRiders {
             ),
             pipeline = PipelineState(
                 storedCollections = mapOf(ExileCounteredSpellInstead.EXILED_CARD to listOf(rider.subjectId))
-            )
+            ),
+            programOrigin = com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(ReplacementRiders::class),
         )
     }
 }

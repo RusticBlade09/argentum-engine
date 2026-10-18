@@ -378,6 +378,7 @@ class ManaPaymentContinuationResumer(
             sourceId = continuation.wardSourceId,
             controllerId = continuation.payingPlayerId,
             discardIsCost = true,
+            programOrigin = com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(ManaPaymentContinuationResumer::class),
         )
 
         val discardResult = services.effectExecutorRegistry

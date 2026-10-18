@@ -487,6 +487,10 @@ class PlayLandHandler(
                 newState = newState.tick()
 
                 val effectContext = EffectContext(
+                    // The land's entry is a step of its own, started by playing it.
+                    programOrigin = com.wingedsheep.engine.core.ProgramOrigin.BuiltBy(
+                        com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.stepName(com.wingedsheep.sdk.scripting.OnEnterRun::class),
+                        com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(PlayLandHandler::class)),
                     sourceId = action.cardId,
                     controllerId = action.playerId,
                     objectReferences = com.wingedsheep.engine.handlers.ObjectReferenceEnvironment(

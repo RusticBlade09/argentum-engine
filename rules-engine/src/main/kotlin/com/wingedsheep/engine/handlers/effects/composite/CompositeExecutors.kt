@@ -24,12 +24,14 @@ class CompositeExecutors(
     private val targetFinder: TargetFinder,
     private val decisionHandler: DecisionHandler = DecisionHandler(),
     private val amountEvaluator: DynamicAmountEvaluator,
-    private val targetValidator: TargetValidator
+    private val targetValidator: TargetValidator,
+    /** The registry's plain entry point (no depth bump), for the effect interpreter's leaves. */
+    private val plainExecutor: (GameState, Effect, EffectContext) -> EffectResult = effectExecutor,
 ) : ExecutorModule {
-    private val compositeEffectExecutor = CompositeEffectExecutor(effectExecutor)
+    private val compositeEffectExecutor = CompositeEffectExecutor(plainExecutor)
     private val createDelayedTriggerExecutor = CreateDelayedTriggerExecutor(dynamicAmountEvaluator = amountEvaluator)
     private val forEachExecutor = ForEachExecutor(effectExecutor, predicateEvaluator = amountEvaluator.predicates, cardRegistry = cardRegistry)
-    private val forEachCapturedControllerExecutor = ForEachCapturedControllerExecutor(effectExecutor)
+    private val forEachCapturedControllerExecutor = ForEachCapturedControllerExecutor(plainExecutor)
     private val mayRevealCardFromHandEffectExecutor = MayRevealCardFromHandEffectExecutor(effectExecutor, predicateEvaluator = amountEvaluator.predicates)
     private val beholdEffectExecutor = BeholdEffectExecutor(effectExecutor, predicateEvaluator = amountEvaluator.predicates)
     private val budgetModalEffectExecutor = BudgetModalEffectExecutor(effectExecutor)

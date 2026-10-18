@@ -691,15 +691,95 @@ data class Suspension(
 ```
 
 `GameState.pendingDecision` is derived from the top suspension. An answer payload cannot be
-pushed independently, and automatic work such as `EffectContinuation` carries no routing ID:
+pushed independently, and automatic work such as `EffectProgram` carries no routing ID:
 its position under a suspension supplies its relationship. `ContinuationHandler.resume` checks
 the response against that suspension's question, pops the pair, and dispatches its answer payload.
+
+#### Effect programs
+
+An effect tree runs as an `EffectProgram`: a copy of the root `Effect`, an origin label, a cursor
+into the root, and the `EffectContext` the node at the cursor runs in. `EffectProgramInterpreter`
+walks `CompositeEffect` sequences itself, so a nested composite is a position in its root rather
+than a frame of its own; every other node is a leaf it runs through the executor registry. Before
+every leaf, the last one included, the interpreter pushes the program beneath it with the cursor
+**at that leaf**: the cursor always names the node in progress, not the next one. If the leaf
+pauses, the frame waits beneath the leaf's own frames. Resumers hand the leaf's outputs to "the
+frame beneath" (`exposeCollectionsToNextFrame`), which merges them into a program frame with
+`mergeOutputs`, the same merge `foldResult` applies to a step that finished synchronously. Once the leaf's frames drain, the automatic resumer advances past the cursor and
+carries on. A failed leaf is skipped, or abandons the rest of its composite when that composite has
+`stopOnError`.
+
+**Pausing never changes the outcome.** The cursor is a zipper: each step holds what its open node
+needs to finish exactly as a run that never paused would. A composite's step stores its entry
+context as an exact delta from its parent's entry: the values the siblings before it stored, the
+snapshots and object-move permits they appended, and the depth step. The root's step stores what
+the program was entered with. On resume, each entry is rebuilt from those deltas and the frame's
+current context.
+
+```kotlin
+data class EffectProgram(
+    val root: Effect,               // always a copy, so resuming needs only the frame
+    val origin: ProgramOrigin?,     // a label; resuming never reads it; null only for converted frames
+    val cursor: ProgramCursor,      // List<CursorStep>
+    val effectContext: EffectContext,
+) : AutomaticContinuation
+
+sealed interface CursorStep {
+    data object Start : CursorStep                                   // not started
+    data class Child(val index: Int, val delta: EntryDelta) : CursorStep    // open composite at child index
+}
+data class EntryDelta(val outputs: PipelineOutputs, val depth: Int)  // entry = parent entry ⊕ delta
+```
+
+Leaving a composite goes through one function on both paths. The parent gets the composite's entry
+context, folded with what the composite stored: new pipeline keys, appended snapshots, the
+object-move permits the composite gained (from its leaves' events, or handed to the frame while it
+was paused), and an authorisation of the events of this run. A value that shadows an outer key stays
+inside. `stopOnError` is read
+from the composite in the root. A finished program publishes the same outputs, computed against
+the root step's entry, whether it returns them synchronously to its caller or, after a pause,
+hands them to the frame beneath. Those outputs are a `PipelineOutputs`: every pipeline kind, the
+snapshots and the permits, merged by one function, `mergeOutputs`. Programs and gates pass the
+whole of it: `foldResult` for a step that finished, a finished program publishing to the frame
+beneath, and the gate resumer forwarding a branch's result (with the permits its events authorise,
+as `foldResult` would). Leaf resumers still hand over only what they produce, often a subset — for
+example `LibraryAndZoneContinuationResumer`'s selections (collections),
+`MiscContinuationResumer`'s draw-up-to count (numbers) and `AmassContinuationResumer`
+(collections). String lists have one producer, a
+creature-type choice writing into the program frame beneath it. Programs carry them out of scopes
+like any other kind. `ForEachCapturedController` runs each controller's sub-effects as a program
+and returns their outputs, so its paused and unpaused paths agree. `DoAction` still has two return
+conventions until it moves into the interpreter. Each nested composite runs one resolution depth deeper, as the
+registry's recursion made it before programs existed. Twin tests (`EffectProgramPauseTwinTest`)
+run each shape with and without the selection pause and require the same game.
+
+**Origins, and how to read the cursor.** `Resolving(stackObject)` means the root is that resolving
+spell's or ability's own effect, and the cursor is an absolute path into it. `AbilityResolver` and
+`NonPermanentSpellResolver` set it through `EffectContext.programOrigin`. `BuiltBy(step, parent)`
+means another step started the root, and the cursor is a local path into that root. Such a step
+may be a leaf that hasn't moved into the interpreter yet (a gate or a loop running its subtree), an
+executor queueing effects it built (secret-choice branches, a token batch's finisher), or an engine
+path that runs a card's tree outside a stack resolution: a mana ability, a permanent's entry
+(`OnEnterRun`), a replacement effect, a special action, turning a permanent face up. One root is synthetic: a multi-player life gain that
+a replacement pauses queues its remaining per-player gains as a program over all of them, with
+the cursor at the gain in progress. The registry
+hands every leaf call the label `BuiltBy(<the leaf's step>, <caller's origin>)`, so a program the
+leaf starts or queues takes that label as it is. Step names come from one helper, the SDK serial
+name or else the class name. A queued program's root is `CompositeEffect(effects)` with the cursor
+at `Start`. Gates, loops and other control nodes are still leaves; the pilot plan in
+[`plans/derived-continuations.md`](plans/derived-continuations.md) moves them into the interpreter
+one at a time, as new `CursorStep` kinds.
 
 Creating a question and propagating a pause are separate operations.
 `ExecutionResult.propagatePause` carries an already installed suspension through enclosing
 execution without allocating or emitting another request. Mana-ability execution temporarily
 moves the complete payment suspension into an automatic reopen frame; restoration refreshes
 its menu while preserving the original identity and answer.
+
+Snapshots saved while the rest of a composite was an `EffectContinuation` ("run these next")
+still load: `LegacyEffectContinuationLift` converts each to an `EffectProgram` over
+`CompositeEffect(remainingEffects)` (`stopOnError = false`, as the old runner behaved), with no
+origin and the cursor at `Start`, so the remaining effects run from the first in the frame's context.
 
 Snapshots store the structural representation. `LegacyGameStateSerializer` reads the previous
 format by pairing the active question with its matching top answer and saved mana questions with

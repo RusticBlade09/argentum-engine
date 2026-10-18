@@ -85,7 +85,7 @@ class EffectExecutorRegistry(
         registerModule(LinkedExileExecutors(zones))
         registerModule(RegenerationExecutors())
         registerModule(BendExecutors())
-        registerModule(CompositeExecutors(::recurse, cardRegistry, targetFinder, decisionHandler, amountEvaluator = amountEvaluator, targetValidator = targetValidator))
+        registerModule(CompositeExecutors(::recurse, cardRegistry, targetFinder, decisionHandler, amountEvaluator = amountEvaluator, targetValidator = targetValidator, plainExecutor = ::execute))
         registerModule(
             DrawingExecutors(
                 ::recurse,
@@ -159,7 +159,10 @@ class EffectExecutorRegistry(
                     "Register one in the matching *Executors module " +
                     "(EffectExecutorCoverageTest guards this at build time)."
             )
-        val instructionContext = context.withCurrentObjectReferences(state)
+        // A leaf runs labelled with its own step, so a program it starts or queues names it
+        // (a composite keeps the caller's label as its program's origin).
+        val instructionContext = com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter
+            .labelFor(effect, context.withCurrentObjectReferences(state))
         val executed = executor.execute(state, effect, instructionContext)
         val result = if (effect is com.wingedsheep.sdk.scripting.effects.SelectFromCollectionEffect ||
             effect is com.wingedsheep.sdk.scripting.effects.FilterCollectionEffect) {

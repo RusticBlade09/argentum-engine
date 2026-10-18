@@ -295,6 +295,8 @@ class ManaAbilityResolutionPipeline(
                     )) continue
 
                 val effectContext = EffectContext(
+                    programOrigin = com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter
+                        .startedBy(ManaAbilityResolutionPipeline::class),
                     sourceId = entityId,
                     controllerId = tappingPlayerId,
                     targets = emptyList(),

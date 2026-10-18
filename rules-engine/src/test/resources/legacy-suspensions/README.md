@@ -66,3 +66,11 @@ permanent's projected colors, read by a color count of a permanent that has left
 The one snapshot in these traces — Naturalize's Sol Ring in `free-cast-target/after-3.json` —
 now carries `"colors": []`, Sol Ring being colorless. No action or event payload changed, and no
 gameplay was rerun.
+
+Edited on 2026-10-17 when the effect interpreter's `EffectProgram` replaced `EffectContinuation`
+and the executor registry began labelling every leaf it runs with its step
+(`EffectContext.programOrigin`). The old `EffectContinuation` frames in these captures are
+unchanged and are converted on load. The only edit is in `nested-may/after-1.json`: the inner
+"may" frame's context, created while replaying the first answer, now carries
+`"programOrigin": {"type": "…ProgramOrigin.BuiltBy", "step": "Gated", "parent": null}`. Its parent
+is null because the outer frame predates labels. No action or event payload changed.

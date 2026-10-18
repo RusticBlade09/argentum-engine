@@ -12,22 +12,6 @@ import com.wingedsheep.engine.state.components.stack.ChosenTarget
 import kotlinx.serialization.Serializable
 
 /**
- * Resume a composite effect with remaining effects to execute.
- *
- * When a sub-effect of a CompositeEffect pauses for a decision, we push
- * this frame to remember which effects still need to run after the
- * decision is resolved.
- *
- * @property remainingEffects Effects that still need to execute (serialized)
- * @property context The execution context for these effects
- */
-@Serializable
-data class EffectContinuation(
-    val remainingEffects: List<Effect>,
-    val effectContext: EffectContext
-) : AutomaticContinuation
-
-/**
  * Resume placing a triggered ability on the stack after targets have been selected.
  *
  * When a triggered ability requires targets (like Fire Imp's "deal 1 damage to any target"),

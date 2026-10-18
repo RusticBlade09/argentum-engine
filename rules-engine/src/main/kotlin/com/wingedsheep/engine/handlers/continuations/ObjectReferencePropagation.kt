@@ -115,7 +115,7 @@ internal fun AutomaticContinuation.objectReferences(): ObjectReferenceEnvironmen
     is SpliceTailContinuation -> objectReferences
     is ModalChosenModeTailContinuation -> objectReferences
     is CreateTokenCopyRemainingContinuation -> context.objectReferences
-    is EffectContinuation -> effectContext.objectReferences
+    is EffectProgram -> effectContext.objectReferences
     is GatedActionContinuation -> effectContext.objectReferences
     is ForEachContinuation -> effectContext.objectReferences
     is RepeatWhileContinuation -> effectContext.objectReferences
@@ -236,7 +236,7 @@ internal fun AutomaticContinuation.withObjectReferences(refs: ObjectReferenceEnv
     is SpliceTailContinuation -> copy(objectReferences = refs)
     is ModalChosenModeTailContinuation -> copy(objectReferences = refs)
     is CreateTokenCopyRemainingContinuation -> copy(context = context.copy(objectReferences = refs))
-    is EffectContinuation -> copy(effectContext = effectContext.copy(objectReferences = refs))
+    is EffectProgram -> copy(effectContext = effectContext.copy(objectReferences = refs))
     is GatedActionContinuation -> copy(effectContext = effectContext.copy(objectReferences = refs))
     is ForEachContinuation -> copy(effectContext = effectContext.copy(objectReferences = refs))
     is RepeatWhileContinuation -> copy(effectContext = effectContext.copy(objectReferences = refs))

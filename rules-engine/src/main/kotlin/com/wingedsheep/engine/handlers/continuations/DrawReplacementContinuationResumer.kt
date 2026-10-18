@@ -62,7 +62,8 @@ class DrawReplacementContinuationResumer(
                 controllerId = playerId,
                 sourceId = continuation.sourceId,
             objectReferences = continuation.objectReferences,
-                targets = emptyList()
+                targets = emptyList(),
+                programOrigin = com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(DrawReplacementContinuationResumer::class),
             )
             val effectResult = services.effectExecutorRegistry.execute(
                 newState, continuation.replacementEffect, effectContext

@@ -34,8 +34,8 @@ class LibraryAndZoneContinuationResumer(
 ) : ContinuationResumerModule {
 
     private val castSpellHandler: CastSpellHandler get() = services.castSpellHandler
-    private val effectRunner: EffectContinuationRunner by lazy {
-        EffectContinuationRunner(services.effectExecutorRegistry)
+    private val effectRunner: com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter by lazy {
+        com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter(services.effectExecutorRegistry::execute)
     }
 
     override fun resumers(): List<ContinuationResumer<*>> = listOf(
@@ -707,7 +707,7 @@ class LibraryAndZoneContinuationResumer(
      * Resume after the chooser picked one of two pre-existing piles via
      * [com.wingedsheep.sdk.scripting.effects.ChoosePileEffect]. Routes pile A
      * or pile B (per [OptionChosenResponse.optionIndex]) to [storeChosenAs],
-     * and the other to [storeOtherAs], on the next [EffectContinuation].
+     * and the other to [storeOtherAs], on the next [EffectProgram].
      */
     fun resumeChoosePile(
         state: GameState,
@@ -741,7 +741,7 @@ class LibraryAndZoneContinuationResumer(
      *
      * Extracts the selected target IDs from the [TargetsResponse], stores them under
      * [SelectTargetPipelineContinuation.storeAs], and injects the updated collections
-     * into the next [EffectContinuation] on the stack.
+     * into the next [EffectProgram] on the stack.
      */
     fun resumeSelectTargetPipeline(
         state: GameState,
@@ -1059,7 +1059,7 @@ class LibraryAndZoneContinuationResumer(
      * Any [DiscoverMayCastContinuation.thenEffect] then resolves last, with the discovered card
      * published to [DiscoverMayCastContinuation.storeDiscoveredAs] so it can be read (Hit the
      * Mother Lode's "…create Treasure tokens equal to the difference"). In the cast branch it is
-     * pre-pushed as an [EffectContinuation] so it runs after the cast even if the cast pauses.
+     * queued as an [EffectProgram] so it runs after the cast even if the cast pauses.
      */
     fun resumeDiscoverMayCast(
         state: GameState,
@@ -1135,8 +1135,8 @@ class LibraryAndZoneContinuationResumer(
             sourceId = continuation.sourceId,
         )
 
-        // The follow-up [thenEffect] is pre-pushed as an EffectContinuation so it resolves after
-        // the cast even if the cast pauses for targets / X.
+        // The follow-up [thenEffect] is queued as an EffectProgram so it resolves after the cast
+        // even if the cast pauses for targets / X.
         var stateForCast = granted
         if (continuation.thenEffect != null) {
             val thenCtx = EffectContext(
@@ -1147,9 +1147,9 @@ class LibraryAndZoneContinuationResumer(
                 pipeline = PipelineState.EMPTY.copy(storedCollections = discoveredCollections)
             )
             stateForCast = stateForCast.pushContinuation(
-                EffectContinuation(
-                    remainingEffects = listOf(continuation.thenEffect),
-                    effectContext = thenCtx
+                EffectProgram.queued(
+                    listOf(continuation.thenEffect), thenCtx,
+                    origin = (continuation.programOrigin ?: com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(com.wingedsheep.sdk.scripting.effects.DiscoverEffect::class)),
                 )
             )
         }
@@ -1216,7 +1216,8 @@ class LibraryAndZoneContinuationResumer(
             controllerId = continuation.playerId,
             pipeline = PipelineState.EMPTY.copy(storedCollections = discoveredCollections)
         )
-        val result = effectRunner.executeRemainingEffects(state, listOf(thenEffect), ctx)
+        val result = effectRunner.runBuilt(state, listOf(thenEffect),
+            ctx.copy(programOrigin = (continuation.programOrigin ?: com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(com.wingedsheep.sdk.scripting.effects.DiscoverEffect::class))))
         if (result.outcome is Outcome.Paused) {
             return ExecutionResult.propagatePause(result.state, leadingEvents + result.events)
         }
@@ -1325,7 +1326,7 @@ class LibraryAndZoneContinuationResumer(
      *    exactly as Cascade and Shiko do — and, going through `CastSpellHandler.execute`
      *    directly, ignores card-type timing) and then re-runs
      *    [CastAnyNumberFromCollectionWithoutPayingCostEffect] over the remaining cards. The
-     *    runner's per-effect `EffectContinuation` makes a paused cast auto-resume into the
+     *    program frame pre-pushed beneath the cast makes a paused cast auto-resume into the
      *    next loop iteration.
      *
      * The chosen card is keyed under a private collection name and the loop collection is
@@ -1414,7 +1415,7 @@ class LibraryAndZoneContinuationResumer(
                 insteadOfGraveyard = continuation.insteadOfGraveyard,
             ),
         )
-        val result = effectRunner.executeRemainingEffects(state, effects, loopContext)
+        val result = effectRunner.runBuilt(state, effects, loopContext)
         if (result.outcome is Outcome.Paused) return result.toExecutionResult()
         return checkForMore(result.state, result.events.toList())
     }

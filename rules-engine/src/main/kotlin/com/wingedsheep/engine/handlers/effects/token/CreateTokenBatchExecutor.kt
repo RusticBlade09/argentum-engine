@@ -1,6 +1,6 @@
 package com.wingedsheep.engine.handlers.effects.token
 
-import com.wingedsheep.engine.core.EffectContinuation
+import com.wingedsheep.engine.core.EffectProgram
 import com.wingedsheep.engine.core.EffectResult
 import com.wingedsheep.engine.core.GameLimits
 import com.wingedsheep.engine.core.Outcome
@@ -114,7 +114,8 @@ class CreateTokenBatchExecutor(
         val finish = CreateTokenBatchEffect(emptyList())
         // The finalizer is below a replacement decision. Both accepting the copy replacement and
         // declining it reach that same finalizer, including after serialization of a paused game.
-        val pendingFinish = state.pushContinuation(EffectContinuation(listOf(finish), batchContext))
+        val pendingFinish = state.pushContinuation(EffectProgram.queued(listOf(finish), batchContext,
+            origin = batchContext.programOrigin))
         val replacement = TokenCreationReplacementHelper.checkReplacement(
             pendingFinish, CompositeEffect(groups), batchContext, totalCount, controller,
             cardRegistry, staticAbilityHandler, amountEvaluator.predicates,

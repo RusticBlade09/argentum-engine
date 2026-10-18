@@ -5,6 +5,7 @@ import com.wingedsheep.engine.mechanics.targeting.withTargetConstraints
 import com.wingedsheep.engine.handlers.effects.composite.asMayDecide
 
 import com.wingedsheep.engine.core.*
+import com.wingedsheep.engine.handlers.outputsFoldedInto
 import com.wingedsheep.engine.handlers.DependentTargetSelection
 import com.wingedsheep.engine.handlers.effects.AnnouncedDivision
 import com.wingedsheep.engine.state.GameState
@@ -22,14 +23,13 @@ import com.wingedsheep.sdk.scripting.targets.withCount
 
 /**
  * Handles core effect and trigger resumption:
- * - EffectContinuation (composite effect pipelines)
  * - TriggeredAbilityContinuation (target selection for triggered abilities)
  * - ResolveSpellContinuation (no-op marker)
  * - MayAbilityContinuation (yes/no for may effects)
  */
 class EffectAndTriggerContinuationResumer(
     private val services: com.wingedsheep.engine.core.EngineServices,
-    private val effectRunner: EffectContinuationRunner
+    private val effectRunner: com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter
 ) : ContinuationResumerModule {
     private val amountEvaluator = services.dynamicAmountEvaluator
 
@@ -504,14 +504,10 @@ class EffectAndTriggerContinuationResumer(
         // the same card work or not depending on whether the may-question happened to be asked: an
         // auto-answered or skipped gate runs `then` synchronously and keeps its storage, while a
         // prompted one lost it and the sibling read an unset variable as 0.
-        val stateWithCollections = exposeCollectionsToNextFrame(
-            result.state,
-            continuation.effectContext.pipeline.storedCollections + branchResult.updatedCollections,
-            continuation.effectContext.pipeline.storedNumbers + branchResult.updatedStoredNumbers,
-            continuation.effectContext.pipeline.chosenValues + branchResult.updatedChosenValues,
-            sacrificed = continuation.effectContext.sacrificedPermanents + branchResult.updatedSacrificedPermanents,
-            departed = continuation.effectContext.departedPermanents + branchResult.updatedDepartedPermanents,
-        )
+        // Exactly what the gate's composite folds when the branch runs without the question being
+        // asked: the branch's outputs, every kind, and the moves its events authorise.
+        val stateWithCollections = exposeOutputsToNextFrame(
+            result.state, branchResult.outputsFoldedInto(continuation.effectContext))
 
         return checkForMore(stateWithCollections, result.events.toList())
     }

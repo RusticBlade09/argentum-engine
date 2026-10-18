@@ -1,6 +1,7 @@
 package com.wingedsheep.engine.handlers.effects.drawing
 
 import com.wingedsheep.engine.core.*
+import com.wingedsheep.engine.handlers.mergeOutputs
 import com.wingedsheep.engine.handlers.DecisionHandler
 import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.effects.EffectExecutor
@@ -88,16 +89,17 @@ class DrawUpToExecutor(
 
     companion object {
         /**
-         * Inject a stored number into the next EffectContinuation on the stack,
+         * Inject a stored number into the next EffectProgram on the stack,
          * following the same injection pattern as SelectFromCollectionContinuation.
          */
         fun injectStoredNumber(state: GameState, name: String, value: Int): EffectResult {
             val nextFrame = state.peekContinuation()
-            val newState = if (nextFrame is EffectContinuation) {
+            val newState = if (nextFrame is EffectProgram) {
                 val (_, stateAfterPop) = state.popContinuation()
                 stateAfterPop.pushContinuation(
-                    nextFrame.copy(effectContext = nextFrame.effectContext.copy(
-                        pipeline = nextFrame.effectContext.pipeline.copy(storedNumbers = nextFrame.effectContext.pipeline.storedNumbers + (name to value))
+                    nextFrame.copy(effectContext = nextFrame.effectContext.mergeOutputs(
+                        com.wingedsheep.engine.handlers.PipelineOutputs(numbers = mapOf(name to value)),
+                        dedupSnapshots = true,
                     ))
                 )
             } else {

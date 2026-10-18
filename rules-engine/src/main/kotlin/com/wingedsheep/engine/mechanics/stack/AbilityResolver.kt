@@ -278,7 +278,9 @@ internal class AbilityResolver(
             sagaChapterResolvedEvent = sagaChapterResolvedEvent,
         )
 
-        val effectResult = effects.execute(onStack.pushContinuation(finishing), effect, context)
+        // The ability's effect runs as a program whose origin is this resolving stack object.
+        val effectResult = effects.execute(onStack.pushContinuation(finishing), effect,
+            context.copy(programOrigin = ProgramOrigin.Resolving(abilityObject)))
 
         if (effectResult.outcome is Outcome.Paused) {
             // The finisher is below all of the effect's frames; the ability stays on the stack.

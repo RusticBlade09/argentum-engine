@@ -16,7 +16,7 @@ import com.wingedsheep.engine.state.GameState
 class ContinuationHandler(
     private val services: EngineServices
 ) {
-    private val effectRunner = EffectContinuationRunner(services.effectExecutorRegistry)
+    private val effectRunner = com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter(services.effectExecutorRegistry::execute)
 
     private val registry = ContinuationResumerRegistry().apply {
         val forcedPlayResumer = ForcedPlayResumer(services)

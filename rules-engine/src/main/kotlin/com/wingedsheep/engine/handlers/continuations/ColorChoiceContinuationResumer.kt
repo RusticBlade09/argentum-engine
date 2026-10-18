@@ -13,7 +13,7 @@ import com.wingedsheep.sdk.scripting.ChoiceSlot
 
 class ColorChoiceContinuationResumer(
     private val services: com.wingedsheep.engine.core.EngineServices,
-    private val effectRunner: EffectContinuationRunner
+    private val effectRunner: com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter
 ) : ContinuationResumerModule {
 
     private val tappedForManaBonusResolver =
@@ -63,7 +63,7 @@ class ColorChoiceContinuationResumer(
             chosenColor = response.color,
             chosenColors = if (response.colors.isEmpty()) emptySet() else response.allColors
         )
-        val effectResult = effectRunner.executeRemainingEffects(
+        val effectResult = effectRunner.runBuilt(
             state,
             listOf(continuation.then),
             contextWithColor
@@ -85,7 +85,7 @@ class ColorChoiceContinuationResumer(
 
         // Stamp the chosen number as X so atomic effects/filters (manaValueEqualsX) read it.
         val contextWithNumber = continuation.baseContext.copy(xValue = response.number)
-        val effectResult = effectRunner.executeRemainingEffects(
+        val effectResult = effectRunner.runBuilt(
             state,
             listOf(continuation.then),
             contextWithNumber
@@ -181,7 +181,7 @@ class ColorChoiceContinuationResumer(
             ?: return ExecutionResult.error(state, "Opponent choice index ${response.optionIndex} out of range")
 
         val contextWithDecider = continuation.baseContext.copy(opponentDeciderId = chosen)
-        val effectResult = effectRunner.executeRemainingEffects(
+        val effectResult = effectRunner.runBuilt(
             state,
             listOf(continuation.effect),
             contextWithDecider
@@ -205,7 +205,7 @@ class ColorChoiceContinuationResumer(
         }
 
         val contextWithColor = continuation.baseContext.copy(manaColorChoice = response.color)
-        val effectResult = effectRunner.executeRemainingEffects(
+        val effectResult = effectRunner.runBuilt(
             state,
             listOf(continuation.effect),
             contextWithColor

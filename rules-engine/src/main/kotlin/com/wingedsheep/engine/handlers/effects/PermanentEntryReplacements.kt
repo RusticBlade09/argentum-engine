@@ -207,6 +207,8 @@ object PermanentEntryReplacements {
          * put onto the battlefield by an effect).
          */
         xValue: Int? = null,
+        /** The origin of whatever put the permanent onto the battlefield; the entry run's parent. */
+        parentOrigin: com.wingedsheep.engine.core.ProgramOrigin? = null,
     ): EffectResult? {
         val cardDefinitionId = state.getEntity(entityId)?.get<CardComponent>()?.cardDefinitionId ?: return null
         val onEnter = onEnterRunEffectFor(cardRegistry.getCard(cardDefinitionId)) ?: return null
@@ -223,6 +225,9 @@ object PermanentEntryReplacements {
                 ),
                 resolutionDepth = resolutionDepth,
                 xValue = xValue,
+                // A permanent's entry is a step of its own, not the resolving object's effect.
+                programOrigin = com.wingedsheep.engine.core.ProgramOrigin.BuiltBy(
+                    com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.stepName(OnEnterRun::class), parentOrigin),
             ),
         )
     }

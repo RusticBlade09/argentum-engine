@@ -1,11 +1,13 @@
 package com.wingedsheep.engine.handlers.continuations
 
-import com.wingedsheep.engine.core.EffectContinuation
+import com.wingedsheep.engine.core.EffectProgram
 import com.wingedsheep.engine.core.GatedActionContinuation
 import com.wingedsheep.engine.core.ForEachContinuation
 import com.wingedsheep.engine.core.ReflexiveTriggerTargetContinuation
 import com.wingedsheep.engine.core.RepeatWhileContinuation
 import com.wingedsheep.engine.handlers.EffectContext
+import com.wingedsheep.engine.handlers.PipelineOutputs
+import com.wingedsheep.engine.handlers.mergeOutputs
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.sdk.model.EntityId
 
@@ -19,7 +21,7 @@ import com.wingedsheep.sdk.model.EntityId
  * collection-producing step routes its `updatedCollections` here, and the recognized
  * consumer frames get a merged context:
  *
- * - [EffectContinuation] — remaining composite siblings read the collections
+ * - [EffectProgram] — remaining composite siblings read the collections
  *   (the original LibraryAndZone inject pattern).
  * - [ReflexiveTriggerTargetContinuation] — "When you do, …" reflexive effects
  *   (the Amass multi-Army path).
@@ -61,37 +63,29 @@ fun exposeCollectionsToNextFrame(
     subtypeGroups: Map<String, List<Set<String>>> = emptyMap(),
     sacrificed: List<com.wingedsheep.engine.state.components.stack.EntitySnapshot> = emptyList(),
     departed: List<com.wingedsheep.engine.state.components.stack.EntitySnapshot> = emptyList(),
-): GameState {
-    if (collections.isEmpty() && numbers.isEmpty() && chosenValues.isEmpty() && subtypeGroups.isEmpty() &&
-        sacrificed.isEmpty() && departed.isEmpty()) return state
+): GameState = exposeOutputsToNextFrame(state, PipelineOutputs(
+    collections = collections, subtypeGroups = subtypeGroups, numbers = numbers,
+    chosenValues = chosenValues, sacrificed = sacrificed, departed = departed,
+))
 
-    fun EffectContext.withMergedCollections(): EffectContext =
-        copy(
-            // Snapshots are merged as a set: a resumer forwards its frame's whole list, which the
-            // frame beneath may already hold (a cost-paid sacrifice), and a duplicate would inflate
-            // any count read off the list.
-            sacrificedPermanents = sacrificedPermanents + sacrificed.filterNot { it in sacrificedPermanents },
-            departedPermanents = departedPermanents + departed.filterNot { it in departedPermanents },
-            pipeline = pipeline.copy(
-                storedCollections = pipeline.storedCollections + collections,
-                storedNumbers = pipeline.storedNumbers + numbers,
-                chosenValues = pipeline.chosenValues + chosenValues,
-                storedSubtypeGroups = pipeline.storedSubtypeGroups + subtypeGroups,
-            )
-        )
+/** [exposeCollectionsToNextFrame] for a whole [PipelineOutputs]; merges with [mergeOutputs]. */
+fun exposeOutputsToNextFrame(state: GameState, outputs: PipelineOutputs): GameState {
+    if (outputs.isEmpty()) return state
+
+    // The same merge a synchronous step's result gets, with snapshots merged as a set.
+    fun EffectContext.withMergedCollections(): EffectContext = mergeOutputs(outputs, dedupSnapshots = true)
 
     return when (val next = state.peekContinuation()) {
         is com.wingedsheep.engine.core.ManaAbilitySourcesContinuation,
         is com.wingedsheep.engine.core.ManaSpendingObligationsContinuation -> {
             val (_, popped) = state.popContinuation()
-            exposeCollectionsToNextFrame(popped, collections, numbers, chosenValues, subtypeGroups, sacrificed, departed)
-                .pushContinuation(next)
+            exposeOutputsToNextFrame(popped, outputs).pushContinuation(next)
         }
         is ForEachContinuation -> {
             val merged = next.effectContext.withMergedCollections()
             var accumulated = next.effectContext.pipeline.storedCollections
             for ((localName, aggregateName) in next.effect.collectCollections) {
-                val iterationOutput = collections[localName].orEmpty()
+                val iterationOutput = outputs.collections[localName].orEmpty()
                 if (iterationOutput.isNotEmpty()) {
                     accumulated = accumulated + (
                         aggregateName to accumulated[aggregateName].orEmpty() + iterationOutput
@@ -107,7 +101,7 @@ fun exposeCollectionsToNextFrame(
                 )
             )
         }
-        is EffectContinuation -> {
+        is EffectProgram -> {
             val (_, popped) = state.popContinuation()
             popped.pushContinuation(next.copy(effectContext = next.effectContext.withMergedCollections()))
         }
@@ -123,7 +117,7 @@ fun exposeCollectionsToNextFrame(
             // Stash into bodyCollections, not effectContext — the condition reads these outputs
             // this pass, but the next iteration must start from the pristine pre-loop context.
             val (_, popped) = state.popContinuation()
-            popped.pushContinuation(next.copy(bodyCollections = next.bodyCollections + collections))
+            popped.pushContinuation(next.copy(bodyCollections = next.bodyCollections + outputs.collections))
         }
         else -> state
     }

@@ -14,6 +14,14 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.builtins.ListSerializer
+import com.wingedsheep.engine.core.CursorStep
+import com.wingedsheep.engine.core.EffectProgram
+import com.wingedsheep.engine.core.ProgramCursor
+import com.wingedsheep.engine.handlers.EffectContext
+import com.wingedsheep.sdk.scripting.effects.CompositeEffect
+import com.wingedsheep.sdk.scripting.effects.Effect
 
 class SuspensionTraceTest : ScenarioTestBase() {
     // Defaults are omitted on both sides of every comparison (and in the fixtures), so a new field
@@ -37,7 +45,28 @@ class SuspensionTraceTest : ScenarioTestBase() {
                 var state = json.decodeFromString<GameState>(original.toString())
                 manifest.getValue("representationReaderRevision").jsonPrimitive.content shouldBe
                     "6f222eb05a1d9e61f540217b2b372960ddf051c7"
-                encodeState(state) shouldBe original
+                // The frozen capture holds retired `EffectContinuation` frames. Everything but the
+                // stack re-encodes byte for byte; each retired frame must become, independently of
+                // the lift's own code, `EffectProgram(Composite(remainingEffects), origin = null,
+                // [Start], effectContext)`, and every other frame re-encodes as captured.
+                val encoded = encodeState(state)
+                JsonObject(encoded - "continuationStack") shouldBe JsonObject(original - "continuationStack")
+                val capturedStack = original["continuationStack"]?.jsonArray.orEmpty()
+                state.continuationStack.size shouldBe capturedStack.size
+                for ((index, captured) in capturedStack.withIndex()) {
+                    val frame = captured.jsonObject
+                    if (frame["type"] == JsonPrimitive("com.wingedsheep.engine.core.EffectContinuation")) {
+                        state.continuationStack[index] shouldBe EffectProgram(
+                            root = CompositeEffect(json.decodeFromJsonElement(
+                                ListSerializer(Effect.serializer()), frame.getValue("remainingEffects"))),
+                            origin = null,
+                            cursor = ProgramCursor(listOf(CursorStep.Start)),
+                            effectContext = json.decodeFromJsonElement(EffectContext.serializer(), frame.getValue("effectContext")),
+                        )
+                    } else {
+                        encoded.getValue("continuationStack").jsonArray[index] shouldBe frame
+                    }
+                }
                 assertCurrentRoundTrip(state)
 
                 val actions = json.decodeFromString<List<GameAction>>(fixtureText(fixture, "actions.json"))

@@ -321,6 +321,7 @@ class ModalAndCloneContinuationResumer(
             req.withCount(response.selectedTargets[i]?.size ?: 0)
         }
         val context = EffectContext(
+            programOrigin = com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(com.wingedsheep.sdk.scripting.effects.ModalEffect::class),
             resolvingTriggeredAbility = continuation.resolvingTriggeredAbility,
             sourceId = continuation.sourceId,
             objectReferences = continuation.objectReferences,
@@ -888,6 +889,7 @@ class ModalAndCloneContinuationResumer(
                 newState, spellId, controllerId, services.cardRegistry,
                 { s, e, ctx -> services.effectExecutorRegistry.execute(s, e, ctx) },
                 xValue = spellComponent.xValue,
+                parentOrigin = newState.objectRef(spellId)?.let { com.wingedsheep.engine.core.ProgramOrigin.Resolving(it) },
             )
         if (onEnterResult != null) {
             // A pause carries the entry events with it so the ETB triggers are deferred to the
@@ -1497,6 +1499,7 @@ class ModalAndCloneContinuationResumer(
         val effects = sortedIndices.map { continuation.modes[it].effect }
 
         val context = EffectContext(
+            programOrigin = continuation.programOrigin ?: com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(com.wingedsheep.sdk.scripting.effects.BudgetModalEffect::class),
             resolvingTriggeredAbility = continuation.resolvingTriggeredAbility,
             sourceId = continuation.sourceId,
             objectReferences = continuation.objectReferences,
@@ -1676,6 +1679,7 @@ class ModalAndCloneContinuationResumer(
 
         // Build context preserving original targets so ContextTarget references still work
         val context = EffectContext(
+            programOrigin = continuation.programOrigin ?: com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(com.wingedsheep.sdk.scripting.effects.ChooseActionEffect::class),
             resolvingTriggeredAbility = continuation.resolvingTriggeredAbility,
             sourceId = continuation.sourceId,
             objectReferences = continuation.objectReferences,
@@ -1744,6 +1748,7 @@ internal fun processChosenModeQueue(
         // EffectTarget.ContextTarget references in the inner effect resolve to the
         // targets chosen by the enclosing spell/ability.
         val context = EffectContext(
+            programOrigin = com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(com.wingedsheep.sdk.scripting.effects.ModalEffect::class),
             resolvingTriggeredAbility = resolvingTriggeredAbility,
             sourceId = sourceId,
             objectReferences = objectReferences,
@@ -1799,6 +1804,7 @@ internal fun processChosenModeQueue(
         if (TargetEnumerationUtils.shouldAutoSelectPlayerTarget(req, targets)) {
             val chosenTargets = listOf(entityIdToChosenTarget(state, targets[0]))
             val context = EffectContext(
+                programOrigin = com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(com.wingedsheep.sdk.scripting.effects.ModalEffect::class),
                 resolvingTriggeredAbility = resolvingTriggeredAbility,
                 sourceId = sourceId,
                 objectReferences = objectReferences,

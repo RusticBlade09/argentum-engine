@@ -602,6 +602,10 @@ data class BudgetModalContinuation(
     val selectedModeIndices: List<Int> = emptyList(),
     val objectReferences: com.wingedsheep.engine.handlers.ObjectReferenceEnvironment = com.wingedsheep.engine.handlers.ObjectReferenceEnvironment(),
     val resolvingTriggeredAbility: com.wingedsheep.sdk.scripting.TriggeredAbility? = null,
+    /** The label the creating effect ran under; the program its resume runs keeps it. */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val programOrigin: com.wingedsheep.engine.core.ProgramOrigin? = null,
 ) : AnswerContinuation
 
 /**
@@ -710,4 +714,8 @@ data class ChooseActionContinuation(
     val objectReferences: com.wingedsheep.engine.handlers.ObjectReferenceEnvironment = com.wingedsheep.engine.handlers.ObjectReferenceEnvironment(),
     val resolvingTriggeredAbility: com.wingedsheep.sdk.scripting.TriggeredAbility? = null,
     val chosenCounterType: com.wingedsheep.sdk.core.CounterType? = null,
+    /** The label the creating effect ran under; the program its resume runs keeps it. */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val programOrigin: com.wingedsheep.engine.core.ProgramOrigin? = null,
 ) : AnswerContinuation

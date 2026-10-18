@@ -167,6 +167,8 @@ internal class ActivatedManaAbilityResolver(
             }
         }
         val context = EffectContext(
+            // A mana ability doesn't use the stack; its effect is a program this resolver starts.
+            programOrigin = com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(ActivatedManaAbilityResolver::class),
             chosenModes = action.chosenModes.orEmpty(),
             modeTargetsOrdered = action.modeTargetsOrdered,
             sourceId = action.sourceId,

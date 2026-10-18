@@ -32,7 +32,7 @@ import com.wingedsheep.sdk.model.EntityId
  */
 class MiscContinuationResumer(
     private val services: com.wingedsheep.engine.core.EngineServices,
-    private val effectRunner: EffectContinuationRunner
+    private val effectRunner: com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter
 ) : ContinuationResumerModule {
 
     override fun resumers(): List<ContinuationResumer<*>> = listOf(
@@ -411,7 +411,7 @@ class MiscContinuationResumer(
 
         val chosenCount = response.number
 
-        // Store cards-not-drawn count in the next EffectContinuation if requested
+        // Store cards-not-drawn count in the program frame beneath, if requested
         var currentState = state
         if (continuation.storeNotDrawnAs != null) {
             val cardsNotDrawn = continuation.originalMaxCards - chosenCount
@@ -630,7 +630,7 @@ class MiscContinuationResumer(
         checkForMore: CheckForMore
     ): ExecutionResult {
         if (subEffect == null) return checkForMore(state, flipEvents)
-        val result = effectRunner.executeRemainingEffects(state, listOf(subEffect), context)
+        val result = effectRunner.runBuilt(state, listOf(subEffect), context)
         if (result.outcome is Outcome.Paused) {
             return ExecutionResult.propagatePause(
                 result.state,
@@ -967,7 +967,8 @@ class MiscContinuationResumer(
             objectReferences = continuation.objectReferences,
             controllerId = continuation.controllerId
         )
-        val tokenResult = effectRunner.executeRemainingEffects(newState, listOf(tokenEffect), tokenContext)
+        val tokenResult = effectRunner.runBuilt(newState, listOf(tokenEffect), tokenContext.copy(
+            programOrigin = continuation.programOrigin ?: com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(com.wingedsheep.sdk.scripting.effects.ConvertCountersToTokensEffect::class)))
         if (tokenResult.outcome is Outcome.Paused) return tokenResult.toExecutionResult()
         newState = tokenResult.state
         events.addAll(tokenResult.events)

@@ -466,6 +466,7 @@ internal class PermanentSpellResolver(
                     enteredState, spellId, controllerId, cardRegistry,
                     effects::execute,
                     xValue = spellComponent.xValue,
+                    parentOrigin = enteredState.objectRef(spellId)?.let { com.wingedsheep.engine.core.ProgramOrigin.Resolving(it) },
                 )
             if (onEnterResult != null) {
                 return onEnterResult.toExecutionResult().copy(

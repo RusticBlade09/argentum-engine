@@ -248,6 +248,7 @@ class AnyPlayerMayPayExecutor(
         requiredCount: Int,
         filter: com.wingedsheep.sdk.scripting.GameObjectFilter
     ): AnyPlayerMayPayContinuation = AnyPlayerMayPayContinuation(
+            programOrigin = context.programOrigin,
         resolvingTriggeredAbility = context.resolvingTriggeredAbility,
         currentPlayerId = currentPlayerId,
         remainingPlayers = remainingPlayers,

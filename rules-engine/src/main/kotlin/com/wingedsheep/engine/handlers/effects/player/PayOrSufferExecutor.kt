@@ -194,6 +194,7 @@ class PayOrSufferExecutor(
         val prompt = buildDiscardPrompt(cost, sourceName, effect)
 
         val continuation = PayOrSufferContinuation(
+            programOrigin = context.programOrigin,
             resolvingTriggeredAbility = context.resolvingTriggeredAbility,
             playerId = controllerId,
             sourceId = sourceId,
@@ -272,6 +273,7 @@ class PayOrSufferExecutor(
         ) }
 
         val continuation = PayOrSufferContinuation(
+            programOrigin = context.programOrigin,
             resolvingTriggeredAbility = context.resolvingTriggeredAbility,
             playerId = controllerId,
             sourceId = sourceId,
@@ -327,6 +329,7 @@ class PayOrSufferExecutor(
         }
 
         val continuation = PayOrSufferContinuation(
+            programOrigin = context.programOrigin,
             resolvingTriggeredAbility = context.resolvingTriggeredAbility,
             playerId = controllerId,
             sourceId = sourceId,
@@ -374,6 +377,7 @@ class PayOrSufferExecutor(
         val prompt = buildSacrificePrompt(cost, sourceName, effect)
 
         val continuation = PayOrSufferContinuation(
+            programOrigin = context.programOrigin,
             resolvingTriggeredAbility = context.resolvingTriggeredAbility,
             playerId = controllerId,
             sourceId = sourceId,
@@ -437,6 +441,7 @@ class PayOrSufferExecutor(
 
         val consequence = effect.consequenceDescription ?: effect.suffer.description
         val continuation = PayOrSufferContinuation(
+            programOrigin = context.programOrigin,
             resolvingTriggeredAbility = context.resolvingTriggeredAbility,
             playerId = controllerId,
             sourceId = sourceId,
@@ -511,6 +516,7 @@ class PayOrSufferExecutor(
         val prompt = buildTapPrompt(cost, sourceName, effect)
 
         val continuation = PayOrSufferContinuation(
+            programOrigin = context.programOrigin,
             resolvingTriggeredAbility = context.resolvingTriggeredAbility,
             playerId = controllerId,
             sourceId = sourceId,
@@ -584,6 +590,7 @@ class PayOrSufferExecutor(
         val prompt = buildReturnToHandPrompt(cost, sourceName, effect)
 
         val continuation = PayOrSufferContinuation(
+            programOrigin = context.programOrigin,
             resolvingTriggeredAbility = context.resolvingTriggeredAbility,
             playerId = controllerId,
             sourceId = sourceId,
@@ -699,6 +706,7 @@ class PayOrSufferExecutor(
         ) }
 
         val continuation = PayOrSufferContinuation(
+            programOrigin = context.programOrigin,
             resolvingTriggeredAbility = context.resolvingTriggeredAbility,
             playerId = controllerId,
             sourceId = sourceId,
@@ -757,6 +765,7 @@ class PayOrSufferExecutor(
         ) }
 
         val continuation = PayOrSufferContinuation(
+            programOrigin = context.programOrigin,
             resolvingTriggeredAbility = context.resolvingTriggeredAbility,
             playerId = controllerId,
             sourceId = sourceId,
@@ -799,6 +808,7 @@ class PayOrSufferExecutor(
         val prompt = buildExilePrompt(cost, sourceName, effect)
 
         val continuation = PayOrSufferContinuation(
+            programOrigin = context.programOrigin,
             resolvingTriggeredAbility = context.resolvingTriggeredAbility,
             playerId = controllerId,
             sourceId = sourceId,
@@ -873,6 +883,7 @@ class PayOrSufferExecutor(
         ) }
 
         val continuation = PayOrSufferContinuation(
+            programOrigin = context.programOrigin,
             resolvingTriggeredAbility = context.resolvingTriggeredAbility,
             playerId = controllerId,
             sourceId = sourceId,
