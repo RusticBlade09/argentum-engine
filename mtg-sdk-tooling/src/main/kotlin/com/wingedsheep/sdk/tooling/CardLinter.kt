@@ -747,7 +747,7 @@ object CardLinter {
             "ChooseOnePerCategory",
             "StoreCardName", "ForcePlay", "CastFromCollectionWithoutPayingCost", "PlayFromCollectionWithoutPayingCost",
             "CastAnyNumberFromCollectionWithoutPayingCost", "ExileFromStorage",
-            "CopyCollectionIntoCollection", "RecordChosenLinkedExile", "RecordSourceObjects",
+            "CopyCollectionIntoCollection", "RecordChosenLinkedExile", "LinkCollectionToPermanent", "RecordSourceObjects",
             "PairWithSource", "EmitChampionedEvent", "EnchantPutOntoBattlefield",
         )) put(type to "from", read(Space.COLLECTION))
         put("GrantCantBeBlockedExceptByCollection" to "collection", read(Space.COLLECTION))

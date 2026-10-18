@@ -929,6 +929,7 @@ Families:
 - `IncrementAbilityResolutionCountEffect` — Increments the ability resolution count on the source permanent.
 - `InvestigateEffect(count: DynamicAmount, controller: EffectTarget?)` — Investigate (keyword action, CR 701.16a): "create a Clue token", performed count times.
 - `LevelUpClassEffect(targetLevel: Int)` — Level up a Class enchantment to the specified target level.
+- `LinkCollectionToPermanentEffect(from: String, permanent: EffectTarget)` — Records the cards in the pipeline collection from in permanent's linked-exile pile (its `LinkedExileComponent`), so that permanent's own abilities can later name them as "the cards exiled with it"…
 - `LockDoorEffect(target: EffectTarget)` — Resolution-time "lock a door" effect (CR 709.5g) — the twin of UnlockDoorEffect.
 - `LockLifeGainEffect(target: EffectTarget, duration: Duration)` — Lock target player's life gain — they can't gain life for duration.
 - `LockLifeLossEffect(target: EffectTarget, duration: Duration)` — Lock target player's life loss — they can't lose life for duration (CR 119.8): damage and "lose N life" leave their total unchanged, an exchange or redistribution can't lower it, and a cost that pa…

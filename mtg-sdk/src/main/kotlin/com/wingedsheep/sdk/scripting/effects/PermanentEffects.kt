@@ -680,6 +680,32 @@ data class RecordChosenLinkedExileEffect(
     override val description: String = "Note the chosen card"
 }
 
+/**
+ * Records the cards in the pipeline collection [from] in [permanent]'s linked-exile pile
+ * (its `LinkedExileComponent`), so that permanent's own abilities can later name them as "the
+ * cards exiled with it" — `CardSource.FromLinkedExile` from a leaves-the-battlefield trigger.
+ * Only cards still in exile are linked; nothing moves.
+ *
+ * Every other linker (`MoveCollection(linkToSource = true)`, `ExileUntilLeaves`, an exile cost
+ * with `linkToSource`) files the cards under the *resolving ability's* source. This one is for
+ * a pile that belongs to another object: Mechtitan Core exiles itself and four other permanents
+ * as a cost, and the Mechtitan token it creates returns those four when *it* leaves —
+ * `PipelineTarget(CREATED_TOKENS)` as [permanent], `CardSource.ExiledAsCost` as [from].
+ *
+ * No-op when [permanent] isn't on the battlefield (the token was never created).
+ *
+ * @property from Name of the pipeline collection holding the exiled cards.
+ * @property permanent The permanent whose linked-exile pile the cards join.
+ */
+@SerialName("LinkCollectionToPermanent")
+@Serializable
+data class LinkCollectionToPermanentEffect(
+    val from: String,
+    val permanent: EffectTarget,
+) : Effect {
+    override val description: String = "Those cards are exiled with ${permanent.description}"
+}
+
 // =============================================================================
 // Explore
 // =============================================================================

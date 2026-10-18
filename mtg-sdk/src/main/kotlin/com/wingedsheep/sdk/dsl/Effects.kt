@@ -1212,6 +1212,18 @@ object Effects {
         com.wingedsheep.sdk.scripting.effects.RecordChosenLinkedExileEffect(from)
 
     /**
+     * File the exiled cards in the pipeline collection [from] under [permanent]'s linked-exile
+     * pile, so that permanent's abilities can name them as "the cards exiled with it" — a pile
+     * that belongs to another object than the resolving ability's source (Mechtitan Core's
+     * token returns the cards its cost exiled when the token leaves).
+     */
+    fun LinkCollectionToPermanent(from: String, permanent: EffectTarget): Effect =
+        com.wingedsheep.sdk.scripting.effects.LinkCollectionToPermanentEffect(from, permanent)
+
+    fun LinkCollectionToPermanent(from: CollectionSlot, permanent: EffectTarget): Effect =
+        LinkCollectionToPermanent(from.key, permanent)
+
+    /**
      * Exile all permanents matching a filter that the controller controls and link
      * them to the source permanent. Used for Day of the Dragons-style effects.
      * The count is available as DynamicAmount.VariableReference("{storeAs}_count").

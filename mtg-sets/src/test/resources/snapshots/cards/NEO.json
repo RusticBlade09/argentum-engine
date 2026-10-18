@@ -3745,6 +3745,166 @@
     ]
 }
 
+// Mechtitan Core
+{
+    "name": "Mechtitan Core",
+    "manaCost": "{2}",
+    "typeLine": "Artifact — Vehicle",
+    "oracleText": "{5}, Exile this Vehicle and four other artifact creatures and/or Vehicles you control: Create Mechtitan, a legendary 10/10 Construct artifact creature token with flying, vigilance, trample, lifelink, and haste that's all colors. When that token leaves the battlefield, return all cards exiled with this Vehicle except this card to the battlefield tapped under their owners' control.\nCrew 2",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 4
+    },
+    "keywords": [
+        "CREW"
+    ],
+    "keywordAbilities": [
+        {
+            "type": "Numeric",
+            "keyword": "CREW",
+            "n": 2
+        }
+    ],
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Mechtitan Core:2",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{5}"
+                            }
+                        },
+                        "CostExileSelf",
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomExileFrom",
+                                "zone": "Battlefield",
+                                "filter": {
+                                    "cardPredicates": [
+                                        {
+                                            "type": "Or",
+                                            "predicates": [
+                                                {
+                                                    "type": "And",
+                                                    "predicates": [
+                                                        "IsArtifact",
+                                                        "IsCreature"
+                                                    ]
+                                                },
+                                                {
+                                                    "type": "And",
+                                                    "predicates": [
+                                                        "IsPermanent",
+                                                        {
+                                                            "type": "HasSubtype",
+                                                            "subtype": "Vehicle"
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "controllerPredicate": "ControlledByYou"
+                                },
+                                "count": 4,
+                                "excludeSelf": true
+                            }
+                        }
+                    ]
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": "ExiledAsCost",
+                            "storeAs": "gathered0"
+                        },
+                        {
+                            "type": "CreateToken",
+                            "power": 10,
+                            "toughness": 10,
+                            "colors": [
+                                "WHITE",
+                                "BLUE",
+                                "BLACK",
+                                "RED",
+                                "GREEN"
+                            ],
+                            "creatureTypes": [
+                                "Construct"
+                            ],
+                            "keywords": [
+                                "FLYING",
+                                "VIGILANCE",
+                                "TRAMPLE",
+                                "LIFELINK",
+                                "HASTE"
+                            ],
+                            "name": "Mechtitan",
+                            "imageUri": "https://cards.scryfall.io/normal/front/0/2/0281825d-9d38-4b56-b522-a8d3cf8c77c9.jpg?1783923710",
+                            "legendary": true,
+                            "artifactToken": true,
+                            "triggeredAbilities": [
+                                {
+                                    "id": "Mechtitan Core:1",
+                                    "trigger": {
+                                        "type": "ZoneChangeEvent",
+                                        "from": "Battlefield"
+                                    },
+                                    "effect": {
+                                        "type": "Composite",
+                                        "effects": [
+                                            {
+                                                "type": "GatherCards",
+                                                "source": "FromLinkedExile",
+                                                "storeAs": "gathered1"
+                                            },
+                                            {
+                                                "type": "MoveCollection",
+                                                "from": "gathered1",
+                                                "destination": {
+                                                    "type": "ToZone",
+                                                    "zone": "Battlefield",
+                                                    "placement": "Tapped"
+                                                },
+                                                "underOwnersControl": true
+                                            }
+                                        ]
+                                    },
+                                    "descriptionOverride": "When this token leaves the battlefield, return all cards exiled with Mechtitan Core except Mechtitan Core to the battlefield tapped under their owners' control."
+                                }
+                            ]
+                        },
+                        {
+                            "type": "LinkCollectionToPermanent",
+                            "from": "gathered0",
+                            "permanent": {
+                                "type": "PipelineTarget",
+                                "collectionName": "createdTokens"
+                            }
+                        }
+                    ]
+                },
+                "descriptionOverride": "{5}, Exile this Vehicle and four other artifact creatures and/or Vehicles you control: Create Mechtitan, a legendary 10/10 Construct artifact creature token with flying, vigilance, trample, lifelink, and haste that's all colors."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "249",
+        "rarity": "RARE",
+        "artist": "Victor Adame Minguez",
+        "imageUri": "https://cards.scryfall.io/normal/front/c/a/ca286ba9-01a7-4dce-b388-177f5dcb95b1.jpg?1783923826"
+    },
+    "colorIdentityOverride": []
+}
+
 // Mindlink Mech
 {
     "name": "Mindlink Mech",
