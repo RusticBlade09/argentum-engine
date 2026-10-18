@@ -50,10 +50,11 @@ class DrawUpToExecutor(
         val actualMax = effect.maxCards.coerceAtMost(librarySize).coerceAtMost(drawsLeft)
 
         if (actualMax == 0) {
-            // Can't draw any cards — store max not drawn and return
+            // Can't draw any cards: every card is "not drawn". Nothing paused, so the number is
+            // this step's own output, not a hand-off to the frame beneath.
             val storeAs = effect.storeNotDrawnAs
             return if (storeAs != null) {
-                injectStoredNumber(state, storeAs, effect.maxCards)
+                EffectResult(state, emptyList(), updatedStoredNumbers = mapOf(storeAs to effect.maxCards))
             } else {
                 EffectResult.success(state)
             }
@@ -66,7 +67,8 @@ class DrawUpToExecutor(
             sourceName = sourceName,
             maxCards = actualMax,
             originalMaxCards = effect.maxCards,
-            storeNotDrawnAs = effect.storeNotDrawnAs
+            storeNotDrawnAs = effect.storeNotDrawnAs,
+            programOrigin = context.programOrigin,
         )
 
         val decisionResult = decisionHandler.createNumberDecision(
@@ -89,8 +91,9 @@ class DrawUpToExecutor(
 
     companion object {
         /**
-         * Inject a stored number into the next EffectProgram on the stack,
-         * following the same injection pattern as SelectFromCollectionContinuation.
+         * Inject a stored number into the next EffectProgram on the stack, following the same
+         * injection pattern as SelectFromCollectionContinuation. For resumers, after a pause: a
+         * step that finishes without pausing returns the number in its result instead.
          */
         fun injectStoredNumber(state: GameState, name: String, value: Int): EffectResult {
             val nextFrame = state.peekContinuation()

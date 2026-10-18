@@ -187,6 +187,6 @@ class GuessContinuationResumer(
         if (result.outcome is Outcome.Paused) {
             return ExecutionResult.propagatePause(result.state, events + result.events)
         }
-        return checkForMore(result.state, events + result.events.toList())
+        return checkForMore(result.stateWithOutputsHandedOn(), events + result.events.toList())
     }
 }

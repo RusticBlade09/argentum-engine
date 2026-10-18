@@ -719,7 +719,7 @@ current context.
 ```kotlin
 data class EffectProgram(
     val root: Effect,               // always a copy, so resuming needs only the frame
-    val origin: ProgramOrigin?,     // a label; resuming never reads it; null only for converted frames
+    val origin: ProgramOrigin?,     // a label; null only for converted frames, which publish the old way
     val cursor: ProgramCursor,      // List<CursorStep>
     val effectContext: EffectContext,
 ) : AutomaticContinuation
@@ -736,16 +736,29 @@ context, folded with what the composite stored: new pipeline keys, appended snap
 object-move permits the composite gained (from its leaves' events, or handed to the frame while it
 was paused), and an authorisation of the events of this run. A value that shadows an outer key stays
 inside. `stopOnError` is read
-from the composite in the root. A finished program publishes the same outputs, computed against
+from the composite in the root. An abandoned composite stores no values, but it still hands on the
+permits it gained, and a failed leaf's moves are authorised into the context: the moves happened,
+so they stay followable whether or not a pause came between.
+
+**The invariant the deltas rest on.** Inside a program a context only ever grows: pipeline values
+are added or replaced by merges, snapshot and permit lists are only appended to, and no step
+removes anything. That is what makes `PipelineOutputs.between(parent, child)` an exact delta and
+lets a paused cursor rebuild every entry. A new node kind or merge that shrinks a context (drops a
+key, filters a list) breaks resumption silently; it must instead open a scope whose exit restores
+the parent. The interpreter checks the other half of the contract at run time: the frame it pops
+after a leaf must be the one it pushed beneath that leaf, so an executor that leaves a frame behind
+fails the program instead of eating another frame. A finished program publishes the same outputs, computed against
 the root step's entry, whether it returns them synchronously to its caller or, after a pause,
 hands them to the frame beneath. Those outputs are a `PipelineOutputs`: every pipeline kind, the
 snapshots and the permits, merged by one function, `mergeOutputs`. Programs and gates pass the
 whole of it: `foldResult` for a step that finished, a finished program publishing to the frame
 beneath, and the gate resumer forwarding a branch's result (with the permits its events authorise,
-as `foldResult` would). Leaf resumers still hand over only what they produce, often a subset — for
-example `LibraryAndZoneContinuationResumer`'s selections (collections),
-`MiscContinuationResumer`'s draw-up-to count (numbers) and `AmassContinuationResumer`
-(collections). String lists have one producer, a
+as `foldResult` would). A resumer that runs a tree or a step to completion hands the frame beneath
+all of that step's outputs (`EffectResult.stateWithOutputsHandedOn`), the same thing the inner
+program would have published had something in it paused. A leaf resumer answering a question hands
+over what the answer produces (a selection's collections, a draw-up-to count). A step that finishes
+without pausing returns its values in its result; a value it writes into "the frame beneath"
+instead is taken from the program's frame when the interpreter pops it. String lists have one producer, a
 creature-type choice writing into the program frame beneath it. Programs carry them out of scopes
 like any other kind. `ForEachCapturedController` runs each controller's sub-effects as a program
 and returns their outputs, so its paused and unpaused paths agree. `DoAction` still has two return

@@ -160,9 +160,9 @@ class EffectExecutorRegistry(
                     "(EffectExecutorCoverageTest guards this at build time)."
             )
         // A leaf runs labelled with its own step, so a program it starts or queues names it
-        // (a composite keeps the caller's label as its program's origin).
-        val instructionContext = com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter
-            .labelFor(effect, context.withCurrentObjectReferences(state))
+        // (a composite keeps the caller's label as its program's origin). One copy for both.
+        val instructionContext = context.withCurrentObjectReferences(state,
+            com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.originFor(effect, context))
         val executed = executor.execute(state, effect, instructionContext)
         val result = if (effect is com.wingedsheep.sdk.scripting.effects.SelectFromCollectionEffect ||
             effect is com.wingedsheep.sdk.scripting.effects.FilterCollectionEffect) {

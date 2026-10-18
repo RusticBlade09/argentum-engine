@@ -29,8 +29,9 @@ import kotlinx.serialization.Serializable
  *
  * @property root A copy of the effect tree being run. Always a copy, carried in the frame, so
  *   resuming needs only the frame — no stack object or definition has to be reachable.
- * @property origin Where [root] came from (see [ProgramOrigin]). A label only: resuming never
- *   reads it. Null only for frames converted from the retired `EffectContinuation` on load.
+ * @property origin Where [root] came from (see [ProgramOrigin]). A label: resuming reads only
+ *   whether it is null, which marks a frame converted from the retired `EffectContinuation` on
+ *   load; such a frame publishes its whole saved context when it finishes, as the old frame did.
  * @property cursor The node of [root] **currently executing** — not the next one — as a zipper
  *   (see [ProgramCursor]). In a frame pushed beneath a leaf that paused, the cursor names that
  *   leaf; when the frame resumes, the leaf has finished: its outputs are already in

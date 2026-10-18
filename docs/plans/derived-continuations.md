@@ -129,7 +129,20 @@ and every other control node are still leaves that start nested programs of thei
 interpreter as a `Gate(phase)` cursor step, so a "may" is answered by the program itself and
 `nested-may` replays as one frame. Then the other gates follow one at a time (`MayPay` with
 non-mana costs, `DoAction`, the mana and X variants), deleting `GatedEffectContinuation` once none
-is left. Loops will need `Each(item, remaining, …)` steps. `DoAction` still returns its branch's outputs
+is left. Loops will need `Each(item, remaining, …)` steps.
+
+**Order of the remaining migrations**, each its own PR with twin tests: (1) `Gate.MayDecide`;
+(2) `Gate.MayPay` and the mana/X gate variants; (3) `Gate.DoAction`, fixing its two return
+conventions; (4) `ForEach` / `ForEachCapturedController` as `Each` steps; (5) `RepeatWhile`. Each
+step deletes the continuation class it replaces; the pilot is done when `GatedEffectContinuation`,
+`ForEachContinuation` and `RepeatWhileContinuation` are gone and the `nested-may` and
+`repeat-while` fixtures replay as one frame.
+
+**`ProgramOrigin` has no reader yet.** It is the observation contract: a paused frame says what
+its cursor is relative to (the resolving object's effect, or a subtree some step built), so a
+debugger, a replay diff or a future Option B checkpoint can locate it without re-running anything.
+Nothing in the engine decides on it, apart from `null` marking a converted frame. If the
+migrations above finish without anything consuming it, remove it then rather than let it drift. `DoAction` still returns its branch's outputs
 synchronously but not after a pause, and imports the action's numbers after a pause but not
 synchronously; its migration fixes both.
 

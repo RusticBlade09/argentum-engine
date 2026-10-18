@@ -87,7 +87,8 @@ class ReplacementContinuationResumer(
             state = stateWithRemaining,
             gathered = chosen,
             event = continuation.pendingEvent,
-            alreadyApplied = continuation.alreadyApplied
+            alreadyApplied = continuation.alreadyApplied,
+            parentOrigin = continuation.context?.programOrigin,
         )
 
         return when (result) {

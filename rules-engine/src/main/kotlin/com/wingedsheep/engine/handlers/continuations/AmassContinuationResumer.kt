@@ -52,7 +52,7 @@ class AmassContinuationResumer(
         // pending frame directly via the shared propagation seam (composite siblings,
         // `When you do, …` reflexive triggers like Foray of Orcs, and DoAction gates all
         // read pipeline.storedCollections off their frame's effectContext).
-        val stateWithArmyExposed = exposeCollectionsToNextFrame(result.state, result.updatedCollections)
+        val stateWithArmyExposed = result.stateWithOutputsHandedOn()
 
         return checkForMore(stateWithArmyExposed, result.events)
     }

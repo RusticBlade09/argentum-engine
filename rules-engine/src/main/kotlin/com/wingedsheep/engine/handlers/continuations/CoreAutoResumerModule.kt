@@ -154,8 +154,12 @@ class CoreAutoResumerModule(
             if (runResult.outcome is Outcome.Paused) {
                 return@autoResumer ExecutionResult.propagatePause(runResult.state, events + runResult.events)
             }
-            val published = exposeOutputsToNextFrame(runResult.state, runResult.pipelineOutputs)
-            checkForMore(published, events + runResult.events)
+            val outputs = if (continuation.origin == null) {
+                legacyOutputs(continuation.effectContext, runResult.pipelineOutputs)
+            } else {
+                runResult.pipelineOutputs
+            }
+            checkForMore(exposeOutputsToNextFrame(runResult.state, outputs), events + runResult.events)
         },
 
         autoResumer(RepeatWhileContinuation::class) { state, continuation, events, checkForMore ->
@@ -307,5 +311,20 @@ class CoreAutoResumerModule(
                 )
             checkForMore(state, events + event)
         }
+    )
+
+    /**
+     * What a frame converted from the retired `EffectContinuation` (origin null) publishes when it
+     * finishes: the old frame's runner handed the frame beneath its *whole* collection, number,
+     * chosen-value and snapshot lists — values injected into it before the save included — not only
+     * what it stored after resuming. A stack of old frames saved mid-resolution still passes an
+     * inner frame's selection out to the outer frame's remaining steps.
+     */
+    private fun legacyOutputs(saved: EffectContext, ran: com.wingedsheep.engine.handlers.PipelineOutputs) = ran.copy(
+        collections = saved.pipeline.storedCollections + ran.collections,
+        numbers = saved.pipeline.storedNumbers + ran.numbers,
+        chosenValues = saved.pipeline.chosenValues + ran.chosenValues,
+        sacrificed = saved.sacrificedPermanents + ran.sacrificed,
+        departed = saved.departedPermanents + ran.departed,
     )
 }

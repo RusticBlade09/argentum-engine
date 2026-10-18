@@ -37,6 +37,9 @@ import kotlin.reflect.KClass
  *    frame is dropped and its result is folded into the context ([foldResult]); if it fails, it is
  *    skipped — unless its composite has `stopOnError`, which abandons the rest of that one
  *    composite (only that one: a nested composite without the flag absorbs its own failures).
+ *    Either way the object moves a failed leaf or an abandoned composite made stay followable.
+ *    The frame popped after a leaf must be the one pushed beneath it; a value the leaf handed to
+ *    "the frame beneath" without pausing is taken from it, as a resumer's hand-off would be.
  * 3. Advancing goes to the next sibling, or leaves the composite and moves on to its next sibling.
  *    Leaving hands the parent its entry context plus what the composite stored — new pipeline keys
  *    (a value shadowing an outer key doesn't escape), appended snapshots, and the object moves its
@@ -48,7 +51,7 @@ import kotlin.reflect.KClass
  * them to the frame beneath.
  *
  * @param effectExecutor how a leaf runs: the registry's `execute`, which labels it
- *   ([labelFor]) and leaves the resolution depth alone — the context already carries it.
+ *   ([originFor]) and leaves the resolution depth alone — the context already carries it.
  */
 class EffectProgramInterpreter(
     private val effectExecutor: (GameState, Effect, EffectContext) -> EffectResult
@@ -83,24 +86,26 @@ class EffectProgramInterpreter(
         if (steps == ProgramCursor.START.steps) {
             return Run(state, root, program.origin, program.effectContext, ArrayList()).start()
         }
-        val scopes = ArrayList<Scope>(steps.size)
-        var node: Effect = root
-        var entry: EffectContext? = null
-        for ((depth, step) in steps.withIndex()) {
-            val child = step as? CursorStep.Child
-                ?: return EffectResult.error(state, "Program cursor ${program.cursor} is malformed")
-            val path = steps.subList(0, depth).map { (it as CursorStep.Child).index }
-            // Rebuild the entry from the parent's (the root's from the frame's context).
-            entry = entry?.advancedBy(child.delta) ?: program.effectContext.rebasedOn(child.delta)
-            val scope = open(node, path, entry, eventStart = 0, child.delta, steps.subList(0, depth))
-                ?: return EffectResult.error(state, "Program cursor ${program.cursor} does not follow its root")
-            scopes += scope
-            if (depth < steps.lastIndex) {
-                node = scope.composite.effects.getOrNull(child.index)
-                    ?: return EffectResult.error(state, "Program cursor ${program.cursor} is outside its root")
+        val children = steps.map { step ->
+            when (step) {
+                is CursorStep.Child -> step
+                CursorStep.Start -> return EffectResult.error(state, "Program cursor ${program.cursor} is malformed")
             }
         }
-        val at = steps.map { (it as CursorStep.Child).index }
+        val at = children.map { it.index }
+        val scopes = ArrayList<Scope>(children.size)
+        var node: Effect = root
+        var entry: EffectContext? = null
+        for ((depth, child) in children.withIndex()) {
+            // Rebuild the entry from the parent's (the root's from the frame's context).
+            entry = entry?.advancedBy(child.delta) ?: program.effectContext.rebasedOn(child.delta)
+            val scope = open(node, at.subList(0, depth), entry, eventStart = 0, child.delta, steps.subList(0, depth))
+                ?: return EffectResult.error(state, "Program cursor ${program.cursor} does not follow its root")
+            scopes += scope
+            // Every step, the last included, names a child its composite has.
+            node = scope.composite.effects.getOrNull(child.index)
+                ?: return EffectResult.error(state, "Program cursor ${program.cursor} is outside its root")
+        }
         return Run(state, root, program.origin, program.effectContext, scopes).advanceFrom(at)
     }
 
@@ -131,7 +136,7 @@ class EffectProgramInterpreter(
         else -> null
     }
 
-    private enum class LeafOutcome { CONTINUE, ABANDON_SCOPE, PAUSED }
+    private enum class LeafOutcome { CONTINUE, ABANDON_SCOPE, EXIT }
 
     private inner class Run(
         private var state: GameState,
@@ -141,7 +146,8 @@ class EffectProgramInterpreter(
         private val scopes: ArrayList<Scope>,
     ) {
         private val events = ArrayList<GameEvent>()
-        private lateinit var pausedResult: EffectResult
+        /** The run's result when a leaf ends it early: a pause, or a frame the leaf left behind. */
+        private lateinit var exitResult: EffectResult
 
         fun start(): EffectResult = execute(emptyList(), descend = true)
 
@@ -178,7 +184,7 @@ class EffectProgramInterpreter(
                         leave(aborted = false)?.let { return it }
                     } else {
                         when (runLeaf(node, path)) {
-                            LeafOutcome.PAUSED -> return pausedResult
+                            LeafOutcome.EXIT -> return exitResult
                             LeafOutcome.ABANDON_SCOPE -> {
                                 path = scopes.last().path
                                 leave(aborted = true)?.let { return it }
@@ -206,21 +212,34 @@ class EffectProgramInterpreter(
             // leaving its scopes and publishing its outputs — is work that a pause must not skip.
             val inner = scopes.last()
             val cursor = ProgramCursor(inner.prefix + CursorStep.Child(path.last(), inner.delta))
-            val prepared = state.pushContinuation(EffectProgram(root, origin, cursor, context))
-            val result = effectExecutor(prepared, leaf, context)
+            val frame = EffectProgram(root, origin, cursor, context)
+            val result = effectExecutor(state.pushContinuation(frame), leaf, context)
             if (result.outcome is Outcome.Paused) {
                 // The frame waits beneath the leaf's own frames.
-                pausedResult = EffectResult.propagatePause(result.state, events + result.events)
-                return LeafOutcome.PAUSED
+                exitResult = EffectResult.propagatePause(result.state, events + result.events)
+                return LeafOutcome.EXIT
             }
             // Pops the program pushed above. Every executor that pushes a frame of its own either
             // pauses with it, pops it, or returns a state without it, so on Done or a failure the
-            // top of the stack is this program's frame — the last leaf included.
-            state = result.state.popContinuation().second
+            // top of the stack must be this program's frame — the last leaf included. Anything
+            // else would be another frame eaten, so it fails rather than pops blind.
+            val (top, popped) = result.state.popContinuation()
+            if (top !is EffectProgram || top.root !== root || top.cursor != cursor) {
+                exitResult = EffectResult.error(result.state, "Leaf ${stepName(leaf)} left a frame above its program")
+                return LeafOutcome.EXIT
+            }
+            state = popped
             events.addAll(result.events)
+            // A leaf that handed a value to "the frame beneath" without pausing wrote it into this
+            // frame, exactly as a resumer would after a pause; take it, so both paths agree.
+            if (top.effectContext !== context) {
+                context = context.mergeOutputs(PipelineOutputs.between(context, top.effectContext), dedupSnapshots = true)
+            }
             if (result.outcome !is Outcome.Done) {
                 // A failed instruction is skipped (do as much as possible) unless its composite is
-                // a cost-then-payoff sequence, which it abandons.
+                // a cost-then-payoff sequence, which it abandons. The moves it made before failing
+                // still happened, so they stay followable either way.
+                context = context.authorizeObjectMoves(result.events)
                 return if (scopes.last().composite.stopOnError) LeafOutcome.ABANDON_SCOPE else LeafOutcome.CONTINUE
             }
             context = context.foldResult(result)
@@ -231,20 +250,29 @@ class EffectProgramInterpreter(
          * Leave the innermost open composite, the same way whether it opened in this run or before
          * a pause. Returns the program's result when that composite is the root; otherwise
          * restores the parent's context — its entry plus what the composite stored — and returns
-         * null. An [aborted] composite (a failed cost) stores nothing.
+         * null. An [aborted] composite (a failed cost) stores no values, but the object moves it
+         * made stay followable.
          */
         private fun leave(aborted: Boolean): EffectResult? {
             val scope = scopes.removeAt(scopes.lastIndex)
             val scoped = events.subList(scope.eventStart, events.size).toList()
-            if (scopes.isEmpty()) {
-                return if (aborted) EffectResult.success(state, events.toList()) else outputs(scope.entry, events.toList())
-            }
             // Moves this composite authorised before a pause travel in its outputs; a run that
             // never paused authorises the same moves from the composite's events as well.
-            val stored = if (aborted) EffectResult(state, scoped) else outputs(scope.entry, scoped)
+            val stored = if (aborted) moves(scope.entry, scoped) else outputs(scope.entry, scoped)
+            if (scopes.isEmpty()) return stored
             context = scope.entry.foldResult(stored)
             return null
         }
+
+        /** What an abandoned run kept on top of [base]: only the object moves it authorised. */
+        private fun moves(base: EffectContext, resultEvents: List<GameEvent>): EffectResult = EffectResult(
+            state,
+            resultEvents,
+            updatedPermittedMoves = newPermits(base),
+        )
+
+        private fun newPermits(base: EffectContext) =
+            context.objectReferences.permittedMoves.filterNot { it in base.objectReferences.permittedMoves }
 
         /** What the run stored on top of [base]: new pipeline keys and appended snapshots. */
         private fun outputs(base: EffectContext, resultEvents: List<GameEvent>): EffectResult = EffectResult(
@@ -257,7 +285,7 @@ class EffectProgramInterpreter(
             updatedStringLists = context.pipeline.storedStringLists - base.pipeline.storedStringLists.keys,
             updatedSacrificedPermanents = context.sacrificedPermanents.drop(base.sacrificedPermanents.size),
             updatedDepartedPermanents = context.departedPermanents.drop(base.departedPermanents.size),
-            updatedPermittedMoves = context.objectReferences.permittedMoves.filterNot { it in base.objectReferences.permittedMoves },
+            updatedPermittedMoves = newPermits(base),
         )
     }
 
@@ -277,14 +305,14 @@ class EffectProgramInterpreter(
         fun stepName(effect: Effect): String = stepName(effect::class)
 
         /**
-         * The context a leaf [effect] runs with: labelled `BuiltBy(<effect's step>, <the caller's
-         * origin>)`, so a program the leaf starts or queues is labelled with the leaf that built it.
-         * The registry hands this down for each leaf call; a composite keeps the caller's label,
-         * which becomes its program's origin.
+         * The origin a leaf [effect] runs with: `BuiltBy(<effect's step>, <the caller's origin>)`,
+         * so a program the leaf starts or queues is labelled with the leaf that built it. The
+         * registry sets it for each leaf call; a composite keeps the caller's label, which becomes
+         * its program's origin.
          */
-        fun labelFor(effect: Effect, context: EffectContext): EffectContext =
-            if (effect is CompositeEffect) context
-            else context.copy(programOrigin = ProgramOrigin.BuiltBy(stepName(effect), context.programOrigin))
+        fun originFor(effect: Effect, context: EffectContext): ProgramOrigin? =
+            if (effect is CompositeEffect) context.programOrigin
+            else ProgramOrigin.BuiltBy(stepName(effect), context.programOrigin)
 
         /**
          * A label for a root that [step] starts: `BuiltBy(<step>, parent)`. [parent] is the origin of

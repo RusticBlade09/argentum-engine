@@ -68,7 +68,7 @@ class ModalAndCloneContinuationResumer(
             (continuation.entityId to response.selectedTargets[0]?.firstOrNull()))
         val result = services.effectExecutorRegistry.execute(state, continuation.effect, context)
         if (result.outcome !is Outcome.Done) return result.toExecutionResult()
-        return checkForMore(exposeCollectionsToNextFrame(result.state, result.updatedCollections), result.events)
+        return checkForMore(result.stateWithOutputsHandedOn(), result.events)
     }
 
     /**
@@ -87,7 +87,7 @@ class ModalAndCloneContinuationResumer(
         )
         val result = services.effectExecutorRegistry.execute(state, continuation.effect, context)
         if (result.outcome !is Outcome.Done) return result.toExecutionResult()
-        return checkForMore(exposeCollectionsToNextFrame(result.state, result.updatedCollections), result.events)
+        return checkForMore(result.stateWithOutputsHandedOn(), result.events)
     }
 
     private fun resumeCloneAuraEntry(
@@ -113,7 +113,7 @@ class ModalAndCloneContinuationResumer(
             (continuation.entityId to choice))
         val result = services.effectExecutorRegistry.execute(state, continuation.effect, context)
         if (result.outcome !is Outcome.Done) return result.toExecutionResult()
-        return checkForMore(exposeCollectionsToNextFrame(result.state, result.updatedCollections), result.events)
+        return checkForMore(result.stateWithOutputsHandedOn(), result.events)
     }
 
     private fun resumeEffectEntryChoice(
@@ -145,7 +145,7 @@ class ModalAndCloneContinuationResumer(
         }
         val result = services.effectExecutorRegistry.execute(state, continuation.effect, context)
         if (result.outcome !is Outcome.Done) return result.toExecutionResult()
-        return checkForMore(exposeCollectionsToNextFrame(result.state, result.updatedCollections), result.events)
+        return checkForMore(result.stateWithOutputsHandedOn(), result.events)
     }
 
     private fun resumeEffectDiscardDestination(
@@ -158,7 +158,7 @@ class ModalAndCloneContinuationResumer(
         val context = continuation.context.copy(discardDestinations = continuation.context.discardDestinations + (continuation.cardId to destination))
         val result = services.effectExecutorRegistry.execute(state, continuation.effect, context)
         if (result.outcome !is Outcome.Done) return result.toExecutionResult()
-        return checkForMore(exposeCollectionsToNextFrame(result.state, result.updatedCollections), result.events)
+        return checkForMore(result.stateWithOutputsHandedOn(), result.events)
     }
 
     private fun resumeEffectDiscardOrder(
@@ -172,7 +172,7 @@ class ModalAndCloneContinuationResumer(
         val context = continuation.context.copy(discardLibraryOrder = response.selectedCards)
         val result = services.effectExecutorRegistry.execute(state, continuation.effect, context)
         if (result.outcome !is Outcome.Done) return result.toExecutionResult()
-        return checkForMore(exposeCollectionsToNextFrame(result.state, result.updatedCollections), result.events)
+        return checkForMore(result.stateWithOutputsHandedOn(), result.events)
     }
 
     fun resumeModal(

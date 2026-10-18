@@ -491,7 +491,11 @@ data class EffectContext(
     }
 
     /** Recheck on every instruction/resume; an unrelated move while paused cannot be followed. */
-    fun withCurrentObjectReferences(state: GameState): EffectContext = copy(
+    fun withCurrentObjectReferences(
+        state: GameState,
+        programOrigin: com.wingedsheep.engine.core.ProgramOrigin? = this.programOrigin,
+    ): EffectContext = copy(
+        programOrigin = programOrigin,
         sourceReferenceLost = if (objectReferences.captured) {
             !objectReferences.isCurrent(objectReferences.source, state)
         } else sourceReferenceLost,

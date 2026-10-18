@@ -1221,7 +1221,7 @@ class LibraryAndZoneContinuationResumer(
         if (result.outcome is Outcome.Paused) {
             return ExecutionResult.propagatePause(result.state, leadingEvents + result.events)
         }
-        return checkForMore(result.state, leadingEvents + result.events)
+        return checkForMore(result.stateWithOutputsHandedOn(), leadingEvents + result.events)
     }
 
 
@@ -1417,6 +1417,6 @@ class LibraryAndZoneContinuationResumer(
         )
         val result = effectRunner.runBuilt(state, effects, loopContext)
         if (result.outcome is Outcome.Paused) return result.toExecutionResult()
-        return checkForMore(result.state, result.events.toList())
+        return checkForMore(result.stateWithOutputsHandedOn(), result.events.toList())
     }
 }

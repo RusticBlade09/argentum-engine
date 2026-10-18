@@ -8,6 +8,7 @@ import com.wingedsheep.engine.core.RepeatWhileContinuation
 import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.PipelineOutputs
 import com.wingedsheep.engine.handlers.mergeOutputs
+import com.wingedsheep.engine.handlers.pipelineOutputs
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.sdk.model.EntityId
 
@@ -67,6 +68,14 @@ fun exposeCollectionsToNextFrame(
     collections = collections, subtypeGroups = subtypeGroups, numbers = numbers,
     chosenValues = chosenValues, sacrificed = sacrificed, departed = departed,
 ))
+
+/**
+ * A step a resumer ran to completion hands the frame beneath every output it stored: what the
+ * program running it would have published had something inside it paused, so the steps after it
+ * see the same values on both paths.
+ */
+fun com.wingedsheep.engine.core.EffectResult.stateWithOutputsHandedOn(): GameState =
+    exposeOutputsToNextFrame(state, pipelineOutputs)
 
 /** [exposeCollectionsToNextFrame] for a whole [PipelineOutputs]; merges with [mergeOutputs]. */
 fun exposeOutputsToNextFrame(state: GameState, outputs: PipelineOutputs): GameState {

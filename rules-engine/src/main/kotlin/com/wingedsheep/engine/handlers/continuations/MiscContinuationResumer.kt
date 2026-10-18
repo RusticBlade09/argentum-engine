@@ -431,6 +431,7 @@ class MiscContinuationResumer(
             sourceId = continuation.sourceId,
             objectReferences = continuation.objectReferences,
             controllerId = continuation.playerId,
+            programOrigin = continuation.programOrigin,
         )
         val result = services.effectExecutorRegistry.execute(currentState, drawEffect, drawContext).toExecutionResult()
 
@@ -637,7 +638,7 @@ class MiscContinuationResumer(
                 flipEvents + result.events
             )
         }
-        return checkForMore(result.state, flipEvents + result.events)
+        return checkForMore(result.stateWithOutputsHandedOn(), flipEvents + result.events)
     }
 
     private fun resumeCopyEachSpell(
@@ -970,7 +971,7 @@ class MiscContinuationResumer(
         val tokenResult = effectRunner.runBuilt(newState, listOf(tokenEffect), tokenContext.copy(
             programOrigin = continuation.programOrigin ?: com.wingedsheep.engine.handlers.effects.composite.EffectProgramInterpreter.startedBy(com.wingedsheep.sdk.scripting.effects.ConvertCountersToTokensEffect::class)))
         if (tokenResult.outcome is Outcome.Paused) return tokenResult.toExecutionResult()
-        newState = tokenResult.state
+        newState = tokenResult.stateWithOutputsHandedOn()
         events.addAll(tokenResult.events)
 
         return checkForMore(newState, events)

@@ -70,7 +70,7 @@ class ColorChoiceContinuationResumer(
         )
 
         if (effectResult.outcome is Outcome.Paused) return effectResult.toExecutionResult()
-        return checkForMore(effectResult.state, effectResult.events.toList())
+        return checkForMore(effectResult.stateWithOutputsHandedOn(), effectResult.events.toList())
     }
 
     fun resumeChooseNumberThen(
@@ -92,7 +92,7 @@ class ColorChoiceContinuationResumer(
         )
 
         if (effectResult.outcome is Outcome.Paused) return effectResult.toExecutionResult()
-        return checkForMore(effectResult.state, effectResult.events.toList())
+        return checkForMore(effectResult.stateWithOutputsHandedOn(), effectResult.events.toList())
     }
 
     fun resumeChooseNumberForSource(
@@ -190,8 +190,7 @@ class ColorChoiceContinuationResumer(
         if (effectResult.outcome is Outcome.Paused) return effectResult.toExecutionResult()
         // The re-run finished without pausing (nothing left to decide). Publish whatever it
         // stored so the composite's remaining steps still see it.
-        val published = exposeCollectionsToNextFrame(effectResult.state, effectResult.updatedCollections)
-        return checkForMore(published, effectResult.events.toList())
+        return checkForMore(effectResult.stateWithOutputsHandedOn(), effectResult.events.toList())
     }
 
     fun resumeChooseManaColor(

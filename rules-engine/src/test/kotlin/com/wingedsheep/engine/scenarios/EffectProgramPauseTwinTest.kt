@@ -12,6 +12,7 @@ import com.wingedsheep.engine.core.YesNoResponse
 import com.wingedsheep.engine.core.engineSerializersModule
 import com.wingedsheep.engine.handlers.ContinuationHandler
 import com.wingedsheep.engine.handlers.EffectContext
+import com.wingedsheep.engine.handlers.PipelineState
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.stack.ActivatedAbilityOnStackComponent
 import com.wingedsheep.engine.support.GameTestDriver
@@ -25,8 +26,10 @@ import com.wingedsheep.sdk.model.CardDefinition
 import com.wingedsheep.sdk.model.Deck
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.GameObjectFilter
+import com.wingedsheep.sdk.scripting.RestrictCardsDrawnPerTurn
 import com.wingedsheep.sdk.scripting.effects.CardSource
 import com.wingedsheep.sdk.scripting.effects.CompositeEffect
+import com.wingedsheep.sdk.scripting.effects.DrawUpToEffect
 import com.wingedsheep.sdk.scripting.effects.Effect
 import com.wingedsheep.sdk.scripting.effects.EachPlayerChoosesCreatureTypeEffect
 import com.wingedsheep.sdk.scripting.effects.Gate
@@ -121,6 +124,11 @@ class EffectProgramPauseTwinTest : FunSpec({
         Effects.May(CompositeEffect(listOf(pick(p)[0], GatherSubtypesEffect(from = "pool", storeAs = "groups"), pick(p)[1]))),
         ifHandHas(CardPredicate.HasSubtypeInEachStoredGroup("groups")),
     ))
+    // 5b. A resumer that runs the tree it built after an answer: its branch stores a number that a
+    // later sibling reads, whether the branch finishes in the resumer or pauses inside it.
+    fun chooseNumberThenStores(p: Boolean) = CompositeEffect(listOf(
+        Effects.ChooseNumberThen(CompositeEffect(pick(p) + store("n", 3)), maxValue = 3), gainN,
+    ))
     // 6. A program queued by an executor, not started when it is pushed; it starts after the
     // secret number and pauses on the selection.
     fun queued(p: Boolean): Effect = Effects.SecretChoice(
@@ -152,6 +160,7 @@ class EffectProgramPauseTwinTest : FunSpec({
         // The may's branch stores n = 3 and a subtype group; the siblings after the may read them.
         Shape("may branch stores a number", ::mayBranchStores, expectedLife = 23),
         Shape("may branch stores a subtype group", ::mayBranchSubtypes, expectedLife = 24),
+        Shape("choose-number-then branch stores a number", ::chooseNumberThenStores, expectedLife = 23),
         Shape("not-started program queued by an executor", ::queued, expectedLife = 21),
     )
     val cards = shapes.flatMap { shape ->
@@ -180,8 +189,18 @@ class EffectProgramPauseTwinTest : FunSpec({
         ifHandHas(CardPredicate.HasSubtypeInStoredList("types")),
     )))
 
+    // "Can't draw cards", and a draw-up-to whose not-drawn count a sibling reads.
+    val drawLock = card("Twin draw lock") {
+        typeLine = "Artifact"
+        staticAbility { ability = RestrictCardsDrawnPerTurn(Player.Each, maxPerTurn = 0) }
+    }
+    val nothingToDraw = artifact("Twin nothing to draw", CompositeEffect(listOf(
+        DrawUpToEffect(maxCards = 2, target = EffectTarget.Controller, storeNotDrawnAs = "n"), gainN,
+    )))
+
     fun setup(): GameTestDriver = GameTestDriver().apply {
-        registerCards(TestCards.all + cards + chooseType + legacyReference + depthRoot + depthNested + depthAfterPause + liveSilent + liveAsks)
+        registerCards(TestCards.all + cards + chooseType + legacyReference + depthRoot + depthNested + depthAfterPause + liveSilent + liveAsks +
+            drawLock + nothingToDraw)
         initMirrorMatch(Deck.of("Forest" to 40), startingPlayer = 0)
         passPriorityUntil(Step.PRECOMBAT_MAIN)
     }
@@ -330,6 +349,53 @@ class EffectProgramPauseTwinTest : FunSpec({
         promptedZone shouldBe rememberedZone
     }
 
+    test("a cost-then-payoff composite abandoned after a pause keeps the moves made before the pause") {
+        // Composite[Composite(stopOnError)[Exile(Self), pick, failing cost, gain 5], Self to hand],
+        // under a captured source reference with no resolution key: only the abandoned composite's
+        // hand-off can carry the exile's permit to the step after it.
+        val identity = com.wingedsheep.sdk.scripting.AbilityIdentity(
+            "Twin abandoned", com.wingedsheep.sdk.scripting.AbilityId("Twin abandoned:1"))
+        fun effect(p: Boolean) = CompositeEffect(listOf(
+            CompositeEffect(listOf(Effects.Exile(EffectTarget.Self)) + pick(p) + failing + Effects.GainLife(5), stopOnError = true),
+            com.wingedsheep.sdk.scripting.effects.MoveToZoneEffect(EffectTarget.Self, Zone.HAND),
+        ))
+        fun abandoned(p: Boolean): Triple<Zone?, Int, Boolean> {
+            val d = setup()
+            val player = d.player1
+            val bear = d.putCardInHand(player, "Grizzly Bears")
+            val source = d.putCreatureOnBattlefield(player, "Grizzly Bears")
+            val ref = d.state.objectRef(source)!!
+            val context = EffectContext(
+                sourceId = source, controllerId = player, abilityIdentity = identity,
+                objectReferences = com.wingedsheep.engine.handlers.ObjectReferenceEnvironment(
+                    captured = true, origin = ref, source = ref, resolutionKey = null),
+            )
+            val state = d.state.pushContinuation(EffectProgram.queued(listOf(effect(p)), context,
+                origin = com.wingedsheep.engine.core.ProgramOrigin.BuiltBy("Test", null)))
+            d.replaceState(ContinuationHandler(d.services).drainAutomatic(state, emptyList()).state)
+            val asked = d.answerAll(bear)
+            val zone = listOf(Zone.BATTLEFIELD, Zone.HAND, Zone.EXILE).firstOrNull { zone ->
+                source in (if (zone == Zone.BATTLEFIELD) d.state.getBattlefield() else d.state.getZone(player, zone))
+            }
+            return Triple(zone, d.getLifeTotal(player), asked)
+        }
+        val (silentZone, silentLife, silentAsked) = abandoned(p = false)
+        val (askedZone, askedLife, askedAsked) = abandoned(p = true)
+        silentAsked shouldBe false
+        askedAsked shouldBe true
+        // The payoff was abandoned; the exiled source was still followed back to hand.
+        silentLife shouldBe 20
+        silentZone shouldBe Zone.HAND
+        (askedZone to askedLife) shouldBe (silentZone to silentLife)
+    }
+
+    test("a draw-up-to that can't draw stores its not-drawn count for the step after it") {
+        val (outcome, asked) = run(nothingToDraw, setupBoard = { it.putPermanentOnBattlefield(it.player1, drawLock.name) })
+        asked shouldBe false
+        // Both cards are "not drawn": gain 2.
+        outcome["life"] shouldBe listOf(22, 20)
+    }
+
     test("a string list chosen inside a composite is read after it") {
         val (outcome, _) = run(chooseType)
         outcome["life"] shouldBe listOf(24, 20)
@@ -356,5 +422,27 @@ class EffectProgramPauseTwinTest : FunSpec({
         d.replaceState(drained.state)
         d.answerAll(bear)
         d.getLifeTotal(player) shouldBe reference["life"].let { (it as List<*>)[0] }
+    }
+
+    test("stacked converted legacy frames still pass an inner frame's saved values outward") {
+        // Saved mid-resolution: an outer frame with "gain n" left, and above it an inner frame whose
+        // context holds n = 3 (injected before the save) with one step left. The old runner handed
+        // its whole frame to the frame beneath, so the outer gain read n = 3.
+        val json = Json { serializersModule = engineSerializersModule; allowStructuredMapKeys = true; encodeDefaults = false }
+        val d = setup()
+        val player = d.player1
+        fun oldFrame(remaining: List<Effect>, context: EffectContext) = JsonObject(mapOf(
+            "type" to JsonPrimitive("com.wingedsheep.engine.core.EffectContinuation"),
+            "remainingEffects" to json.encodeToJsonElement(ListSerializer(Effect.serializer()), remaining),
+            "effectContext" to json.encodeToJsonElement(EffectContext.serializer(), context),
+        ))
+        val outer = oldFrame(listOf(gainN), EffectContext(sourceId = null, controllerId = player))
+        val inner = oldFrame(listOf(store("other", 0)), EffectContext(sourceId = null, controllerId = player,
+            pipeline = PipelineState.EMPTY.copy(storedNumbers = mapOf("n" to 3))))
+        val encoded = json.parseToJsonElement(json.encodeToString(d.state)).jsonObject
+        val legacy = json.decodeFromString<GameState>(JsonObject(encoded + ("continuationStack" to JsonArray(listOf(outer, inner)))).toString())
+        d.replaceState(ContinuationHandler(d.services).drainAutomatic(legacy, emptyList()).state)
+        d.getLifeTotal(player) shouldBe 23
+        d.state.continuationStack.size shouldBe 0
     }
 })
