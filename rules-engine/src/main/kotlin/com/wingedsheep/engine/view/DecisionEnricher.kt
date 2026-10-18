@@ -1,15 +1,33 @@
-package com.wingedsheep.gameserver.session
+package com.wingedsheep.engine.view
 
 import com.wingedsheep.engine.handlers.PredicateEvaluator
 import com.wingedsheep.engine.core.*
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.identity.CardComponent
-import com.wingedsheep.engine.view.DecisionMasker
-import com.wingedsheep.engine.view.Visibility
-import com.wingedsheep.gameserver.protocol.ServerMessage
 import com.wingedsheep.sdk.model.EntityId
 
+/**
+ * What a seat is told about the pending decision while another seat is deciding it. The game
+ * server sends it as `OpponentDecisionStatus`; it lives here so that tests checking what a seat
+ * learns read the same projection the server sends.
+ */
+data class OpponentDecisionStatusView(
+    /** The seat that is actually deciding. */
+    val playerId: EntityId,
+    val decisionType: String,
+    val displayText: String,
+    val sourceName: String?,
+    /** The spell/ability source entity, so the client can show its card from its own
+     *  (already viewer-masked) game state. */
+    val sourceId: EntityId?,
+    /** The source's art, for when the viewer's game state has no entry for it — a spell
+     *  being cast from its controller's hand is announced (its name is already shown) but
+     *  isn't in the viewer's masked state yet. Null when the viewer may not see the source. */
+    val sourceImageUri: String?,
+)
+
+/** Projects a pending decision for one seat: the masked decision its decider is sent, or the status every other seat is sent. */
 class DecisionEnricher(private val cardRegistry: CardRegistry) {
     private val visibility = Visibility(cardRegistry, conditionEvaluator = PredicateEvaluator(cardRegistry = null).conditions)
 
@@ -48,14 +66,14 @@ class DecisionEnricher(private val cardRegistry: CardRegistry) {
         }
     }
 
-    fun createOpponentDecisionStatus(
+    fun opponentDecisionStatus(
         decision: PendingDecision,
         state: GameState,
         viewerId: EntityId,
-    ): ServerMessage.OpponentDecisionStatus {
+    ): OpponentDecisionStatusView {
         val displayText = when (decision) {
             is SelectCardsDecision -> "Selecting cards"
-            is com.wingedsheep.engine.core.PlayCardDecision -> "Playing a card"
+            is PlayCardDecision -> "Playing a card"
             is ChooseTargetsDecision -> "Choosing targets"
             is YesNoDecision -> "Making a choice"
             is BatchYesNoDecision -> "Making a choice"
@@ -76,12 +94,12 @@ class DecisionEnricher(private val cardRegistry: CardRegistry) {
             is SelectManaSourcesDecision -> "Selecting mana sources"
         }
         val sourceId = decision.context.sourceId
-        return ServerMessage.OpponentDecisionStatus(
-            playerId = decision.playerId.value,
+        return OpponentDecisionStatusView(
+            playerId = decision.playerId,
             decisionType = decision::class.simpleName ?: "Unknown",
             displayText = displayText,
             sourceName = masker.maskFor(decision, state, viewerId).context.sourceName,
-            sourceId = sourceId?.value,
+            sourceId = sourceId,
             sourceImageUri = sourceId?.let { imageUriFor(state, it, viewerId) }
         )
     }

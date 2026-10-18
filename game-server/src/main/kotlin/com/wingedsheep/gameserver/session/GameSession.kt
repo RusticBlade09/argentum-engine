@@ -6,6 +6,7 @@ import com.wingedsheep.engine.view.ClientEvent
 import com.wingedsheep.engine.view.ClientEventTransformer
 import com.wingedsheep.engine.view.ClientGameState
 import com.wingedsheep.engine.view.ClientStateTransformer
+import com.wingedsheep.engine.view.DecisionEnricher
 import com.wingedsheep.engine.view.StateDiffCalculator
 import com.wingedsheep.engine.view.LegalActionEnricher
 import com.wingedsheep.gameserver.ai.AiReplayHistory

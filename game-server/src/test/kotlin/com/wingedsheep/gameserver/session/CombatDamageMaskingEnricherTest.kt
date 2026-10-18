@@ -1,5 +1,6 @@
 package com.wingedsheep.gameserver.session
 
+import com.wingedsheep.engine.view.DecisionEnricher
 import com.wingedsheep.engine.core.CombatResolutionDecision
 import com.wingedsheep.engine.core.OrderObjectsDecision
 import com.wingedsheep.engine.core.OrderedResponse

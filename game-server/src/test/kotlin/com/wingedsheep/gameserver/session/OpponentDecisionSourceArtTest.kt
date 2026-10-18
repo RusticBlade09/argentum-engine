@@ -1,5 +1,6 @@
 package com.wingedsheep.gameserver.session
 
+import com.wingedsheep.engine.view.DecisionEnricher
 import com.wingedsheep.engine.core.ChooseTargetsDecision
 import com.wingedsheep.engine.core.DecisionContext
 import com.wingedsheep.engine.core.DecisionPhase

@@ -47,9 +47,11 @@ import com.wingedsheep.engine.view.ClientEvent
 import com.wingedsheep.engine.view.ClientEventTransformer
 import com.wingedsheep.engine.view.ClientGameState
 import com.wingedsheep.engine.view.ClientStateTransformer
+import com.wingedsheep.engine.view.DecisionEnricher
 import com.wingedsheep.engine.view.DecisionMasker
 import com.wingedsheep.engine.view.LegalActionEnricher
 import com.wingedsheep.engine.view.LegalActionInfo
+import com.wingedsheep.engine.view.OpponentDecisionStatusView
 import com.wingedsheep.engine.view.Visibility
 import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.model.CardDefinition
@@ -82,8 +84,8 @@ import kotlin.reflect.full.memberProperties
  *
  * Each action is checked in this order. The replay ends only where [Outcome.end] says:
  *
- * 1. **Refused** in one world or both ([End.Refused]). A refusal in one world only first compares
- *    the headers of the states before it; the refusal itself is not reported as a leak.
+ * 1. **Refused** in one world or both ([End.Refused]). The states before it were already
+ *    compared, so a refusal itself is not reported as a leak.
  * 2. **Public to every seat** in both worlds — moved to a public zone, turned face up, revealed to
  *    all ([End.PublicToAll]): what follows may depend on a card everyone has seen.
  * 3. **Headers**, then seats that learned the card in the real game retire ([End.AllInformed] when
@@ -103,12 +105,8 @@ import kotlin.reflect.full.memberProperties
  * [End.Undetermined], naming the decision type, rather than guess.
  *
  * **What the server sends, and what this compares.** [SeatView] holds the client state, the
- * events, the decision a seat answers, and the opponent-decision status otherwise. The decision
- * and the status mirror the game server's `DecisionEnricher` as of 8f667e9724 (game-server, which
- * this module can't depend on): the decider's [SearchCardInfo] maps get each card's art, and the
- * status carries the deciding seat, the masked source name and art, and the one piece of
- * `displayText` not derived from the decision's type, `OrderObjectsDecision.orderingTitle`.
- * game-server's `OpponentDecisionStatusMirrorTest` fails when the status's fields change. The
+ * events, the decision a seat answers, and the opponent-decision status otherwise — both read
+ * through [DecisionEnricher], the projection the game server sends. The
  * legal actions are compared only for the seat holding priority while no question but a
  * [PlayCardDecision] is pending; the server also serves a mana-payment window's abilities to a
  * seat without priority, and resolves the acting seat through teams and hijacks — neither is
@@ -125,6 +123,7 @@ class HiddenIdentityForkChecker(private val registry: CardRegistry) {
     private val masker = DecisionMasker(visibility)
     private val stateTransformer = ClientStateTransformer(registry, predicateEvaluator = predicateEvaluator)
     private val enricher = LegalActionEnricher(ManaSolver(registry, predicateEvaluator), registry)
+    private val decisionEnricher = DecisionEnricher(registry)
 
     /**
      * How the replay ended: [checked] actions went through the header check, [leak] is the first
@@ -161,7 +160,7 @@ class HiddenIdentityForkChecker(private val registry: CardRegistry) {
         val events: List<ClientEvent>,
         val legalActions: List<LegalActionInfo>,
         val decision: PendingDecision?,
-        val opponentDecision: OpponentDecisionView?,
+        val opponentDecision: OpponentDecisionStatusView?,
     ) {
         /** The first field on which [other] differs, with the text around where they part; null when equal. */
         fun diff(other: SeatView): String? {
@@ -199,20 +198,6 @@ class HiddenIdentityForkChecker(private val registry: CardRegistry) {
             const val CONTEXT = 160
         }
     }
-
-    /**
-     * The fields of the server's `OpponentDecisionStatus` that depend on the game: the deciding
-     * seat, the type (which also decides `displayText`, save for [orderingTitle]), the source's
-     * name, id and art.
-     */
-    data class OpponentDecisionView(
-        val playerId: EntityId,
-        val type: String,
-        val sourceName: String?,
-        val sourceId: EntityId?,
-        val sourceImageUri: String?,
-        val orderingTitle: String?,
-    )
 
     /**
      * The part of a pending question every seat learns, as [seat] is sent it: that it exists, the
@@ -441,6 +426,7 @@ class HiddenIdentityForkChecker(private val registry: CardRegistry) {
         // Seats whose whole view is compared: retired once they see a card in either world, or
         // once an informed actor's choice has made their view legitimately different.
         val viewSeats = fork.seats.toMutableSet()
+        headerLeak(real, swapped, headerSeats)?.let { return Outcome(0, "at the fork itself: $it", End.Leaked(0)) }
         for (seat in viewSeats.sortedBy { it.value }) {
             view(real, emptyList(), seat).diff(view(swapped, emptyList(), seat))?.let {
                 return Outcome(0, "at the fork itself, for $seat: $it", End.Leaked(0))
@@ -460,16 +446,8 @@ class HiddenIdentityForkChecker(private val registry: CardRegistry) {
             val actorSees = fork.cards.any { sees(real, it, action.playerId, fork.faceDown) }
             val a = processor.process(real, action).result
             val b = processor.process(swapped, action).result
-            if (a.error != null || b.error != null) {
-                // Refused in one world only: the question it answered may exist in one world only.
-                // The refusal itself is not reported as a leak.
-                if ((a.error == null) != (b.error == null)) {
-                    headerLeak(real, swapped, headerSeats)?.let {
-                        return Outcome(progress.checked, "before action $step ($action), refused in one world only: $it", End.Leaked(step), dataStopped)
-                    }
-                }
-                return Outcome(progress.checked, null, End.Refused(step), dataStopped)
-            }
+            // The states before it passed the header check, so a refusal itself is no leak.
+            if (a.error != null || b.error != null) return Outcome(progress.checked, null, End.Refused(step), dataStopped)
             val realBefore = real
             real = a.state
             swapped = b.state
@@ -706,38 +684,9 @@ class HiddenIdentityForkChecker(private val registry: CardRegistry) {
             state = stateTransformer.transform(state, viewer),
             events = ClientEventTransformer.transform(events, viewer, state, visibility),
             legalActions = legalActions,
-            decision = decision?.takeIf { decides }?.let { withArt(masker.maskFor(it, state, viewer), state, viewer) },
-            opponentDecision = decision?.takeIf { !decides }?.let {
-                OpponentDecisionView(
-                    playerId = it.playerId,
-                    type = it::class.simpleName ?: "",
-                    sourceName = masker.maskFor(it, state, viewer).context.sourceName,
-                    sourceId = it.context.sourceId,
-                    sourceImageUri = it.context.sourceId?.let { id -> imageUriFor(state, id, viewer) },
-                    orderingTitle = (it as? OrderObjectsDecision)?.orderingTitle,
-                )
-            },
+            decision = decision?.takeIf { decides }?.let { decisionEnricher.enrich(it, state, viewer) },
+            opponentDecision = decision?.takeIf { !decides }?.let { decisionEnricher.opponentDecisionStatus(it, state, viewer) },
         )
-    }
-
-    /** `DecisionEnricher.imageUriFor`: the art [viewer] is shown for [entityId], or null when it is hidden from them. */
-    private fun imageUriFor(state: GameState, entityId: EntityId, viewer: EntityId): String? {
-        if (visibility.isCardIdentityHiddenFrom(state, entityId, viewer)) return null
-        val card = state.getEntity(entityId)?.get<CardComponent>() ?: return null
-        return card.imageUri ?: registry.getCard(card.cardDefinitionId)?.metadata?.imageUri
-    }
-
-    /** `DecisionEnricher.enrich`: the decider's [SearchCardInfo] maps carry each card's art. */
-    private fun withArt(masked: PendingDecision, state: GameState, viewer: EntityId): PendingDecision {
-        fun Map<EntityId, SearchCardInfo>.art() = mapValues { (id, info) -> info.copy(imageUri = imageUriFor(state, id, viewer)) }
-        return when (masked) {
-            is SearchLibraryDecision -> masked.copy(cards = masked.cards.art())
-            is ReorderLibraryDecision -> masked.copy(cardInfo = masked.cardInfo.art())
-            is SelectCardsDecision -> masked.copy(cardInfo = masked.cardInfo?.art())
-            is OrderObjectsDecision -> masked.copy(cardInfo = masked.cardInfo?.art())
-            is SplitPilesDecision -> masked.copy(cardInfo = masked.cardInfo?.art())
-            else -> masked
-        }
     }
 
     /** [state] with [entityId] made into [def] underneath — same id, owner and components otherwise. */
