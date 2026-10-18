@@ -200,6 +200,28 @@ class LegalActionEnumerator(
             PlayerActionEnumerator(manaOnly = true).enumerate(context)
     }
 
+    /**
+     * Enumerate only the non-mana activated abilities of permanents (and emblems) [playerId] could
+     * activate, ignoring who holds priority — the abilities anyone at the table can see.
+     *
+     * The surface the AI reads when it asks what an opponent's board can still do in a fight: no
+     * spell from a hidden hand, no graveyard or hand ability, and none of the cost of enumerating
+     * them. Timing is the enumerator's own (a sorcery-speed ability is offered only when the
+     * player could play a sorcery), and so is affordability, so a caller reads
+     * [LegalAction.affordable] exactly as it would from [enumerate].
+     */
+    fun enumeratePermanentAbilities(
+        state: GameState,
+        playerId: EntityId,
+        mode: EnumerationMode = EnumerationMode.ACTIONS_ONLY
+    ): List<LegalAction> {
+        val context = EnumerationContext(
+            state, playerId, cardRegistry, manaSolver, costCalculator,
+            predicateEvaluator, conditionEvaluator, turnManager, mode,
+        )
+        return ActivatedAbilityEnumerator(predicateEvaluator = predicateEvaluator).enumerate(context)
+    }
+
     companion object {
         /**
          * A standalone enumerator for a caller that holds only a [CardRegistry], backed by an engine

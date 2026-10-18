@@ -297,6 +297,7 @@ class AIPlayer(
                 stackChumpsOnTramplers = profile.stackChumpsOnTramplers,
                 attacksReadTheRace = profile.attacksReadTheRace,
                 raceWeight = EvalWeights.resolve(profile.evalWeightsId).threatAssessment,
+                anticipateCombatResponses = profile.anticipateCombatResponses,
             )
             val responder = DecisionResponder(
                 simulator, evaluator,
