@@ -161,6 +161,9 @@ object ArenaAgents {
         // What EngineAiPlayerController plays: production-candidate-expiring plus every fix shipped
         // since. `just arena production-candidate-expiring live 300` prices the stack.
         ArenaAgent("live", AiProfile.LIVE),
+        // LIVE without the opponent's combat responses: `just arena live-without-responses live 300`
+        // prices the opponent-ability model on its own.
+        ArenaAgent("live-without-responses", AiProfile.LIVE.copy(id = "live-without-responses", anticipateCombatResponses = false)),
         // Selection counts by value: searches take what they may, scry/surveil send away only the
         // cards not worth drawing. `just arena production production-selectcount 300` prices it
         // alone; `just arena production-candidate-expiring production-candidate-selectcount 300`

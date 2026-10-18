@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- #3420 Expects the opponent to use its board in a fight: every attack and block it weighs is played out with the opponent using the activated abilities its permanents can afford (a team pump like Leonin Sun Standard, a pinger like Prodigal Sorcerer, keyword granters, regeneration, token blockers) when that wins them the combat, so it stops attacking or blocking into a pump the opponent has mana for, and still makes the play when they are tapped out or the trick can't win.
 - Stops casting an Aura whose only effect is an "if enchanted creature …" entry trigger onto a creature that fails the check (Earthbind on a creature without flying), since it would enter and do nothing.
 - #3319 Flips Chaos Orb: aims at the spot that destroys the most opponent value (the seam between two cards when that pays) and throws it off the table rather than hit its own board; its release is a human's, a little early or late and off-centre, so it sometimes misses or clips a neighbour.
 - #3282 Aims an until-end-of-turn pump at a creature that can still fight: when a beneficial target choice ties (a beginning-of-combat +2/+2 on creatures not yet attacking), it no longer gives it to a bigger creature cast this turn over the one that will attack (Ezekiel Sims, Spider-Totem pumps itself, not a summoning-sick Spider-Man). Permanent payoffs like +1/+1 counters are unaffected.
