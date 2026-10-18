@@ -1096,6 +1096,7 @@ Families:
 - `EffectTarget.ControllerOfDamageSource` — CONTROLLER OF DAMAGE SOURCE: the controller of the source dealing the damage currently being processed.
 - `EffectTarget.ControllerOfPipelineTarget(collectionName: String, index: Int)` — CONTROLLER OF PIPELINE TARGET: Refers to the controller of an entity stored in a pipeline collection.
 - `EffectTarget.ControllerOfTriggeringEntity` — CONTROLLER OF TRIGGERING ENTITY: Refers to the controller/owner of the entity that caused the trigger to fire.
+- `EffectTarget.DamageSource` — DAMAGE SOURCE: the object that dealt the damage of a deals-damage trigger — "it" in "whenever equipped creature deals combat damage to a player, you may sacrifice it" (Ogre-Head Helm).
 - `EffectTarget.DiscardedAsCost(index: Int)` — DISCARDED AS COST: a card discarded to pay this spell's additional cost (`Costs.additional.DiscardCards(...)`) or this activated ability's cost (`Costs.Discard(...)`), by index.
 - `EffectTarget.EachDamagedBySourceThisGame` — MULTI-ENTITY REFERENCE: every **opponent and planeswalker the effect's source has dealt damage to this game** — The Fallen's "each opponent and planeswalker it has dealt damage to this game".
 - `EffectTarget.EnchantedCreature` — The creature enchanted by this aura
@@ -1553,6 +1554,7 @@ Families:
 - `RedirectDamage(redirectTo: EffectTarget, appliesTo: EventPattern, condition: Condition?)` — Redirect damage to another target.
 - `RedirectZoneChange(newDestination: Zone, appliesTo: EventPattern, linkToSource: Boolean, selfOnly: Boolean, shuffleIntoLibrary: Boolean, reveal: Boolean, requiredCause: ZoneChangeCause)` — Redirect a zone change to a different destination.
 - `RedirectZoneChangeWith(newDestination: Zone, additionalEffect: Effect, selfOnly: Boolean, linkToSource: Boolean, riderTiming: ReplacementRiderTiming, appliesTo: EventPattern)` — Redirect a zone change to a different destination AND execute an additional effect.
+- `RegenerateInsteadOfDestruction(appliesTo: EventPattern.DestroyEvent)` — "If <permanent> would be destroyed, regenerate it" — static regeneration (CR 701.19b).
 - `RepeatKeywordAction(times: Int, appliesTo: EventPattern)` — Perform a keyword action (CR 701) times times instead of once (CR 614.1a) — "If you would proliferate, proliferate twice instead." The sibling of ModifyKeywordAction: that one puts an extra effect…
 - `ReplaceDamageWithCounters(counterType: CounterType, sacrificeThreshold: Int?, appliesTo: EventPattern, counterRecipient: DamageCounterRecipient, damagedPlayerMills: Boolean)` — Replace damage with counters (CR 614.1a — an "instead" effect, so the damage is never dealt and nothing that keys on damage being dealt sees it; notably *not* a prevention effect, so it still appli…
 - `ReplaceDamageWithMill(appliesTo: EventPattern, miller: Player, multiplier: Int)` — Prevent matched damage and mill multiplier times that many cards — miller does the milling.

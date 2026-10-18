@@ -5235,6 +5235,14 @@ A resolving nonpermanent spell retains its stack instance through serialized eff
   object that did the targeting (`TriggerContext.targetingSourceEntityId`), where `TriggeringEntity` is
   the permanent it targeted. The object sibling of `Player.ControllerOfTargetingSource`. Mirror-Shield
   Hoplite copies it with `CopyTargetTriggeredAbility(TargetingSource)`.
+- `EffectTarget.DamageSource` — "it" in a deals-damage trigger: the object that dealt the damage
+  (`TriggerContext.damageSourceId`), where `TriggeringEntity` is the damage's recipient. Fixed when the
+  trigger fires, so on an ATTACHED-bound trigger it still names the creature that dealt the damage after
+  the Equipment moved or left in response — unlike `EquippedCreature`, which re-reads the attachment at
+  resolution. Read live (a departed source makes the effect a no-op). Ogre-Head Helm: "whenever
+  equipped creature deals combat damage to a player, you may sacrifice it" is
+  `Effects.SacrificeTarget(EffectTarget.DamageSource)`. The trigger-side sibling of
+  `ControllerOfDamageSource` (the damage-replacement reading).
 - `EffectTarget.TargetController` — the controller of the spell/ability's first chosen target
   ("its controller creates two Map tokens", "its controller gains 4 life"). Control-change effects
   are honored (projected controller first), and a target that has already left the battlefield —
@@ -11968,6 +11976,10 @@ before `genericCostReduction` and the battlefield statics. Kami of Jealous Thirs
 **`ActivationRestriction`**
 
 - `AnyPlayerMay` — permits opponents to activate the source. Free, mana-only, and standalone discard costs are offered through the ordinary legal-action flow; discard choices and affordability use the activating player's hand, including filtered, multiple-card, and random discard costs.
+  Narrow it with a companion `OnlyIfCondition`, whose "you" is the **activating** player: *"Only your
+  opponents may activate this ability"* (Clergy of the Holy Nimbus) is `All(AnyPlayerMay,
+  OnlyIfCondition(Conditions.SourceMatches(GameObjectFilter.Any.opponentControls())))`; Merseine's
+  "only the controller of the enchanted creature" is the same shape with `EnchantedPermanentMatches`.
 
 - `MaxPerTurn(n)` — at most N activations per turn.
 - `OncePerTurn` — once each turn (resets at end of turn).
@@ -17083,6 +17095,14 @@ The priority groups are (CR 616.1a–f):
   Harmonious Emergence: `ReplaceDestructionWith(SacrificeSelfEffect then Effects.GrantKeyword(Keyword.INDESTRUCTIBLE,
   EffectTarget.TriggeringEntity), EventPattern.DestroyEvent(GameObjectFilter.Land.attachedToBySource()))`.
   Umbra armor (`Keyword.UMBRA_ARMOR`) is the keyworded sibling with a rules-fixed replacement.
+- `RegenerateInsteadOfDestruction(appliesTo = EventPattern.DestroyEvent(GameObjectFilter.Any.sourceItself()))` —
+  *"If <permanent> would be destroyed, regenerate it"*: static regeneration (CR 701.19b). Each time a
+  matching permanent would be destroyed, it regenerates instead (damage removed, tapped, removed from
+  combat) — nothing is spent, so it works every time. It *is* regeneration: `Effects.CantBeRegenerated`
+  and Wrath-style "can't be regenerated" destructions switch it off, and it reaches every destruction a
+  regeneration shield does (destroy effects, board wipes, lethal-damage / deathtouch SBAs). Preferred over
+  a banked shield, which stays for later. `appliesTo` defaults to the permanent itself and is read
+  relative to it. Clergy of the Holy Nimbus: `replacementEffect(RegenerateInsteadOfDestruction())`.
 - `ReplacementEffect.IfYouDoBranchEffect(...)` — branch on "if you do" replacement.
 - `OnEnterRun(effect)` — generic "as ~ enters the battlefield, run [effect]". The wrapped effect
   executes via the normal effect-executor pipeline at entry time (so `EffectTarget.Self` resolves to
