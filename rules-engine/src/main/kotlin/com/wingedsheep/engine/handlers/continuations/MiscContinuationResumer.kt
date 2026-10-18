@@ -386,7 +386,7 @@ class MiscContinuationResumer(
                 container.with(current.withRemoved(counterType, chosen))
             }
             events.add(
-                CountersRemovedEvent(continuation.playerId, continuation.counterType, chosen)
+                CountersRemovedEvent(continuation.playerId, continuation.counterType, chosen, removedBy = continuation.playerId)
             )
         }
 
@@ -887,7 +887,7 @@ class MiscContinuationResumer(
 
             val sourceName = newState.getEntity(continuation.sourceId)
                 ?.get<com.wingedsheep.engine.state.components.identity.CardComponent>()?.name ?: ""
-            events.add(CountersRemovedEvent(continuation.sourceId, continuation.counterType, totalMoved, sourceName))
+            events.add(CountersRemovedEvent(continuation.sourceId, continuation.counterType, totalMoved, sourceName, removedBy = continuation.controllerId))
         }
 
         // Add counters to each target (applying replacement effects like Hardened Scales)
@@ -953,7 +953,8 @@ class MiscContinuationResumer(
                 continuation.counterType,
                 chosen,
                 state.getEntity(continuation.sourceId)
-                    ?.get<com.wingedsheep.engine.state.components.identity.CardComponent>()?.name ?: ""
+                    ?.get<com.wingedsheep.engine.state.components.identity.CardComponent>()?.name ?: "",
+                removedBy = continuation.controllerId
             )
         )
 
@@ -998,7 +999,8 @@ class MiscContinuationResumer(
             continuation.targetId,
             continuation.currentCounterType,
             chosen,
-            continuation.targetName
+            continuation.targetName,
+            continuation.controllerId
         )
         newState = afterRemoval
         removalEvent?.let { events.add(it) }

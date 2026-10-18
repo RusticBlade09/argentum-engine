@@ -485,6 +485,8 @@ function formatGameOverReason(
   table: 'duel' | 'pod' | 'teams' = 'duel',
 ): string {
   if (result === 'draw') {
+    // CARD_EFFECT: an effect made the game a draw ("the game is a draw") and nobody lost.
+    if (reason === GameOverReason.CARD_EFFECT) return 'The game is a draw. Nobody won or lost.'
     return table === 'duel' ? 'Both players lost simultaneously.' : 'The remaining players lost simultaneously.'
   }
   // A pod is won by outlasting several opponents, so "your opponent" (singular, and naming only

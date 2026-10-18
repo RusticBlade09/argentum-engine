@@ -84,7 +84,7 @@ class MoveCountersExecutor(
         return EffectResult.success(
             newState,
             listOf(
-                CountersRemovedEvent(sourceId, effect.counterType, moveCount, sourceName),
+                CountersRemovedEvent(sourceId, effect.counterType, moveCount, sourceName, removedBy = context.controllerId),
                 CountersAddedEvent(destinationId, effect.counterType, placedCount, destName, firstThisTurn, firstOfTypeThisTurn = firstOfTypeThisTurn, placedBy = context.controllerId)
             )
         )

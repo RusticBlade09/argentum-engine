@@ -482,7 +482,7 @@ class CostPaymentService(private val services: EngineServices) {
                 newState = newState.updateEntity(selfId) { c ->
                     c.with(counters.withRemoved(counterType, required))
                 }
-                events.add(CountersRemovedEvent(selfId, counterType, required, container.get<CardComponent>()?.name ?: "Permanent"))
+                events.add(CountersRemovedEvent(selfId, counterType, required, container.get<CardComponent>()?.name ?: "Permanent", removedBy = payerId))
                 remaining = 0
             } else {
                 var selfRemaining = required
@@ -499,7 +499,8 @@ class CostPaymentService(private val services: EngineServices) {
                             selfId,
                             type,
                             toRemove,
-                            container.get<CardComponent>()?.name ?: "Permanent"
+                            container.get<CardComponent>()?.name ?: "Permanent",
+                            removedBy = payerId
                         )
                     )
                     selfRemaining -= toRemove
@@ -542,7 +543,7 @@ class CostPaymentService(private val services: EngineServices) {
                     c.with(counters.withRemoved(removeType, toRemove))
                 }
                 val name = container.get<CardComponent>()?.name ?: "Permanent"
-                events.add(CountersRemovedEvent(entityId, removeType, toRemove, name))
+                events.add(CountersRemovedEvent(entityId, removeType, toRemove, name, removedBy = payerId))
                 remaining -= toRemove
             }
         }
@@ -1114,7 +1115,7 @@ class CostPaymentService(private val services: EngineServices) {
                     c.with(counters.withRemoved(resolvedType, removal.count))
                 }
                 val entityName = container.get<CardComponent>()?.name ?: "Permanent"
-                events.add(CountersRemovedEvent(removal.entityId, resolvedType, removal.count, entityName))
+                events.add(CountersRemovedEvent(removal.entityId, resolvedType, removal.count, entityName, removedBy = playerId))
             }
             return CostPaymentExecution(newState, events, success = true)
         }

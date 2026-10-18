@@ -1667,9 +1667,12 @@ class GameSession(
         val state = gameState ?: return null
         if (!state.gameOver) return null
 
-        // If no winner, it's a draw (both players lost simultaneously)
+        // No winner is a draw. A stalled or abandoned game, or everyone losing at once, is DRAW; a
+        // draw the engine reached with nobody having lost — "the game is a draw" (CR 104.4c, Divine
+        // Intervention) — is CARD_EFFECT.
         if (state.winnerId == null) {
-            return GameOverReason.DRAW
+            val anyoneLost = state.turnOrder.any { state.getEntity(it)?.get<PlayerLostComponent>() != null }
+            return if (anyoneLost || stallMessage() != null) GameOverReason.DRAW else GameOverReason.CARD_EFFECT
         }
 
         // Find why the losing side lost. In Two-Headed Giant a whole team is defeated, so prefer a

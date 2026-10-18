@@ -1749,7 +1749,15 @@ data class CountersRemovedEvent(
      * opponent's effect, which the printed wording excludes. It is a property of the removal, not
      * of the permanent, so it rides the event rather than living in state.
      */
-    val byDamagePrevention: Boolean = false
+    val byDamagePrevention: Boolean = false,
+    /**
+     * The player who *removed* these counters — the controller of the effect that removed them,
+     * or the player who paid a remove-counters cost. Drives "When **you** remove the last
+     * intervention counter" ([com.wingedsheep.sdk.scripting.EventPattern.CountersRemovedEvent.removedBy]).
+     * `null` for removals no player made (state-based actions, damage removing counters); a null
+     * remover never matches a remover-restricted trigger.
+     */
+    val removedBy: EntityId? = null
 ) : GameEvent
 
 /**
@@ -2087,7 +2095,7 @@ enum class GameEndReason {
     COMMANDER_DAMAGE,
     /** Two-Headed Giant: a player lost with their team (CR 810.8a). */
     TEAM_DEFEATED,
-    /** Rule 104.4c — SBAs never stabilized, treated as an unbreakable infinite loop. */
+    /** Rule 104.4b — SBAs never stabilized, treated as an unbreakable infinite loop. */
     INFINITE_LOOP,
     UNKNOWN
 }

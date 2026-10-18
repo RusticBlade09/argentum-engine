@@ -502,7 +502,7 @@ class CostHandler(private val zones: ZoneTransitionService) {
                 val name = holder.get<CardComponent>()?.name ?: "Permanent"
                 CostPaymentResult.success(
                     newState, manaPool,
-                    listOf(CountersRemovedEvent(holderId, cost.counterType, removed, name, remainingCount = 0)),
+                    listOf(CountersRemovedEvent(holderId, cost.counterType, removed, name, remainingCount = 0, removedBy = controllerId)),
                 )
             }
             is AbilityCost.SacrificeGrantingPermanent -> {
@@ -1090,7 +1090,7 @@ class CostHandler(private val zones: ZoneTransitionService) {
                     newState = newState.updateEntity(sourceId) { c ->
                         c.with(counters.withRemoved(counterType, requiredCount))
                     }
-                    events.add(CountersRemovedEvent(sourceId, counterType, requiredCount, sourceName))
+                    events.add(CountersRemovedEvent(sourceId, counterType, requiredCount, sourceName, removedBy = controllerId))
                 } else {
                     // Self with any-type: use distributedCounterRemovals
                     val removals = choices.distributedCounterRemovals
@@ -1101,7 +1101,7 @@ class CostHandler(private val zones: ZoneTransitionService) {
                         newState = newState.updateEntity(sourceId) { c ->
                             c.with(source.withRemoved(resolvedType, removal.count))
                         }
-                        events.add(CountersRemovedEvent(sourceId, resolvedType, removal.count, sourceName))
+                        events.add(CountersRemovedEvent(sourceId, resolvedType, removal.count, sourceName, removedBy = controllerId))
                     }
                 }
             } else {

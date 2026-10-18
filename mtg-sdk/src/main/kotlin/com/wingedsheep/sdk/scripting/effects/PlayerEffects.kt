@@ -844,6 +844,21 @@ data class WinGameEffect(
 }
 
 /**
+ * "The game is a draw." (CR 104.4c) — the game ends at once with no winner and no loser
+ * (Divine Intervention).
+ *
+ * Neither [WinGameEffect] nor [LoseGameEffect] can take it: both name a player and work through
+ * losses, so "can't lose the game" and "can't win the game" grants interfere with them. A draw
+ * marks nobody as having lost, so neither grant stops it. The engine has no limited range of
+ * influence, so the draw ends the whole game (CR 104.4e applies only with that option).
+ */
+@SerialName("GameIsDraw")
+@Serializable
+data object GameIsDrawEffect : Effect {
+    override val description: String = "the game is a draw"
+}
+
+/**
  * Grant a protection-style evasion keyword (shroud or hexproof) to a target entity for
  * the specified duration. Works for players, creatures, and planeswalkers.
  *

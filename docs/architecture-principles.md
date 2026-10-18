@@ -1101,7 +1101,7 @@ affected, live in [`GameLimits`](../rules-engine/src/main/kotlin/com/wingedsheep
   the JVM call stack overflows. `RepeatDynamicTimesEffect` additionally clamps its body count
   (`MAX_REPEAT_ITERATIONS`) since it materializes one body per iteration.
 
-Each cap `System.err`-logs when it actually bites (mirroring the SBA loop's 104.4c draw bail-out)
+Each cap `System.err`-logs when it actually bites (mirroring the SBA loop's 104.4b draw bail-out)
 so a degenerate card/combo stays debuggable. These are backstops, not game rules.
 
 ### 2.9 Turn Structure and Priority

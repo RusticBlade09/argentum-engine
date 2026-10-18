@@ -463,18 +463,21 @@ class ObjectTriggerSubject internal constructor(
     /**
      * "one or more [type] counters are removed from" it. [lastRemoved] is "when the last [type]
      * counter is removed" (CR 310.12b and the other countdown mechanics); [byDamagePrevention] is a
-     * removal made to prevent damage.
+     * removal made to prevent damage; [by] is the player who must have removed them ("when **you**
+     * remove the last intervention counter").
      */
     fun losesCounters(
         type: CounterType? = null,
         lastRemoved: Boolean = false,
         byDamagePrevention: Boolean = false,
+        by: Player? = null,
     ): TriggerSpec = spec(
         CountersRemovedEvent(
             counterType = type,
             filter = filterOrAny,
             lastRemoved = lastRemoved,
             byDamagePrevention = byDamagePrevention,
+            removedBy = by,
         )
     )
 

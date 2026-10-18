@@ -874,6 +874,7 @@ Families:
 - `GainControlByRankEffect(metric: PlayerRankMetric, target: EffectTarget, direction: PlayerRankDirection, tieBreak: RankTieBreak)` — Gain control of a permanent based on which player sits at one end of a PlayerRankMetric.
 - `GainControlEffect(target: EffectTarget, duration: Duration)` — Gain control of target permanent.
 - `GainLifeEffect(amount: DynamicAmount, target: EffectTarget)` — Gain life effect.
+- `GameIsDrawEffect` — "The game is a draw." (CR 104.4c) — the game ends at once with no winner and no loser (Divine Intervention).
 - `GatedEffect(gate: Gate, then: Effect, otherwise: Effect?, decisionMaker: EffectTarget?, descriptionOverride: String?, hint: String?)` — One resolution frame for the optional / gated-effect cluster.
 - `GatherCardsEffect(source: CardSource, storeAs: String, revealed: Boolean, lookAudience: LookAudience, search: Boolean)` — Gather cards from a source and store them in a named collection.
 - `GatherSubtypesEffect(from: String, storeAs: String)` — Extract the subtypes of each entity in a stored collection and save the result as a list of subtype sets in `storedSubtypeGroupsstoreAs`.
@@ -1172,7 +1173,7 @@ Families:
 - `EventPattern.CounterPlacementEvent(counterType: CounterType?, recipient: Recipient)` — When counters would be placed on a permanent.
 - `EventPattern.CounterSpellEvent(counterer: Player)` — When a spell or ability controlled by counterer would counter a spell.
 - `EventPattern.CountersPlacedEvent(counterType: CounterType?, filter: GameObjectFilter, firstTimeEachTurn: Boolean, placedBy: Player?, batch: Boolean, includePlayers: Boolean, recipient: Player?)` — When one or more counters of a specific type are placed on a permanent.
-- `EventPattern.CountersRemovedEvent(counterType: CounterType?, filter: GameObjectFilter, lastRemoved: Boolean, byDamagePrevention: Boolean)` — When one or more counters of a specific type are **removed** from a permanent — the mirror of CountersPlacedEvent.
+- `EventPattern.CountersRemovedEvent(counterType: CounterType?, filter: GameObjectFilter, lastRemoved: Boolean, byDamagePrevention: Boolean, removedBy: Player?)` — When one or more counters of a specific type are **removed** from a permanent — the mirror of CountersPlacedEvent.
 - `EventPattern.CreatureDealtDamageBySourceDiesEvent(sourceFilter: GameObjectFilter?, dyingFilter: GameObjectFilter?)` — Whenever a creature dealt damage this turn by a matching source dies.
 - `EventPattern.CreatureTurnedFaceUpEvent(player: Player, filter: GameObjectFilter)` — When a creature is turned face up.
 - `EventPattern.CreaturesAttackYouEvent(minAttackers: Int, includePlaneswalkersYouControl: Boolean, unblocked: Boolean)` — When one or more creatures attack the trigger's controller (the player).

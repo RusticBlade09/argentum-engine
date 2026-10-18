@@ -86,6 +86,7 @@ class PlayerExecutors(
         openLifeBidExecutor,
         LoseGameExecutor(predicateEvaluator = zones.predicateEvaluator),
         WinGameExecutor(predicateEvaluator = zones.predicateEvaluator),
+        GameIsDrawExecutor(),
         payOrSufferExecutor,
         PlayAdditionalLandsExecutor(),
         PreventLandPlaysThisTurnExecutor(),

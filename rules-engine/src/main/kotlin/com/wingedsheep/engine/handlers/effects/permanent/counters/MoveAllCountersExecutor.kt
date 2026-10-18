@@ -57,7 +57,7 @@ class MoveAllCountersExecutor(
         // stale source state.
         var newState = state.updateEntity(sourceId) { it.with(CountersComponent()) }
         moving.forEach { (counterType, count) ->
-            events.add(CountersRemovedEvent(sourceId, counterType, count, sourceName))
+            events.add(CountersRemovedEvent(sourceId, counterType, count, sourceName, removedBy = context.controllerId))
         }
 
         // One batch onto a single permanent ⇒ one "first this turn" flag, on the first event.

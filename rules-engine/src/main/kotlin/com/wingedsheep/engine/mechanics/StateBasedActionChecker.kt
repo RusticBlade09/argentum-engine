@@ -72,7 +72,7 @@ class StateBasedActionChecker(
         var lastIterationEvents: List<GameEvent> = emptyList()
         do {
             if (iterations >= MAX_SBA_ITERATIONS) {
-                // SBAs did not stabilize. Per MTG rule 104.4c, an unbreakable infinite
+                // SBAs did not stabilize. Per MTG rule 104.4b, an unbreakable infinite
                 // loop ends the game in a draw — that's the correct outcome whether this
                 // is a legitimate combo (e.g. Worldgorger Dragon shenanigans) or a bug
                 // (a misbehaving replacement effect / card script). We still log to
@@ -80,7 +80,7 @@ class StateBasedActionChecker(
                 System.err.println(
                     "StateBasedActionChecker: SBAs did not stabilize after " +
                             "$MAX_SBA_ITERATIONS iterations — ending game as a draw " +
-                            "(rule 104.4c). Last iteration events: $lastIterationEvents"
+                            "(rule 104.4b). Last iteration events: $lastIterationEvents"
                 )
                 val drawnState = currentState.copy(gameOver = true, winnerId = null)
                 val drawEvent = GameEndedEvent(winnerId = null, reason = GameEndReason.INFINITE_LOOP)

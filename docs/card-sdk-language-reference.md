@@ -1693,6 +1693,8 @@ uses `Patterns.Exile.impulse()`; playing the card follows ordinary costs and tim
   at 0; a player with no maximum hand size has nothing to reduce (the reduction is inert while that
   holds).
 - `WinGame(target, message?)` — target wins the game.
+- `GameIsDraw()` — "the game is a draw" (CR 104.4c, Divine Intervention). Ends the game at once with
+  no winner; nobody loses, so "can't lose the game" / "can't win the game" grants don't stop it.
 - `TakeExtraTurn(target, loseAtEndStep?, powerUpAbilitiesCantBeActivated?)` — target takes an extra turn after this
   one (Time Walk, Lost Isle Calling). Set `loseAtEndStep = true` for "...you lose the game at the beginning of that
   turn's end step" (Last Chance, Final Fortune). Set `powerUpAbilitiesCantBeActivated = true` for "During that turn,
@@ -7341,7 +7343,7 @@ requireExcess, batch, requires)`, `dealsCombatDamage(to, …)`, `isDealtDamage(b
 spellsOnly, abilitiesOnly, firstTimeEachTurn, includeSpellTargets, includePlayerTargets, ofBackupAbility,
 targetsOnlyIt)`,
 `getsCounters(type?, by?, firstTimeEachTurn?, batch?, orPlayer?)`, `losesCounters(type?, lastRemoved?,
-byDamagePrevention?)`, `trains()`, `evolves()`, `champions()`, `crews()`, `saddles()`, `becomesCrewed()`, `becomesSaddled()`,
+byDamagePrevention?, by?)`, `trains()`, `evolves()`, `champions()`, `crews()`, `saddles()`, `becomesCrewed()`, `becomesSaddled()`,
 `becomesRenowned()`, `becomesMonstrous()`, `becomesPlotted()`, `explores(revealed?)`, `connives()`, `becomesAttached(to,
 controller)`, `becomesUnattached(from, controller)`, `controlChanges(direction, toOpponent?)`,
 `isCast()`, `isCycled()`, `isDiscarded()`, `isSacrificed()`, `doorUnlocked()`, and on `attached`
@@ -9034,7 +9036,7 @@ Dominant back faces that "stay" instead self-exile on their final chapter, dodgi
   `Triggers.you.getsCounters(CounterType.ENERGY)` + `Effects.DealDamage(DynamicAmounts.triggerCountersPlaced(), target)`.
 - `Triggers.self.getsCounters()` — "whenever you put one or more counters on ~" (any kind, SELF-bound).
   Aragorn, Company Leader.
-- `Triggers.<subject>.losesCounters(type, lastRemoved, byDamagePrevention)`
+- `Triggers.<subject>.losesCounters(type, lastRemoved, byDamagePrevention, by)`
   (`EventPattern.CountersRemovedEvent`) — the mirror of `Triggers.<subject>.getsCounters(type, by, firstTimeEachTurn, batch)`: fires when counters of
   `counterType` are **removed** from a permanent matching `filter`. `binding = SELF` restricts it to
   the source permanent; the permanent the counters left is `EffectTarget.TriggeringEntity` and how
@@ -9048,6 +9050,12 @@ Dominant back faces that "stay" instead self-exile on their final chapter, dodgi
   live count, because several removals can land in one batch (two attackers damaging the same battle)
   and the live count would make every one of them look like the last. Backs the intrinsic Siege
   defeat ability (`Sieges.defeatAbility`, CR 310.12b).
+  **The remover.** `by = Player.You` (`CountersRemovedEvent.removedBy`, the mirror of `placedBy`) is
+  "when **you** remove" — the remover is the controller of the effect that removed the counters, or
+  the player who paid a remove-counters cost. A removal by an opponent's effect doesn't fire it, and
+  a removal no player made (a state-based action, damage to a battle, a shield counter) never matches
+  a non-null `by`. Divine Intervention:
+  `Triggers.self.losesCounters(CounterType.INTERVENTION, lastRemoved = true, by = Player.You)`.
 - `EventPattern.EnlistedEvent` (facade: `Triggers.self.enlists()`, SELF only) — fires once
   per paid enlist instance, binding the enlisted creature as `EffectTarget.TriggeringEntity`.
   This is distinct from an ordinary tap and from the keyword's separately generated linked boost.

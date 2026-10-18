@@ -990,7 +990,8 @@ internal object RemoveCountersCostKind : SpellCostKind<CostAtom.RemoveCounters> 
                 entityId = removal.entityId,
                 counterType = resolvedType,
                 amount = removal.count,
-                entityName = container.get<CardComponent>()?.name ?: "Permanent"
+                entityName = container.get<CardComponent>()?.name ?: "Permanent",
+                removedBy = ledger.playerId
             ))
         }
         return null

@@ -962,6 +962,11 @@ class TriggerMatcher(
                 // "…removed from this creature **this way**": only the removal a
                 // PreventDamageByRemovingCounter replacement performed counts (Magma Pummeler).
                 if (trigger.byDamagePrevention && !event.byDamagePrevention) return false
+                // "When YOU remove the last counter": an unattributed removal (null) never matches.
+                trigger.removedBy?.let { remover ->
+                    val removedBy = event.removedBy ?: return false
+                    if (!matchesPlayer(state, remover, removedBy, controllerId)) return false
+                }
                 // "The last counter is removed": *this* removal must have emptied the permanent of
                 // that counter type. Read the count the event recorded, not the live one — two
                 // attackers damaging the same battle produce two removals in one batch, and by

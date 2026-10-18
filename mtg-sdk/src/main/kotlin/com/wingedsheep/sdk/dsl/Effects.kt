@@ -518,6 +518,11 @@ object Effects {
         com.wingedsheep.sdk.scripting.effects.WinGameEffect(target, message)
 
     /**
+     * "The game is a draw." (CR 104.4c — Divine Intervention.)
+     */
+    fun GameIsDraw(): Effect = com.wingedsheep.sdk.scripting.effects.GameIsDrawEffect
+
+    /**
      * Restart the game (CR 727), the controller taking the first turn. The cards in pipeline
      * collection [exempt] stay in exile through the restart; [afterRestart] is the ability's remaining
      * text, followed just before the new game's first untap step (CR 727.4) with [exempt] still

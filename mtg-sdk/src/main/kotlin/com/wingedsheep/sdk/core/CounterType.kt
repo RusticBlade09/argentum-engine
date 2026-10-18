@@ -752,6 +752,13 @@ value class CounterType(val name: String) {
          */
         val HATCHING = CounterType("HATCHING")
 
+        /**
+         * Intervention counter (LEG — Divine Intervention). A countdown with no inherent rule: an
+         * upkeep trigger removes one, and "when you remove the last intervention counter" ends the
+         * game in a draw.
+         */
+        val INTERVENTION = CounterType("INTERVENTION")
+
         /** Every counter kind the SDK names, in declaration order. */
         val KNOWN: List<CounterType> = listOf(
             PLUS_ONE_PLUS_ONE,
@@ -884,6 +891,7 @@ value class CounterType(val name: String) {
             MUSTER,
             BRAIN,
             HATCHING,
+            INTERVENTION,
         )
 
         /**
