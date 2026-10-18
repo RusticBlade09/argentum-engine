@@ -495,6 +495,109 @@
     ]
 }
 
+// Anchor to Reality
+{
+    "name": "Anchor to Reality",
+    "manaCost": "{2}{U}{U}",
+    "typeLine": "Sorcery",
+    "oracleText": "As an additional cost to cast this spell, sacrifice an artifact or creature.\nSearch your library for an Equipment or Vehicle card, put that card onto the battlefield, then shuffle. If it has mana value less than the sacrificed permanent's mana value, scry 2.",
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "GatherCards",
+                    "source": {
+                        "type": "FromZone",
+                        "zone": "Library",
+                        "filter": "Equipment|Vehicle"
+                    },
+                    "storeAs": "gathered0",
+                    "search": true
+                },
+                {
+                    "type": "SelectFromCollection",
+                    "from": "gathered0",
+                    "selection": {
+                        "type": "ChooseUpTo",
+                        "count": {
+                            "type": "Fixed",
+                            "amount": 1
+                        }
+                    },
+                    "storeSelected": "selected1",
+                    "prompt": "Search your library for an Equipment or Vehicle card"
+                },
+                {
+                    "type": "MoveCollection",
+                    "from": "selected1",
+                    "destination": {
+                        "type": "ToZone",
+                        "zone": "Battlefield"
+                    }
+                },
+                "ShuffleLibrary",
+                {
+                    "type": "ConditionalOnCollection",
+                    "collection": "selected1",
+                    "ifNotEmpty": {
+                        "type": "Gated",
+                        "gate": {
+                            "type": "Gate.WhenCondition",
+                            "condition": {
+                                "type": "Compare",
+                                "left": {
+                                    "type": "StoredCardManaValue",
+                                    "collectionName": "selected1"
+                                },
+                                "operator": "LT",
+                                "right": {
+                                    "type": "EntityProperty",
+                                    "entity": "SacrificedAsCost",
+                                    "numericProperty": "ManaValue"
+                                }
+                            }
+                        },
+                        "then": {
+                            "type": "Scry",
+                            "count": 2
+                        }
+                    }
+                }
+            ]
+        },
+        "additionalCosts": [
+            {
+                "type": "AdditionalAtom",
+                "atom": {
+                    "type": "AtomSacrifice",
+                    "filter": "artifact|creature"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "45",
+        "rarity": "UNCOMMON",
+        "artist": "Alix Branwyn",
+        "flavorText": "The Wanderer sighed in relief as the Reality Chip tethered her wayward spark to Kamigawa.",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/8/58141ad0-32ea-4e07-a133-ff7812d58c0e.jpg?1783923909",
+        "rulings": [
+            {
+                "date": "2022-02-18",
+                "text": "You must sacrifice exactly one artifact or creature to cast this spell; you can't cast it without sacrificing an artifact or creature, and you can't sacrifice additional artifacts or creatures."
+            },
+            {
+                "date": "2022-02-18",
+                "text": "If a card in a player's library has {X} in its mana cost, X is 0."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Ao, the Dawn Sky
 {
     "name": "Ao, the Dawn Sky",
@@ -937,6 +1040,76 @@
         "imageUri": "https://cards.scryfall.io/normal/front/b/8/b8c30ffb-b4f5-40b0-87b8-800a42bded2b.jpg?1783923828"
     },
     "colorIdentityOverride": []
+}
+
+// Awakened Awareness
+{
+    "name": "Awakened Awareness",
+    "manaCost": "{X}{U}{U}",
+    "typeLine": "Enchantment — Aura",
+    "oracleText": "Enchant artifact or creature\nWhen this Aura enters, put X +1/+1 counters on enchanted permanent.\nAs long as enchanted permanent is a creature, it has base power and toughness 1/1.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Awakened Awareness:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "AddDynamicCounters",
+                    "counterType": "PLUS_ONE_PLUS_ONE",
+                    "amount": "CastX",
+                    "target": "EnchantedPermanent"
+                },
+                "descriptionOverride": "When this Aura enters, put X +1/+1 counters on enchanted permanent."
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "ConditionalStaticAbility",
+                "ability": {
+                    "type": "SetBasePowerToughnessStatic",
+                    "power": 1,
+                    "toughness": 1
+                },
+                "condition": {
+                    "type": "EntityMatches",
+                    "entity": "EnchantedPermanent",
+                    "filter": "creature"
+                }
+            }
+        ],
+        "auraTarget": {
+            "type": "TargetObject",
+            "filter": {
+                "baseFilter": "creature|artifact"
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "47",
+        "rarity": "UNCOMMON",
+        "artist": "Tran Nguyen",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/1/51378e10-2f17-445b-97e9-5c373234ba52.jpg?1783923906",
+        "rulings": [
+            {
+                "date": "2022-02-18",
+                "text": "Awakened Awareness will overwrite any previous effects that set the enchanted creature's power and toughness to specific numbers. Effects that otherwise modify the enchanted creature's power and toughness will still apply no matter when they took effect. The same is true for +1/+1 counters."
+            },
+            {
+                "date": "2022-02-18",
+                "text": "The enchanted creature's toughness becomes 1 before the triggered ability that puts counters on it goes on the stack. If it has damage equal to or greater than its toughness at that point, it will be destroyed before the triggered ability that puts counters on it resolves."
+            },
+            {
+                "date": "2022-02-18",
+                "text": "If Awakened Awareness is enchanting a Vehicle that is currently a creature or it becomes a creature later, its base power and toughness will be 1/1, not the power and toughness printed on the Vehicle."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
 }
 
 // Bamboo Grove Archer
@@ -2893,6 +3066,154 @@
     }
 }
 
+// Covert Technician
+{
+    "name": "Covert Technician",
+    "manaCost": "{2}{U}",
+    "typeLine": "Artifact Creature — Human Ninja",
+    "oracleText": "Ninjutsu {1}{U} ({1}{U}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nWhenever this creature deals combat damage to a player, you may put an artifact card with mana value less than or equal to that damage from your hand onto the battlefield.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 4
+    },
+    "keywords": [
+        "NINJUTSU"
+    ],
+    "keywordAbilities": [
+        {
+            "type": "Ninjutsu",
+            "cost": "{1}{U}"
+        }
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Covert Technician:1",
+                "trigger": {
+                    "type": "DealsDamageEvent",
+                    "damageType": "DamageCombat",
+                    "recipient": {
+                        "type": "RecipientPlayer",
+                        "player": "Any"
+                    }
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "StoreNumber",
+                            "name": "number0",
+                            "amount": {
+                                "type": "ContextProperty",
+                                "key": "TRIGGER_DAMAGE_AMOUNT"
+                            }
+                        },
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "FromZone",
+                                "zone": "Hand",
+                                "filter": "artifact"
+                            },
+                            "storeAs": "gathered1"
+                        },
+                        {
+                            "type": "FilterCollection",
+                            "from": "gathered1",
+                            "filter": {
+                                "cardPredicates": [
+                                    {
+                                        "type": "ManaValueAtMostDynamic",
+                                        "amount": {
+                                            "type": "VariableReference",
+                                            "variableName": "number0"
+                                        }
+                                    }
+                                ]
+                            },
+                            "storeMatching": "matching2"
+                        },
+                        {
+                            "type": "SelectFromCollection",
+                            "from": "matching2",
+                            "selection": {
+                                "type": "ChooseUpTo",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            "storeSelected": "selected3",
+                            "prompt": "Choose an artifact card to put onto the battlefield (optional)"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "selected3",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Battlefield"
+                            }
+                        }
+                    ]
+                },
+                "descriptionOverride": "Whenever this creature deals combat damage to a player, you may put an artifact card with mana value less than or equal to that damage from your hand onto the battlefield."
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "ninjutsu_{1}{U}",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{1}{U}"
+                            }
+                        },
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomReturnToHand",
+                                "filter": {
+                                    "cardPredicates": [
+                                        "IsCreature"
+                                    ],
+                                    "statePredicates": [
+                                        "IsAttacking",
+                                        "IsUnblocked"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                "effect": {
+                    "type": "MoveToZone",
+                    "target": "Self",
+                    "destination": "Battlefield",
+                    "placement": "TappedAndAttacking",
+                    "fromZone": "Hand",
+                    "attackDefender": "RETURNED_ATTACKER"
+                },
+                "activateFromZone": "Hand",
+                "descriptionOverride": "Ninjutsu {1}{U} ({1}{U}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)",
+                "keyword": "NINJUTSU"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "49",
+        "rarity": "UNCOMMON",
+        "artist": "Lucas Graciano",
+        "imageUri": "https://cards.scryfall.io/normal/front/d/b/dbae9991-43a2-4afb-a882-fff6b0d89d12.jpg?1783923906"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Crackling Emergence
 {
     "name": "Crackling Emergence",
@@ -2966,6 +3287,161 @@
     },
     "colorIdentityOverride": [
         "RED"
+    ]
+}
+
+// Discover the Impossible
+{
+    "name": "Discover the Impossible",
+    "manaCost": "{2}{U}",
+    "typeLine": "Instant",
+    "oracleText": "Look at the top five cards of your library. Exile one of them face down and put the rest on the bottom of your library in a random order. You may cast the exiled card without paying its mana cost if it's an instant spell with mana value 2 or less. If you don't, put that card into your hand.",
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "GatherCards",
+                    "source": {
+                        "type": "TopOfLibrary",
+                        "count": {
+                            "type": "Fixed",
+                            "amount": 5
+                        }
+                    },
+                    "storeAs": "gathered0"
+                },
+                {
+                    "type": "SelectFromCollection",
+                    "from": "gathered0",
+                    "selection": {
+                        "type": "ChooseExactly",
+                        "count": {
+                            "type": "Fixed",
+                            "amount": 1
+                        }
+                    },
+                    "storeSelected": "selected1",
+                    "storeRemainder": "remainder1",
+                    "prompt": "Choose a card to exile face down",
+                    "selectedLabel": "Exile face down",
+                    "remainderLabel": "Put on bottom of library"
+                },
+                {
+                    "type": "MoveCollection",
+                    "from": "selected1",
+                    "destination": {
+                        "type": "ToZone",
+                        "zone": "Exile"
+                    },
+                    "faceDown": "HIDDEN",
+                    "storeMovedAs": "moved2"
+                },
+                {
+                    "type": "MoveCollection",
+                    "from": "remainder1",
+                    "destination": {
+                        "type": "ToZone",
+                        "zone": "Library",
+                        "placement": "Bottom"
+                    },
+                    "order": "Random"
+                },
+                {
+                    "type": "SelectFromCollection",
+                    "from": "moved2",
+                    "selection": "ChooseSpell",
+                    "filter": "instant mv<=2",
+                    "storeSelected": "selected4",
+                    "prompt": "You may cast the exiled card without paying its mana cost if it's an instant spell with mana value 2 or less",
+                    "selectedLabel": "Cast for free",
+                    "showAllCards": true
+                },
+                {
+                    "type": "CastFromCollectionWithoutPayingCost",
+                    "from": "selected4"
+                },
+                {
+                    "type": "FilterCollection",
+                    "from": "moved2",
+                    "filter": {
+                        "statePredicates": [
+                            {
+                                "type": "InZone",
+                                "zone": "Exile"
+                            }
+                        ]
+                    },
+                    "storeMatching": "matching6"
+                },
+                {
+                    "type": "MoveCollection",
+                    "from": "matching6",
+                    "destination": {
+                        "type": "ToZone",
+                        "zone": "Hand"
+                    }
+                }
+            ]
+        }
+    },
+    "metadata": {
+        "collectorNumber": "50",
+        "rarity": "UNCOMMON",
+        "artist": "Ryan Pancoast",
+        "imageUri": "https://cards.scryfall.io/normal/front/8/c/8c201117-9850-4e92-9ecc-e4d71a70a959.jpg?1783923908",
+        "rulings": [
+            {
+                "date": "2022-02-18",
+                "text": "You may cast the card you exile with Discover the Impossible as long as the resulting spell is an instant spell with mana value 2 or less, even if the card you exiled doesn't match that criteria. This may happen if you exile a split card, a modal double-faced card, an adventurer card, or similar."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
+// Disruption Protocol
+{
+    "name": "Disruption Protocol",
+    "manaCost": "{U}{U}",
+    "typeLine": "Instant",
+    "oracleText": "As an additional cost to cast this spell, tap an untapped artifact you control or pay {1}.\nCounter target spell.",
+    "script": {
+        "spellEffect": "Counter",
+        "targetRequirements": [
+            {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": {},
+                    "zone": "Stack"
+                },
+                "id": "t0"
+            }
+        ],
+        "additionalCosts": [
+            {
+                "type": "OrPay",
+                "cost": {
+                    "type": "AdditionalAtom",
+                    "atom": {
+                        "type": "AtomTapPermanents",
+                        "filter": "artifact"
+                    }
+                },
+                "alternativeManaCost": "{1}"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "51",
+        "artist": "Pauline Voss",
+        "flavorText": "\"Let's just turn that off, shall we?\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/0/5/053ab598-06a4-43ae-b9fd-c291bd05642c.jpg?1783923908"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
     ]
 }
 
@@ -5110,6 +5586,62 @@
     },
     "colorIdentityOverride": [
         "GREEN"
+    ]
+}
+
+// Guardians of Oboro
+{
+    "name": "Guardians of Oboro",
+    "manaCost": "{2}{U}",
+    "typeLine": "Creature — Moonfolk Samurai",
+    "oracleText": "Defender\nModified creatures you control can attack as though they didn't have defender. (Equipment, Auras you control, and counters are modifications.)",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 4
+    },
+    "keywords": [
+        "DEFENDER"
+    ],
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "CanAttackDespiteDefender",
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            "IsCreature"
+                        ],
+                        "statePredicates": [
+                            "IsModified"
+                        ],
+                        "controllerPredicate": "ControlledByYou"
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "56",
+        "artist": "Anna Steinbauer",
+        "flavorText": "\"The palace is closed to outsiders.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/e/9/e9c44d4e-742f-4e4f-9bf4-921075bc427c.jpg?1783923904",
+        "rulings": [
+            {
+                "date": "2022-02-18",
+                "text": "An Aura controlled by an opponent does not cause a creature you control to be modified."
+            },
+            {
+                "date": "2022-02-18",
+                "text": "A creature with a counter on it is considered modified no matter what kind of counter it is or which player put it on that creature."
+            },
+            {
+                "date": "2022-02-18",
+                "text": "A creature that is equipped is considered modified no matter who controls the Equipment that's attached to it."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
     ]
 }
 
@@ -8575,6 +9107,86 @@
     ]
 }
 
+// Mnemonic Sphere
+{
+    "name": "Mnemonic Sphere",
+    "manaCost": "{1}{U}",
+    "typeLine": "Artifact",
+    "oracleText": "{1}{U}, Sacrifice this artifact: Draw two cards.\nChannel — {U}, Discard this card: Draw a card.",
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Mnemonic Sphere:1",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{1}{U}"
+                            }
+                        },
+                        "CostSacrificeSelf"
+                    ]
+                },
+                "effect": {
+                    "type": "DrawCards",
+                    "count": {
+                        "type": "Fixed",
+                        "amount": 2
+                    }
+                },
+                "descriptionOverride": "{1}{U}, Sacrifice this artifact: Draw two cards."
+            },
+            {
+                "id": "Mnemonic Sphere:2",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{U}"
+                            }
+                        },
+                        "CostDiscardSelf"
+                    ]
+                },
+                "effect": {
+                    "type": "DrawCards",
+                    "count": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                },
+                "activateFromZone": "Hand",
+                "descriptionOverride": "Channel — {U}, Discard this card: Draw a card."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "64",
+        "artist": "Robin Olausson",
+        "flavorText": "\"Let the Imperials search our laboratories. Will they think to look for secrets in a pretty bauble?\"\n—Emire, director of the Saiba Futurists",
+        "imageUri": "https://cards.scryfall.io/normal/front/1/a/1a15d8d9-0575-4add-ae8d-4576e8ed2cbe.jpg?1783923900",
+        "rulings": [
+            {
+                "date": "2022-02-18",
+                "text": "Discarding the card is part of the cost to activate a channel ability."
+            },
+            {
+                "date": "2022-02-18",
+                "text": "If a channel ability requires a target, you may not activate it without a target just to discard the card."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Mobilizer Mech
 {
     "name": "Mobilizer Mech",
@@ -8678,6 +9290,100 @@
         "artist": "Miguel Mercado",
         "flavorText": "\"Research is hardly the dry, serious pastime outsiders make it out to be.\"",
         "imageUri": "https://cards.scryfall.io/normal/front/c/9/c9fa6d4c-78dc-4b40-9ce8-a0e593d4001f.jpg"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
+// Moonsnare Prototype
+{
+    "name": "Moonsnare Prototype",
+    "manaCost": "{U}",
+    "typeLine": "Artifact",
+    "oracleText": "{T}, Tap an untapped artifact or creature you control: Add {C}.\nChannel — {4}{U}, Discard this card: The owner of target nonland permanent puts it on their choice of the top or bottom of their library.",
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Moonsnare Prototype:1",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        "CostTap",
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomTapPermanents",
+                                "filter": "creature|artifact",
+                                "excludeSelf": true
+                            }
+                        }
+                    ]
+                },
+                "effect": {
+                    "type": "AddColorlessMana",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                },
+                "timing": "ManaAbility",
+                "isManaAbility": true
+            },
+            {
+                "id": "Moonsnare Prototype:2",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{4}{U}"
+                            }
+                        },
+                        "CostDiscardSelf"
+                    ]
+                },
+                "effect": {
+                    "type": "PutOnLibraryPositionOfChoice",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "nonland permanent"
+                        },
+                        "id": "t0"
+                    }
+                ],
+                "activateFromZone": "Hand",
+                "descriptionOverride": "Channel — {4}{U}, Discard this card: The owner of target nonland permanent puts it on their choice of the top or bottom of their library."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "69",
+        "artist": "Fariba Khamseh",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/d/9d8bc0e9-a536-4bca-92a6-8dca85e1e984.jpg?1783923897",
+        "rulings": [
+            {
+                "date": "2022-02-18",
+                "text": "The owner of that permanent chooses whether it goes on top or bottom. Other players get to know what they chose."
+            },
+            {
+                "date": "2022-02-18",
+                "text": "Discarding the card is part of the cost to activate a channel ability."
+            },
+            {
+                "date": "2022-02-18",
+                "text": "If a channel ability requires a target, you may not activate it without a target just to discard the card."
+            }
+        ]
     },
     "colorIdentityOverride": [
         "BLUE"
@@ -10013,6 +10719,56 @@
     ]
 }
 
+// Planar Incision
+{
+    "name": "Planar Incision",
+    "manaCost": "{1}{U}",
+    "typeLine": "Instant",
+    "oracleText": "Exile target artifact or creature, then return it to the battlefield under its owner's control with a +1/+1 counter on it.",
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "MoveToZone",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "destination": "Exile"
+                },
+                {
+                    "type": "MoveToZone",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "destination": "Battlefield",
+                    "addCounterType": "PLUS_ONE_PLUS_ONE"
+                }
+            ]
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": "creature|artifact"
+                },
+                "id": "t0"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "72",
+        "artist": "Joshua Raphael",
+        "flavorText": "Jin-Gitaxias had long coveted the secrets of planeswalking. Spirits that could pass between worlds made for perfect test subjects.",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/1/9163cb04-ee28-4127-b53a-89c546996d7d.jpg?1783923897"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Prodigy's Prototype
 {
     "name": "Prodigy's Prototype",
@@ -10794,6 +11550,95 @@
     },
     "colorIdentityOverride": [
         "GREEN"
+    ]
+}
+
+// Saiba Trespassers
+{
+    "name": "Saiba Trespassers",
+    "manaCost": "{4}{U}",
+    "typeLine": "Artifact Creature — Moonfolk Rogue",
+    "oracleText": "Channel — {3}{U}, Discard this card: Tap up to two target creatures you don't control. Those creatures don't untap during their controller's next untap step.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 5
+    },
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Saiba Trespassers:1",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{3}{U}"
+                            }
+                        },
+                        "CostDiscardSelf"
+                    ]
+                },
+                "effect": {
+                    "type": "ForEach",
+                    "space": "IterationSpace.Targets",
+                    "body": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "TapUntap",
+                                "target": {
+                                    "type": "ContextTarget",
+                                    "index": 0
+                                }
+                            },
+                            {
+                                "type": "GrantKeyword",
+                                "keyword": "DOESNT_UNTAP",
+                                "target": {
+                                    "type": "ContextTarget",
+                                    "index": 0
+                                },
+                                "duration": "UntilAfterAffectedControllersNextUntap"
+                            }
+                        ]
+                    }
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "count": 2,
+                        "optional": true,
+                        "filter": {
+                            "baseFilter": "creature ctrl:opponent"
+                        },
+                        "id": "t0"
+                    }
+                ],
+                "activateFromZone": "Hand",
+                "descriptionOverride": "Channel — {3}{U}, Discard this card: Tap up to two target creatures you don't control. Those creatures don't untap during their controller's next untap step."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "77",
+        "artist": "Evyn Fong",
+        "flavorText": "One to clear the way, another to erase their trail.",
+        "imageUri": "https://cards.scryfall.io/normal/front/c/3/c3dd7f1a-5d43-4218-a9d8-7cc4f6a18ecd.jpg?1783923894",
+        "rulings": [
+            {
+                "date": "2022-02-18",
+                "text": "Discarding the card is part of the cost to activate a channel ability."
+            },
+            {
+                "date": "2022-02-18",
+                "text": "If a channel ability requires a target, you may not activate it without a target just to discard the card."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
     ]
 }
 
@@ -11594,6 +12439,60 @@
     ]
 }
 
+// Short Circuit
+{
+    "name": "Short Circuit",
+    "manaCost": "{1}{U}",
+    "typeLine": "Enchantment — Aura",
+    "oracleText": "Flash\nEnchant artifact or creature\nAs long as enchanted permanent is a creature, it gets -3/-0 and loses flying.",
+    "keywords": [
+        "FLASH"
+    ],
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "ConditionalStaticAbility",
+                "ability": {
+                    "type": "ModifyStats",
+                    "powerBonus": -3,
+                    "toughnessBonus": 0
+                },
+                "condition": {
+                    "type": "EntityMatches",
+                    "entity": "EnchantedPermanent",
+                    "filter": "creature"
+                }
+            },
+            {
+                "type": "ConditionalStaticAbility",
+                "ability": {
+                    "type": "RemoveKeywordStatic",
+                    "keyword": "FLYING"
+                },
+                "condition": {
+                    "type": "EntityMatches",
+                    "entity": "EnchantedPermanent",
+                    "filter": "creature"
+                }
+            }
+        ],
+        "auraTarget": {
+            "type": "TargetObject",
+            "filter": {
+                "baseFilter": "creature|artifact"
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "78",
+        "artist": "Andreas Zafiratos",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/4/74fe0fb5-e994-41b1-a73d-4e68f7afdf34.jpg?1783923894"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Silver-Fur Master
 {
     "name": "Silver-Fur Master",
@@ -11857,6 +12756,95 @@
     },
     "colorIdentityOverride": [
         "WHITE"
+    ]
+}
+
+// Skyswimmer Koi
+{
+    "name": "Skyswimmer Koi",
+    "manaCost": "{3}{U}",
+    "typeLine": "Creature — Fish",
+    "oracleText": "Flying\nWhenever an artifact you control enters, you may draw a card. If you do, discard a card.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 3
+    },
+    "keywords": [
+        "FLYING"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Skyswimmer Koi:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "filter": "artifact ctrl:you",
+                    "to": "Battlefield"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Gated",
+                    "gate": "Gate.MayDecide",
+                    "then": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "DrawCards",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            {
+                                "type": "Composite",
+                                "effects": [
+                                    {
+                                        "type": "GatherCards",
+                                        "source": {
+                                            "type": "FromZone",
+                                            "zone": "Hand"
+                                        },
+                                        "storeAs": "hand"
+                                    },
+                                    {
+                                        "type": "SelectFromCollection",
+                                        "from": "hand",
+                                        "selection": {
+                                            "type": "ChooseExactly",
+                                            "count": {
+                                                "type": "Fixed",
+                                                "amount": 1
+                                            }
+                                        },
+                                        "storeSelected": "discarded",
+                                        "prompt": "Choose 1 card to discard"
+                                    },
+                                    {
+                                        "type": "MoveCollection",
+                                        "from": "discarded",
+                                        "destination": {
+                                            "type": "ToZone",
+                                            "zone": "Graveyard"
+                                        },
+                                        "moveType": "Discard"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "descriptionOverride": "Whenever an artifact you control enters, you may draw a card. If you do, discard a card."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "79",
+        "artist": "Donato Giancola",
+        "flavorText": "Once they swam alone among the clouds, but now the people of Kamigawa have built high enough to reach them.",
+        "imageUri": "https://cards.scryfall.io/normal/front/d/b/db50259b-8ca8-4fbe-8ae3-6b0312d70980.jpg?1783923894"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
     ]
 }
 
@@ -12324,6 +13312,64 @@
     ]
 }
 
+// Suit Up
+{
+    "name": "Suit Up",
+    "manaCost": "{2}{U}",
+    "typeLine": "Instant",
+    "oracleText": "Until end of turn, target creature or Vehicle becomes an artifact creature with base power and toughness 4/5.\nDraw a card.",
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "BecomeCreature",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "power": {
+                        "type": "Fixed",
+                        "amount": 4
+                    },
+                    "toughness": {
+                        "type": "Fixed",
+                        "amount": 5
+                    },
+                    "addTypes": [
+                        "ARTIFACT"
+                    ]
+                },
+                {
+                    "type": "DrawCards",
+                    "count": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                }
+            ]
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": "creature|Vehicle"
+                },
+                "id": "t0"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "81",
+        "artist": "Miguel Mercado",
+        "flavorText": "With a reckless leap into the pilot's seat, Hirori went from smallest kid on the block to biggest hero in the city.",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/0/50870bfd-7779-4a1c-b18f-57fac7e193b1.jpg?1783923894"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Sunblade Samurai
 {
     "name": "Sunblade Samurai",
@@ -12538,6 +13584,88 @@
     },
     "colorIdentityOverride": [
         "BLACK"
+    ]
+}
+
+// Tamiyo's Compleation
+{
+    "name": "Tamiyo's Compleation",
+    "manaCost": "{3}{U}",
+    "typeLine": "Enchantment — Aura",
+    "oracleText": "Flash\nEnchant artifact, creature, or planeswalker\nWhen this Aura enters, tap enchanted permanent. If it's an Equipment, unattach it.\nEnchanted permanent loses all abilities and doesn't untap during its controller's untap step.",
+    "keywords": [
+        "FLASH"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Tamiyo's Compleation:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "TapUntap",
+                            "target": "EnchantedPermanent"
+                        },
+                        {
+                            "type": "Gated",
+                            "gate": {
+                                "type": "Gate.WhenCondition",
+                                "condition": {
+                                    "type": "EntityMatches",
+                                    "entity": "EnchantedPermanent",
+                                    "filter": "artifact Equipment"
+                                }
+                            },
+                            "then": {
+                                "type": "UnattachEquipment",
+                                "target": "EnchantedPermanent"
+                            },
+                            "descriptionOverride": "If it's an Equipment, unattach it"
+                        }
+                    ]
+                }
+            }
+        ],
+        "staticAbilities": [
+            "LoseAllAbilities",
+            {
+                "type": "GrantKeyword",
+                "keyword": "DOESNT_UNTAP"
+            }
+        ],
+        "auraTarget": {
+            "type": "TargetObject",
+            "filter": {
+                "baseFilter": "artifact|creature|planeswalker"
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "83",
+        "artist": "Dominik Mayer",
+        "imageUri": "https://cards.scryfall.io/normal/front/a/e/aee62e43-6a82-4749-972b-e21802642abf.jpg?1783923893",
+        "rulings": [
+            {
+                "date": "2022-02-18",
+                "text": "An Equipment creature that loses its reconfigure ability cannot be attached to a creature by any effect."
+            },
+            {
+                "date": "2022-02-18",
+                "text": "An attached Equipment with reconfigure that loses its reconfigure ability doesn't become a creature again until it becomes unattached, and it won't become unattached until the triggered ability of Tamiyo's Compleation resolves. If that ability is countered, the Equipment will stay attached to the equipped creature."
+            },
+            {
+                "date": "2022-02-18",
+                "text": "A planeswalker with Tamiyo's Compleation attached to it may still be attacked and it will continue to lose loyalty counters if damage is dealt to it."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
     ]
 }
 
@@ -13268,6 +14396,156 @@
     },
     "colorIdentityOverride": [
         "WHITE"
+    ]
+}
+
+// The Modern Age
+{
+    "name": "The Modern Age",
+    "manaCost": "{1}{U}",
+    "typeLine": "Enchantment — Saga",
+    "oracleText": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II — Draw a card, then discard a card.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+    "script": {
+        "sagaChapters": [
+            {
+                "chapter": 1,
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            }
+                        },
+                        {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "GatherCards",
+                                    "source": {
+                                        "type": "FromZone",
+                                        "zone": "Hand"
+                                    },
+                                    "storeAs": "hand"
+                                },
+                                {
+                                    "type": "SelectFromCollection",
+                                    "from": "hand",
+                                    "selection": {
+                                        "type": "ChooseExactly",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "storeSelected": "discarded",
+                                    "prompt": "Choose 1 card to discard"
+                                },
+                                {
+                                    "type": "MoveCollection",
+                                    "from": "discarded",
+                                    "destination": {
+                                        "type": "ToZone",
+                                        "zone": "Graveyard"
+                                    },
+                                    "moveType": "Discard"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            {
+                "chapter": 2,
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            }
+                        },
+                        {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "GatherCards",
+                                    "source": {
+                                        "type": "FromZone",
+                                        "zone": "Hand"
+                                    },
+                                    "storeAs": "hand"
+                                },
+                                {
+                                    "type": "SelectFromCollection",
+                                    "from": "hand",
+                                    "selection": {
+                                        "type": "ChooseExactly",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "storeSelected": "discarded",
+                                    "prompt": "Choose 1 card to discard"
+                                },
+                                {
+                                    "type": "MoveCollection",
+                                    "from": "discarded",
+                                    "destination": {
+                                        "type": "ToZone",
+                                        "zone": "Graveyard"
+                                    },
+                                    "moveType": "Discard"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            {
+                "chapter": 3,
+                "effect": "ExileAndReturnTransformed"
+            }
+        ]
+    },
+    "backFace": {
+        "name": "Vector Glider",
+        "manaCost": "",
+        "typeLine": "Enchantment Creature — Spirit",
+        "oracleText": "Flying",
+        "creatureStats": {
+            "power": 2,
+            "toughness": 3
+        },
+        "keywords": [
+            "FLYING"
+        ],
+        "metadata": {
+            "collectorNumber": "66",
+            "artist": "Anastasia Ovchinnikova",
+            "flavorText": "It drifted from the spirit realm into a neon world full of new possibilities . . . and decided to stay.",
+            "imageUri": "https://cards.scryfall.io/normal/back/e/e/ee60a8e9-3201-4a7e-8aa4-2c5e1042c8a5.jpg?1783923907"
+        },
+        "colorIdentityOverride": [
+            "BLUE"
+        ],
+        "colorIndicator": [
+            "BLUE"
+        ],
+        "hasNoManaCost": true
+    },
+    "metadata": {
+        "collectorNumber": "66",
+        "artist": "Anastasia Ovchinnikova",
+        "imageUri": "https://cards.scryfall.io/normal/front/e/e/ee60a8e9-3201-4a7e-8aa4-2c5e1042c8a5.jpg?1783923907"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
     ]
 }
 
