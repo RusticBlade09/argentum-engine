@@ -115,7 +115,24 @@ class CombatAdvisor(
     private val attacksReadTheRace: Boolean = false,
     /** The composite evaluator's `threatAssessment` coefficient — [followUpValue]'s weight. */
     private val raceWeight: Double = 1.2,
+    /**
+     * Press a winning position: credit an attack plan for the damage it deals, in proportion to how
+     * far the board it leaves dominates ([pressureValue], [BoardRole]), and try the all-in plan as
+     * a local-search start ([alphaStrikeStart]). [AiProfile.pressWhenAhead] carries the argument.
+     */
+    private val pressWhenAhead: Boolean = false,
+    /**
+     * Let every simulated combat give the opponents their windows: the activated abilities their
+     * permanents can afford — a team pump, a pinger, a first-strike granter — used when they win
+     * the fight for them ([CombatResponses]). [AiProfile.anticipateCombatResponses] carries the
+     * argument; needs [cardRegistry].
+     */
+    anticipateCombatResponses: Boolean = false,
 ) {
+    /** See [anticipateCombatResponses]; null when off. */
+    private val responses: CombatResponses? =
+        if (anticipateCombatResponses && cardRegistry != null) CombatResponses(simulator, evaluator, cardRegistry) else null
+
     /**
      * The engine's own block-legality rules, asked alongside [CombatMath.canBeBlockedBy]'s
      * hand-mirrored subset. That subset has no protection check at all, so a black creature was
@@ -604,7 +621,10 @@ class CombatAdvisor(
         // the life it buys is life we need.
         val seedLosers = seedOutcome.losingBlockers
         val chumpsAllowed = !chumpOnlyWhenInDanger ||
-            isLifeInDanger(state, projected, attackers, currentPlan, myLife, playerId, countCreaturesThatUntap = true)
+            isLifeInDanger(state, projected, attackers, currentPlan, myLife, playerId, countCreaturesThatUntap = true) ||
+            // The printed numbers say we live; the simulation, with the attacker's affordable
+            // pumps used, says we don't. That life is needed.
+            (responses != null && seedOutcome.lethal)
         var simulationsLeft = budget.allowances.blockSimulations
         val deadline = budget.combatDeadlineNanos
 
@@ -985,7 +1005,12 @@ class CombatAdvisor(
      * Read off the simulated outcome rather than predicted, so first strike, deathtouch, a pump or
      * a damage-assignment order all count as they actually resolved.
      */
-    private data class BlockPlanOutcome(val score: Double, val losingBlockers: Set<EntityId>)
+    private data class BlockPlanOutcome(
+        val score: Double,
+        val losingBlockers: Set<EntityId>,
+        /** We are dead after this combat — read off the simulation, so an attacker's pump counts. */
+        val lethal: Boolean = false,
+    )
 
     /**
      * Simulate a blocking plan through the engine's combat resolution and return
@@ -999,20 +1024,26 @@ class CombatAdvisor(
         blockerMap: Map<EntityId, List<EntityId>>
     ): BlockPlanOutcome? {
         val blockAction = DeclareBlockers(playerId, blockerMap)
-        val simResult = simulator.simulate(state, blockAction)
+        val responders = responses?.respondersAt(state, playerId).orEmpty()
+        val simResult = simulator.simulate(state, blockAction, stopBeforeCombatDamage = responders.isNotEmpty())
         if (simResult is SimulationResult.Illegal || simResult is SimulationResult.StoppedAtLimit) return null
 
         var current = simResult.state
 
-        // Drive through combat damage resolution
-        var iterations = 0
-        while (iterations < 50 && !current.gameOver && current.pendingDecision == null) {
-            iterations++
-            val priorityPlayer = current.priorityPlayerId ?: break
-            val transition = simulator.simulate(current, PassPriority(priorityPlayer))
-            if (transition is SimulationResult.StoppedAtLimit) return null
-            current = transition.state
-            if (current.phase != Phase.COMBAT) break
+        if (responses != null && responders.isNotEmpty()) {
+            // The attacker gets its window after our blocks: a pump or a pinger it can afford.
+            current = responses.playOut(current, playerId, responders, declareBlocks = null) ?: return null
+        } else {
+            // Drive through combat damage resolution
+            var iterations = 0
+            while (iterations < 50 && !current.gameOver && current.pendingDecision == null) {
+                iterations++
+                val priorityPlayer = current.priorityPlayerId ?: break
+                val transition = simulator.simulate(current, PassPriority(priorityPlayer))
+                if (transition is SimulationResult.StoppedAtLimit) return null
+                current = transition.state
+                if (current.phase != Phase.COMBAT) break
+            }
         }
 
         val postProjected = current.projectedState
@@ -1046,7 +1077,8 @@ class CombatAdvisor(
             blocked.isNotEmpty() && blocker !in survivors && blocked.all { it in survivors }
         }.keys
 
-        return BlockPlanOutcome(baseScore + counterAttackBonus, losingBlockers)
+        val lethal = current.lifeTotal(playerId) <= 0
+        return BlockPlanOutcome(baseScore + counterAttackBonus, losingBlockers, lethal)
     }
 
     /**
@@ -1441,6 +1473,19 @@ class CombatAdvisor(
         defenderBlocks: Boolean = true,
     ): GameState? {
         val attackAction = DeclareAttackers(playerId, attackerMap)
+        val responders = responses?.respondersAt(state, playerId).orEmpty()
+        if (responses != null && responders.isNotEmpty()) {
+            val declared = simulator.simulate(state, attackAction, stopBeforeCombatDamage = true)
+            if (declared is SimulationResult.Illegal || declared is SimulationResult.StoppedAtLimit) return null
+            return responses.playOut(
+                declared.state, playerId, responders,
+                declareBlocks = { current, offer, defender ->
+                    if (defenderBlocks) chooseBlockers(current, offer, defender, useSimulation = false)
+                    else DeclareBlockers(defender, emptyMap())
+                },
+                emptyBlocksMustBeLegal = !defenderBlocks,
+            )
+        }
         val simResult = simulator.simulate(state, attackAction)
         if (simResult is SimulationResult.Illegal || simResult is SimulationResult.StoppedAtLimit) return null
         var current = simResult.state
@@ -1591,7 +1636,69 @@ class CombatAdvisor(
 
         val followUp = if (attacksReadTheRace) followUpValue(postCombat, postProjected, playerId) else 0.0
 
-        return baseScore + crackBackPenalty + followUp - advisorPenalty
+        val pressure = if (pressWhenAhead && nextTurnDamage < myLife) {
+            pressureValue(state, atOurUntap, playerId)
+        } else {
+            0.0
+        }
+
+        return baseScore + crackBackPenalty + followUp + pressure - advisorPenalty
+    }
+
+    /**
+     * Time as a resource: what the damage this combat deals is worth to the side that is ahead.
+     *
+     * A static leaf cannot see time. An attack leaf and a pass leaf are scored at the same moment,
+     * so the turn a pass hands the opponent — a draw step, a land drop, one more look for the answer
+     * — costs nothing in either, and the only thing an attack has to show for itself is life, which
+     * [com.wingedsheep.ai.engine.evaluation.LifeDifferential] prices on a *defender's* curve: half a
+     * point each above 15. Six damage into a player on 20 was worth 3.5, less than the 2/2 a block
+     * took to deal it, so a team of four Bears facing one Hill Giant sat at home — and every turn it
+     * sat there was a turn for the Giant's controller to draw out of it.
+     *
+     * For the player who is ahead, damage is progress toward the only finish the lead buys, and it
+     * is worth what it brings the kill forward. That is the race's own unit: the share of the
+     * opponent's life removed is urgency already cashed, priced on the evaluator's race scale
+     * ([ThreatAssessment.raceLeadValue] at [raceWeight], the scale [followUpValue] uses). The credit
+     * is scaled by [BoardRole.dominance] read off the board the combat **leaves** — so trading down
+     * is paid for only while what remains still dominates, and a trade that gives the lead away
+     * pays itself nothing. Behind or at parity the dominance is not positive and the term is zero:
+     * the side that is behind keeps scoring attacks exactly as before.
+     *
+     * Bounded by the caller: no credit at all for a plan whose crack-back is lethal, and every other
+     * plan still pays its crack-back as life.
+     */
+    private fun pressureValue(state: GameState, after: GameState, playerId: EntityId): Double {
+        val afterProjected = after.projectedState
+        return state.getOpponents(playerId).sumOf { opponent ->
+            val lifeBefore = state.lifeTotal(opponent)
+            val dealt = lifeBefore - after.lifeTotal(opponent)
+            if (lifeBefore <= 0 || dealt <= 0) return@sumOf 0.0
+            val dominance = BoardRole.dominance(after, afterProjected, playerId, opponent)
+            if (dominance <= 0.0) return@sumOf 0.0
+            val cashed = (dealt.toDouble() / lifeBefore).coerceAtMost(1.0)
+            dominance * ThreatAssessment.raceLeadValue(cashed) * raceWeight
+        }
+    }
+
+    /**
+     * Under [pressWhenAhead], the plan that sends every legal attacker at its default defender — a
+     * start for local search beside the heuristic seed.
+     *
+     * Local search climbs one attacker at a time, and a swarm is the plan it cannot climb to: a lone
+     * 2/2 into a 3/3 is the worst plan on the board, so from an empty seed the first step never
+     * comes, though four of them together get six damage through. The seed proposes a swarm only
+     * when attackers outnumber blockers; this offers the search the all-in plan whatever the count,
+     * and the search removes from it whatever does not pay. One extra simulation per decision.
+     */
+    private fun alphaStrikeStart(
+        validAttackers: List<EntityId>,
+        mandatoryAttackers: Set<EntityId>,
+        defenderFor: (EntityId) -> EntityId?,
+    ): Map<EntityId, EntityId>? {
+        if (!pressWhenAhead) return null
+        val all = validAttackers.mapNotNull { attacker -> defenderFor(attacker)?.let { attacker to it } }.toMap()
+        return all.takeIf { it.size > 1 && it.keys.containsAll(mandatoryAttackers) }
     }
 
     /**
@@ -1665,6 +1772,19 @@ class CombatAdvisor(
             attackerMap.clear()
             currentScore = noAttackScore
         }
+
+        // The all-in plan, a start the one-attacker-at-a-time climb cannot reach on its own.
+        alphaStrikeStart(validAttackers, mandatoryAttackers, defenderFor)
+            ?.takeIf { it != attackerMap && System.nanoTime() <= deadline }
+            ?.let { alpha ->
+                val score = evaluateAttackPlan(state, playerId, opponentId, alpha) ?: return@let
+                trace?.recordAttack(alpha, score)
+                if (score > currentScore) {
+                    attackerMap.clear()
+                    attackerMap.putAll(alpha)
+                    currentScore = score
+                }
+            }
 
         val maxIterations = budget.allowances.attackSearchIterations
         for (iteration in 1..maxIterations) {

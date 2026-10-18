@@ -1154,6 +1154,44 @@ data class AiProfile(
      *   judge: refused when the creature it lands on can no longer attack or block this turn.
      */
     val refuseWastedPayoffs: Boolean = false,
+    /**
+     * Press a winning position instead of sitting on it: who is the beatdown is read off the board
+     * ([BoardRole]), and the side that is ahead is credited for the damage an attack deals.
+     *
+     * The user report: "sometimes it just sits there, giving the player the opportunity to grow in
+     * strength again." Four Grizzly Bears facing one Hill Giant, both players on 20, and the AI
+     * declares no attack: sending all four loses a Bear to the Giant's block and deals six, and the
+     * leaf scored that 13.4 against 13.8 for passing. The cause is that a one-ply leaf has no clock.
+     * The attack leaf and the pass leaf sit at the same moment, so the turn a pass hands the
+     * opponent — a draw step toward the answer — is free in both, and the attack's six damage is
+     * priced on [com.wingedsheep.ai.engine.evaluation.LifeDifferential]'s defender's curve, half a
+     * point each above 15. Bad trades that a dominant board makes to push damage never paid.
+     *
+     * With this on, [CombatAdvisor]'s attack score adds the damage dealt as the share of the
+     * opponent's life it removes — urgency already cashed — on the evaluator's race scale, times the
+     * dominance of the board the combat leaves: resources share (creatures plus cards in hand) and
+     * race lead, averaged, in `[-1, 1]`. It is continuous — no threshold for "ahead" — it is zero
+     * whenever the remaining board does not dominate, so the side that is behind attacks exactly
+     * as before, and a trade that gives the lead away earns nothing. A plan whose crack-back is
+     * lethal gets no credit at all. Local search also starts from the all-in plan, which its
+     * one-attacker climb cannot reach when every single attacker alone is a bad attack.
+     */
+    val pressWhenAhead: Boolean = false,
+    /**
+     * Expect the opponent to use what its board can do in a fight. Every combat [CombatAdvisor]
+     * simulates — each attack plan it weighs, each block it tries — gives the opponents their
+     * windows (after attackers are declared, after blockers are) and lets them use the activated
+     * abilities their permanents can afford when that wins them the fight: a team pump, a pinger,
+     * a first-strike or deathtouch granter, a regeneration shield, a token blocker.
+     * [com.wingedsheep.ai.engine.CombatResponses] does the playing; the abilities are the
+     * engine's own legal actions, so mana, tap costs, summoning sickness and once-per-turn limits
+     * bound them, and an ability that would be possible but bad for them is not assumed.
+     *
+     * The shape it closes: a 3/3 sent into a 2/2 beside a Leonin Sun Standard and four open
+     * Plains, scored as if the Bears could never be 4/4 — and its mirror, a 3/3 blocking a 2/2
+     * whose controller holds the same pump.
+     */
+    val anticipateCombatResponses: Boolean = false,
     /** Non-null profiles may only be selected automatically for this set. Arena selection stays explicit. */
     val restrictedToSet: String? = null,
 ) {
@@ -2107,6 +2145,17 @@ data class AiProfile(
             attacksReadTheRace = true,
             taxCountersReadTheirMana = true,
             refuseWastedPayoffs = true,
+            anticipateCombatResponses = true,
+            pressWhenAhead = true,
+        )
+
+        /**
+         * [LIVE] without [pressWhenAhead]: `just arena live-without-pressure live 300` prices the
+         * flag on top of everything it ships with.
+         */
+        val LIVE_WITHOUT_PRESSURE = LIVE.copy(
+            id = "live-without-pressure",
+            pressWhenAhead = false,
         )
 
         /**

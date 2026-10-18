@@ -25,7 +25,9 @@ class AttacksReadTheRaceTest : ScenarioTestBase() {
 
     private companion object {
         const val SCENARIO_SEED = 20261016L
-        val WITHOUT = AiProfile.LIVE.copy(id = "live-without-race", attacksReadTheRace = false)
+        // [AiProfile.pressWhenAhead] is off too: on its own it also sends the team in 42518dd1
+        // (a dominant board pressing a player on 6), so it would hide the reproduction.
+        val WITHOUT = AiProfile.LIVE.copy(id = "live-without-race", attacksReadTheRace = false, pressWhenAhead = false)
     }
 
     private data class Creature(val name: String, val tapped: Boolean = false, val sick: Boolean = false)
