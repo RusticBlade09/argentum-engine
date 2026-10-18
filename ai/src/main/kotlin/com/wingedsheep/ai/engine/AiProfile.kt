@@ -1177,6 +1177,21 @@ data class AiProfile(
      * one-attacker climb cannot reach when every single attacker alone is a bad attack.
      */
     val pressWhenAhead: Boolean = false,
+    /**
+     * Expect the opponent to use what its board can do in a fight. Every combat [CombatAdvisor]
+     * simulates — each attack plan it weighs, each block it tries — gives the opponents their
+     * windows (after attackers are declared, after blockers are) and lets them use the activated
+     * abilities their permanents can afford when that wins them the fight: a team pump, a pinger,
+     * a first-strike or deathtouch granter, a regeneration shield, a token blocker.
+     * [com.wingedsheep.ai.engine.CombatResponses] does the playing; the abilities are the
+     * engine's own legal actions, so mana, tap costs, summoning sickness and once-per-turn limits
+     * bound them, and an ability that would be possible but bad for them is not assumed.
+     *
+     * The shape it closes: a 3/3 sent into a 2/2 beside a Leonin Sun Standard and four open
+     * Plains, scored as if the Bears could never be 4/4 — and its mirror, a 3/3 blocking a 2/2
+     * whose controller holds the same pump.
+     */
+    val anticipateCombatResponses: Boolean = false,
     /** Non-null profiles may only be selected automatically for this set. Arena selection stays explicit. */
     val restrictedToSet: String? = null,
 ) {
@@ -2130,6 +2145,7 @@ data class AiProfile(
             attacksReadTheRace = true,
             taxCountersReadTheirMana = true,
             refuseWastedPayoffs = true,
+            anticipateCombatResponses = true,
             pressWhenAhead = true,
         )
 

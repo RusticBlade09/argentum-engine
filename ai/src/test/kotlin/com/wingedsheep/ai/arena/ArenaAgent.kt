@@ -164,6 +164,9 @@ object ArenaAgents {
         // LIVE without pressing a winning position. `just arena live-without-pressure live 300`
         // prices the flag on top of everything it ships with.
         ArenaAgent("live-without-pressure", AiProfile.LIVE_WITHOUT_PRESSURE),
+        // LIVE without the opponent's combat responses: `just arena live-without-responses live 300`
+        // prices the opponent-ability model on its own.
+        ArenaAgent("live-without-responses", AiProfile.LIVE.copy(id = "live-without-responses", anticipateCombatResponses = false)),
         // Selection counts by value: searches take what they may, scry/surveil send away only the
         // cards not worth drawing. `just arena production production-selectcount 300` prices it
         // alone; `just arena production-candidate-expiring production-candidate-selectcount 300`
