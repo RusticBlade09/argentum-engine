@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- Presses a winning position instead of sitting on it: when the board it would leave still dominates (creatures and cards in hand, and the race each way), an attack is credited for the damage it deals, so a team of four Bears swings past a lone Hill Giant and trades a Bear for six damage, and a bigger army trades evenly rather than waiting; behind, at parity, or facing a lethal crack-back it attacks exactly as before.
 - Stops casting an Aura whose only effect is an "if enchanted creature …" entry trigger onto a creature that fails the check (Earthbind on a creature without flying), since it would enter and do nothing.
 - #3319 Flips Chaos Orb: aims at the spot that destroys the most opponent value (the seam between two cards when that pays) and throws it off the table rather than hit its own board; its release is a human's, a little early or late and off-centre, so it sometimes misses or clips a neighbour.
 - #3282 Aims an until-end-of-turn pump at a creature that can still fight: when a beneficial target choice ties (a beginning-of-combat +2/+2 on creatures not yet attacking), it no longer gives it to a bigger creature cast this turn over the one that will attack (Ezekiel Sims, Spider-Totem pumps itself, not a summoning-sick Spider-Man). Permanent payoffs like +1/+1 counters are unaffected.

@@ -178,6 +178,10 @@ class PuzzleComparisonBenchmark : ScenarioTestBase() {
                 // tapped fliers keeping their evasion — alone and on top of what is live.
                 AiProfile.PRODUCTION_ATTACKS,
                 AiProfile.PRODUCTION_CANDIDATE_ATTACKS,
+                // Pressing a winning position — the damage an attack deals credited by how far the
+                // board it leaves dominates — off and on, on top of everything live.
+                AiProfile.LIVE_WITHOUT_PRESSURE,
+                AiProfile.LIVE,
                 // Phase 7's rollout evaluator, isolated from Phases 4 and 6 so the column is
                 // attributable to the rollouts alone.
                 AiProfile.PHASE7,
