@@ -1013,6 +1013,17 @@ class ZoneTransitionService(
                         }
                     }
                 }
+                // "This creature enters prepared" (CR 722.3a) holds however it enters — reanimated,
+                // blinked, or put onto the battlefield from hand or library — not only when cast.
+                // Read the definition after any entry copy so a clone sees what it copied.
+                if (!options.faceDown) {
+                    val enteringDef = newState.getEntity(entityId)?.get<CardComponent>()
+                        ?.let { cardRegistry.getCard(it.cardDefinitionId) }
+                    if (enteringDef != null) {
+                        newState = com.wingedsheep.engine.mechanics.stack.PreparationLogic
+                            .enterPreparedIfKeyworded(newState, entityId, enteringDef, destControllerId)
+                    }
+                }
                 if (entryCopy?.replacement?.exileCopiedCard == true && entryCopy.copiedEntity != null) {
                     val exiled = moveToZone(newState, entryCopy.copiedEntity, Zone.EXILE)
                     newState = exiled.state

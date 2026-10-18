@@ -177,6 +177,12 @@ object EntersWithReplacements {
                 }
             }
         }
+        // "This creature enters prepared" (CR 722.3a) — a token copy of a preparation creature too.
+        // After the zone restore above: becoming prepared puts the prepare-spell copy into exile.
+        if (!container.has<com.wingedsheep.engine.state.components.identity.FaceDownComponent>()) {
+            newState = com.wingedsheep.engine.mechanics.stack.PreparationLogic
+                .enterPreparedIfKeyworded(newState, enteringEntityId, cardDef, enteringControllerId)
+        }
         return newState to events
     }
 

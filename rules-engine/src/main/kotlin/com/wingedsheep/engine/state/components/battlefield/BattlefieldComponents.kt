@@ -303,9 +303,10 @@ data object EnduringReturnComponent : Component
  * this component (the creature stops being prepared).
  *
  * Transient engine state, not a copiable value (a copy of a prepared creature is not prepared).
- * Naturally gone when the permanent leaves the battlefield (a fresh entity has no battlefield
- * components); the linked exile copy is cleaned up by [com.wingedsheep.engine.core.StateBasedActionChecker]-adjacent
- * cleanup when the source leaves.
+ * Stripped when the permanent leaves the battlefield
+ * ([com.wingedsheep.engine.handlers.effects.ZoneMovementUtils.stripBattlefieldComponents]), so a
+ * returning card can become prepared again; the linked exile copy is removed by
+ * [com.wingedsheep.engine.mechanics.sba.zone.PhantomCardCopiesCheck] once the source has left.
  */
 @Serializable
 data class PreparedComponent(

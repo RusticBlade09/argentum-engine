@@ -1064,20 +1064,10 @@ internal class PermanentEntry(
         cardDef: com.wingedsheep.sdk.model.CardDefinition?,
         controllerId: EntityId
     ): GameState {
-        var newState = state
-        // Prepared (Secrets of Strixhaven): a preparation creature whose face carries the PREPARED
-        // keyword ("This creature enters prepared") enters prepared. Becoming prepared creates a
-        // copy of the card's prepare spell in exile that its controller may cast (paying that
-        // spell's cost); casting it unprepares the creature. PREPARE-layout creatures that lack the
-        // keyword (e.g. Leech Collector, which only becomes prepared via a trigger) do not enter
-        // prepared.
-        if (cardDef != null && cardDef.layout == com.wingedsheep.sdk.model.CardLayout.PREPARE &&
-            cardDef.keywords.contains(com.wingedsheep.sdk.core.Keyword.PREPARED) &&
-            !spellComponent.castFaceDown
-        ) {
-            newState = PreparationLogic.makePrepared(newState, spellId, cardDef, controllerId)
-        }
-        return newState
+        // Prepared (Secrets of Strixhaven): becoming prepared creates a copy of the card's prepare
+        // spell in exile that its controller may cast; casting it unprepares the creature.
+        if (cardDef == null || spellComponent.castFaceDown) return state
+        return PreparationLogic.enterPreparedIfKeyworded(state, spellId, cardDef, controllerId)
     }
 
     // =========================================================================

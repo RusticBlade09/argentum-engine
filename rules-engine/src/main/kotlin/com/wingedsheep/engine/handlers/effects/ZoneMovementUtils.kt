@@ -605,6 +605,9 @@ object ZoneMovementUtils {
             .without<com.wingedsheep.engine.state.components.battlefield.SolvedComponent>()
             .without<com.wingedsheep.engine.state.components.battlefield.RenownedComponent>()
             .without<com.wingedsheep.engine.state.components.battlefield.MonstrousComponent>()
+            // The prepared designation belongs to the permanent (CR 722.3a); the object that comes
+            // back is a new one (CR 400.7) and must be free to become prepared again.
+            .without<com.wingedsheep.engine.state.components.battlefield.PreparedComponent>()
             .without<ReplacementEffectSourceComponent>()
             .without<TimestampComponent>()
             .without<com.wingedsheep.engine.state.components.battlefield.BattlefieldEntryTimestampComponent>()
