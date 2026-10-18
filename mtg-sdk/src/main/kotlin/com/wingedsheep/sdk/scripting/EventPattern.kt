@@ -2677,7 +2677,11 @@ sealed interface EventPattern : TextReplaceable<EventPattern> {
         override val description: String = buildString {
             val typeLabel = counterType?.let { "${it.printed} " } ?: ""
             val from = describeObjectForEvent(filter)
-            val remover = removedBy?.let { "${it.description} remove${if (it == Player.You) "" else "s"}" }
+            // "you remove", "those players remove", but "an opponent removes".
+            val remover = removedBy?.let {
+                val plural = it.description == "you" || it.description.startsWith("those ")
+                "${it.description} remove${if (plural) "" else "s"}"
+            }
             when {
                 remover != null && lastRemoved -> append("$remover the last ${typeLabel}counter from $from")
                 remover != null -> append("$remover one or more ${typeLabel}counters from $from")

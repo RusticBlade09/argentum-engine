@@ -20,15 +20,14 @@ import io.kotest.matchers.shouldBe
  */
 class DrawGameOverReasonTest : ScenarioTestBase() {
 
-    private fun twoSeatState(): Pair<GameState, List<EntityId>> {
+    private fun seatState(vararg names: String): Pair<GameState, List<EntityId>> {
         val build = ScenarioBuilderService(cardRegistry).buildScenario(
-            ScenarioRequest(
-                players = listOf(ScenarioSeat("Alice", PlayerConfig()), ScenarioSeat("Bob", PlayerConfig())),
-                mode = ScenarioMode.SELF,
-            )
+            ScenarioRequest(players = names.map { ScenarioSeat(it, PlayerConfig()) }, mode = ScenarioMode.SELF)
         )
         return build.state to build.playerIds
     }
+
+    private fun twoSeatState() = seatState("Alice", "Bob")
 
     init {
         test("a draw nobody lost is reported as a card effect") {
@@ -46,6 +45,15 @@ class DrawGameOverReasonTest : ScenarioTestBase() {
             session.injectStateForDevScenario(lost.copy(gameOver = true, winnerId = null))
 
             session.getGameOverReason() shouldBe GameOverReason.DRAW
+        }
+
+        test("in a pod, a seat eliminated earlier doesn't turn a card-effect draw into a plain one") {
+            val (state, players) = seatState("Alice", "Bob", "Charlie")
+            val earlierLoss = state.updateEntity(players[2]) { it.with(PlayerLostComponent(LossReason.LIFE_ZERO)) }
+            val session = GameSession(cardRegistry = cardRegistry)
+            session.injectStateForDevScenario(earlierLoss.copy(gameOver = true, winnerId = null))
+
+            session.getGameOverReason() shouldBe GameOverReason.CARD_EFFECT
         }
     }
 }
