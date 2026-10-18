@@ -1,0 +1,295 @@
+package com.wingedsheep.engine.hidden
+
+import com.wingedsheep.engine.core.CardsSelectedResponse
+import com.wingedsheep.engine.core.CastSpell
+import com.wingedsheep.engine.core.GameAction
+import com.wingedsheep.engine.core.PassPriority
+import com.wingedsheep.engine.core.PlayLand
+import com.wingedsheep.engine.core.SelectCardsDecision
+import com.wingedsheep.engine.core.SubmitDecision
+import com.wingedsheep.engine.core.YesNoDecision
+import com.wingedsheep.engine.state.GameState
+import com.wingedsheep.engine.state.components.identity.CardComponent
+import com.wingedsheep.engine.support.HiddenIdentityForkChecker
+import com.wingedsheep.engine.support.HiddenIdentityForkChecker.End
+import com.wingedsheep.engine.support.ScenarioTestBase
+import com.wingedsheep.sdk.core.Phase
+import com.wingedsheep.sdk.core.Step
+import com.wingedsheep.sdk.core.Zone
+import com.wingedsheep.sdk.dsl.Conditions
+import com.wingedsheep.sdk.dsl.Effects
+import com.wingedsheep.sdk.dsl.Patterns
+import com.wingedsheep.sdk.dsl.card
+import com.wingedsheep.sdk.model.EntityId
+import com.wingedsheep.sdk.scripting.GameObjectFilter
+import com.wingedsheep.sdk.scripting.OnEnterRun
+import com.wingedsheep.sdk.scripting.conditions.Exists
+import com.wingedsheep.sdk.scripting.effects.CardDestination
+import com.wingedsheep.sdk.scripting.effects.CardSource
+import com.wingedsheep.sdk.scripting.effects.CompositeEffect
+import com.wingedsheep.sdk.scripting.effects.GatherCardsEffect
+import com.wingedsheep.sdk.scripting.effects.MoveCollectionEffect
+import com.wingedsheep.sdk.scripting.effects.SelectFromCollectionEffect
+import com.wingedsheep.sdk.scripting.effects.SelectionMode
+import com.wingedsheep.sdk.scripting.references.Player
+import com.wingedsheep.sdk.scripting.targets.EffectTarget
+import com.wingedsheep.sdk.scripting.values.DynamicAmount
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.types.shouldBeInstanceOf
+
+/**
+ * Deterministic forks through [HiddenIdentityForkChecker], one scripted state per case, just
+ * before the question a site may or may not ask.
+ *
+ * These are the enforcement of #3340's rule — whether a player is asked a question may depend only
+ * on information every player has — and of #2780's. Each #3340 group adds its own case with its
+ * fix: a fork that differs on main and agrees once the group is fixed. The cases here hold on main
+ * and pin the checker itself. The leaky ones use test-only cards built to leak, so that each of the
+ * checker's rules is needed by at least one case; the rest show it stays quiet where nothing leaks.
+ * Every case asserts how its replay ended and how many actions it checked, so none passes by
+ * stopping early.
+ */
+class HiddenIdentityForkCasesTest : ScenarioTestBase() {
+    private val checker = HiddenIdentityForkChecker(cardRegistry)
+
+    private val goblinInHand = Exists(Player.You, Zone.HAND, GameObjectFilter.Any.withSubtype("Goblin"))
+    private fun peek() = GatherCardsEffect(source = CardSource.TopOfLibrary(DynamicAmount.Fixed(1)), storeAs = "peek")
+    private val peekIsGoblin = Conditions.CollectionContainsMatch("peek", GameObjectFilter.Any.withSubtype("Goblin"))
+
+    /** As it enters, with a Goblin in hand: reveal the hand, then you may gain 1 life. */
+    private val herald = card("Leaky Test Herald") {
+        typeLine = "Land"
+        replacementEffect(
+            OnEnterRun(Effects.If(goblinInHand, Effects.RevealHand(EffectTarget.Controller) then Effects.May(Effects.GainLife(1))))
+        )
+    }
+
+    /** As it enters, with a Goblin in hand: gain 1 life — a public change its controller's knowledge explains. */
+    private val signal = card("Leaky Test Signal") {
+        typeLine = "Land"
+        replacementEffect(OnEnterRun(Effects.If(goblinInHand, Effects.GainLife(1))))
+    }
+
+    /**
+     * Scry 1 and draw, then with a Goblin in hand you may gain 1 life. The condition reads the hand,
+     * which holds no Goblin until it resolves, so its stack text — which collapses conditions
+     * against the current state — is the same in both worlds.
+     */
+    private val glimpse = card("Leaky Test Glimpse") {
+        manaCost = "{U}"
+        typeLine = "Sorcery"
+        spell { effect = Patterns.Library.scry(1) then Effects.DrawCards(1) then Effects.If(goblinInHand, Effects.May(Effects.GainLife(1))) }
+    }
+
+    /** Look at the top card privately; unless it's a Goblin, mill it. */
+    private val tell = card("Leaky Test Tell") {
+        manaCost = "{U}"
+        typeLine = "Sorcery"
+        spell {
+            effect = CompositeEffect(
+                listOf(
+                    peek(),
+                    Effects.If(Conditions.Not(peekIsGoblin), MoveCollectionEffect(from = "peek", destination = CardDestination.ToZone(Zone.GRAVEYARD))),
+                )
+            )
+        }
+    }
+
+    /** Gain 1 life if the top card is a Goblin, then show the top card to its owner in a selection. */
+    private val peekCard = card("Leaky Test Peek") {
+        manaCost = "{U}"
+        typeLine = "Sorcery"
+        spell {
+            effect = CompositeEffect(
+                listOf(
+                    peek(),
+                    Effects.If(peekIsGoblin, Effects.GainLife(1)),
+                    SelectFromCollectionEffect(from = "peek", selection = SelectionMode.ChooseUpTo(DynamicAmount.Fixed(1)), storeSelected = "kept"),
+                )
+            )
+        }
+    }
+
+    init {
+        cardRegistry.register(listOf(herald, signal, glimpse, tell, peekCard))
+    }
+
+    private fun cardIn(state: GameState, owner: EntityId, name: String, inHand: Boolean = true): EntityId =
+        (if (inHand) state.getHand(owner) else state.getLibrary(owner))
+            .first { state.getEntity(it)?.get<CardComponent>()?.name == name }
+
+    /** P2's turn, main phase, with [hand] in hand, [islands] Islands out and [library] top first. */
+    private fun p2Turn(hand: List<String>, library: List<String> = emptyList(), islands: Int = 0): TestGame {
+        var builder = scenario().withPlayers()
+        hand.forEach { builder = builder.withCardInHand(2, it) }
+        library.forEach { builder = builder.withCardInLibrary(2, it) }
+        if (islands > 0) builder = builder.withLandsOnBattlefield(2, "Island", islands)
+        return builder.withActivePlayer(2).inPhase(Phase.PRECOMBAT_MAIN, Step.PRECOMBAT_MAIN).build()
+    }
+
+    /** Scripts the real game: does [action], then passes priority until a question is pending or the stack is empty. */
+    private fun MutableList<GameAction>.play(game: TestGame, action: GameAction) {
+        add(action)
+        game.execute(action)
+        while (game.state.pendingDecision == null && game.state.stack.isNotEmpty()) {
+            add(PassPriority(game.state.priorityPlayerId!!))
+            game.execute(last())
+        }
+    }
+
+    /** Answers the pending selection — a scry, say — by choosing nothing. */
+    private fun MutableList<GameAction>.chooseNothing(game: TestGame) =
+        play(game, SubmitDecision(game.player2Id, CardsSelectedResponse(game.state.pendingDecision!!.id, emptyList())))
+
+    init {
+        test("a disclosure the same action makes can't excuse the question it asks") {
+            // The Herald reveals the hand and asks only when it holds a Goblin.
+            val game = p2Turn(listOf("Leaky Test Herald", "Boggart Mob"))
+            val start = game.state
+            val actions = mutableListOf<GameAction>().apply { play(game, PlayLand(game.player2Id, cardIn(start, game.player2Id, "Leaky Test Herald"))) }
+            game.state.pendingDecision.shouldBeInstanceOf<YesNoDecision>()
+
+            val outcome = checker.checkZoneFork(start, cardIn(start, game.player2Id, "Boggart Mob"), cardRegistry.requireCard("Mountain"), game.player1Id, actions)
+
+            outcome.end shouldBe End.Leaked(1)
+            outcome.checked shouldBe 0
+            outcome.leak.orEmpty() shouldContain "question header differs"
+        }
+
+        test("a disclosure in the swapped world only doesn't end the header checks") {
+            // Tell mills the top card unless it's a Goblin: only the swapped world shows it. The
+            // Glimpse then asks only in the real world, which still holds the Goblin.
+            val game = p2Turn(listOf("Leaky Test Tell", "Leaky Test Glimpse"), listOf("Boggart Mob", "Swamp", "Swamp"), islands = 2)
+            val start = game.state
+            val actions = mutableListOf<GameAction>().apply {
+                play(game, CastSpell(game.player2Id, cardIn(start, game.player2Id, "Leaky Test Tell")))
+                play(game, CastSpell(game.player2Id, cardIn(start, game.player2Id, "Leaky Test Glimpse")))
+                chooseNothing(game)
+            }
+            game.state.pendingDecision.shouldBeInstanceOf<YesNoDecision>()
+
+            val outcome = checker.checkZoneFork(start, start.getLibrary(game.player2Id).first(), cardRegistry.requireCard("Mountain"), game.player1Id, actions)
+
+            outcome.end shouldBe End.Leaked(actions.size)
+            outcome.checked shouldBe actions.size - 1
+            outcome.leak.orEmpty() shouldContain "question header differs"
+        }
+
+        test("headers are still checked after an informed actor's choice stops the view comparison") {
+            // The Signal changes a life total only with a Goblin in hand, which its controller
+            // knows; the Glimpse then asks only in the real world.
+            val game = p2Turn(listOf("Leaky Test Signal", "Leaky Test Glimpse", "Boggart Mob"), listOf("Swamp", "Swamp"), islands = 1)
+            val start = game.state
+            val actions = mutableListOf<GameAction>().apply {
+                play(game, PlayLand(game.player2Id, cardIn(start, game.player2Id, "Leaky Test Signal")))
+                play(game, CastSpell(game.player2Id, cardIn(start, game.player2Id, "Leaky Test Glimpse")))
+                chooseNothing(game)
+            }
+            game.state.pendingDecision.shouldBeInstanceOf<YesNoDecision>()
+
+            val outcome = checker.checkZoneFork(start, cardIn(start, game.player2Id, "Boggart Mob"), cardRegistry.requireCard("Mountain"), game.player1Id, actions)
+
+            outcome.end shouldBe End.Leaked(actions.size)
+            outcome.checked shouldBe actions.size - 1
+            outcome.dataStopped.shouldNotBeNull()
+            outcome.leak.orEmpty() shouldContain "question header differs"
+        }
+
+        test("a card shown to the player answering a question excuses nothing another player sees") {
+            // The Peek gains life on a Goblin on top, then shows that card to its owner.
+            val game = p2Turn(listOf("Leaky Test Peek"), listOf("Boggart Mob", "Swamp"), islands = 1)
+            val start = game.state
+            val actions = mutableListOf<GameAction>().apply { play(game, CastSpell(game.player2Id, cardIn(start, game.player2Id, "Leaky Test Peek"))) }
+            game.state.pendingDecision.shouldBeInstanceOf<SelectCardsDecision>()
+
+            val outcome = checker.checkZoneFork(start, start.getLibrary(game.player2Id).first(), cardRegistry.requireCard("Mountain"), game.player1Id, actions)
+
+            outcome.end shouldBe End.Leaked(actions.size)
+            outcome.checked shouldBe actions.size
+            outcome.leak.orEmpty() shouldContain "for ${game.player1Id}: state"
+        }
+
+        test("an action refused in one world only ends the replay as a refusal") {
+            val game = p2Turn(listOf("Forest"))
+            val start = game.state
+            val forest = cardIn(start, game.player2Id, "Forest")
+
+            val outcome = checker.checkZoneFork(start, forest, cardRegistry.requireCard("Grizzly Bears"), game.player1Id, listOf(PlayLand(game.player2Id, forest)))
+
+            outcome.leak.shouldBeNull()
+            outcome.end shouldBe End.Refused(1)
+            outcome.checked shouldBe 0
+        }
+
+        test("a card played in both worlds is public, and what follows may depend on it") {
+            // Auntie's Hovel asks about a Goblin in hand; the Mountain it is forked into doesn't.
+            val game = p2Turn(listOf("Auntie's Hovel", "Boggart Mob"))
+            val start = game.state
+            val hovel = cardIn(start, game.player2Id, "Auntie's Hovel")
+
+            val outcome = checker.checkZoneFork(start, hovel, cardRegistry.requireCard("Mountain"), game.player1Id, listOf(PlayLand(game.player2Id, hovel)))
+
+            outcome.leak.shouldBeNull()
+            outcome.end shouldBe End.PublicToAll(1)
+            outcome.checked shouldBe 0
+        }
+
+        test("a skip on an empty hand is the same whatever the library holds") {
+            // Auntie's Hovel reads the hand for a Goblin; with the Hovel played, the hand is empty,
+            // which every player knows. The top of the library is forked into a Goblin.
+            val game = p2Turn(listOf("Auntie's Hovel"), listOf("Mountain", "Swamp"))
+            val start = game.state
+            val hovel = cardIn(start, game.player2Id, "Auntie's Hovel")
+
+            val outcome = checker.checkZoneFork(
+                start, start.getLibrary(game.player2Id).first(), cardRegistry.requireCard("Boggart Mob"), game.player1Id,
+                listOf(PlayLand(game.player2Id, hovel), PassPriority(game.player2Id)),
+            )
+
+            outcome.leak.shouldBeNull()
+            outcome.end shouldBe End.Completed
+            outcome.checked shouldBe 2
+        }
+
+        test("a question asked in both worlds agrees when the fork changes nothing it reads") {
+            // A Goblin is in hand in both worlds; only another, non-Goblin card is forked.
+            val game = p2Turn(listOf("Auntie's Hovel", "Boggart Mob", "Mountain"))
+            val start = game.state
+            val hovel = cardIn(start, game.player2Id, "Auntie's Hovel")
+            game.execute(PlayLand(game.player2Id, hovel)).state.pendingDecision.shouldBeInstanceOf<SelectCardsDecision>()
+
+            val outcome = checker.checkZoneFork(start, cardIn(start, game.player2Id, "Mountain"), cardRegistry.requireCard("Island"), game.player1Id, listOf(PlayLand(game.player2Id, hovel)))
+
+            outcome.leak.shouldBeNull()
+            outcome.end shouldBe End.Completed
+            outcome.checked shouldBe 1
+        }
+
+        test("an order fork of the owner's own library agrees when nothing reads the order") {
+            val game = scenario()
+                .withPlayers()
+                .withCardInLibrary(1, "Mountain")
+                .withCardInLibrary(1, "Boggart Mob")
+                .withCardInLibrary(1, "Swamp")
+                .withActivePlayer(1)
+                .inPhase(Phase.PRECOMBAT_MAIN, Step.PRECOMBAT_MAIN)
+                .build()
+            val start = game.state
+
+            val outcome = checker.checkOrderFork(
+                start,
+                cardIn(start, game.player1Id, "Mountain", inHand = false),
+                cardIn(start, game.player1Id, "Boggart Mob", inHand = false),
+                game.player1Id,
+                listOf(PassPriority(game.player1Id), PassPriority(game.player2Id)),
+            )
+
+            outcome.leak.shouldBeNull()
+            outcome.end shouldBe End.Completed
+            outcome.checked shouldBe 2
+        }
+    }
+}
