@@ -9,6 +9,7 @@ import com.wingedsheep.sdk.scripting.DrawStepFirstCard
 import com.wingedsheep.sdk.scripting.EventPattern
 import com.wingedsheep.sdk.scripting.EventPattern.*
 import com.wingedsheep.sdk.scripting.ExploreReveal
+import com.wingedsheep.sdk.scripting.TapSymbolInCost
 import com.wingedsheep.sdk.scripting.GameObjectFilter
 import com.wingedsheep.sdk.scripting.TapReason
 import com.wingedsheep.sdk.scripting.TriggerBinding
@@ -644,14 +645,24 @@ class ObjectTriggerSubject internal constructor(
     }
 
     /**
-     * "whenever [by] activates an ability of <subject> without {T} in its activation cost" — the
-     * attached form of [PlayerTriggerSubject.activatesAbility] with `withoutTapInCost` (Artifact
-     * Possession). The activated permanent is the triggering entity.
+     * "whenever [by] activates an ability of <subject> [with|without {T} in its activation cost]"
+     * — the attached form of [PlayerTriggerSubject.activatesAbility]. [tapInCost] and
+     * [includeManaAbilities] read as there: Artifact Possession's "without {T}" counts mana
+     * abilities (`WITHOUT` + `includeManaAbilities`), Imprison's "with {T} … that isn't a mana
+     * ability" is `WITH` alone. The triggering entity is the activated ability on the stack ("counter
+     * that ability"), or the permanent itself for a mana ability, which never uses the stack;
+     * `ControllerOfTriggeringEntity` reads the permanent's controller through either.
      */
-    fun hasAbilityActivatedWithoutTap(by: Player = Player.Each): TriggerSpec {
-        unfiltered("hasAbilityActivatedWithoutTap")
-        only("hasAbilityActivatedWithoutTap", TriggerBinding.ATTACHED)
-        return spec(AbilityActivatedEvent(player = by, requireNoTapInCost = true))
+    fun hasAbilityActivated(
+        by: Player = Player.Each,
+        tapInCost: TapSymbolInCost? = null,
+        includeManaAbilities: Boolean = false,
+    ): TriggerSpec {
+        unfiltered("hasAbilityActivated")
+        only("hasAbilityActivated", TriggerBinding.ATTACHED)
+        return spec(
+            AbilityActivatedEvent(player = by, tapInCost = tapInCost, includeManaAbilities = includeManaAbilities)
+        )
     }
 }
 
@@ -858,8 +869,9 @@ class PlayerTriggerSubject internal constructor(private val player: Player) {
      * Moon-Reader), [excludeManaAbilities] the explicit exhaust "isn't a mana ability" one.
      * [of] scopes the ability's source permanent; [targeting] is "an ability that targets a creature
      * or player"; [loyalty] / [minLoyaltyRemoved] are loyalty abilities (CR 606.4, a −X counts X);
-     * [exhaust] is an exhaust ability (CR 702.177); [withoutTapInCost] is the Antiquities "without {T}
-     * in its activation cost" wording, which ignores the mana-ability split entirely. [keyword] is
+     * [exhaust] is an exhaust ability (CR 702.177); [tapInCost] is "with / without {T} in its
+     * activation cost" — the Antiquities "without {T}" wording counts mana abilities too, so it pairs
+     * with [includeManaAbilities]. [keyword] is
      * "a [keyword] ability" — `keyword = Keyword.NINJUTSU` for "whenever you activate a ninjutsu
      * ability" (Satoru Umezawa).
      */
@@ -871,14 +883,14 @@ class PlayerTriggerSubject internal constructor(private val player: Player) {
         exhaust: Boolean = false,
         includeManaAbilities: Boolean = false,
         excludeManaAbilities: Boolean = false,
-        withoutTapInCost: Boolean = false,
+        tapInCost: TapSymbolInCost? = null,
         keyword: com.wingedsheep.sdk.core.Keyword? = null,
     ): TriggerSpec = spec(
         AbilityActivatedEvent(
             player = player,
             targetMatch = targeting,
             sourceFilter = of,
-            requireNoTapInCost = withoutTapInCost,
+            tapInCost = tapInCost,
             requireExhaust = exhaust,
             excludeManaAbilities = excludeManaAbilities,
             includeManaAbilities = includeManaAbilities,

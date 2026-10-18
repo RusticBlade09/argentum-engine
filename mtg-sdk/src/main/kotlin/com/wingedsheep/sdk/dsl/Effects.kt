@@ -5396,6 +5396,14 @@ object Effects {
         CounterEffect(target = CounterTarget.Ability)
 
     /**
+     * Counter the activated or triggered ability that triggered this ability (non-targeted).
+     * "Counter that ability." — Imprison, over `Triggers.attached.hasAbilityActivated(...)`, whose
+     * triggering entity is the ability on the stack. Does nothing if it has already left the stack.
+     */
+    fun CounterTriggeringAbility(): Effect =
+        CounterEffect(target = CounterTarget.Ability, targetSource = CounterTargetSource.TriggeringEntity)
+
+    /**
      * Open life-bidding auction between you and another participant.
      * "You and [participant] bid life. You start the bidding with a bid of 1. In turn order,
      * each player may top the high bid. The bidding ends if the high bid stands. The high
@@ -6641,6 +6649,10 @@ object Effects {
     /** Remove a prevention shield previously placed on [target] (Pyramids). */
     fun RemoveDamageShield(target: EffectTarget): Effect = com.wingedsheep.sdk.scripting.effects.RemoveDamageShieldEffect(target)
 
+    /** Make a creature block an attacker immediately; declaration restrictions do not apply. */
+    fun BecomeBlocking(blocker: EffectTarget, attacker: EffectTarget): Effect =
+        com.wingedsheep.sdk.scripting.effects.BecomeBlockingEffect(blocker, attacker)
+
     /**
      * Remove a creature from combat.
      *
@@ -6650,10 +6662,6 @@ object Effects {
      *   Ydwen Efreet's "Creatures it was blocking that had become blocked by only this
      *   creature this combat become unblocked."
      */
-    /** Make a creature block an attacker immediately; declaration restrictions do not apply. */
-    fun BecomeBlocking(blocker: EffectTarget, attacker: EffectTarget): Effect =
-        com.wingedsheep.sdk.scripting.effects.BecomeBlockingEffect(blocker, attacker)
-
     fun RemoveFromCombat(target: EffectTarget, unblockSoleBlockedAttackers: Boolean = false): Effect =
         RemoveFromCombatEffect(target, unblockSoleBlockedAttackers)
 

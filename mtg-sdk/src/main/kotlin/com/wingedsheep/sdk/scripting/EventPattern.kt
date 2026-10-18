@@ -38,6 +38,17 @@ enum class ControlChangeDirection {
 enum class ExploreReveal { ANY, LAND, NONLAND }
 
 /**
+ * Whether an activated ability's cost must include the {T} symbol — the activation-cost axis of
+ * [EventPattern.AbilityActivatedEvent].
+ *
+ * - [WITH] — "an ability … with {T} in its activation cost" (Imprison).
+ * - [WITHOUT] — "an ability … without {T} in its activation cost" (Haunting Wind, Powerleech,
+ *   Artifact Possession).
+ */
+@Serializable
+enum class TapSymbolInCost { WITH, WITHOUT }
+
+/**
  * Represents a game event type used by both replacement effects and triggered abilities.
  *
  * This is compositional - events are specified by combining an event type
@@ -2728,12 +2739,13 @@ sealed interface EventPattern : TextReplaceable<EventPattern> {
      * [sourceFilter] optionally restricts which permanent the activated ability must belong to
      * (e.g. [GameObjectFilter.Artifact], or `Artifact.opponentControls()`). Null = any source.
      *
-     * [requireNoTapInCost] switches the trigger from the "isn't a mana ability" semantic to the
-     * Antiquities "without {T} in its activation cost" semantic (Haunting Wind, Powerleech,
-     * Artifact Possession). When true, the ability matches iff its activation cost does **not**
-     * include the {T} symbol — and mana abilities without {T} *do* count, unlike the default
-     * semantic. The engine emits an `AbilityActivatedEvent` for every activated ability whose cost
-     * lacks {T} (mana or not); this flag is what tells the matcher to accept the mana-ability ones.
+     * [tapInCost] narrows by whether the activation cost includes the {T} symbol. It is orthogonal
+     * to the mana-ability gate: the Antiquities "without {T} in its activation cost" wording (Haunting
+     * Wind, Powerleech, Artifact Possession) counts mana abilities without {T} too, so those cards
+     * pair [TapSymbolInCost.WITHOUT] with [includeManaAbilities]; Imprison's "with {T} in its
+     * activation cost that isn't a mana ability" is [TapSymbolInCost.WITH] under the default gate.
+     * The engine emits an `AbilityActivatedEvent` for every activated ability, mana or not, with
+     * `costsTap` set from its cost. Null (the default) imposes nothing.
      *
      * [requireExhaust] narrows to exhaust abilities (CR 702.177). On its own it is the plain
      * Aetherdrift wording — "Whenever you activate an exhaust ability" (Adrenaline Jockey, Rangers'
@@ -2771,7 +2783,7 @@ sealed interface EventPattern : TextReplaceable<EventPattern> {
         val player: Player = Player.You,
         val targetMatch: com.wingedsheep.sdk.scripting.events.Recipient? = null,
         val sourceFilter: GameObjectFilter? = null,
-        val requireNoTapInCost: Boolean = false,
+        val tapInCost: TapSymbolInCost? = null,
         val requireExhaust: Boolean = false,
         val excludeManaAbilities: Boolean = false,
         val includeManaAbilities: Boolean = false,
@@ -2807,7 +2819,11 @@ sealed interface EventPattern : TextReplaceable<EventPattern> {
                 requireExhaust && excludeManaAbilities ->
                     "is an exhaust ability that isn't a mana ability"
                 requireExhaust -> "is an exhaust ability"
-                requireNoTapInCost -> "doesn't have {T} in its activation cost"
+                tapInCost == TapSymbolInCost.WITHOUT && includeManaAbilities ->
+                    "doesn't have {T} in its activation cost"
+                tapInCost == TapSymbolInCost.WITHOUT -> "doesn't have {T} in its activation cost and isn't a mana ability"
+                tapInCost == TapSymbolInCost.WITH && includeManaAbilities -> "has {T} in its activation cost"
+                tapInCost == TapSymbolInCost.WITH -> "has {T} in its activation cost and isn't a mana ability"
                 includeManaAbilities -> ""
                 else -> "isn't a mana ability"
             }

@@ -2893,6 +2893,105 @@
     ]
 }
 
+// Imprison
+{
+    "name": "Imprison",
+    "manaCost": "{B}",
+    "typeLine": "Enchantment — Aura",
+    "oracleText": "Enchant creature\nWhenever a player activates an ability of enchanted creature with {T} in its activation cost that isn't a mana ability, you may pay {1}. If you do, counter that ability. If you don't, destroy this Aura.\nWhenever enchanted creature attacks or blocks, you may pay {1}. If you do, tap the creature, remove it from combat, and creatures it was blocking that had become blocked by only that creature this combat become unblocked. If you don't, destroy this Aura.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Imprison:1",
+                "trigger": {
+                    "type": "AbilityActivatedEvent",
+                    "player": "Each",
+                    "tapInCost": "WITH"
+                },
+                "binding": "ATTACHED",
+                "effect": {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.MayPay",
+                        "cost": {
+                            "type": "PayManaCost",
+                            "cost": "{1}"
+                        }
+                    },
+                    "then": {
+                        "type": "Counter",
+                        "target": "CounterTarget.Ability",
+                        "targetSource": "CounterTargetSource.TriggeringEntity"
+                    },
+                    "otherwise": {
+                        "type": "MoveToZone",
+                        "target": "Self",
+                        "destination": "Graveyard",
+                        "byDestruction": true
+                    },
+                    "descriptionOverride": "Pay {1}? If you do, counter that ability. If you don't, destroy Imprison."
+                },
+                "descriptionOverride": "Whenever a player activates an ability of enchanted creature with {T} in its activation cost that isn't a mana ability, you may pay {1}. If you do, counter that ability. If you don't, destroy this Aura."
+            },
+            {
+                "id": "Imprison:2",
+                "trigger": {
+                    "type": "AnyOfEvents",
+                    "events": [
+                        "AttackEvent",
+                        "BlockEvent"
+                    ]
+                },
+                "binding": "ATTACHED",
+                "effect": {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.MayPay",
+                        "cost": {
+                            "type": "PayManaCost",
+                            "cost": "{1}"
+                        }
+                    },
+                    "then": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "TapUntap",
+                                "target": "EnchantedCreature"
+                            },
+                            {
+                                "type": "RemoveFromCombat",
+                                "target": "EnchantedCreature",
+                                "unblockSoleBlockedAttackers": true
+                            }
+                        ]
+                    },
+                    "otherwise": {
+                        "type": "MoveToZone",
+                        "target": "Self",
+                        "destination": "Graveyard",
+                        "byDestruction": true
+                    },
+                    "descriptionOverride": "Pay {1}? If you do, tap the creature and remove it from combat. If you don't, destroy Imprison."
+                },
+                "descriptionOverride": "Whenever enchanted creature attacks or blocks, you may pay {1}. If you do, tap the creature, remove it from combat, and creatures it was blocking that had become blocked by only that creature this combat become unblocked. If you don't, destroy this Aura."
+            }
+        ],
+        "auraTarget": {
+            "type": "TargetObject",
+            "filter": {
+                "baseFilter": "creature"
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "107",
+        "rarity": "RARE",
+        "artist": "Christopher Rush",
+        "imageUri": "https://cards.scryfall.io/normal/front/1/2/12671381-beb7-41b8-9484-97f8aca5c981.jpg?1783948065"
+    }
+}
+
 // Indestructible Aura
 {
     "name": "Indestructible Aura",

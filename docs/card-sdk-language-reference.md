@@ -1368,7 +1368,7 @@ serialized shape; the facade for each is:
 | `ChooseColorForTargetEffect` | `Effects.ChooseColorForTarget` |
 | `ConvertCountersToTokensEffect` | `Effects.ConvertCountersToTokens` |
 | `CopyTargetSpellEffect` | `Effects.CopyTargetSpell` |
-| `CounterEffect` | `Effects.CounterSpell()` / `CounterUnlessPays("{N}")` / `CounterTriggeringSpell(destination)` |
+| `CounterEffect` | `Effects.CounterSpell()` / `CounterUnlessPays("{N}")` / `CounterTriggeringSpell(destination)` / `CounterAbility()` / `CounterTriggeringAbility()` |
 | `CreateDelayedTriggerEffect` | `Effects.CreateDelayedTrigger` |
 | `CreatePredefinedTokenEffect` | `Effects.CreatePredefinedToken(type, count)` (or `CreateTreasure` / `CreateFood` / `CreateMapToken`) |
 | `InvestigateEffect` | `Effects.Investigate(count, controller?)` |
@@ -7434,7 +7434,7 @@ byDamagePrevention?, by?)`, `trains()`, `evolves()`, `champions()`, `crews()`, `
 controller)`, `becomesUnattached(from, controller)`, `controlChanges(direction, toOpponent?)`,
 `isCast()`, `isCycled()`, `isDiscarded()`, `isSacrificed()`, `doorUnlocked()`, and on `attached`
 only, `beginningOf(step)` (the enchanted creature's controller's step) and
-`hasAbilityActivatedWithoutTap(by)`.
+`hasAbilityActivated(by, tapInCost?, includeManaAbilities)`.
 
 **Batch verbs** (`oneOrMore` / `oneOrMoreOther`): `enter()`, `die()`, `leaveWithoutDying()`,
 `dealCombatDamageToAPlayer()`, `dealCombatDamageToAPlayerOrBattle()`, `dealCombatDamageToYou()`, `becomeTapped(reason?)`, `becomeUntapped()`,
@@ -7445,7 +7445,7 @@ For `enter()` and `die()`, a filter with no controller predicate means "you cont
 **Player verbs**: `beginningOf(step)`, `casts(spell, requires)`, `castsNth(n, spell?)`, `copies(spell)`,
 `castsOrCopies(spell)`,
 `choosesTargets()`, `putsSpellOrAbilityOnStack()`, `activatesAbility(of?, targeting?, loyalty,
-minLoyaltyRemoved, exhaust, includeManaAbilities, excludeManaAbilities, withoutTapInCost)`,
+minLoyaltyRemoved, exhaust, includeManaAbilities, excludeManaAbilities, tapInCost?)`,
 `attackTriggersAbility()`, `attacks(with?, minAttackers?)` (you declare attackers), `isAttacked(…)`,
 `isDealtDamage(by?, damageType?)`, `isDealtCombatDamage()`, `getsCounters(type?)` (`you` only — counters
 put on the player by anyone: "whenever you get one or more {E}", `CountersPlacedEvent.recipient`),
@@ -7842,6 +7842,10 @@ The shapes in this family, with their engine notes.
 **Blocks**
 
 - `Triggers.self.blocks()` — SELF, no filter.
+- `Triggers.attached.blocks()` — "whenever enchanted/equipped creature blocks", fired from the Aura/Equipment
+  (`AttachmentTriggerDetector`, the host among the declaration's new blockers); unfiltered only. With
+  `Triggers.or(Triggers.attached.attacks(), Triggers.attached.blocks())` it is "attacks or blocks" kept on the Aura,
+  so "you" and "destroy this Aura" stay the Aura's (Imprison).
 - `Triggers.self.becomesBlocked()` — SELF, no filter.
 - `Triggers.self.becomesBlocked(by = filter)` — "becomes blocked by a [filter] creature": SELF, the
   filter constrains the **blocker** (Ogre Leadfoot, Sylvan Basilisk, Battering Ram). `by` is
@@ -8245,7 +8249,7 @@ The shapes in this family, with their engine notes.
   `{T}: Add {G}` triggers it, since a mana ability is still an activated ability (CR 605.3). Pair it with
   `oncePerTurn = true` on the triggered ability for the "this ability triggers only once each turn" clause. Backed
   by `EventPattern.AbilityActivatedEvent(player, sourceFilter, includeManaAbilities)`. Unlike
-  `Triggers.<player>.activatesAbility(of, withoutTapInCost = true)` / `Triggers.attached.hasAbilityActivatedWithoutTap(by)` (below), which keys on the literal `{T}`-in-cost wording, this ignores the tap cost
+  `tapInCost = TapSymbolInCost.WITHOUT` / `WITH` (below), which keys on the literal `{T}`-in-cost wording, this ignores the tap cost
   entirely. A trigger that sets `includeManaAbilities` must not itself be able to add mana, or CR 605.1b would make
   it a mana ability (and it would resolve off the stack).
 
@@ -8288,20 +8292,25 @@ The shapes in this family, with their engine notes.
   Mentor, whose payoff is `Effects.CopyTargetSpellOrAbility(EffectTarget.TriggeringEntity)` (for an
   `AbilityActivatedEvent` the triggering entity is the activated ability on the stack; the copy executor reprompts for
   new targets, CR 707.10/707.10c).
-- `Triggers.<player>.activatesAbility(of, withoutTapInCost = true)` / `Triggers.attached.hasAbilityActivatedWithoutTap(by)` — the Antiquities "tap / activate an artifact"
-  punisher half: a permanent matching `sourceFilter` has an activated ability used **without `{T}` in its activation
-  cost** (Haunting Wind, Powerleech, Artifact Possession). Backed by
-  `EventPattern.AbilityActivatedEvent(player, sourceFilter, requireNoTapInCost = true)`. This differs from
-  `Triggers.anOpponent.activatesAbility()` / `Triggers.you.activatesAbility()` in two ways: it keys on the literal `{T}`-in-cost wording rather
-  than "isn't a mana ability", so **a non-`{T}` mana ability also fires it** (the engine emits an
-  `AbilityActivatedEvent` for every activated ability whose cost lacks `{T}`, mana or not, and `costsTap`/`isManaAbility`
-  on the event let the matcher pick the right wording); and `sourceFilter` restricts which permanent's ability counts
-  (`GameObjectFilter.Artifact`, `Artifact.opponentControls()`, or null with `TriggerBinding.ATTACHED` for "enchanted
-  artifact"). Pair with `Triggers.<subject>.becomesTapped(reason, firstTimeEachTurn)` to cover the full "becomes tapped or has a non-`{T}` ability activated"
-  clause. For "that artifact's controller": the **global** form uses
+- `Triggers.<player>.activatesAbility(of, tapInCost = TapSymbolInCost.WITHOUT, includeManaAbilities = true)` /
+  `Triggers.attached.hasAbilityActivated(by, tapInCost = TapSymbolInCost.WITHOUT, includeManaAbilities = true)` — the
+  Antiquities "tap / activate an artifact" punisher half: a permanent matching `sourceFilter` has an activated ability
+  used **without `{T}` in its activation cost** (Haunting Wind, Powerleech, Artifact Possession). Backed by
+  `EventPattern.AbilityActivatedEvent(player, sourceFilter, tapInCost = WITHOUT, includeManaAbilities = true)`.
+  `tapInCost` (`TapSymbolInCost.WITH` / `WITHOUT`, null = either) narrows on the event's `costsTap`; it is orthogonal
+  to the mana-ability gate, and the "without `{T}`" wording counts a non-`{T}` mana ability too, which is why these
+  cards add `includeManaAbilities` (the engine emits an `AbilityActivatedEvent` for every activated ability, mana or
+  not). `sourceFilter` restricts which permanent's ability counts (`GameObjectFilter.Artifact`,
+  `Artifact.opponentControls()`, or null with `TriggerBinding.ATTACHED` for "enchanted artifact"). Pair with
+  `Triggers.<subject>.becomesTapped(reason, firstTimeEachTurn)` to cover the full "becomes tapped or has a non-`{T}`
+  ability activated" clause. For "that artifact's controller": the **global** form uses
   `EffectTarget.PlayerRef(Player.TriggeringPlayer)` (the activator); the **ATTACHED** form uses
-  `EffectTarget.ControllerOfTriggeringEntity` (the enchanted artifact's controller, exposed by
-  `AttachmentTriggerDetector`).
+  `EffectTarget.ControllerOfTriggeringEntity`, which reads the permanent's controller through the triggering entity.
+- `Triggers.attached.hasAbilityActivated(tapInCost = TapSymbolInCost.WITH)` — "whenever a player activates an
+  ability of enchanted creature **with `{T}` in its activation cost** that isn't a mana ability" (Imprison): `WITH`
+  under the default mana-ability gate. On both the global and the ATTACHED path the triggering entity is the
+  activated ability on the stack (the permanent itself for a mana ability, which never uses the stack), so
+  `Effects.CounterTriggeringAbility()` is "counter that ability".
 - `Triggers.you.attackTriggersAbility()` — **a creature you control attacking causes a triggered ability of that
   creature to trigger** (Firebender Ascension). Backed by `EventPattern.AbilityTriggeredEvent(player, requireAttackCause,
   sourceFilter?)`, which matches the engine's `AbilityTriggeredEvent` when a triggered ability is put on the stack.

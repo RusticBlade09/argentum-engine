@@ -412,7 +412,8 @@
                 "trigger": {
                     "type": "AbilityActivatedEvent",
                     "player": "Each",
-                    "requireNoTapInCost": true
+                    "tapInCost": "WITHOUT",
+                    "includeManaAbilities": true
                 },
                 "binding": "ATTACHED",
                 "effect": {
@@ -2175,7 +2176,8 @@
                     "type": "AbilityActivatedEvent",
                     "player": "Each",
                     "sourceFilter": "artifact",
-                    "requireNoTapInCost": true
+                    "tapInCost": "WITHOUT",
+                    "includeManaAbilities": true
                 },
                 "binding": "ANY",
                 "effect": {
@@ -3050,7 +3052,8 @@
                     "type": "AbilityActivatedEvent",
                     "player": "EachOpponent",
                     "sourceFilter": "artifact",
-                    "requireNoTapInCost": true
+                    "tapInCost": "WITHOUT",
+                    "includeManaAbilities": true
                 },
                 "binding": "ANY",
                 "effect": {

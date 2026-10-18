@@ -38,6 +38,7 @@ import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.ChoiceSlot
 import com.wingedsheep.sdk.scripting.DrawStepFirstCard
 import com.wingedsheep.sdk.scripting.EventPattern
+import com.wingedsheep.sdk.scripting.TapSymbolInCost
 import com.wingedsheep.sdk.scripting.ExploreReveal
 import com.wingedsheep.sdk.scripting.GameObjectFilter
 import com.wingedsheep.sdk.scripting.TriggerBinding
@@ -54,6 +55,32 @@ class TriggerMatcher(
     private val predicateEvaluator: PredicateEvaluator,
     private val conditionEvaluator: ConditionEvaluator
 ) {
+
+    /**
+     * The activation-kind axes of [EventPattern.AbilityActivatedEvent] shared by the main loop and
+     * the ATTACHED path: keyword, loyalty, exhaust, {T}-in-cost, and the mana-ability gate.
+     */
+    fun matchesActivationKind(trigger: EventPattern.AbilityActivatedEvent, event: AbilityActivatedEvent): Boolean {
+        if (trigger.keyword != null && event.keyword != trigger.keyword) return false
+        if (trigger.requireLoyalty && !event.isLoyalty) return false
+        if (event.loyaltyCountersRemoved < trigger.minLoyaltyRemoved) return false
+        when (trigger.tapInCost) {
+            TapSymbolInCost.WITH -> if (!event.costsTap) return false
+            TapSymbolInCost.WITHOUT -> if (event.costsTap) return false
+            null -> {}
+        }
+        return if (trigger.requireExhaust) {
+            // Plain "whenever you activate an exhaust ability" counts an exhaust mana ability
+            // too; only Pit Automaton's updated wording re-adds the exclusion.
+            event.isExhaust && !(trigger.excludeManaAbilities && event.isManaAbility)
+        } else {
+            // Default "activates an ability that isn't a mana ability" (Flamescroll Celebrant):
+            // the engine emits AbilityActivatedEvent for every activated ability, mana or not.
+            // includeManaAbilities is the unqualified wording (Elrond, Moon-Reader) and the
+            // Antiquities "without {T} in its activation cost" one, which count mana abilities.
+            trigger.includeManaAbilities || !event.isManaAbility
+        }
+    }
 
     fun matchesTrigger(
         trigger: EventPattern,
@@ -323,28 +350,7 @@ class TriggerMatcher(
             is EventPattern.AbilityActivatedEvent -> {
                 if (event !is AbilityActivatedEvent) return false
                 if (!matchesPlayer(state, trigger.player, event.controllerId, controllerId)) return false
-                if (trigger.requireLoyalty && !event.isLoyalty) return false
-                if (event.loyaltyCountersRemoved < trigger.minLoyaltyRemoved) return false
-                if (trigger.keyword != null && event.keyword != trigger.keyword) return false
-                if (trigger.requireExhaust) {
-                    if (!event.isExhaust) return false
-                    // Plain "whenever you activate an exhaust ability" counts an exhaust mana
-                    // ability too; only Pit Automaton's updated wording re-adds the exclusion.
-                    if (trigger.excludeManaAbilities && event.isManaAbility) return false
-                } else if (trigger.requireNoTapInCost) {
-                    // Antiquities "activates an ability without {T} in its activation cost"
-                    // (Haunting Wind / Powerleech / Artifact Possession). Match any activated
-                    // ability whose cost lacks {T} — mana abilities without {T} count too.
-                    if (event.costsTap) return false
-                } else if (!trigger.includeManaAbilities) {
-                    // Default "activates an ability that isn't a mana ability" (Flamescroll
-                    // Celebrant): the engine emits AbilityActivatedEvent for every activated
-                    // ability, mana or not, so explicitly reject the mana-ability ones here.
-                    // Loyalty abilities qualify (they aren't mana abilities). The
-                    // includeManaAbilities branch is the unqualified wording (Elrond,
-                    // Moon-Reader) and skips this gate, accepting mana abilities too.
-                    if (event.isManaAbility) return false
-                }
+                if (!matchesActivationKind(trigger, event)) return false
                 // SELF/ATTACHED binding: the ability's source must be this permanent (Artifact
                 // Possession — "enchanted artifact"); the source is exposed via TriggerContext as
                 // the triggering entity for the ATTACHED check upstream, but the source-id match

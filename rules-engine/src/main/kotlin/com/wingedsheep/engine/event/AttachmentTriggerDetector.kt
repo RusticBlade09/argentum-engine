@@ -3,6 +3,7 @@ package com.wingedsheep.engine.event
 import com.wingedsheep.engine.core.AbilityActivatedEvent
 import com.wingedsheep.engine.core.AttackersDeclaredEvent
 import com.wingedsheep.engine.core.BecomesTargetEvent
+import com.wingedsheep.engine.core.BlockingRelationshipsEvent
 import com.wingedsheep.engine.core.DamageDealtEvent
 import com.wingedsheep.engine.core.LandTappedForManaEvent
 import com.wingedsheep.engine.core.TappedEvent
@@ -163,6 +164,8 @@ class AttachmentTriggerDetector(
                 }
             }
             is AttackersDeclaredEvent -> event.attackers
+            // "Whenever enchanted creature blocks" — the creatures that just became blockers.
+            is BlockingRelationshipsEvent -> event.newBlockers.toList()
             is TurnFaceUpEvent -> listOf(event.entityId)
             is TappedEvent -> listOf(event.entityId)
             // "Whenever enchanted / fortified land is tapped for mana" (C.A.M.P.).
@@ -212,6 +215,16 @@ class AttachmentTriggerDetector(
                     // which the ATTACHED path must not skip.
                     trigger.requires.all { matcher.matchesAttackPredicate(it, event, attachedEntityId, state) }
             }
+            // "Whenever enchanted creature blocks" (Imprison). Unfiltered only — the DSL rejects an
+            // attacker filter or a blocked-attacker count off the SELF binding — so the host
+            // being among this declaration's new blockers is the whole match.
+            is EventPattern.BlockEvent -> {
+                event is BlockingRelationshipsEvent && attachedEntityId in event.newBlockers
+            }
+            // "Whenever enchanted creature attacks or blocks" — Triggers.or over attached atoms.
+            is EventPattern.AnyOf -> trigger.events.any {
+                matchesAttachedTrigger(it, event, attachedEntityId, auraControllerId, auraId, state)
+            }
             is EventPattern.TapEvent -> {
                 if (event !is TappedEvent || event.entityId != attachedEntityId) return false
                 // A named tap cause ("… becomes tapped to pay a teamwork cost") narrows the
@@ -242,14 +255,8 @@ class AttachmentTriggerDetector(
                 if (event !is AbilityActivatedEvent) return false
                 if (event.sourceId != attachedEntityId) return false
                 if (!matcher.matchesPlayer(state, trigger.player, event.controllerId, auraControllerId)) return false
-                // Mirror the main matcher's two wordings (see TriggerMatcher.AbilityActivatedEvent):
-                // "without {T} in its activation cost" vs. "isn't a mana ability".
-                when {
-                    trigger.keyword != null -> event.keyword == trigger.keyword
-                    trigger.requireExhaust -> event.isExhaust
-                    trigger.requireNoTapInCost -> !event.costsTap
-                    else -> !event.isManaAbility
-                }
+                // The same activation-kind axes as the main matcher ({T}-in-cost, mana gate, …).
+                matcher.matchesActivationKind(trigger, event)
             }
             is EventPattern.TurnFaceUpEvent -> {
                 event is TurnFaceUpEvent && event.entityId == attachedEntityId
@@ -296,6 +303,9 @@ class AttachmentTriggerDetector(
             is ZoneChangeEvent -> TriggerContext.fromEvent(event)
             // The tapper and the colors of the mana the land produced (C.A.M.P.).
             is LandTappedForManaEvent -> TriggerContext.fromEvent(event)
+            // The activated ability on the stack, so "counter that ability" reaches it (Imprison);
+            // a mana ability never uses the stack, so it falls back to the permanent.
+            is AbilityActivatedEvent -> TriggerContext.fromEvent(event)
             else -> TriggerContext(triggeringEntityId = attachedEntityId)
         }
     }

@@ -16903,6 +16903,35 @@
     "typeLine": "Enchantment — Aura",
     "oracleText": "Enchant creature\nEnchanted creature gets +2/+2, has first strike and vigilance, and is a legendary Soldier in addition to its other types.\nWhenever enchanted creature attacks or blocks, attach any number of target Equipment you control to it.",
     "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Super-Soldier Serum:1",
+                "trigger": {
+                    "type": "AnyOfEvents",
+                    "events": [
+                        "AttackEvent",
+                        "BlockEvent"
+                    ]
+                },
+                "binding": "ATTACHED",
+                "effect": {
+                    "type": "ForEach",
+                    "space": "IterationSpace.Targets",
+                    "body": {
+                        "type": "AttachTargetEquipmentToCreature",
+                        "creatureTarget": "EnchantedCreature"
+                    }
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "unlimited": true,
+                    "filter": {
+                        "baseFilter": "artifact Equipment ctrl:you"
+                    }
+                },
+                "descriptionOverride": "Whenever enchanted creature attacks or blocks, attach any number of target Equipment you control to it."
+            }
+        ],
         "staticAbilities": [
             {
                 "type": "ModifyStats",
@@ -16927,52 +16956,6 @@
                 "filter": {
                     "baseFilter": "permanent",
                     "scope": "AttachedTo"
-                }
-            },
-            {
-                "type": "GrantTriggeredAbility",
-                "ability": {
-                    "id": "Super-Soldier Serum:1",
-                    "trigger": "AttackEvent",
-                    "effect": {
-                        "type": "ForEach",
-                        "space": "IterationSpace.Targets",
-                        "body": {
-                            "type": "AttachTargetEquipmentToCreature",
-                            "creatureTarget": "Self"
-                        }
-                    },
-                    "targetRequirement": {
-                        "type": "TargetObject",
-                        "unlimited": true,
-                        "filter": {
-                            "baseFilter": "artifact Equipment ctrl:you"
-                        }
-                    },
-                    "descriptionOverride": "Whenever this creature attacks, attach any number of target Equipment you control to it."
-                }
-            },
-            {
-                "type": "GrantTriggeredAbility",
-                "ability": {
-                    "id": "Super-Soldier Serum:2",
-                    "trigger": "BlockEvent",
-                    "effect": {
-                        "type": "ForEach",
-                        "space": "IterationSpace.Targets",
-                        "body": {
-                            "type": "AttachTargetEquipmentToCreature",
-                            "creatureTarget": "Self"
-                        }
-                    },
-                    "targetRequirement": {
-                        "type": "TargetObject",
-                        "unlimited": true,
-                        "filter": {
-                            "baseFilter": "artifact Equipment ctrl:you"
-                        }
-                    },
-                    "descriptionOverride": "Whenever this creature blocks, attach any number of target Equipment you control to it."
                 }
             }
         ],
