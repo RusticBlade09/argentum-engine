@@ -107,6 +107,7 @@ object TargetResolutionUtils {
         is EffectTarget.SpecificEntity -> target.entityId
         EffectTarget.TriggeringEntity -> context.triggeringEntityId
         EffectTarget.TargetingSource -> context.triggerContext?.targetingSourceEntityId
+        EffectTarget.DamageSource -> context.triggerContext?.damageSourceId
         is EffectTarget.DiscardedAsCost -> context.discardedAsCostCards.getOrNull(target.index)
         is EffectTarget.RevealedAsCost -> context.revealedAsCostSnapshots.getOrNull(target.index)?.entityId
         is EffectTarget.SacrificedAsCost -> context.sacrificedPermanents.getOrNull(target.index)?.entityId
@@ -326,6 +327,7 @@ object TargetResolutionUtils {
             Player.AnOpponent -> state.getOpponents(context.controllerId).firstOrNull()
             Player.DefendingPlayer -> resolveDefendingPlayer(context, state)
             Player.ChosenOpponent -> context.chosenOpponent(state)
+            Player.ChosenPlayer -> context.chosenPlayer(state)
             Player.EnchantedPlayer -> enchantedPlayer(context, state)
             is Player.OwnerOf -> context.targets.firstOrNull()?.toEntityId()
                 ?.let { state.getEntity(it)?.get<CardComponent>()?.ownerId }

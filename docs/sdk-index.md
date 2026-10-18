@@ -994,7 +994,8 @@ Families:
 - `ProvokeEffect(target: EffectTarget)` — Provoke effect: untap target creature and force it to block the source creature if able.
 - `PutOnLibraryPositionOfChoiceEffect(target: EffectTarget, positions: List<LibraryChoicePosition>)` — The target's owner puts it into their library at one of the offered positions.
 - `PutOntoBattlefieldAsAuraEffect(enchant: GameObjectFilter, grantedStaticAbilities: List<StaticAbility>, grantedAbilities: List<ActivatedAbility>, target: EffectTarget, fromZone: Zone?)` — Put a card onto the battlefield **as an Aura** it isn't printed as: "return it to the battlefield.
-- `PutOntoBattlefieldAttachedToChosenEffect(target: EffectTarget, hostFilter: GameObjectFilter)` — Put a targeted Aura or Equipment card onto the battlefield **attached to a permanent the effect's controller chooses** at resolution.
+- `PutOntoBattlefieldAsNonAuraEffect(grantedTriggeredAbilities: List<TriggeredAbility>, chosenPlayer: EffectTarget?, target: EffectTarget, fromZone: Zone?)` — Put an Aura card onto the battlefield **as a non-Aura enchantment** — the inverse of PutOntoBattlefieldAsAuraEffect: "return this card to the battlefield under your control as a non-Aura enchantment.
+- `PutOntoBattlefieldAttachedToChosenEffect(target: EffectTarget, hostFilter: GameObjectFilter, chooser: Chooser)` — Put a targeted Aura or Equipment card onto the battlefield **attached to a permanent chosen at resolution** — by the effect's controller unless chooser names someone else.
 - `RandomizedBlockerPilesEffect(duration: Duration)` — Replace blocker declarations with optional creature piles assigned randomly to attackers.
 - `RecordChosenLinkedExileEffect(from: String)` — Records the card most recently selected from the source's linked-exile pile as its "last chosen card", stamping a `ChosenLinkedExileComponent` on the source.
 - `RecordSourceObjectsEffect(from: String, key: String)` — Append the current battlefield objects in a pipeline collection to a source-local history slot.
@@ -1095,6 +1096,7 @@ Families:
 - `EffectTarget.ControllerOfDamageSource` — CONTROLLER OF DAMAGE SOURCE: the controller of the source dealing the damage currently being processed.
 - `EffectTarget.ControllerOfPipelineTarget(collectionName: String, index: Int)` — CONTROLLER OF PIPELINE TARGET: Refers to the controller of an entity stored in a pipeline collection.
 - `EffectTarget.ControllerOfTriggeringEntity` — CONTROLLER OF TRIGGERING ENTITY: Refers to the controller/owner of the entity that caused the trigger to fire.
+- `EffectTarget.DamageSource` — DAMAGE SOURCE: the object that dealt the damage of a deals-damage trigger — "it" in "whenever equipped creature deals combat damage to a player, you may sacrifice it" (Ogre-Head Helm).
 - `EffectTarget.DiscardedAsCost(index: Int)` — DISCARDED AS COST: a card discarded to pay this spell's additional cost (`Costs.additional.DiscardCards(...)`) or this activated ability's cost (`Costs.Discard(...)`), by index.
 - `EffectTarget.EachDamagedBySourceThisGame` — MULTI-ENTITY REFERENCE: every **opponent and planeswalker the effect's source has dealt damage to this game** — The Fallen's "each opponent and planeswalker it has dealt damage to this game".
 - `EffectTarget.EnchantedCreature` — The creature enchanted by this aura
@@ -1437,6 +1439,7 @@ Families:
 - `Player.BoundVariable(name: String)` — The player chosen for the target declared as name — the player-typed reading of a named target handle (com.wingedsheep.sdk.scripting.targets.EffectTarget.BoundVariable).
 - `Player.Candidate` — The player currently being considered as a target (CR 115).
 - `Player.ChosenOpponent` — The opponent locked into the source's com.wingedsheep.sdk.scripting.ChoiceSlot.OPPONENT slot (set by an `EntersWithChoice(ChoiceType.OPPONENT, …)` replacement effect).
+- `Player.ChosenPlayer` — The player — any player, the source's controller included — locked into the source's com.wingedsheep.sdk.scripting.ChoiceSlot.PLAYER slot, written as the permanent entered by the effect that put it…
 - `Player.ContextPlayer(index: Int)` — A player from the context (for multi-target spells)
 - `Player.ControllerOf(targetDescription: String)` — Controller of a permanent (used with EffectTarget)
 - `Player.ControllerOfAffectedEntity` — Controller of the permanent a continuous effect is currently modifying — "enchanted creature gets -X/-0, where X is the number of cards in **its controller's** graveyard" (Disturbing Conversion).
@@ -1551,6 +1554,7 @@ Families:
 - `RedirectDamage(redirectTo: EffectTarget, appliesTo: EventPattern, condition: Condition?)` — Redirect damage to another target.
 - `RedirectZoneChange(newDestination: Zone, appliesTo: EventPattern, linkToSource: Boolean, selfOnly: Boolean, shuffleIntoLibrary: Boolean, reveal: Boolean, requiredCause: ZoneChangeCause)` — Redirect a zone change to a different destination.
 - `RedirectZoneChangeWith(newDestination: Zone, additionalEffect: Effect, selfOnly: Boolean, linkToSource: Boolean, riderTiming: ReplacementRiderTiming, appliesTo: EventPattern)` — Redirect a zone change to a different destination AND execute an additional effect.
+- `RegenerateInsteadOfDestruction(appliesTo: EventPattern.DestroyEvent)` — "If <permanent> would be destroyed, regenerate it" — static regeneration (CR 701.19b).
 - `RepeatKeywordAction(times: Int, appliesTo: EventPattern)` — Perform a keyword action (CR 701) times times instead of once (CR 614.1a) — "If you would proliferate, proliferate twice instead." The sibling of ModifyKeywordAction: that one puts an extra effect…
 - `ReplaceDamageWithCounters(counterType: CounterType, sacrificeThreshold: Int?, appliesTo: EventPattern, counterRecipient: DamageCounterRecipient, damagedPlayerMills: Boolean)` — Replace damage with counters (CR 614.1a — an "instead" effect, so the damage is never dealt and nothing that keys on damage being dealt sees it; notably *not* a prevention effect, so it still appli…
 - `ReplaceDamageWithMill(appliesTo: EventPattern, miller: Player, multiplier: Int)` — Prevent matched damage and mill multiplier times that many cards — miller does the milling.

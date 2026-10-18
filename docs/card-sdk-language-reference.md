@@ -1905,10 +1905,26 @@ uses `Patterns.Exile.impulse()`; playing the card follows ordinary costs and tim
   CR 708.2). Informational only — does **not** turn it face up. Pair with
   `Conditions.TargetIsCreatureCard` + `TurnFaceUpEffect` for "Reveal target face-down permanent. If
   it's a creature card, you may turn it face up." (Hauntwoods Shrieker).
-- `PutOntoBattlefieldAttachedToChosen(target, hostFilter?)` — put a targeted Aura or Equipment onto the
-  battlefield attached to a permanent the controller chooses at resolution (default host filter: a creature
-  you control). Works for both Auras and Equipment; the host is chosen, not targeted. If no legal host exists,
-  an Equipment enters unattached while an Aura can't enter (Rule 303.4g). (One Last Job.)
+- `PutOntoBattlefieldAttachedToChosen(target, hostFilter?, chooser = Chooser.Controller)` — put a targeted
+  Aura or Equipment onto the battlefield attached to a permanent chosen at resolution (default host filter: a
+  creature you control, "you" being the effect's controller). Works for both Auras and Equipment; the host is
+  chosen, not targeted. If no legal host exists, an Equipment enters unattached while an Aura can't enter
+  (Rule 303.4g). (One Last Job.) `chooser` names who picks the host — the card still enters under the effect
+  controller's control. **Takklemaggot**'s "that creature's controller chooses a creature that this card could
+  enchant … return this card to the battlefield under your control attached to that creature":
+  `PutOntoBattlefieldAttachedToChosen(Self, GameObjectFilter.Creature, chooser = Chooser.ControllerOfTriggeringEntity)`
+  (the dead creature's last-known controller), gated on `Conditions.SourceInZone(GRAVEYARD)`.
+- `PutOntoBattlefieldAsNonAura(grantedTriggeredAbilities = [], chosenPlayer = null, target = Self,
+  fromZone = GRAVEYARD)` — "return this card to the battlefield under your control as a non-Aura
+  enchantment. It loses \"enchant creature\" and gains \"…\"", the inverse of `PutOntoBattlefieldAsAura`.
+  The card enters under the effect controller's control, unattached, with layer 4 dropping its Aura subtype
+  (card types and other subtypes stay) — so it has no enchant ability to obey and CR 704.5m never sees an
+  unattached Aura. Its printed abilities stay; the granted triggered abilities are added for as long as it
+  stays on the battlefield. `chosenPlayer` is resolved at resolution and recorded on the permanent as its
+  `ChoiceSlot.PLAYER` choice, read back as `Player.ChosenPlayer`. **Takklemaggot**'s fallback, run after the
+  attach step when the card is still in the graveyard: `PutOntoBattlefieldAsNonAura(listOf(TriggeredAbility.create(
+  Triggers.player(Player.ChosenPlayer).beginningOf(UPKEEP), Effects.DealDamage(1, PlayerRef(Player.TriggeringPlayer)))),
+  chosenPlayer = EffectTarget.ControllerOfTriggeringEntity)`.
 - `ReturnSelfToBattlefieldAttached(target, transformed = false)` — return source attached to target
   (Aura recursion). [target] may resolve to a **player** as well as a permanent, and the two cases
   differ in who controls the returned Aura: a *permanent* host hands control to that permanent's
@@ -3287,7 +3303,9 @@ wrappers: Word of Command composes it inside `WithManaAbilitySources` and
   off the table stores an empty collection. The flipped card is the effect's source and is never on
   the table itself. "If this is on the battlefield" is the card's own `Effects.If(SourceInZone(…))`.
   Chaos Orb: `If(SourceInZone(BATTLEFIELD), Pipeline { destroy(flipOntoBattlefield(Permanent.nontoken())) })`
-  then `Destroy(Self)`. A `CardFlippedOntoBattlefieldEvent` carries the table and landing so every
+  then `Destroy(Self)`. A spell can be the flipped card too — Falling Star, thrown from the stack:
+  `Pipeline { ForEachInCollection(flipOntoBattlefield(Creature), DealDamage(3, IterationEntity)) }` then
+  `ForEachInGroup(Creature.wasDealtDamageBySourceThisTurn(), Tap(IterationEntity))`. A `CardFlippedOntoBattlefieldEvent` carries the table and landing so every
   client replays the flight; the engine AI aims with `FlipAim`.
 - `Effects.SkipNextStepOrPhase(part, target = Controller)` (`SkipStepOrPhaseEffect(part, SkipDuration.NEXT, target)`, `part` = `TurnPart.UNTAP_STEP` | `DRAW_STEP`; other parts are rejected at construction) — a one-shot marker: the target skips their **next** instance of `part`, consumed by the step it skips.
   - `DRAW_STEP` adds the `SkipDrawStepComponent` marker consumed by `DrawPhaseManager.performDrawStep` (Elfhame Sanctuary's "you skip your draw step this turn", Fasting).
@@ -5217,6 +5235,14 @@ A resolving nonpermanent spell retains its stack instance through serialized eff
   object that did the targeting (`TriggerContext.targetingSourceEntityId`), where `TriggeringEntity` is
   the permanent it targeted. The object sibling of `Player.ControllerOfTargetingSource`. Mirror-Shield
   Hoplite copies it with `CopyTargetTriggeredAbility(TargetingSource)`.
+- `EffectTarget.DamageSource` — "it" in a deals-damage trigger: the object that dealt the damage
+  (`TriggerContext.damageSourceId`), where `TriggeringEntity` is the damage's recipient. Fixed when the
+  trigger fires, so on an ATTACHED-bound trigger it still names the creature that dealt the damage after
+  the Equipment moved or left in response — unlike `EquippedCreature`, which re-reads the attachment at
+  resolution. Read live (a departed source makes the effect a no-op). Ogre-Head Helm: "whenever
+  equipped creature deals combat damage to a player, you may sacrifice it" is
+  `Effects.SacrificeTarget(EffectTarget.DamageSource)`. The trigger-side sibling of
+  `ControllerOfDamageSource` (the damage-replacement reading).
 - `EffectTarget.TargetController` — the controller of the spell/ability's first chosen target
   ("its controller creates two Map tokens", "its controller gains 4 life"). Control-change effects
   are honored (projected controller first), and a target that has already left the battlefield —
@@ -5355,6 +5381,9 @@ A resolving nonpermanent spell retains its stack instance through serialized eff
   choice flow is tracked in `backlog/multiplayer.md`. Do **not** use it where the text means
   `TargetOpponent`, `EachOpponent`, `DefendingPlayer`, or `TriggeringPlayer`.
 - `Player.ChosenOpponent` — the opponent locked into the source's `ChoiceSlot.OPPONENT` slot.
+- `Player.ChosenPlayer` — the player (any player, the source's controller included) recorded in the source's
+  `ChoiceSlot.PLAYER` slot as it entered — written by `PutOntoBattlefieldAsNonAura(chosenPlayer = …)`.
+  `StepEvent(step, Player.ChosenPlayer)` fires only on that player's step (Takklemaggot's "that player's upkeep").
 - `Player.EnchantedPlayer` — the player the source Aura is attached to ("enchant player", CR 303),
   read from the source's `AttachedToComponent` when its target is a player. Use it both for the payoff
   (`DynamicAmount.LifeTotal(EnchantedPlayer)`, `EffectTarget.PlayerRef(EnchantedPlayer)`) and to scope a
@@ -6658,8 +6687,10 @@ This is the player-arm prerequisite for the planned composable mixed `TargetUnio
 - `.wasDealtDamageBySourceThisTurn()` — the creature was dealt damage this turn by the effect's
   **source**; backed by `StatePredicate.WasDealtDamageBySourceThisTurn`, which reads the source's per-turn
   damaged-creature record (the one the "a creature dealt damage by this creature this turn dies" trigger
-  reads). The record is dropped when the source leaves the battlefield (CR 400.7), so the filter stops
-  matching then. Also honoured by the zone-change redirect path, which answers it off the replacement's
+  reads). A spell on the stack keeps one too, so a resolving spell can ask which creatures it has dealt
+  damage to (Falling Star's "tap all creatures dealt damage by Falling Star"). The record is dropped when a
+  permanent source leaves the battlefield, and a spell's when the card is cast again (CR 400.7), so the
+  filter stops matching then. Also honoured by the zone-change redirect path, which answers it off the replacement's
   host as it stood when an SBA batch began — so the printed replacement "if a creature dealt damage by
   this creature this turn would die, exile it instead" is
   `replacementEffect(RedirectZoneChange(newDestination = Zone.EXILE, appliesTo = EventPattern.ZoneChangeEvent(
@@ -11945,6 +11976,10 @@ before `genericCostReduction` and the battlefield statics. Kami of Jealous Thirs
 **`ActivationRestriction`**
 
 - `AnyPlayerMay` — permits opponents to activate the source. Free, mana-only, and standalone discard costs are offered through the ordinary legal-action flow; discard choices and affordability use the activating player's hand, including filtered, multiple-card, and random discard costs.
+  Narrow it with a companion `OnlyIfCondition`, whose "you" is the **activating** player: *"Only your
+  opponents may activate this ability"* (Clergy of the Holy Nimbus) is `All(AnyPlayerMay,
+  OnlyIfCondition(Conditions.SourceMatches(GameObjectFilter.Any.opponentControls())))`; Merseine's
+  "only the controller of the enchanted creature" is the same shape with `EnchantedPermanentMatches`.
 
 - `MaxPerTurn(n)` — at most N activations per turn.
 - `OncePerTurn` — once each turn (resets at end of turn).
@@ -17060,6 +17095,14 @@ The priority groups are (CR 616.1a–f):
   Harmonious Emergence: `ReplaceDestructionWith(SacrificeSelfEffect then Effects.GrantKeyword(Keyword.INDESTRUCTIBLE,
   EffectTarget.TriggeringEntity), EventPattern.DestroyEvent(GameObjectFilter.Land.attachedToBySource()))`.
   Umbra armor (`Keyword.UMBRA_ARMOR`) is the keyworded sibling with a rules-fixed replacement.
+- `RegenerateInsteadOfDestruction(appliesTo = EventPattern.DestroyEvent(GameObjectFilter.Any.sourceItself()))` —
+  *"If <permanent> would be destroyed, regenerate it"*: static regeneration (CR 701.19b). Each time a
+  matching permanent would be destroyed, it regenerates instead (damage removed, tapped, removed from
+  combat) — nothing is spent, so it works every time. It *is* regeneration: `Effects.CantBeRegenerated`
+  and Wrath-style "can't be regenerated" destructions switch it off, and it reaches every destruction a
+  regeneration shield does (destroy effects, board wipes, lethal-damage / deathtouch SBAs). Preferred over
+  a banked shield, which stays for later. `appliesTo` defaults to the permanent itself and is read
+  relative to it. Clergy of the Holy Nimbus: `replacementEffect(RegenerateInsteadOfDestruction())`.
 - `ReplacementEffect.IfYouDoBranchEffect(...)` — branch on "if you do" replacement.
 - `OnEnterRun(effect)` — generic "as ~ enters the battlefield, run [effect]". The wrapped effect
   executes via the normal effect-executor pipeline at entry time (so `EffectTarget.Self` resolves to
