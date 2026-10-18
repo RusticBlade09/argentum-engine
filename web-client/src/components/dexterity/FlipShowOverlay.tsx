@@ -20,7 +20,7 @@ const PROVISIONAL_HALF_TURNS = 6
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2)
 
 /**
- * The flight and landing of a dexterity flip (Chaos Orb), on every client. The thrower's own
+ * The flight and landing of a dexterity flip (Chaos Orb, Falling Star), on every client. The thrower's own
  * client starts it the moment they let go; the server's landing joins mid-air. Everyone else
  * watches it from across the table, replayed from the event.
  */
@@ -153,13 +153,12 @@ function FlipShowView({ show }: { show: FlipShow }) {
     if (!result) return { marks, chips }
     const affected = new Set(result.affected)
     for (const id of result.touched) {
-      const card = cardsById.get(id)
       if (affected.has(id)) {
         marks.set(id, 'destroyed')
-        chips.set(id, { text: 'Destroyed', tone: 'danger' })
+        chips.set(id, { text: 'Hit', tone: 'danger' })
       } else {
         marks.set(id, 'spared')
-        chips.set(id, { text: !result.turnedOver ? 'Spared' : card?.isToken ? 'Token · safe' : 'Safe', tone: 'calm' })
+        chips.set(id, { text: !result.turnedOver ? 'Spared' : 'Safe', tone: 'calm' })
       }
     }
     return { marks, chips }
@@ -173,7 +172,6 @@ function FlipShowView({ show }: { show: FlipShow }) {
       const name = c?.name ?? 'a face-down permanent'
       return c?.controllerId === viewerId ? `${name} (yours)` : name
     })
-    const then = `Then ${show.sourceName} is destroyed.`
     const drift = result.landing.drift ?? 0
     const pull = result.landing.pull ?? 0
     const cm = Math.round(Math.abs(drift) / 10)
@@ -185,7 +183,7 @@ function FlipShowView({ show }: { show: FlipShow }) {
     if (!result.turnedOver) {
       return {
         title: `${whose} ${show.sourceName} didn't turn over`,
-        body: `${carry}${result.landing.halfTurns === 0 ? 'It never turned in the air' : 'It only made a half turn in the air'}, so nothing it touched is destroyed. ${then}`,
+        body: `${carry}${result.landing.halfTurns === 0 ? 'It never turned in the air' : 'It only made a half turn in the air'}, so it has no effect on what it touched.`,
       }
     }
     if (names.length > 0) {
@@ -198,23 +196,23 @@ function FlipShowView({ show }: { show: FlipShow }) {
       const friendlyFire = result.affected.some((id) => cardsById.get(id)?.controllerId === show.flipperId)
       const title = strayed
         ? friendlyFire ? 'Friendly fire!' : 'Off target!'
-        : names.length > 1 ? `Direct hit — ${names.length} permanents destroyed` : 'Direct hit!'
+        : names.length > 1 ? `Direct hit — ${names.length} permanents` : 'Direct hit!'
       return {
         title,
-        body: `${carry}Destroyed: ${names.join(', ')}. ${then}`,
+        body: `${carry}Hit: ${names.join(', ')}.`,
       }
     }
     return result.touched.length > 0
-      ? { title: 'Only tokens', body: `${carry}It landed on tokens, which Chaos Orb can't destroy. ${then}` }
-      : { title: 'Missed!', body: `${carry}It came down on bare felt. ${then}` }
+      ? { title: 'Nothing to hit', body: `${carry}It only touched permanents ${show.sourceName} doesn't affect.` }
+      : { title: 'Missed!', body: `${carry}It came down on bare felt.` }
   })()
 
   const landingStage = show.result ? view.toStage(show.result.landing) : null
   const callout = (() => {
     if (!result) return null
     if (!result.turnedOver) return { text: 'No full turn!', className: styles.calloutBad }
-    if (result.affected.length > 0) return { text: `${result.affected.length} destroyed`, className: styles.calloutHit }
-    return { text: result.touched.length > 0 ? 'Tokens only' : 'Miss', className: styles.calloutMiss }
+    if (result.affected.length > 0) return { text: `${result.affected.length} hit`, className: styles.calloutHit }
+    return { text: result.touched.length > 0 ? 'No effect' : 'Miss', className: styles.calloutMiss }
   })()
 
   return (
