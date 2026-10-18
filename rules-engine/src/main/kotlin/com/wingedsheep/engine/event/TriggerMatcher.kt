@@ -351,10 +351,8 @@ class TriggerMatcher(
                 if (event !is AbilityActivatedEvent) return false
                 if (!matchesPlayer(state, trigger.player, event.controllerId, controllerId)) return false
                 if (!matchesActivationKind(trigger, event)) return false
-                // SELF/ATTACHED binding: the ability's source must be this permanent (Artifact
-                // Possession — "enchanted artifact"); the source is exposed via TriggerContext as
-                // the triggering entity for the ATTACHED check upstream, but the source-id match
-                // here keys directly off event.sourceId.
+                // SELF: the ability's source must be this permanent. (ATTACHED abilities are
+                // matched by AttachmentTriggerDetector against the host.)
                 if (binding == TriggerBinding.SELF && event.sourceId != sourceId) return false
                 // sourceFilter: the permanent whose ability was activated must match (e.g. an
                 // artifact, or an artifact an opponent controls).

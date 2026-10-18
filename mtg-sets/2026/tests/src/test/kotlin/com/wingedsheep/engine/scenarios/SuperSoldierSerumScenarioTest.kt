@@ -122,4 +122,20 @@ class SuperSoldierSerumScenarioTest : FunSpec({
 
         d.attachedTo(sword) shouldBe blocker
     }
+
+    test("the trigger is the Aura's: its controller attaches their own Equipment to an opponent's creature") {
+        val d = driver()
+        val theirs = d.putCreatureOnBattlefield(d.player2, "Centaur Courser")
+        d.removeSummoningSickness(theirs)
+        val mySword = d.putPermanentOnBattlefield(d.player1, "Bonesplitter")
+        d.enchant(d.player1, theirs)
+
+        d.passPriorityUntil(Step.DECLARE_ATTACKERS, d.player2)
+        d.declareAttackers(d.player2, listOf(theirs), d.player1)
+        d.attachOnTrigger(d.player1, mySword)
+
+        withClue("player1's Bonesplitter is now on player2's creature") {
+            d.attachedTo(mySword) shouldBe theirs
+        }
+    }
 })

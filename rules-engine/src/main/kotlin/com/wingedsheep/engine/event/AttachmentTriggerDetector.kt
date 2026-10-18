@@ -56,7 +56,9 @@ class AttachmentTriggerDetector(
                     // skip auras — they go to graveyard with the creature and are handled by
                     // DeathAndLeaveTriggerDetector.detectDeadAuraAttachmentTriggers via the
                     // aura's own ZoneChangeEvent. Only equipment stays on the battlefield.
-                    if (isZoneChange && ability.trigger is EventPattern.ZoneChangeEvent &&
+                    // A zone-change event can only match a zone-change atom, so an AnyOf holding
+                    // one is skipped the same way.
+                    if (isZoneChange && ability.trigger.hasZoneChangeAtom() &&
                         !entry.cardComponent.typeLine.isEquipment) continue
                     if (matchesAttachedTrigger(ability.trigger, event, entityId, entry.controllerId, entry.entityId, state)) {
                         triggers.add(
@@ -309,4 +311,10 @@ class AttachmentTriggerDetector(
             else -> TriggerContext(triggeringEntityId = attachedEntityId)
         }
     }
+}
+
+private fun EventPattern.hasZoneChangeAtom(): Boolean = when (this) {
+    is EventPattern.ZoneChangeEvent -> true
+    is EventPattern.AnyOf -> events.any { it.hasZoneChangeAtom() }
+    else -> false
 }

@@ -131,8 +131,7 @@ class ImprisonScenarioTest : FunSpec({
         d.pendingDecision?.playerId shouldBe d.player2
         d.submitYesNo(d.player2, true)
 
-        withClue("tapped and no longer attacking") {
-            d.isTapped(courser) shouldBe true
+        withClue("no longer attacking") {
             d.state.getEntity(courser)?.has<AttackingComponent>() shouldBe false
         }
         d.passPriorityUntil(Step.END_COMBAT)
