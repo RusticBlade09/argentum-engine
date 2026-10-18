@@ -1010,6 +1010,7 @@ Families:
 - `RemoveAllCountersOfTypeEffect(counterType: CounterType, target: EffectTarget)` — Remove every counter of one specified kind from a target permanent.
 - `RemoveAnyNumberOfCountersEffect(target: EffectTarget, maxTotal: DynamicAmount?, minTotal: DynamicAmount)` — Remove counters from a target permanent.
 - `RemoveCountersEffect(counterType: CounterType, count: DynamicAmount, target: EffectTarget)` — Remove counters effect.
+- `RemoveCountersOfIteratedKindEffect(target: EffectTarget, count: Int)` — "Remove count counter(s) of that kind from target", where the kind is the one an enclosing counter-kind loop (`IterationSpace.CounterKindsOn` / `CounterKindsAmong`) is visiting — "for each kind of…
 - `RemoveDamageShieldEffect(target: EffectTarget)` — One-shot destruction-replacement shield: the next time the target permanent would be destroyed this turn, remove all damage marked on it instead.
 - `RemoveFromCombatEffect(target: EffectTarget, unblockSoleBlockedAttackers: Boolean)` — Remove a creature from combat.
 - `RemoveKeywordEffect(keyword: String, target: EffectTarget, duration: Duration)` — Remove a keyword or ability flag from a target until end of turn.
@@ -1281,6 +1282,7 @@ Families:
 - `IterationSpace.Collection(collection: String)` — Iterate the entities in a named pipeline collection.
 - `IterationSpace.ColorsOf(source: EffectTarget.SingleEntity)` — Iterate the colors of a referenced entity in canonical WUBRG order, exposing the current color through the chosen-color context — the same channel `ChooseColorThen` feeds — so per-color atoms (`Gra…
 - `IterationSpace.CounterKindsAmong(filter: GroupFilter)` — Iterate each **kind of counter** among the battlefield permanents matching filter — "for each kind of counter among creatures you control, put a counter of that kind on …" (Exotic Pets).
+- `IterationSpace.CounterKindsOn(entity: EffectTarget.SingleEntity)` — Iterate each **kind of counter** on one referenced permanent — "for each kind of counter on target permanent, put another counter of that kind on it or remove one from it" (Dramatist's Puppet).
 - `IterationSpace.Group(filter: GroupFilter, noRegenerate: Boolean)` — Iterate battlefield permanents matching filter, snapshotted before any iteration runs (simultaneous semantics — entities destroyed during iteration stay in the list).
 - `IterationSpace.Players(players: Player)` — Iterate players matching players (e.g. `Player.Each`, `Player.EachOpponent`, `Player.ActivePlayerFirst`).
 - `IterationSpace.Targets` — Iterate the targets chosen for the spell/ability.
@@ -1804,7 +1806,7 @@ Families:
 - `FlipAdditionalCoins(coinsPerFlip: Int)` — Each coin the controller would flip is replaced by coinsPerFlip coins, all but one of which the controller ignores — Krark's Thumb's "If you would flip a coin, instead flip two coins and ignore one…
 - `FreeFirstEquipEachTurn` — The controller may pay {0} rather than the equip cost of the first equip ability they activate each turn (Kíli the Resourceful; Forge Anew narrows the usable timing to its controller's turns).
 - `GainActivatedAbilitiesOfPermanents(grantedTo: GroupFilter, sourceFilter: GameObjectFilter, includeManaAbilities: Boolean, includeLoyaltyAbilities: Boolean, spendAsThoughAnyColor: Boolean)` — Permanents matching grantedTo gain copies of the activated abilities of every permanent matching sourceFilter (CR 113.7; the copy uses the gaining permanent as its source, so "this permanent" / `Sa…
-- `GainKeywordsOfGraveyardCreatureCards(keywords: List<Keyword>, anyLandwalk: Boolean, anyProtection: Boolean, filter: GroupFilter)` — "As long as a creature card with flying is in a graveyard, this creature has flying.
+- `GainKeywordsOfCards(keywords: List<Keyword>, families: Set<KeywordFamily>, cards: KeywordCardPool, filter: GroupFilter)` — "As long as a creature card with flying is in a graveyard, this creature has flying.
 - `Goaded(filter: GroupFilter)` — The affected creatures are goaded for as long as this ability applies (CR 701.15b): each attacks each combat if able and attacks a player other than its goader if able.
 - `GrantActivatedAbility(ability: ActivatedAbility, filter: GroupFilter, recipientZone: Zone)` — Grants an activated ability to a filtered set of objects in recipientZone.
 - `GrantAdditionalLandDrop(count: Int?, affected: Player)` — You may play additional lands on each of your turns (CR 305.2 — a continuous effect that increases the number of lands a player can play).

@@ -2469,8 +2469,17 @@ wrappers: Word of Command composes it inside `WithManaAbilitySources` and
   counters of it are placed through `AddCounters`, so placement replacements and counter-placed triggers
   apply. Works on a player target (poison) as well as a permanent. Pass
   `kindFrom = CounterKindSource.ITERATION` to place the kind an enclosing
-  `ForEachCounterKindAmong` loop is visiting instead — no choice is asked, and outside such a loop
+  `ForEachCounterKindAmong` / `ForEachCounterKindOn` loop is visiting instead — no choice is asked, and outside such a loop
   it places nothing (Exotic Pets).
+- `RemoveCountersOfIteratedKind(target?, count = 1)` — remove `count` counters of the kind an enclosing
+  counter-kind loop (`ForEachCounterKindOn` / `ForEachCounterKindAmong`) is visiting; the removing
+  counterpart of `AddCountersOfChosenKind(kindFrom = ITERATION)`, a no-op outside such a loop. Removal
+  goes through `RemoveCounters` (never below zero, usual counter-removed event). A player-chosen kind
+  ("remove a counter from target permanent") is `RemoveCounterOfAnyKind`. "For each kind of counter on
+  target permanent, put another counter of that kind on it or remove one from it" (Dramatist's Puppet)
+  is `ForEachCounterKindOn(ContextTarget(0), ChooseAction(
+  EffectChoice("Put another {counter} counter on it", AddCountersOfChosenKind(kindFrom = ITERATION)),
+  EffectChoice("Remove a {counter} counter from it", RemoveCountersOfIteratedKind())))`.
 - `AddCountersToCollection(name, type, count)` — add counters to cards held in a pipeline collection.
   An overload takes a `DynamicAmount` instead of an `Int` count, evaluated once at resolution — "create
   a token, then put X +1/+1 counters on it, where X is …" over the `CREATED_TOKENS` collection (Emil,
@@ -4248,6 +4257,11 @@ wrappers: Word of Command composes it inside `WithManaAbilitySources` and
     (Exotic Pets) is `run(CreateToken(…, count = 2))` then `forEachCounterKindAmong(AllCreaturesYouControl)
     { val fish = chooseExactly(1, CollectionSlot.CreatedTokens, prompt = "Choose a Fish to get a {counter} counter",
     useTargetingUI = true); run(AddCountersOfChosenKind(fish.asTarget(0), kindFrom = ITERATION)) }`.
+  - `ForEachCounterKindOnEffect(entity, effect)` / facade `Effects.ForEachCounterKindOn(...)` →
+    `IterationSpace.CounterKindsOn(entity)` — per kind of counter on **one** referenced permanent
+    (usually `ContextTarget(0)`), same canonical order and the same chosen-counter-kind binding as
+    `CounterKindsAmong`. A `ChooseAction` in the body may write `{counter}` in its labels to name the
+    visited kind, and the chosen option still sees the kind after the decision (Dramatist's Puppet).
 
   Every space snapshots its items before the first iteration (entities destroyed mid-loop stay in
   the list) and every space is **pause-safe**: a body that pauses for a decision resumes the
@@ -9500,12 +9514,19 @@ staticAbility {
   `CombatDamageManager`, `DamageUtils`) — so protection from a *permanent* card type is enforced too,
   not just the targeting leg that is all instants and sorceries can use.
   Pair two of these for the two-type wording. (Sword of Wealth and Power)
-- `GainKeywordsOfGraveyardCreatureCards(keywords, anyLandwalk = false, anyProtection = false, filter = source())`
+- `GainKeywordsOfCards(keywords, families = emptySet(), cards = KeywordCardPool.CREATURE_CARDS_IN_GRAVEYARDS, filter = source())`
   — "As long as a creature card with flying is in a graveyard, this creature has flying. The same is
-  true for …" (Cairn Wanderer). Layer 6, read at projection time over **every** graveyard's creature
-  cards and their printed keywords. `anyLandwalk` grants each landwalk found (`*WALK` keywords);
-  `anyProtection` grants each printed protection *with its quality* (`PROTECTION_FROM_<X>`), per the
-  ruling "It gains any landwalk abilities and any protection abilities".
+  true for …" (Cairn Wanderer); with `cards = KeywordCardPool.CARDS_EXILED_WITH_SOURCE` and
+  `filter = attachedCreature()`, "As long as a card exiled with Eater of Virtue has flying, equipped
+  creature has flying. The same is true for …" (Eater of Virtue). Layer 6, read at projection time
+  over the pool's cards and their printed keywords: `CREATURE_CARDS_IN_GRAVEYARDS` is every creature
+  card in **every** graveyard; `CARDS_EXILED_WITH_SOURCE` is the source's linked-exile pile
+  (`LinkedExileComponent`, cards still in exile only — pair with `Effects.ExileLinkedToSource`).
+  `families` (`KeywordFamily.LANDWALK` / `PROTECTION` / `HEXPROOF`) are printed words naming every
+  keyword of a family: each landwalk found (`*WALK`), each printed protection *with its quality*
+  (`PROTECTION_FROM_<X>`), plain hexproof plus each hexproof-from quality (`HEXPROOF_FROM_<X>`) — per
+  the rulings "It gains any landwalk abilities and any protection abilities" (Cairn Wanderer) and
+  "gains any hexproof and protection abilities of cards exiled with" (Eater of Virtue).
 - `GrantProtectionFromLinkedExiledCardTypes(filter = source())` — "[filter] has protection from each of
   the exiled card's card types" — the card-type twin of `GrantProtectionFromControlledColors`: the *set*
   of qualities is derived at projection time, here from the source's linked-exile pile
