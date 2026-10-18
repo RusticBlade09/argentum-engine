@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useGameStore } from '@/store/gameStore.ts'
 import type { FlipShow } from '@/store/gameStore.ts'
-import type { EntityId } from '@/types'
+import { ZoneType, type EntityId } from '@/types'
 import { getCardImageUrl } from '@/utils/cardImages.ts'
 import { FlipTableStage, type CardMark } from './FlipTableStage'
 import { FlipOrb } from './FlipOrb'
@@ -154,15 +154,19 @@ function FlipShowView({ show }: { show: FlipShow }) {
     const affected = new Set(result.affected)
     for (const id of result.touched) {
       if (affected.has(id)) {
-        marks.set(id, 'destroyed')
-        chips.set(id, { text: 'Hit', tone: 'danger' })
+        // The table only says what the card hit; the board says what that did. A permanent that
+        // left the battlefield was destroyed (Chaos Orb); one still there was struck and survived
+        // (Falling Star's 3 damage to a big creature).
+        const survived = gameState?.cards[id]?.zone?.zoneType === ZoneType.BATTLEFIELD
+        marks.set(id, survived ? 'hit' : 'destroyed')
+        chips.set(id, { text: survived ? 'Hit' : 'Destroyed', tone: 'danger' })
       } else {
         marks.set(id, 'spared')
         chips.set(id, { text: !result.turnedOver ? 'Spared' : 'Safe', tone: 'calm' })
       }
     }
     return { marks, chips }
-  }, [result, cardsById])
+  }, [result, gameState])
 
   const whose = show.isYours ? 'Your' : `${playerName(show.flipperId)}'s`
   const summary = (() => {
