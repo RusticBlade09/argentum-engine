@@ -3987,7 +3987,13 @@ wrappers: Word of Command composes it inside `WithManaAbilitySources` and
   anything it can't resolve falls back to the ability's controller. Gates:
   - `Gate.MayDecide(prompt?, hint?, dynamicHint?, sourceRequiredZone?, inlineOnTrigger?, feasibility?, choiceLabels?)`
     — pure yes/no
-    ("You may [then]."). Replaces `Effects.May` (see the `Effects.May` facade below). `sourceRequiredZone`
+    ("You may [then]."). The generated prompt rewrites `then`'s clause to read after "You may": a
+    clause that already names "you" drops it ("You may gain 3 life", not "You may you gain …"), and
+    one with another subject takes "have" plus the verb's base form ("You may have target creature
+    get +2/+0", "You may have this creature become …"). Likewise a `Gate.MayPay` whose `then` is
+    empty (`Effects.Nothing` — paying is its own reward) renders "You may pay 2 life. If you don't,
+    [otherwise]" rather than an empty "If you do, ." clause. At resolution the engine names the
+    source card in place of the self-noun ("tap Multiversal Passage"). Replaces `Effects.May` (see the `Effects.May` facade below). `sourceRequiredZone`
     skips the gate silently when the source has left that zone by resolution; `inlineOnTrigger`
     renders the yes/no on the triggering permanent rather than as a modal. `dynamicHint` (a
     `DynamicHint(template, amount)`) is reminder text whose `{n}` is replaced by `amount` evaluated
@@ -5252,7 +5258,9 @@ A resolving nonpermanent spell retains its stack instance through serialized eff
   - **Self-noun rendering (type-aware text).** `EffectTarget.Self.description` is "this creature"
     (most self-referential effects live on creatures). Effects that also apply to *non-creature*
     permanents — `TransformEffect` / `ExileAndReturnTransformedEffect`, `SacrificeTargetEffect`
-    (`Effects.SacrificeTarget`, which a land or artifact uses to sacrifice itself), and the ability
+    (`Effects.SacrificeTarget`, which a land or artifact uses to sacrifice itself), `TapUntapEffect`
+    (`Effects.Tap(EffectTarget.Self)` — Multiversal Passage's "if you don't, it enters tapped"), and
+    `GatedEffect` (which builds its template from its sub-effects' templates), and the ability
     grants `GrantTriggeredAbility` / `GrantActivatedAbility` / `GrantStaticAbility` /
     `GrantReplacementEffect` — must not hard-code either noun, so they implement
     `SelfReferentialDescription` (a standalone mixin, **not** a subtype of the sealed `@Serializable`

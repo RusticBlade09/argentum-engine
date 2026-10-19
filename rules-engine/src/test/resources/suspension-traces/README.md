@@ -89,3 +89,9 @@ expected states were re-derived by replaying the unchanged `actions.json`. Apart
 frames, every replayed state is what the engine before the change produces from the same input,
 every replayed event list is identical to it, and `events-N.json` is unchanged. No action or
 event payload changed.
+
+Prompt-text refresh on 2026-10-20 when consent-gate prompts stopped repeating their subject: the
+`nested-may` inner yes/no now reads "You may gain 1 life" (was "You may you gain 1 life"). The only
+edit was that `prompt` string in `after-1.json` and `events-1.json`, the engine's own output for the
+recorded question. `state.json` and `creation-events.json` keep the originally captured question
+text, and no state, action, or other event payload changed.

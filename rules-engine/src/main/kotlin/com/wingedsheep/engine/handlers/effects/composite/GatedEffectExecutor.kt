@@ -8,6 +8,7 @@ import com.wingedsheep.engine.handlers.PredicateContext
 import com.wingedsheep.engine.handlers.PredicateEvaluator
 import com.wingedsheep.engine.handlers.effects.BattlefieldFilterUtils
 import com.wingedsheep.engine.handlers.effects.EffectExecutor
+import com.wingedsheep.engine.handlers.effects.SourceReferenceText
 import com.wingedsheep.engine.handlers.effects.TargetResolutionUtils
 import com.wingedsheep.engine.handlers.effects.TargetResolutionUtils.toEntityId
 import com.wingedsheep.engine.handlers.costs.CollectEvidenceResolver
@@ -291,7 +292,7 @@ class GatedEffectExecutor(
         val decision = { decisionId: String -> YesNoDecision(
             id = decisionId,
             playerId = playerId,
-            prompt = labels?.prompt ?: effect.description,
+            prompt = labels?.prompt ?: SourceReferenceText.sentence(effect, SourceReferenceText.referenceFor(state, context.sourceId)),
             context = decisionContext(
                 context,
                 sourceName,
@@ -342,7 +343,7 @@ class GatedEffectExecutor(
         val decision = { decisionId: String -> SelectCardsDecision(
             id = decisionId,
             playerId = playerId,
-            prompt = effect.description,
+            prompt = SourceReferenceText.sentence(effect, SourceReferenceText.referenceFor(state, context.sourceId)),
             context = decisionContext(context, sourceName),
             options = sacrificeFodder(state, playerId, sacrifice, context),
             minSelections = 0,
@@ -463,7 +464,7 @@ class GatedEffectExecutor(
             WaterbendPermanentChoice(it.entityId, it.name, it.isCreature)
         }
 
-        val declineText = otherwise?.description?.replaceFirstChar { it.lowercase() }
+        val declineText = otherwise?.let { SourceReferenceText.clause(it, SourceReferenceText.referenceFor(state, context.sourceId)) }
 
         val decision = { decisionId: String -> SelectManaSourcesDecision(
             id = decisionId,

@@ -6,6 +6,7 @@ import com.wingedsheep.engine.core.*
 import com.wingedsheep.engine.handlers.DecisionHandler
 import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.PredicateContext
+import com.wingedsheep.engine.handlers.effects.SourceReferenceText
 import com.wingedsheep.engine.handlers.effects.EffectExecutor
 import com.wingedsheep.engine.handlers.effects.BattlefieldFilterUtils
 import com.wingedsheep.engine.handlers.effects.ZoneTransitionService
@@ -695,7 +696,7 @@ class PayOrSufferExecutor(
         val decision = { decisionId: String -> YesNoDecision(
             id = decisionId,
             playerId = controllerId,
-            prompt = "Mill ${cost.count} $cards to avoid ${describeConsequence(effect, sourceName)}?",
+            prompt = "Mill ${cost.count} $cards or ${describeConsequence(effect, sourceName)}?",
             context = DecisionContext(
                 sourceId = sourceId,
                 sourceName = sourceName,
@@ -749,7 +750,9 @@ class PayOrSufferExecutor(
         }
 
         // Create a yes/no decision
-        val prompt = "Pay $life life to avoid ${describeConsequence(effect, sourceName)}?"
+        // "Pay 2 life or exile PuPu UFO?" — the consequence is an imperative or a full clause
+        // ("you lose 3 life"), and only "or" reads right before both; "to avoid" wants a gerund.
+        val prompt = "Pay $life life or ${describeConsequence(effect, sourceName)}?"
 
         val decision = { decisionId: String -> YesNoDecision(
             id = decisionId,
@@ -1339,8 +1342,10 @@ class PayOrSufferExecutor(
             is SacrificeSelfEffect,
             is SacrificeEffect -> "sacrifice $sourceName"
             is SacrificeTargetEffect ->
-                if (sufferEffect.target == EffectTarget.Self) "sacrifice $sourceName" else sufferEffect.description
-            else -> sufferEffect.description
+                if (sufferEffect.target == EffectTarget.Self) "sacrifice $sourceName"
+                else SourceReferenceText.clause(sufferEffect, sourceName)
+            // Spliced mid-sentence ("Pay 2 life or exile PuPu UFO?"): lower-cased, the source named.
+            else -> SourceReferenceText.clause(sufferEffect, sourceName)
         }
     }
 

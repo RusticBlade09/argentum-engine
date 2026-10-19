@@ -74,3 +74,8 @@ unchanged and are converted on load. The only edit is in `nested-may/after-1.jso
 "may" frame's context, created while replaying the first answer, now carries
 `"programOrigin": {"type": "…ProgramOrigin.BuiltBy", "step": "Gated", "parent": null}`. Its parent
 is null because the outer frame predates labels. No action or event payload changed.
+
+Prompt-text refresh on 2026-10-20: the `nested-may` inner yes/no prompt in `after-1.json` and
+`events-1.json` (the engine's own output for the recorded question) now reads "You may gain 1 life"
+instead of "You may you gain 1 life". The captured `state.json` and `creation-events.json` are
+untouched.

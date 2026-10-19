@@ -227,7 +227,8 @@ data class ForceSacrificeEffect(
 ) : Effect {
     override val description: String = buildString {
         append(target.description)
-        append(" sacrifices ")
+        // "you sacrifice", not "you sacrifices" — the controller form reads as second person.
+        append(if (target.description.equals("you", ignoreCase = true)) " sacrifice " else " sacrifices ")
         if (dynamicCount != null) {
             append(dynamicCount.description)
             append(" ")

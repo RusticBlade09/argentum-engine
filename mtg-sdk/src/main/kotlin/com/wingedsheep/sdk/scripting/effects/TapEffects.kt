@@ -1,6 +1,7 @@
 package com.wingedsheep.sdk.scripting.effects
 
 import com.wingedsheep.sdk.scripting.targets.EffectTarget
+import com.wingedsheep.sdk.scripting.targets.selfNounToken
 import com.wingedsheep.sdk.scripting.text.TextReplacer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -18,8 +19,11 @@ import kotlinx.serialization.Serializable
 data class TapUntapEffect(
     val target: EffectTarget,
     val tap: Boolean = true
-) : Effect {
-    override val description: String = "${if (tap) "Tap" else "Untap"} ${target.description}"
+) : Effect, SelfReferentialDescription {
+    // Self routes through the self-noun token: "tap this creature" is wrong on a land (Multiversal
+    // Passage's "if you don't, it enters tapped" read "tap this creature").
+    override val descriptionTemplate: String = "${if (tap) "Tap" else "Untap"} ${target.selfNounToken}"
+    override val description: String = defaultResolvedDescription
 }
 
 /**
