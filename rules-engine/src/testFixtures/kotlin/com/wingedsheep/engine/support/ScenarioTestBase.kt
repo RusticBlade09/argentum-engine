@@ -1428,6 +1428,9 @@ abstract class ScenarioTestBase : FunSpec() {
                 is ReorderLibraryDecision -> {
                     submitDecision(OrderedResponse(decision.id, decision.cards))
                 }
+                is OrderTriggersDecision -> {
+                    submitDecision(TriggerOrderResponse(decision.id, decision.triggers.indices.toList()))
+                }
                 is OrderObjectsDecision -> {
                     submitDecision(OrderedResponse(decision.id, decision.objects))
                 }
