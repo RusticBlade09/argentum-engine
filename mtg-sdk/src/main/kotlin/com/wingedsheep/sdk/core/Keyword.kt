@@ -441,13 +441,11 @@ enum class Keyword(val displayName: String) {
     BARGAIN("Bargain"),
 
     /**
-     * Miracle {cost} (CR 702.94). "You may cast this card for its miracle cost when you draw it if
-     * it's the first card you drew this turn." Modeled as a hand-only alternative cost gated by a
-     * one-turn window: when a card with miracle (printed via
+     * Miracle {cost} (CR 702.94a). When a card with miracle (printed via
      * [com.wingedsheep.sdk.scripting.KeywordAbility.Miracle] or granted via
      * [com.wingedsheep.sdk.scripting.GrantMiracleToCardsInHand]) is the first card a player draws in
-     * a turn, the engine stamps it with a miracle window for that turn; the cast-from-hand
-     * enumerator then surfaces a "Cast (Miracle)" alternative cost at the miracle mana cost.
+     * a turn, they may reveal it; the [com.wingedsheep.sdk.scripting.Miracle] trigger then lets them
+     * cast it for the miracle cost as it resolves.
      */
     MIRACLE("Miracle"),
 

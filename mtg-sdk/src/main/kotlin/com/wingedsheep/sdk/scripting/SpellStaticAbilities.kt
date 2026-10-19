@@ -528,10 +528,10 @@ data class GrantEmergeToOwnSpells(
  * Models oracle text like "Each instant and sorcery card in your hand has miracle {2}."
  * (Lorehold, the Historian).
  *
- * Read by the draw flow the same way printed [KeywordAbility.Miracle] is read: when a matching card
- * is the first card its owner draws in a turn, the engine opens a one-turn miracle window on it and
- * the cast-from-hand enumerator surfaces a "Cast (Miracle)" alternative cost at [cost]. Hand-only by
- * design (CR 702.94a — the miracle ability functions only while the card is in hand).
+ * Read the same way printed [KeywordAbility.Miracle] is read: when a matching card is the first
+ * card its owner draws in a turn, they may reveal it, and the miracle trigger ([Miracle]) lets them
+ * cast it for [cost] as it resolves. Hand-only by design (CR 702.94a — the miracle ability
+ * functions only while the card is in hand).
  *
  * @property filter Which cards in the controller's hand gain miracle (e.g. instant or sorcery).
  * @property cost The miracle mana cost the granted ability uses.

@@ -99,6 +99,14 @@ class CoreAutoResumerModule(
             }
         },
 
+        autoResumer(DrawStepTeamDrawsContinuation::class) { state, continuation, events, checkForMore ->
+            // A teammate's paused draw-step draw is complete; the rest of the team draws now.
+            val drawResult = services.turnManager.drawPhaseManager.drawForTeam(
+                state, continuation.activePlayer, continuation.remainingTeammates
+            )
+            mergeAndContinue(drawResult, events, checkForMore)
+        },
+
         autoResumer(CycleDrawContinuation::class) { state, continuation, events, checkForMore ->
             val drawExecutor = com.wingedsheep.engine.handlers.effects.drawing.DrawCardsExecutor(
                 cardRegistry = services.cardRegistry,

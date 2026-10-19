@@ -752,7 +752,7 @@ Families:
 - `CaptureControllersEffect(from: String, storeAs: String, asLastBlockedBy: EffectTarget?)` — Snapshot the current controller of each entity in a stored collection, writing the controller ids to `storedCollectionsstoreAs` as a parallel list (entry _i_ in `storeAs` is the controller of entry…
 - `CascadeEffect`
 - `CastAnyNumberFromCollectionWithoutPayingCostEffect(from: String, payManaCost: Boolean, maxCasts: Int?, maxTotalManaValue: Int?, playLands: Boolean, insteadOfGraveyard: AfterResolveDestination?)` — Cast ANY NUMBER of cards from a named pipeline collection **during this effect's resolution**, each without paying its mana cost, with timing restrictions based on card type ignored (Rule 608.2 / "…
-- `CastFromCollectionWithoutPayingCostEffect(from: String, payManaCost: Boolean, storeCastTo: String?, castTransformed: Boolean, insteadOfGraveyard: AfterResolveDestination?, caster: Chooser, alternativeCost: AdditionalCost?, additionalManaCost: ManaCost?, castFaceDown: Boolean, turnsFaceUpInstead: Boolean)` — Atomic "cast a card from a pipeline collection without paying its mana cost".
+- `CastFromCollectionWithoutPayingCostEffect(from: String, payManaCost: Boolean, storeCastTo: String?, castTransformed: Boolean, insteadOfGraveyard: AfterResolveDestination?, caster: Chooser, alternativeCost: AdditionalCost?, additionalManaCost: ManaCost?, castFaceDown: Boolean, turnsFaceUpInstead: Boolean, castUsing: Keyword?)` — Atomic "cast a card from a pipeline collection without paying its mana cost".
 - `ChainCopyEffect(action: Effect, target: EffectTarget, copyRecipient: CopyRecipient, copyCost: PayCost?, copyTargetRequirement: TargetRequirement)` — Unified chain copy effect for all "Chain of X" cards from Onslaught.
 - `ChangeColorEffect(target: EffectTarget, colors: Set<String>, duration: Duration)` — Replace the colors of a single target with the specified set until the duration expires.
 - `ChangeColorToChosenEffect(target: EffectTarget, duration: Duration)` — Replace the target's colors with the color(s) chosen earlier in this resolution (read from `EffectContext.chosenColors`, falling back to the single `chosenColor`).
@@ -1198,7 +1198,7 @@ Families:
 - `EventPattern.DesignationTakenEvent(designation: PlayerDesignation, player: Player)` — Whenever a player takes a single-holder designation — "when you take the initiative", "whenever you become the monarch".
 - `EventPattern.DestroyEvent(filter: GameObjectFilter)` — Replacement-only: a permanent matching filter would be **destroyed** (CR 701.8) — by a "destroy" effect or by the lethal-damage / deathtouch state-based actions (CR 704.5g, 704.5h).
 - `EventPattern.DieRolledEvent(player: Player, minimumResult: Int?, maximumResult: Int?)` — Each individual numerical die roll; scopes on its roller and final result.
-- `EventPattern.DiscardEvent(player: Player, cardFilter: GameObjectFilter?, batch: Boolean, firstTimeEachTurn: Boolean, cause: ZoneChangeCause)` — When a player would discard a card.
+- `EventPattern.DiscardEvent(player: Player, cardFilter: GameObjectFilter?, batch: Boolean, firstTimeEachTurn: Boolean)` — When a player would discard a card.
 - `EventPattern.DiscoveredEvent(player: Player)` — Whenever player discovers (CR 701.57).
 - `EventPattern.DoorUnlockedEvent(player: Player)` — A door of a Room becomes unlocked (CR 709.5h).
 - `EventPattern.DrawCardsEvent(player: Player, amount: Int)` — When a player would draw one or more cards.
@@ -1326,7 +1326,7 @@ Families:
 - `KeywordAbility.Increment` — Increment (Secrets of Strixhaven).
 - `KeywordAbility.Madness(cost: ManaCost)` — Madness cost (CR 702.35).
 - `KeywordAbility.Mayhem(cost: ManaCost)` — Mayhem cost (CR 702.187, Marvel's Spider-Man).
-- `KeywordAbility.Miracle(cost: ManaCost)` — Miracle {cost} (CR 702.94).
+- `KeywordAbility.Miracle(cost: ManaCost)` — Miracle {cost} (CR 702.94a).
 - `KeywordAbility.Morph(morphCost: PayCost, faceUpEffect: Effect?)` — Morph with a cost to turn face up.
 - `KeywordAbility.Mutate(cost: ManaCost)` — Mutate cost (CR 702.140).
 - `KeywordAbility.Ninjutsu(cost: ManaCost)` — Ninjutsu cost (CR 702.49).
@@ -1448,10 +1448,10 @@ Families:
 - `Player.ContextPlayer(index: Int)` — A player from the context (for multi-target spells)
 - `Player.ControllerOf(targetDescription: String)` — Controller of a permanent (used with EffectTarget)
 - `Player.ControllerOfAffectedEntity` — Controller of the permanent a continuous effect is currently modifying — "enchanted creature gets -X/-0, where X is the number of cards in **its controller's** graveyard" (Disturbing Conversion).
-- `Player.ControllerOfCause` — The controller of the spell or ability that **caused** the triggering event — the other end of a trigger whose subject is acted on by a spell or ability: - "Whenever enchanted creature becomes the…
 - `Player.ControllerOfGrantingSource` — The controller of the **granting permanent** — the player half of com.wingedsheep.sdk.scripting.targets.EffectTarget.GrantingSource: the Aura, Equipment or other permanent whose static ability gran…
 - `Player.ControllerOfIterationEntity` — Controller of the entity the enclosing `ForEachInGroup` is currently iterating over — "for each attacking red creature, … unless **its controller** pays {2}{R}" (Heroism, Tidal Flats).
 - `Player.ControllerOfSource` — The controller of the effect's **source** — read off the source permanent rather than off the resolution context's `controllerId`.
+- `Player.ControllerOfTargetingSource` — The controller of the spell or ability that **targeted** the source — the other end of a "becomes the target of a spell or ability" trigger.
 - `Player.ControllerOfTriggeringEntity` — The controller of the **triggering entity** — the player half of com.wingedsheep.sdk.scripting.targets.EffectTarget.ControllerOfTriggeringEntity, for the places that take a Player reference rather…
 - `Player.DefendingPlayer` — The defending player, per CR 802.2a: the specific player the ability's source is attacking, determined per attacking creature — never "the opponent" via turn order.
 - `Player.Each` — All players

@@ -837,35 +837,6 @@ class CastSpellEnumerator(
                 )
             } else null
 
-            // Compute miracle cost info (CR 702.94). Only offered while this card carries an open
-            // miracle window (it was the first card drawn this turn and has miracle, printed or
-            // granted in hand). The window component is set by the draw flow and cleared at cleanup.
-            val miracleWindowOpen = state.getEntity(cardId)
-                ?.has<com.wingedsheep.engine.state.components.identity.MiracleWindowComponent>() == true
-            val miracleAbility = if (miracleWindowOpen) {
-                com.wingedsheep.engine.mechanics.MiracleGrants.effectiveMiracle(
-                    state, cardId, cardDef, playerId, context.cardRegistry, context.predicateEvaluator
-                )
-            } else null
-            val miracleCostResult = if (miracleAbility != null) {
-                val miracleManaPricing = context.costCalculator.priceByTargets(
-                    state, cardDef, playerId, cardId, baseCost = miracleAbility.cost, withTable = !context.skipAutoTapPreview,
-                )
-                val miracleMana = miracleManaPricing.min
-                if (context.manaSolver.canPay(state, playerId, miracleMana, precomputedSources = cachedSources)) {
-                    val miraclePreview = if (context.skipAutoTapPreview) null else {
-                        context.manaSolver.solve(state, playerId, miracleMana, precomputedSources = cachedSources)
-                            ?.sources?.map { it.entityId }
-                    }
-                    SelfAltCostResult(
-                        manaCostString = miracleMana.toString(),
-                        manaCostByTargetCount = miracleManaPricing.byCountStrings(),
-                        autoTapPreview = miraclePreview,
-                        additionalCostInfo = null
-                    )
-                } else null
-            } else null
-
             // Free cast via `MayCastWithoutPayingManaCost` (e.g. Weftwalking) — its own variant,
             // parallel to [altCostInfo], so the player can pick it over Jodah-style
             // `GrantAlternativeCastingCost` and over any keyword alt (flashback, harmonize, warp,
@@ -1203,16 +1174,6 @@ class CastSpellEnumerator(
                                 autoTapPreview = impendingCostResult.autoTapPreview
                             ))
                         }
-                        if (miracleCostResult != null) {
-                            result.add(LegalAction(
-                                actionType = "CastWithAlternativeCost",
-                                description = "Miracle ${cardComponent.name} (${miracleCostResult.manaCostString})",
-                                action = CastSpell(playerId, cardId, targets = listOf(autoSelectedTarget), useAlternativeCost = true, alternativeCostType = AlternativeCostType.MIRACLE),
-                                manaCostString = miracleCostResult.manaCostString,
-                                manaCostByTargetCount = miracleCostResult.manaCostByTargetCount,
-                                autoTapPreview = miracleCostResult.autoTapPreview
-                            ))
-                        }
                         if (freeCastResult != null) {
                             result.add(LegalAction(
                                 actionType = "CastWithoutPayingManaCost",
@@ -1364,27 +1325,6 @@ class CastSpellEnumerator(
                                 autoTapPreview = impendingCostResult.autoTapPreview
                             ))
                         }
-                        if (miracleCostResult != null) {
-                            result.add(LegalAction(
-                                actionType = "CastWithAlternativeCost",
-                                description = "Miracle ${cardComponent.name} (${miracleCostResult.manaCostString})",
-                                action = CastSpell(playerId, cardId, useAlternativeCost = true, alternativeCostType = AlternativeCostType.MIRACLE),
-                                validTargets = firstReqInfo.validTargets,
-                                requiresTargets = true,
-                                targetCount = firstReqInfo.maxTargets,
-                                minTargets = firstReq.effectiveMinCount,
-                                targetDescription = firstReq.description,
-                                targetRequirements = targetReqInfos.surfacedRequirements(),
-                                xConstrainsTargetManaValue = firstReqInfo.xConstrainsManaValue,
-                                xConstrainsTargetManaValueExactly = firstReqInfo.xConstrainsManaValueExactly,
-                                xConstrainsTargetPower = firstReqInfo.xConstrainsPower,
-                                xConstrainsTargetCount = firstReqInfo.xConstrainsCount,
-                                xConstrainsTargetCountExactly = firstReqInfo.xConstrainsCountExactly,
-                                manaCostString = miracleCostResult.manaCostString,
-                                manaCostByTargetCount = miracleCostResult.manaCostByTargetCount,
-                                autoTapPreview = miracleCostResult.autoTapPreview
-                            ))
-                        }
                         if (freeCastResult != null) {
                             result.add(LegalAction(
                                 actionType = "CastWithoutPayingManaCost",
@@ -1494,16 +1434,6 @@ class CastSpellEnumerator(
                         manaCostString = impendingCostResult.manaCostString,
                         manaCostByTargetCount = impendingCostResult.manaCostByTargetCount,
                         autoTapPreview = impendingCostResult.autoTapPreview
-                    ))
-                }
-                if (miracleCostResult != null) {
-                    result.add(LegalAction(
-                        actionType = "CastWithAlternativeCost",
-                        description = "Miracle ${cardComponent.name} (${miracleCostResult.manaCostString})",
-                        action = CastSpell(playerId, cardId, useAlternativeCost = true, alternativeCostType = AlternativeCostType.MIRACLE),
-                        manaCostString = miracleCostResult.manaCostString,
-                        manaCostByTargetCount = miracleCostResult.manaCostByTargetCount,
-                        autoTapPreview = miracleCostResult.autoTapPreview
                     ))
                 }
                 if (freeCastResult != null) {

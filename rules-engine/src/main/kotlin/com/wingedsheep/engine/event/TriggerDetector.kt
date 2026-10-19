@@ -7,6 +7,7 @@ import com.wingedsheep.engine.core.CountersAddedEvent
 import com.wingedsheep.engine.core.AttackersDeclaredEvent
 import com.wingedsheep.engine.core.CardCycledEvent
 import com.wingedsheep.engine.core.CardExiledWithMadnessEvent
+import com.wingedsheep.engine.core.CardRevealedForMiracleEvent
 import com.wingedsheep.engine.core.CardPlottedEvent
 import com.wingedsheep.engine.core.CardsDiscardedEvent
 import com.wingedsheep.engine.core.CardsDrawnEvent
@@ -2086,6 +2087,11 @@ class TriggerDetector(
             detectMadnessCastTriggers(state, event, triggers)
         }
 
+        // Handle the miracle cast offer (CR 702.94a) on a card just revealed from hand as drawn.
+        if (event is CardRevealedForMiracleEvent) {
+            detectMiracleCastTriggers(state, event, triggers)
+        }
+
         // Handle damage-received triggers for creatures no longer on the battlefield
         // (e.g., Broodhatch Nantuko dies from combat damage but trigger still fires)
         if (event is DamageDealtEvent && event.targetId !in state.getBattlefield()) {
@@ -2476,9 +2482,8 @@ class TriggerDetector(
                 abilityResolver.getTriggeredAbilities(entityId, cardComponent.cardDefinitionId, state, statics)
 
             for (ability in abilities) {
-                val discardTrigger = ability.trigger as? EventPattern.DiscardEvent ?: continue
+                if (ability.trigger !is EventPattern.DiscardEvent) continue
                 if (ability.binding != TriggerBinding.SELF) continue
-                if (!matcher.discardCauseMatches(state, discardTrigger.cause, event)) continue
                 triggers.add(
                     PendingTrigger(
                         ability = ability,
@@ -2597,6 +2602,35 @@ class TriggerDetector(
                 triggerContext = TriggerContext(
                     triggeringEntityId = event.cardId,
                     triggeringPlayerId = event.ownerId
+                )
+            )
+        )
+    }
+
+    /**
+     * The CR 702.94a miracle trigger — "when you reveal this card this way, you may cast it by
+     * paying [cost] rather than its mana cost."
+     *
+     * Synthesized rather than resolved off the card's script, like madness: miracle can be granted
+     * (Lorehold, the Historian), and a card in hand has no generic trigger detection pass. The
+     * reveal itself was the player's choice, made as the card was drawn; this only puts the
+     * trigger on the stack for a card still in its owner's hand.
+     */
+    private fun detectMiracleCastTriggers(
+        state: GameState,
+        event: CardRevealedForMiracleEvent,
+        triggers: MutableList<PendingTrigger>
+    ) {
+        if (event.cardId !in state.getZone(com.wingedsheep.engine.state.ZoneKey(event.playerId, Zone.HAND))) return
+        triggers.add(
+            PendingTrigger(
+                ability = Miracle.castAbility(event.cost),
+                sourceId = event.cardId,
+                sourceName = event.cardName,
+                controllerId = event.playerId,
+                triggerContext = TriggerContext(
+                    triggeringEntityId = event.cardId,
+                    triggeringPlayerId = event.playerId
                 )
             )
         )

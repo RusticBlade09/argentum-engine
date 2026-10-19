@@ -217,6 +217,11 @@ internal class CastValidator(
                 ?.let { cardRegistry.getCard(it.cardDefinitionId) }
             if (com.wingedsheep.engine.mechanics.PrototypeCasts.prototypeOf(printed) == null) return "This card has no prototype"
         }
+        // CR 702.94a: the miracle cost is paid only by casting the card as its miracle trigger
+        // resolves, which the trigger does itself — never from a priority window.
+        if (!duringResolution && action.useAlternativeCost && action.alternativeCostType == AlternativeCostType.MIRACLE) {
+            return "A spell is cast for its miracle cost only as its miracle trigger resolves"
+        }
         val state = com.wingedsheep.engine.mechanics.CastCharacteristics.announce(inputState, action, cardRegistry)
         if (!duringResolution && !state.hasPriority(action.playerId)) {
             return "You don't have priority"

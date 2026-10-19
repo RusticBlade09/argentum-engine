@@ -2,6 +2,7 @@ package com.wingedsheep.engine.handlers.effects.library
 
 import com.wingedsheep.engine.mechanics.targeting.withTargetConstraints
 import com.wingedsheep.engine.core.suspendForDecision
+import com.wingedsheep.engine.core.AlternativeCostType
 import com.wingedsheep.engine.core.CastSpell
 import com.wingedsheep.engine.core.CastFromCollectionTargetsContinuation
 import com.wingedsheep.engine.core.ChooseTargetsDecision
@@ -21,6 +22,7 @@ import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.identity.AfterResolveDestinationComponent
 import com.wingedsheep.engine.state.components.identity.PlayWithAdditionalCostComponent
 import com.wingedsheep.engine.state.components.identity.PlayWithCostIncreaseComponent
+import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.core.ManaCost
 import com.wingedsheep.engine.state.components.identity.PlayWithoutPayingCostComponent
 import com.wingedsheep.engine.mechanics.cost.PlayerCounterPayment
@@ -103,6 +105,12 @@ class CastFromCollectionWithoutPayingCostExecutor(
             return EffectResult.success(state)
         }
 
+        // "Cast it by paying its [keyword] cost" (the miracle trigger): the cast announces that
+        // alternative cost. A keyword this engine can't cast with this way casts nothing.
+        val castUsing = effect.castUsing?.let { keyword ->
+            alternativeCostFor(keyword) ?: return EffectResult.success(state)
+        }
+
         // "By paying [cost] rather than paying its mana cost": a cost the caster can't pay means the
         // cast can't be made (CR 601.2h), so nothing is offered and the card stays where it is. The
         // cast handler charges the cost authoritatively; this only avoids starting a doomed cast.
@@ -149,12 +157,12 @@ class CastFromCollectionWithoutPayingCostExecutor(
         if (prep is TargetPrep.NeedsTargets) {
             return EffectResult.from(newState.withPriority(controllerId).suspendForDecision(
                 prep.question,
-                prep.continuation.copy(grantedPermissionId = permId)
+                prep.continuation.copy(grantedPermissionId = permId, alternativeCostType = castUsing)
             ))
         }
 
         // No targets needed (or modal — CastSpellHandler will handle per-mode targets).
-        return invokeCast(newState, controllerId, cardId, permId, emptyList(), effect.storeCastTo, faceIndex, effect.castFaceDown, castFused)
+        return invokeCast(newState, controllerId, cardId, permId, emptyList(), effect.storeCastTo, faceIndex, effect.castFaceDown, castFused, castUsing)
     }
 
     /** True when [cardId]'s definition has a back face to be cast transformed as. */
@@ -173,11 +181,15 @@ class CastFromCollectionWithoutPayingCostExecutor(
         faceIndex: Int?,
         castFaceDown: Boolean = false,
         castFused: Boolean = false,
+        alternativeCostType: AlternativeCostType? = null,
     ): EffectResult {
         val stateForCast = state.copy(priorityPlayerId = casterId)
         val castResult = castSpellHandlerProvider().execute(
             stateForCast,
-            CastSpell(casterId, cardId, targets, faceIndex = faceIndex, castFaceDown = castFaceDown, castFused = castFused),
+            CastSpell(
+                casterId, cardId, targets, faceIndex = faceIndex, castFaceDown = castFaceDown, castFused = castFused,
+                useAlternativeCost = alternativeCostType != null, alternativeCostType = alternativeCostType,
+            ),
         )
 
         if (castResult.error != null) {
@@ -222,6 +234,16 @@ class CastFromCollectionWithoutPayingCostExecutor(
     }
 
     companion object {
+        /**
+         * The [AlternativeCostType] a [CastFromCollectionWithoutPayingCostEffect.castUsing] keyword
+         * announces, or null when the engine can't cast with that keyword this way. Miracle is the
+         * one cost that is cast only like this: its trigger is the sole way to pay it (CR 702.94a).
+         */
+        fun alternativeCostFor(keyword: Keyword): AlternativeCostType? = when (keyword) {
+            Keyword.MIRACLE -> AlternativeCostType.MIRACLE
+            else -> null
+        }
+
         /**
          * Grant [controllerId] a one-shot cast of [cardId] from its current zone: a
          * [MayPlayPermission] covering the card and — unless [withoutPayingCost] is false

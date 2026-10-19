@@ -42,7 +42,10 @@ class SubmitDecisionHandler(
         val submittedEvent = DecisionSubmittedEvent(
             pending.id,
             action.playerId,
-            description = if ((state.peekContinuation() as? Suspension)?.answer is SecretChoiceContinuation) null
+            // A secret answer stays out of the shared log until it is revealed, and a private
+            // question's answer never enters it: the line alone would say the question was asked.
+            description = if ((state.peekContinuation() as? Suspension)?.answer is SecretChoiceContinuation ||
+                state.pendingQuestionIsPrivate) null
                 else buildDecisionDescription(state, pending, action.response)
         )
 

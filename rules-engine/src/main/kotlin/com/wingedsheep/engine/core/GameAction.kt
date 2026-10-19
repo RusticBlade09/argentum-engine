@@ -368,9 +368,8 @@ enum class AlternativeCostType {
     OVERLOAD,
     /**
      * Miracle ([com.wingedsheep.sdk.scripting.KeywordAbility.Miracle], printed or granted) — hand,
-     * legal only while the card carries an open miracle window
-     * ([com.wingedsheep.engine.state.components.identity.MiracleWindowComponent]), opened when the
-     * card is the first card its owner drew this turn (CR 702.94).
+     * cast only by the miracle trigger as it resolves ([com.wingedsheep.sdk.scripting.Miracle],
+     * CR 702.94a). Never enumerated, and refused when a player submits it.
      */
     MIRACLE,
     /** A card's own `selfAlternativeCost` (e.g. Zahid's "tap an untapped artifact") — hand. */

@@ -1850,15 +1850,6 @@ data class CardsDiscardedEvent(
      */
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val priorDiscardsThisTurn: Int = 0,
-    /**
-     * Controller of the spell or ability that caused this discard — null for a discard paid as a
-     * cost and for the cleanup-step hand-size discard (CR 514.1), neither of which a spell or
-     * ability causes. Read by `EventPattern.DiscardEvent.cause` and, as "that player", by
-     * `Player.ControllerOfCause` (Psychic Purge). Stamped here rather than looked up later because
-     * the cause has usually left the stack by the time the trigger resolves.
-     */
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val causeControllerId: EntityId? = null,
 ) : GameEvent
 
 /**
@@ -2504,6 +2495,28 @@ data class CardExiledWithMadnessEvent(
     val ownerId: EntityId,
     val cardId: EntityId,
     val cardName: String
+) : GameEvent
+
+// =============================================================================
+// Miracle Events
+// =============================================================================
+
+/**
+ * A player chose to reveal a card with miracle (CR 702.94a) as they drew it as their first card of
+ * the turn.
+ *
+ * Emitted alongside the [CardsRevealedEvent] that shows the card to the table. This event is what
+ * the trigger detector turns into the miracle triggered ability ("when you reveal this card this
+ * way, you may cast it by paying [cost] rather than its mana cost"). [cost] is the miracle cost the
+ * card had as it was revealed (printed, or granted in hand) and only labels the trigger.
+ */
+@Serializable
+@SerialName("CardRevealedForMiracleEvent")
+data class CardRevealedForMiracleEvent(
+    val playerId: EntityId,
+    val cardId: EntityId,
+    val cardName: String,
+    val cost: com.wingedsheep.sdk.core.ManaCost
 ) : GameEvent
 
 // =============================================================================

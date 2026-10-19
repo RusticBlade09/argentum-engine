@@ -1736,6 +1736,9 @@ is PermanentsSacrificedEvent -> {
             // discarded, the redirected ZoneChangeEvent shows it landing in exile, and the madness
             // trigger itself appears on the stack with its own description.
             is CardExiledWithMadnessEvent -> null
+            // Internal signal that drives the CR 702.94a miracle trigger. The table sees the reveal
+            // through the CardsRevealedEvent emitted beside it, and the trigger on the stack.
+            is CardRevealedForMiracleEvent -> null
             // The milled cards' own zone changes already narrate the mill; this event exists for
             // mill triggers and the milled-this-turn stamp.
             is com.wingedsheep.engine.core.CardsMilledEvent -> null

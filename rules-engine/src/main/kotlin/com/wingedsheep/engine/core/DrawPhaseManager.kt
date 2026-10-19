@@ -98,21 +98,32 @@ class DrawPhaseManager(
         // CR 805.4b — each player on the active team draws during the team's draw step. Draw the
         // teammates first (a team draws in any order it likes, 805.6a), then the active player last.
         // In a non-team game — and in Team vs. Team, where each player draws only on their own turn
-        // (CR 808.4) — there are no shared-turn teammates and this loop is a no-op.
+        // (CR 808.4) — there are no shared-turn teammates and this list is empty.
+        return drawForTeam(state, activePlayer, state.sharedTurnTeam(activePlayer).filter { it != activePlayer })
+    }
+
+    /**
+     * The draw step's draws from [teammates] onwards, then [activePlayer]'s. A teammate's draw can
+     * pause (a miracle reveal, an optional draw replacement); the team's remaining draws wait
+     * beneath that question in a [DrawStepTeamDrawsContinuation], which resumes here.
+     */
+    fun drawForTeam(state: GameState, activePlayer: EntityId, teammates: List<EntityId>): ExecutionResult {
         var s = state
         val teammateEvents = mutableListOf<GameEvent>()
-        for (teammate in state.sharedTurnTeam(activePlayer)) {
-            if (teammate == activePlayer) continue
+        for ((index, teammate) in teammates.withIndex()) {
             if (s.getEntity(teammate)?.has<SkipDrawStepComponent>() == true) {
                 s = s.updateEntity(teammate) { it.without<SkipDrawStepComponent>() }
                 continue
             }
             if (skipsDrawStep(s, teammate)) continue
-            val r = drawCards(s, teammate, 1)
+            val rest = DrawStepTeamDrawsContinuation(activePlayer, teammates.drop(index + 1))
+            val r = drawCards(s.pushContinuation(rest), teammate, 1)
             if (r.outcome is Outcome.Paused) {
                 return ExecutionResult.propagatePause(r.newState, teammateEvents + r.events)
             }
-            s = r.newState
+            val (popped, afterPop) = r.newState.popContinuation()
+            check(popped == rest) { "A completed teammate draw must leave the team's frame on top" }
+            s = afterPop
             teammateEvents.addAll(r.events)
         }
 

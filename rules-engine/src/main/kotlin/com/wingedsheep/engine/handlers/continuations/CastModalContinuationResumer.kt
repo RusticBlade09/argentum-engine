@@ -40,8 +40,21 @@ class CastModalContinuationResumer(
         resumer(CastModalModeSelectionContinuation::class, ::resumeCastModalModeSelection),
         resumer(CastModalTargetSelectionContinuation::class, ::resumeCastModalTargetSelection),
         resumer(CastSpellAdditionalCostContinuation::class, ::resumeCastSpellAdditionalCost),
-        resumer(com.wingedsheep.engine.core.CastCostChoiceContinuation::class, ::resumeCostChoice)
+        resumer(com.wingedsheep.engine.core.CastCostChoiceContinuation::class, ::resumeCostChoice),
+        resumer(com.wingedsheep.engine.core.CastChooseXContinuation::class, ::resumeChooseX)
     )
+
+    private fun resumeChooseX(
+        state: GameState,
+        continuation: com.wingedsheep.engine.core.CastChooseXContinuation,
+        response: DecisionResponse,
+        @Suppress("UNUSED_PARAMETER") checkForMore: CheckForMore,
+    ): ExecutionResult {
+        val action = continuation.baseCastAction
+        val x = (response as? com.wingedsheep.engine.core.NumberChosenResponse)?.number?.coerceAtLeast(0)
+            ?: return ExecutionResult.error(state, "Expected a number for X")
+        return castSpellHandler.execute(state.withPriority(action.playerId), action.copy(xValue = x))
+    }
 
     private fun resumeCostChoice(
         state: GameState,

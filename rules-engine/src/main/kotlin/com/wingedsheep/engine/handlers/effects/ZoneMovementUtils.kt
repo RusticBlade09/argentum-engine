@@ -774,11 +774,11 @@ object ZoneMovementUtils {
     ): Boolean = when (requiredCause) {
         ZoneChangeCause.Any -> true
         ZoneChangeCause.DiscardedByOpponentEffect -> {
-            ZoneTransitionService.isDiscardCausedByOpponent(
-                state,
-                state.pendingDiscardCauseControllers[entityId],
-                container.get<CardComponent>()?.ownerId
-            )
+            val causeControllerId = state.pendingDiscardCauseControllers[entityId]
+            val discardingPlayerId = container.get<CardComponent>()?.ownerId
+            causeControllerId != null &&
+                discardingPlayerId != null &&
+                causeControllerId != discardingPlayerId
         }
     }
 

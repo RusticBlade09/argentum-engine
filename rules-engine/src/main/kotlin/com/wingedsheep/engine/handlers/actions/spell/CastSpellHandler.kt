@@ -262,6 +262,33 @@ class CastSpellHandler(
         )
     }
 
+    /**
+     * Ask for X (CR 601.2b) when a miracle cast reaches the handler without one. The miracle
+     * trigger casts as it resolves, so no client announced X; Entreat the Angels' {X}{W}{W} would
+     * otherwise be cast with X = 0. Bounded by the mana the caster can make after the cost's fixed
+     * part, like a cycling {X}; the payment still charges the total authoritatively.
+     */
+    private fun surfaceUnannouncedX(state: GameState, action: CastSpell, cardDef: com.wingedsheep.sdk.model.CardDefinition?): ExecutionResult? {
+        if (action.xValue != null || cardDef == null) return null
+        if (!action.useAlternativeCost || action.alternativeCostType != AlternativeCostType.MIRACLE) return null
+        val cost = MiracleGrants.effectiveMiracle(state, action.cardId, cardDef, action.playerId, cardRegistry, predicateEvaluator)
+            ?.cost?.takeIf { it.hasX } ?: return null
+        val maxX = ((manaSolver.getAvailableManaCount(state, action.playerId) - cost.withXAs(0).cmc) /
+            cost.xCount.coerceAtLeast(1)).coerceAtLeast(0)
+        val cardName = state.getEntity(action.cardId)?.get<CardComponent>()?.name ?: "the spell"
+        return state.withPriority(action.playerId).suspendForDecision(
+            question = { id -> com.wingedsheep.engine.core.ChooseNumberDecision(
+                id = id,
+                playerId = action.playerId,
+                prompt = "Choose X for $cardName (0-$maxX)",
+                context = DecisionContext(sourceId = action.cardId, sourceName = cardName, phase = DecisionPhase.CASTING),
+                minValue = 0,
+                maxValue = maxX,
+            ) },
+            answer = com.wingedsheep.engine.core.CastChooseXContinuation(action),
+        )
+    }
+
     private fun executeAnnounced(inputState: GameState, action: CastSpell, lockedCost: ManaCost? = null, lockedAdditionalCosts: List<AdditionalCost>? = null): ExecutionResult {
         val state = com.wingedsheep.engine.mechanics.CastCharacteristics.announce(inputState, action, cardRegistry)
         val cardComponent = state.getEntity(action.cardId)?.get<CardComponent>()
@@ -290,6 +317,7 @@ class CastSpellHandler(
             return ExecutionResult.error(state, it)
         }
         surfaceAdditionalCostChoice(announcedState, action, rawCosts)?.let { return it }
+        surfaceUnannouncedX(announcedState, action, cardDef)?.let { return it }
         pauseForUnannouncedModesOrTargets(announcedState, action, cardDef, cardComponent)?.let { return it }
         val authorization = castRecords.captureAuthorization(announcedState, action, cardComponent)
 

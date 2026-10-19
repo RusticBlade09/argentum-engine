@@ -123,7 +123,6 @@ import com.wingedsheep.engine.state.components.battlefield.MayCastFromGraveyardU
 import com.wingedsheep.engine.state.components.battlefield.MayCastFromLinkedExileUsedThisTurnComponent
 import com.wingedsheep.engine.state.components.battlefield.MayCastWithoutPayingCostUsedThisTurnComponent
 import com.wingedsheep.engine.state.components.combat.PlayerAttackedPlayersThisTurnComponent
-import com.wingedsheep.engine.state.components.identity.MiracleWindowComponent
 import com.wingedsheep.engine.state.components.player.CreatureLeftBattlefieldThisTurnComponent
 import com.wingedsheep.engine.state.components.player.CreatureSubtypesDiedThisTurnComponent
 import com.wingedsheep.sdk.scripting.effects.DelayedTriggerExpiry
@@ -1398,17 +1397,6 @@ class CleanupPhaseManager(
             }.keys
             for (entityId in creaturesWithCanAttackDespiteDefender) {
                 newState = newState.updateEntity(entityId) { it.without<CanAttackDespiteDefenderThisTurnComponent>() }
-            }
-
-            // Close any open miracle windows (CR 702.94 — the chance to cast for the miracle cost lasts
-            // only the turn the card was drawn).
-            val cardsWithMiracleWindow = newState.entities.filter { (_, container) ->
-                container.has<MiracleWindowComponent>()
-            }.keys
-            for (entityId in cardsWithMiracleWindow) {
-                newState = newState.updateEntity(entityId) {
-                    it.without<MiracleWindowComponent>()
-                }
             }
 
             return newState

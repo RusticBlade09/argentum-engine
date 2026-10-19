@@ -131,6 +131,38 @@ data class StaticDrawReplacementContinuation(
 ) : AnswerContinuation
 
 /**
+ * The rest of a shared-turn team's draw step (CR 805.4b): [remainingTeammates]' draws, then
+ * [activePlayer]'s. Pushed beneath each teammate's draw so that a pause in it — a miracle reveal, an
+ * optional draw replacement — still leads to the rest of the team drawing; popped when the draw
+ * completes without one.
+ */
+@Serializable
+data class DrawStepTeamDrawsContinuation(
+    val activePlayer: EntityId,
+    val remainingTeammates: List<EntityId>
+) : AutomaticContinuation
+
+/**
+ * Resume after a player answers whether to reveal a card with miracle as they draw it (CR 702.94a:
+ * "you may reveal this card from your hand as you draw it if it's the first card you've drawn this
+ * turn").
+ *
+ * Asked between cards: the rest of the draw instruction waits beneath this question in a
+ * [DrawReplacementRemainingDrawsContinuation]. A [PrivateQuestion] — it exists only because the
+ * card has miracle, so its owner's opponents must not learn it was asked.
+ *
+ * @property playerId The player who drew the card and is asked
+ * @property cardId The card with miracle, now in that player's hand
+ * @property cost The miracle cost the card had when drawn, for the prompt and the trigger's text
+ */
+@Serializable
+data class MiracleRevealContinuation(
+    val playerId: EntityId,
+    val cardId: EntityId,
+    val cost: com.wingedsheep.sdk.core.ManaCost
+) : AnswerContinuation, PrivateQuestion
+
+/**
  * Resume the draw step of a cycling action after cycling triggers have resolved.
  *
  * Nothing pushes this frame any more: cycling triggers wait in the settle boundary's queue, so

@@ -127,9 +127,65 @@ object DrawLoop {
 
             drawnCards.add(drawOneResult.drawnCardId!!)
             remaining--
+
+            // 3. Miracle (CR 702.94a): "you may reveal this card from your hand as you draw it" —
+            //    asked now, before the next card is drawn, with the rest of the instruction waiting
+            //    beneath the question.
+            val miracle = drawOneResult.miracle
+            if (miracle != null) {
+                val pause = askMiracleReveal(
+                    newState, playerId, drawOneResult.drawnCardId, miracle.cost, remaining, isDrawStep
+                )
+                return buildPausedResult(newState, playerId, drawnCards, perCardEvents, pause)
+            }
         }
 
         return buildSuccessResult(newState, playerId, drawnCards, perCardEvents)
+    }
+
+    /**
+     * Pause the draw on the miracle reveal question for [cardId]. The question is a
+     * [PrivateQuestion]: it exists only because the card has miracle, so it reaches no other seat.
+     * The [DrawReplacementRemainingDrawsContinuation] beneath it carries the rest of the
+     * instruction — an empty tail too, which in the draw step hands the drawing player priority
+     * once the answer is in.
+     */
+    private fun askMiracleReveal(
+        state: GameState,
+        playerId: EntityId,
+        cardId: EntityId,
+        cost: com.wingedsheep.sdk.core.ManaCost,
+        remainingDraws: Int,
+        isDrawStep: Boolean
+    ): EffectResult {
+        val cardName = state.getEntity(cardId)?.get<CardComponent>()?.name ?: "this card"
+        val withTail = state.copy(activeReplacementChain = null).pushContinuation(
+            DrawReplacementRemainingDrawsContinuation(
+                drawingPlayerId = playerId,
+                remainingDraws = remainingDraws,
+                isDrawStep = isDrawStep,
+                announcementApplied = true
+            )
+        )
+        return EffectResult.from(withTail.suspendForDecision(
+            question = { id ->
+                YesNoDecision(
+                    id = id,
+                    playerId = playerId,
+                    prompt = "Reveal $cardName for its miracle?",
+                    context = DecisionContext(
+                        sourceId = cardId,
+                        sourceName = cardName,
+                        phase = DecisionPhase.RESOLUTION
+                    ),
+                    yesText = "Reveal",
+                    noText = "Keep hidden",
+                    hint = "Miracle $cost — reveal it as the first card you drew this turn, and a " +
+                        "trigger lets you cast it for $cost as it resolves."
+                )
+            },
+            answer = MiracleRevealContinuation(playerId, cardId, cost)
+        ))
     }
 
     /**

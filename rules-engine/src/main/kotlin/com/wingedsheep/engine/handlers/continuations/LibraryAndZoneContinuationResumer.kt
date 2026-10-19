@@ -1257,6 +1257,8 @@ class LibraryAndZoneContinuationResumer(
             CastSpell(
                 continuation.casterId, continuation.cardId, chosenTargets, faceIndex = continuation.faceIndex,
                 castFused = continuation.castFused,
+                useAlternativeCost = continuation.alternativeCostType != null,
+                alternativeCostType = continuation.alternativeCostType,
                 // The response is keyed by requirement, so it knows each group's size; inference
                 // can't always recover it (two optional groups with overlapping filters).
                 targetGroupCounts = response.selectedTargets.keys.maxOrNull()

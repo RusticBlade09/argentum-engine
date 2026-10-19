@@ -24,7 +24,6 @@ import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.ZoneKey
 import com.wingedsheep.engine.state.components.identity.CardComponent
-import com.wingedsheep.engine.state.components.identity.MiracleWindowComponent
 import com.wingedsheep.engine.state.components.identity.PlayWithCostIncreaseComponent
 import com.wingedsheep.engine.state.components.identity.PlayWithFixedAlternativeManaCostComponent
 import com.wingedsheep.sdk.core.ManaCost
@@ -506,11 +505,10 @@ internal class CastCostTotaller(
         AlternativeCostType.OVERLOAD to {
             cardDef.keywordAbilities.filterIsInstance<KeywordAbility.Overload>().firstOrNull()?.let { priced(it.cost) }
         },
-        // Miracle (CR 702.94 — printed or granted in hand, window-gated). The window component is
-        // present only when the card was drawn as the first card this turn; without it, the miracle
-        // alternative cost is unavailable.
+        // Miracle (CR 702.94a — printed or granted in hand). Only an explicit MIRACLE cast prices it,
+        // and only the miracle trigger's resolution makes one: CastValidator refuses a player's.
         AlternativeCostType.MIRACLE to {
-            if (state.getEntity(cardId)?.has<MiracleWindowComponent>() == true) {
+            if (action.alternativeCostType == AlternativeCostType.MIRACLE) {
                 MiracleGrants.effectiveMiracle(state, cardId, cardDef, playerId, cardRegistry, predicateEvaluator)
                     ?.let { priced(it.cost) }
             } else null

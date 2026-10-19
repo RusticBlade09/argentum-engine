@@ -1257,8 +1257,11 @@ class GameSession(
         }
 
         // Include opponent decision status for the player who is NOT driving this
-        // decision — i.e. when their seat is not the actor for the affected player.
-        val opponentDecisionStatus = state.pendingDecision?.takeIf { state.actorFor(it.playerId) != playerId }?.let {
+        // decision — i.e. when their seat is not the actor for the affected player. A private
+        // question (the miracle reveal) is never announced: its existence is the secret.
+        val opponentDecisionStatus = state.pendingDecision?.takeIf {
+            state.actorFor(it.playerId) != playerId && !state.pendingQuestionIsPrivate
+        }?.let {
             decisionEnricher.createOpponentDecisionStatus(it, state, playerId)
         }
 

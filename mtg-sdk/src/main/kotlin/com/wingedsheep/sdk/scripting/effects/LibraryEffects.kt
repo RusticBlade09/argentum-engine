@@ -1,5 +1,6 @@
 package com.wingedsheep.sdk.scripting.effects
 
+import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.core.ManaCost
 import com.wingedsheep.sdk.scripting.AdditionalCost
 import com.wingedsheep.sdk.scripting.GameObjectFilter
@@ -406,6 +407,15 @@ data class ExileLibraryUntilManaValueEffect(
  * tapped, it is turned face up instead and then does so. Face-down casts take no targets, so the
  * free-cast-only shape is enforced: no [payManaCost], [castTransformed], [alternativeCost] or
  * [additionalManaCost].
+ *
+ * **Casting it using one of its own keyword costs.** Set [castUsing] (with [payManaCost]) for "you
+ * may cast it by paying [its keyword] cost rather than its mana cost" — the miracle trigger's cast
+ * (CR 702.94a, [com.wingedsheep.sdk.scripting.Miracle]). The cast announces that alternative cost
+ * (CR 118.9), so the spell is priced exactly as a cast with it from that zone would be — the keyword
+ * cost as the base, cost increases and reductions applied (CR 601.2f), {X} chosen normally — and
+ * the stack remembers how it was cast. A keyword the engine can't cast with this way casts
+ * nothing. Exclusive with [alternativeCost], [additionalManaCost], [castTransformed] and
+ * [castFaceDown], each of which names a different price or face.
  */
 @SerialName("CastFromCollectionWithoutPayingCost")
 @Serializable
@@ -440,8 +450,14 @@ data class CastFromCollectionWithoutPayingCostEffect(
     val castFaceDown: Boolean = false,
     /** The face-down permanent turns face up instead of dealing/being dealt damage or tapping. */
     val turnsFaceUpInstead: Boolean = false,
+    /** The keyword alternative cost the cast announces, or null — see the class KDoc. */
+    val castUsing: Keyword? = null,
 ) : Effect {
     init {
+        require(castUsing == null || (payManaCost && alternativeCost == null && additionalManaCost == null &&
+            !castTransformed && !castFaceDown)) {
+            "castUsing names the spell's whole price and face; it needs payManaCost and no other cost or face"
+        }
         require(!castFaceDown || (!payManaCost && !castTransformed && alternativeCost == null && additionalManaCost == null)) {
             "A face-down cast is a free cast of the card's face-down 2/2; it takes no other cost or face"
         }
@@ -461,6 +477,7 @@ data class CastFromCollectionWithoutPayingCostEffect(
         if (castTransformed) append(" transformed")
         if (castFaceDown) append(" face down as a 2/2 creature spell")
         when {
+            castUsing != null -> append(" for its ${castUsing.displayName.lowercase()} cost")
             alternativeCost != null -> append(
                 " by ${alternativeCost.description.replaceFirstChar { it.lowercaseChar() }.replaceFirst("pay ", "paying ")}" +
                     " rather than paying its mana cost"

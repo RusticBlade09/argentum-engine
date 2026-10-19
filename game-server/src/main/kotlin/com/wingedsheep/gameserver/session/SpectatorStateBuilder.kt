@@ -64,7 +64,8 @@ class SpectatorStateBuilder(
         val spectatorClientState = buildClientGameState(state, seats.map { it.playerId })
 
         // Build decision status if there's a pending decision
-        val decisionStatus = state.pendingDecision?.let { decision ->
+        // A private question (the miracle reveal) is never announced: its existence is the secret.
+        val decisionStatus = state.pendingDecision?.takeIf { !state.pendingQuestionIsPrivate }?.let { decision ->
             val decidingPlayer = seats.firstOrNull { it.playerId == decision.playerId } ?: p1
             createDecisionStatus(decision, state, p1.playerId, decidingPlayer.playerName)
         }

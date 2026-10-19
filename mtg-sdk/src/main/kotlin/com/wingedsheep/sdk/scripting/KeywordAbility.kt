@@ -1087,14 +1087,14 @@ sealed interface KeywordAbility {
     // =========================================================================
 
     /**
-     * Miracle {cost} (CR 702.94).
-     * "You may cast this card for its miracle cost when you draw it if it's the first card you drew
-     * this turn."
+     * Miracle {cost} (CR 702.94a).
+     * "You may reveal this card from your hand as you draw it if it's the first card you've drawn
+     * this turn. When you reveal this card this way, you may cast it by paying [cost] rather than its
+     * mana cost."
      *
-     * Modeled as a hand-only alternative cost gated by a one-turn window: when this card is the
-     * first card its owner draws in a turn, the engine opens a miracle window (a per-card component
-     * cleared at end of turn) and the cast-from-hand enumerator surfaces a "Cast (Miracle)"
-     * alternative cost paying [cost] instead of the mana cost.
+     * The engine asks its owner, privately, as the card is drawn; revealing it puts the
+     * [com.wingedsheep.sdk.scripting.Miracle] trigger on the stack, whose resolution is the only
+     * time the card can be cast for [cost].
      */
     @SerialName("Miracle")
     @Serializable

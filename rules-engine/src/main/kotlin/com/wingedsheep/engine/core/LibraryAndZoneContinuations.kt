@@ -434,6 +434,9 @@ data class CastFromCollectionTargetsContinuation(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val faceIndex: Int? = null,
     val castFused: Boolean = false,
+    /** The alternative cost the cast announces once targets are chosen (the miracle cast), or null. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val alternativeCostType: AlternativeCostType? = null,
 ) : AnswerContinuation
 
 /**
