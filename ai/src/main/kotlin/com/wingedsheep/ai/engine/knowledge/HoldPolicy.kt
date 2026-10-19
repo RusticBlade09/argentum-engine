@@ -126,6 +126,11 @@ class HoldPolicy(
      */
     private val refuseWastedPayoffs: Boolean = false,
     /**
+     * [AiProfile.lifelinkWaitsForBlocks][com.wingedsheep.ai.engine.AiProfile.lifelinkWaitsForBlocks]
+     * — [ExpiringGrantWindow]'s deferral holds a lifelink-only grant until blockers are declared.
+     */
+    private val lifelinkWaitsForBlocks: Boolean = false,
+    /**
      * The profile's `EvaluationWeights.boardPresence`, so [RemovalPatience] can quote its discount
      * in the same currency as the board value it compares against. The default is the compiled
      * fallback's, which is what every profile that does not opt in would have used anyway.
@@ -290,6 +295,7 @@ class HoldPolicy(
             refuseUnspendable = refuseUnspendableGrants,
             readShrinks = refuseWastedPayoffs,
             readRestrictions = refuseWastedPayoffs,
+            lifelinkWaitsForBlocks = lifelinkWaitsForBlocks,
         )
         return if (holds) TimingVerdict.NoWindow else TimingVerdict.Neutral
     }

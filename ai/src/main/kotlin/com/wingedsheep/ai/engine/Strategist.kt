@@ -230,6 +230,11 @@ class Strategist(
      */
     private val refuseWastedPayoffs: Boolean = false,
     /**
+     * [AiProfile.lifelinkWaitsForBlocks] — passed straight through to [HoldPolicy], which hands it
+     * to [com.wingedsheep.ai.engine.knowledge.ExpiringGrantWindow].
+     */
+    private val lifelinkWaitsForBlocks: Boolean = false,
+    /**
      * [AiProfile.convokeLandsFirst] — a convoke spell taps creatures only for what mana cannot
      * pay, cheapest creatures first. See [withAutomaticConvoke].
      */
@@ -269,6 +274,7 @@ class Strategist(
         holdInstantSpeedDeploys = holdInstantSpeedDeploys,
         taxCountersReadTheirMana = taxCountersReadTheirMana,
         refuseWastedPayoffs = refuseWastedPayoffs,
+        lifelinkWaitsForBlocks = lifelinkWaitsForBlocks,
         boardPresenceWeight = boardPresenceWeight,
     )
 

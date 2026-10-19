@@ -134,6 +134,11 @@ internal object ExpiringGrantWindow {
          * **restriction** ("target creature can't attack this turn") — see [restrictionHasNoWindow].
          */
         readRestrictions: Boolean = false,
+        /**
+         * [com.wingedsheep.ai.engine.AiProfile.lifelinkWaitsForBlocks]: a grant whose every payoff
+         * is lifelink defers through the declare-attackers step too — see [waitsForBlocks].
+         */
+        lifelinkWaitsForBlocks: Boolean = false,
     ): Boolean {
         if (ability.isManaAbility) return false
 
@@ -163,7 +168,8 @@ internal object ExpiringGrantWindow {
         }
         if (!expires) return false
 
-        if (!laterWindowIsStillAhead(state, playerId)) return false
+        val untilBlocks = lifelinkWaitsForBlocks && waitsForBlocks(ability.effect)
+        if (!laterWindowIsStillAhead(state, playerId, untilBlocks)) return false
 
         if (somethingOnTheStackThreatensUs(state, playerId, intents)) return false
 
@@ -712,9 +718,32 @@ internal object ExpiringGrantWindow {
      * not this policy, then decides. With no combat the grant had nothing to buy in the first place,
      * so the score sees no payoff for paying a card to watch it expire in the end step.
      */
-    private fun laterWindowIsStillAhead(state: GameState, playerId: EntityId): Boolean =
-        if (state.isActiveTurnFor(playerId)) state.step in BEFORE_OUR_ATTACK
+    private fun laterWindowIsStillAhead(state: GameState, playerId: EntityId, untilBlocks: Boolean = false): Boolean =
+        if (untilBlocks) state.step in BEFORE_BLOCKS
+        else if (state.isActiveTurnFor(playerId)) state.step in BEFORE_OUR_ATTACK
         else state.step in BEFORE_THEIR_ATTACK
+
+    /**
+     * Whether everything [effect] buys is a keyword that changes only what the creature's damage
+     * *does* — [SPENT_ONLY_IN_DAMAGE] — so the window after blockers are declared is strictly
+     * better than any before it, on either side's turn.
+     *
+     * [laterWindowIsStillAhead]'s ordinary deadline is the last window that can still change a
+     * declaration, because most grants change one: evasion decides who can block, and a pump,
+     * deathtouch or first strike decides who survives, which is what the block and attack planners
+     * read off the board. Lifelink decides neither. It adds life to damage dealt and nothing else,
+     * so a blocker gains nothing from having it before it blocks, and an attacker gains nothing
+     * from having it before blocks are known. Once they are, [nothingCanSpend] refuses it on a
+     * creature that is not in the fight, and on one that is the simulation carries the line through
+     * combat damage, so the leaf prices the life actually gained against the cost — two life at 20
+     * is not worth a card; two life at 2 is.
+     *
+     * Off the 2026-10-19 log review: Hardened Academic pitching a card for lifelink in the
+     * opponent's declare-attackers step and then not blocking, and pitching one before blocks while
+     * attacking an empty board at 20 life.
+     */
+    private fun waitsForBlocks(effect: Effect): Boolean =
+        expiringPayoffs(effect)?.all { it.kind == PayoffKind.CREATURE && it.keyword in SPENT_ONLY_IN_DAMAGE } == true
 
     /**
      * Whether anything on the stack is a reason to spend the grant *now* rather than later.
@@ -789,6 +818,9 @@ internal object ExpiringGrantWindow {
     /** [BEFORE_OUR_ATTACK] plus the step where their attack is not yet known. */
     private val BEFORE_THEIR_ATTACK = BEFORE_OUR_ATTACK + Step.BEGIN_COMBAT
 
+    /** Every step before blockers are declared, on either side's turn — see [waitsForBlocks]. */
+    private val BEFORE_BLOCKS = BEFORE_THEIR_ATTACK + Step.DECLARE_ATTACKERS
+
     /**
      * Every step in which, on either side of the table, no attacker has been declared yet — the
      * same set as [BEFORE_THEIR_ATTACK], named for what [canStillFight] reads it as.
@@ -807,6 +839,12 @@ internal object ExpiringGrantWindow {
     private val MATTERS_ONLY_WHEN_BLOCKED = setOf(
         Keyword.FIRST_STRIKE, Keyword.DEATHTOUCH, Keyword.INDESTRUCTIBLE, Keyword.TRAMPLE,
     ).map { it.name }.toSet()
+
+    /**
+     * Keywords that change only what a creature's combat damage does — not who can block it, not
+     * who survives the fight. See [waitsForBlocks].
+     */
+    private val SPENT_ONLY_IN_DAMAGE = setOf(Keyword.LIFELINK.name)
 
     /** The keywords a land-type change can open a path for — see [canStillMatter]. */
     private val LANDWALK_KEYWORDS = setOf(

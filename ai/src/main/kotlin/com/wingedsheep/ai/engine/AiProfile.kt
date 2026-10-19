@@ -1199,6 +1199,29 @@ data class AiProfile(
      * whose controller holds the same pump.
      */
     val anticipateCombatResponses: Boolean = false,
+    /**
+     * Hold an end-of-turn **lifelink** grant until blockers are declared, on either side's turn.
+     *
+     * 2026-10-19 logs, `LIVE` — Hardened Academic (`Discard a card: This creature gains lifelink
+     * until end of turn`):
+     *
+     * - `37ad54e6` turn 9: the opponent declares two attackers, the AI pitches Ancestral Anger for
+     *   lifelink in that declare-attackers step, then declares no blocks.
+     * - `f17ff187` turn 3: the AI attacks an empty board at 20 life and pitches a card for lifelink
+     *   before blocks; two life for a card.
+     *
+     * [holdExpiringGrantsForCombat]'s deferral releases at the last window that can still change a
+     * *declaration* — their declare-attackers step, our beginning of combat — because evasion,
+     * pumps, deathtouch and first strike all change who can block or who survives, and the combat
+     * planners read the board as it stands. Lifelink changes neither: it only adds life to damage
+     * the creature deals. So the window after blockers are declared is strictly better for it — the
+     * blocker is known to be blocking, and on our turn the simulation carries the line through
+     * combat damage and prices the life actually gained rather than a keyword on the board.
+     * [com.wingedsheep.ai.engine.knowledge.ExpiringGrantWindow] extends the deferral through the
+     * declare-attackers step for a grant whose every payoff is lifelink; from there
+     * [refuseUnspendableGrants] refuses it on a creature that did not block.
+     */
+    val lifelinkWaitsForBlocks: Boolean = false,
     /** Non-null profiles may only be selected automatically for this set. Arena selection stays explicit. */
     val restrictedToSet: String? = null,
 ) {
@@ -2154,6 +2177,7 @@ data class AiProfile(
             refuseWastedPayoffs = true,
             anticipateCombatResponses = true,
             pressWhenAhead = true,
+            lifelinkWaitsForBlocks = true,
         )
 
         /**
