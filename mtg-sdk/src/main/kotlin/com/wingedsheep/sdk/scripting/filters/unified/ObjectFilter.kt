@@ -80,16 +80,24 @@ data class GameObjectFilter(
         }
 
     /**
-     * Card predicates in rendering order: subtypes ahead of the card type, because Magic templates
-     * them that way — "Wolf creature", "Frog, Rabbit, or Squirrel creature", never "creature Wolf".
-     * A stable partition, so every other pairing keeps its original insertion order.
+     * Card predicates in rendering order: color adjectives first, then subtypes, then the card
+     * type, because Magic templates them that way — "white permanent", "green Elf creature",
+     * "Frog, Rabbit, or Squirrel creature", never "permanent white" or "creature Wolf". A stable
+     * partition, so every other pairing keeps its original insertion order.
      */
     private fun orderedCardPredicates(): List<CardPredicate> {
-        val (subtypes, rest) = cardPredicates.partition {
+        val (colors, others) = cardPredicates.partition { it.isColorAdjective() }
+        val (subtypes, rest) = others.partition {
             it is CardPredicate.HasSubtype || it is CardPredicate.HasAnyOfSubtypes
         }
-        return subtypes + rest
+        return colors + subtypes + rest
     }
+
+    /** One-word color predicates that read as an adjective ahead of the noun ("nonblack", "multicolored"). */
+    private fun CardPredicate.isColorAdjective(): Boolean =
+        this is CardPredicate.HasColor || this is CardPredicate.NotColor ||
+            this == CardPredicate.IsColorless || this == CardPredicate.IsMulticolored ||
+            this == CardPredicate.IsMonocolored
 
     /**
      * A basic land narrowed by land type reads the way Oracle prints it — "basic Island, Swamp, or

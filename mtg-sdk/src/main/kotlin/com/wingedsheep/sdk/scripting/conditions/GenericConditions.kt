@@ -353,7 +353,7 @@ data class Exists(
     /** When true, exclude the source entity from the search (for "another" wording). */
     val excludeSelf: Boolean = false
 ) : Condition {
-    override val description: String = buildString {
+    override val description: String = youControlDescription() ?: buildString {
         if (negate) {
             append("if there are no ")
             if (excludeSelf) append("other ")
@@ -369,6 +369,25 @@ data class Exists(
         append(" ")
         append(zone.noun)
     }
+
+    /**
+     * A battlefield check on your own permanents reads the way Oracle prints it — "if you control a
+     * white permanent", "if you control no other creatures" — rather than "if a permanent is in your
+     * battlefield". Null for every other shape, which keeps the generic zone wording.
+     */
+    private fun youControlDescription(): String? {
+        if (zone != Zone.BATTLEFIELD || filter.controllerPredicate != null) return null
+        if (player != Player.You && player != Player.ControllerOfSource) return null
+        return when {
+            negate -> "if you control no " + (if (excludeSelf) "other " else "") +
+                filter.permanentNounPhrase(plural = true)
+            excludeSelf -> "if you control another " + filter.permanentNounPhrase(plural = false)
+            else -> filter.permanentNounPhrase(plural = false).let { noun ->
+                "if you control ${if (noun.first().lowercaseChar() in "aeiou") "an" else "a"} $noun"
+            }
+        }
+    }
+
     override fun applyTextReplacement(replacer: TextReplacer): Condition {
         val newFilter = filter.applyTextReplacement(replacer)
         return if (newFilter !== filter) copy(filter = newFilter) else this

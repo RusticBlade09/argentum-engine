@@ -4687,7 +4687,7 @@
                         }
                     ]
                 },
-                "descriptionOverride": "To solve — if there are no suspected Skeleton creature in your battlefield"
+                "descriptionOverride": "To solve — if you control no suspected Skeleton creatures"
             }
         ],
         "activatedAbilities": [

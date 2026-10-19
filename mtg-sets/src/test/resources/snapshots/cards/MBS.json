@@ -227,7 +227,7 @@
                         }
                     },
                     "storeSelected": "found",
-                    "prompt": "Search your library for a creature green card with mana value at most X to put onto the battlefield",
+                    "prompt": "Search your library for a green creature card with mana value at most X to put onto the battlefield",
                     "selectedLabel": "Put onto the battlefield"
                 },
                 {
