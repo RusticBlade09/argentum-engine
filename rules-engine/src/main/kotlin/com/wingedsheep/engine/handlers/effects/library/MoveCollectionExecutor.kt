@@ -531,7 +531,7 @@ class MoveCollectionExecutor(
                 com.wingedsheep.engine.mechanics.GraveyardOrdering.allSameCard(state, cards)
             val alreadySeen = cards.isNotEmpty() && cards.all { it in shown }
             if ((!isBottom || cards.size > 1) && !(alreadySeen && noOrderToChoose)) {
-                return pauseForOrderDecision(state, context, cards, destZone, destPlayerId, destination.placement, chooserId)
+                return pauseForOrderDecision(state, context, cards, destZone, destPlayerId, destination.placement, chooserId, revealed)
             }
         }
 
@@ -570,7 +570,8 @@ class MoveCollectionExecutor(
         destZone: Zone,
         destPlayerId: EntityId,
         placement: ZonePlacement = ZonePlacement.Top,
-        playerId: EntityId = context.controllerId
+        playerId: EntityId = context.controllerId,
+        revealed: Boolean = false
     ): EffectResult {
 
         // Build card info map for the UI
@@ -618,7 +619,8 @@ class MoveCollectionExecutor(
             cards = cards,
             destinationZone = destZone,
             destinationPlayerId = destPlayerId,
-            placement = placement
+            placement = placement,
+            revealed = revealed
         )
 
         return EffectResult.from(state.suspendForDecision(decision, continuation))

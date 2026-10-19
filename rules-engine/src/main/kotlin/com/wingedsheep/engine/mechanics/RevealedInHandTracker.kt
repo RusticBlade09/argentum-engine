@@ -5,6 +5,7 @@ import com.wingedsheep.engine.core.ExecutionResult
 import com.wingedsheep.engine.core.SpellCastEvent
 import com.wingedsheep.engine.core.ZoneChangeEvent
 import com.wingedsheep.engine.handlers.effects.library.LibraryRevealUtils
+import com.wingedsheep.engine.state.ComponentContainer
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.identity.RevealedToComponent
@@ -40,6 +41,10 @@ import com.wingedsheep.sdk.model.EntityId
  *    face-down). A move *into* a library is left alone: `ZoneTransitionService` has already
  *    replaced the audience with whoever knows that library slot, and overwriting it here would
  *    blind the mover to a card they legitimately watched go in.
+ *  - **A hidden put-back** — a card leaving a hand for a library without the whole table
+ *    knowing it forgets every still-known card left in that hand: an onlooker saw *a* card go
+ *    back but not which, so the known ones are no longer identifiable (the face-down-cast
+ *    analogue is [com.wingedsheep.engine.mechanics.stack.SpellCaster]'s morph clear).
  *
  * It deliberately does **not** touch library/face-down reveals: a private tutor to hand
  * (a [Zone.LIBRARY] → [Zone.HAND] move with no reveal) stays hidden, returns from
@@ -116,6 +121,13 @@ object RevealedInHandTracker {
             }
             return newState
         }
+        // A hidden put-back (Brainstorm) leaves onlookers unable to tell which card went: if any
+        // player doesn't know the card now in the library, every known card still in the hand
+        // could have been the one, so none of them is identifiable any more.
+        if (event.fromZone == Zone.HAND && event.toZone == Zone.LIBRARY) {
+            val audience = state.getEntity(event.entityId)?.get<RevealedToComponent>()?.playerIds.orEmpty()
+            if (!audience.containsAll(state.turnOrder)) return forgetKnownInHand(state, event.ownerId)
+        }
         return state
     }
 
@@ -138,16 +150,24 @@ object RevealedInHandTracker {
     }
 
     /** Forget every still-known card named [name] in [playerId]'s hand. */
-    private fun forgetSameNamedInHand(state: GameState, playerId: EntityId, name: String): GameState {
-        val sameNamed = state.getHand(playerId).filter { cardId ->
+    private fun forgetSameNamedInHand(state: GameState, playerId: EntityId, name: String): GameState =
+        forgetKnownInHand(state, playerId) { it.get<CardComponent>()?.name == name }
+
+    /** Forget every still-known card in [playerId]'s hand that matches [which]. */
+    private fun forgetKnownInHand(
+        state: GameState,
+        playerId: EntityId,
+        which: (ComponentContainer) -> Boolean = { true },
+    ): GameState {
+        val known = state.getHand(playerId).filter { cardId ->
             val container = state.getEntity(cardId) ?: return@filter false
             container.get<RevealedToComponent>() != null &&
-                container.get<CardComponent>()?.name == name &&
+                which(container) &&
                 // A card being *played with revealed* is still on show — nothing to forget.
                 !HandObjectRestrictions.isPinnedRevealed(state, cardId)
         }
-        if (sameNamed.isEmpty()) return state
-        return LibraryRevealUtils.clearReveals(state, sameNamed)
+        if (known.isEmpty()) return state
+        return LibraryRevealUtils.clearReveals(state, known)
     }
 
     private fun isInOwnersHand(state: GameState, cardId: EntityId): Boolean {

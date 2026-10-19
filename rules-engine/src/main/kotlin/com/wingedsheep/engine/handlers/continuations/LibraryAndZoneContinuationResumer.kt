@@ -10,6 +10,7 @@ import com.wingedsheep.engine.handlers.effects.ZoneTransitionService
 import com.wingedsheep.engine.handlers.effects.permanent.attachments.AttachmentMover
 import com.wingedsheep.engine.handlers.effects.library.CascadeExecutor
 import com.wingedsheep.engine.handlers.effects.library.ChooseOnePerCategoryExecutor
+import com.wingedsheep.engine.handlers.effects.library.LibraryRevealUtils
 import com.wingedsheep.engine.handlers.effects.library.CastAnyNumberFromCollectionWithoutPayingCostExecutor
 import com.wingedsheep.engine.handlers.effects.library.CastFromCollectionWithoutPayingCostExecutor
 import com.wingedsheep.engine.state.GameState
@@ -137,6 +138,8 @@ class LibraryAndZoneContinuationResumer(
 
         var newState = state
         val events = mutableListOf<GameEvent>()
+        // Where each card came from, read before it is moved: it decides who keeps knowing it.
+        val origins = orderedCards.associateWith { state.logicalZone(it)?.zoneType }
 
         // Source storage can be any owner's zone or the stack. A stolen permanent's
         // battlefield bucket is not necessarily its owner's bucket.
@@ -164,6 +167,23 @@ class LibraryAndZoneContinuationResumer(
                     newObject = newState.objectRef(cardId)
                 ))
             }
+        }
+
+        // These cards bypass ZoneTransitionService, so this is where their library audience is
+        // *replaced* — the same placementAudience answer every other library entry gets. Without
+        // it a card known to the table in hand stays known on top of the library, and a hidden
+        // card loses even its mover's knowledge. The chooser saw every card and placed it.
+        for (cardId in orderedCards) {
+            newState = LibraryRevealUtils.setPlacementKnowledge(
+                newState, listOf(cardId),
+                LibraryRevealUtils.placementAudience(
+                    fromZone = origins[cardId],
+                    publiclyRevealed = continuation.revealed,
+                    moverId = continuation.playerId,
+                    allPlayers = newState.turnOrder,
+                    knownPosition = true,
+                )
+            )
         }
 
         events.add(

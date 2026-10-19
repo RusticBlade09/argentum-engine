@@ -66,6 +66,8 @@ data class SelectFromCollectionContinuation(
  * @property cards The cards being reordered
  * @property destinationZone The zone the cards are going to
  * @property destinationPlayerId The player whose zone the cards go to
+ * @property revealed Whether the move was public (MoveCollectionEffect.revealed), which decides
+ *   who keeps knowing the cards once they are in the library
  */
 @Serializable
 data class MoveCollectionOrderContinuation(
@@ -77,6 +79,7 @@ data class MoveCollectionOrderContinuation(
     val destinationPlayerId: EntityId,
     val placement: com.wingedsheep.sdk.scripting.effects.ZonePlacement = com.wingedsheep.sdk.scripting.effects.ZonePlacement.Top,
     val objectReferences: com.wingedsheep.engine.handlers.ObjectReferenceEnvironment = com.wingedsheep.engine.handlers.ObjectReferenceEnvironment(),
+    val revealed: Boolean = false,
 ) : AnswerContinuation
 
 /**
