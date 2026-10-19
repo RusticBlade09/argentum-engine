@@ -52,7 +52,10 @@ internal data class Activation(
     val variablePermanentsCost: CostAtom.VariablePermanents?
         get() = effectiveCost.extractVariablePermanentsCost()
 
-    /** The permanents chosen for a variable-permanents cost, when the action carries them. */
+    /**
+     * The permanents chosen for a variable-permanents cost, when the action carries them. Empty for
+     * both "not chosen" and "chose none" — ask [variableCostChosen] which one it is.
+     */
     val chosenForCost: List<EntityId>
         get() = action.costPayment?.variableCostPermanents ?: emptyList()
 
