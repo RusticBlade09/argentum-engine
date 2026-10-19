@@ -62,15 +62,34 @@ class SubmitDecisionHandler(
         // step (an untap or cleanup choice, the last opening-hand leyline), the step machine has
         // already handed priority to the active player. If it was a stack object's resolution —
         // whose bottom frame was waiting beneath the question — the active player receives
-        // priority (CR 117.3b), whoever answered last. Otherwise the work was the answering
-        // player's own announcement or special action, and they keep priority (CR 117.3c).
+        // priority (CR 117.3b), whoever answered last. If it put a triggered ability on the stack
+        // (its order, mode, target or cost), the answer is neutral: the player who would have
+        // received priority before the trigger paused still receives it (CR 117.5). Otherwise the
+        // work was the answering player's own announcement or special action, and they keep
+        // priority (CR 117.3c).
         val finishedInStep = result.state.turnNumber == state.turnNumber && result.state.step == state.step
         val answer = (state.continuationStack.lastOrNull() as? Suspension)?.answer
         val finishedBlockerPiles = answer is BlockerPilesContinuation || answer is BlockerPileRestrictionChoiceContinuation
         val finishedResolution = state.continuationStack.any { it is EndResolutionControlContinuation }
-        val recipient = if (finishedResolution) result.state.activePlayerId ?: action.playerId else action.playerId
+        val recipient = when {
+            finishedResolution -> result.state.activePlayerId ?: action.playerId
+            answer.placesTrigger() -> state.priorityPlayerId ?: result.state.activePlayerId ?: action.playerId
+            else -> action.playerId
+        }
         val settled = if (finishedInStep && !finishedBlockerPiles) result.state.withPriority(recipient) else result.state
         return ExecutionResult.success(settled, events)
+    }
+
+    /** The answer belongs to putting a triggered ability on the stack (CR 603.3), not to an announcement. */
+    private fun AnswerContinuation?.placesTrigger(): Boolean = when (this) {
+        is TriggerOrderContinuation,
+        is TriggeredAbilityContinuation,
+        is TriggerModalModeSelectionContinuation,
+        is TriggerModalTargetSelectionContinuation,
+        is TriggerOpponentChooserContinuation,
+        is MayPayManaTriggerContinuation,
+        is ManaSourceSelectionContinuation -> true
+        else -> false
     }
 
     /**
