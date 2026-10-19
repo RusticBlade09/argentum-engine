@@ -154,6 +154,15 @@ ai-game-logs GAMES="24" SEED="20261009" AGENT="live" SEATS="2" ATTACK="LEFT":
         -DgameLogGames={{GAMES}} -DgameLogSeed={{SEED}} -DgameLogAgent={{AGENT}} -DgameLogSeats={{SEATS}} \
         -DgameLogAttackMode={{ATTACK}} -DgameLogDir={{justfile_directory()}}/ai/build/game-logs
 
+# DIR comes from `scripts/fetch-ai-games --out DIR` (needs WINGEDSHEEP_ADMIN_PASSWORD). Logs use the
+# `ai-game-logs` format with full information and the AI seats marked; a replay current code no
+# longer reproduces is cut at the divergence and flagged at the top. See the `ai-game-review` skill.
+# Re-simulate the server replays in DIR into readable <gameId>.log files beside them
+[group: 'ai']
+ai-replay-logs DIR:
+    scripts/gradle-locked :game-server:test --tests "*.ReplayLogExport" -Dbenchmark=true -DreplayLog=true \
+        -DreplayLogDir="$(cd "{{DIR}}" && pwd)"
+
 # ECL apprentice promotion ladder. Artifacts are installed outside the repository and selected with
 # -Dargentum.ai.apprentice.dir; missing or invalid files safely use the production evaluator.
 [group: 'ai']

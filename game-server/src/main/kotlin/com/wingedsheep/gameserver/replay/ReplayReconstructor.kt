@@ -52,6 +52,20 @@ data class ReconstructedReplay(
     val isComplete: Boolean get() = fidelity != ReplayFidelity.DIVERGED
 }
 
+/** One recorded action as re-simulation applied it: [action] took [before] to [after]. */
+data class ReplayStep(val index: Int, val before: GameState, val action: GameAction, val after: GameState)
+
+/**
+ * The outcome of [ReplayReconstructor.walk]: the last position it could vouch for, and — when
+ * [fidelity] is [ReplayFidelity.DIVERGED] — the index of the action that failed and why.
+ */
+data class ReplayWalk(
+    val finalState: GameState,
+    val fidelity: ReplayFidelity,
+    val divergedAtAction: Int?,
+    val divergenceReason: String?,
+)
+
 /**
  * Re-simulates a [CompactReplay] to regenerate exactly what was (or would have been) shown live.
  *
@@ -94,41 +108,53 @@ class ReplayReconstructor(
         val setup = replay.setup
         val seats = setup.players.map { SpectatorSeat(EntityId(it.playerId), it.name) }
 
-        var state = engine.initialState(replay)
-        var previous = engine.spectatorStateBuilder.buildState(state, seats, setup.seatRoster, replay.gameId)
+        val start = engine.initialState(replay)
+        var previous = engine.spectatorStateBuilder.buildState(start, seats, setup.seatRoster, replay.gameId)
         val initial = previous
         val deltas = ArrayList<SpectatorReplayDelta>(replay.actions.size)
-        var divergence: String? = null
 
-        for ((index, action) in replay.actions.withIndex()) {
-            val step = engine.applyAction(replay, state, action, index)
-            if (step.failure != null) {
-                divergence = step.failure
-                logger.warn(
-                    "Replay {} (recorded on {}) diverged at action {} ({}): {} — truncating to {} frames",
-                    replay.gameId, replay.engineVersion, index, action::class.simpleName,
-                    step.failure, 1 + deltas.size,
-                )
-                break
-            }
-            state = step.state!!
-            val snapshot = engine.spectatorStateBuilder.buildState(state, seats, setup.seatRoster, replay.gameId)
+        val walk = fold(engine, replay, start) { step ->
+            val snapshot = engine.spectatorStateBuilder.buildState(step.after, seats, setup.seatRoster, replay.gameId)
             deltas.add(SpectatorReplayDiffCalculator.computeDelta(previous, snapshot))
             previous = snapshot
-        }
-
-        val fidelity = when {
-            divergence != null -> ReplayFidelity.DIVERGED
-            replay.checkpoints.isEmpty() -> ReplayFidelity.UNVERIFIED
-            else -> ReplayFidelity.EXACT
         }
         return ReconstructedReplay(
             initialSnapshot = initial,
             deltas = deltas,
-            fidelity = fidelity,
-            divergedAtFrame = if (divergence != null) deltas.size else null,
-            divergenceReason = divergence,
+            fidelity = walk.fidelity,
+            divergedAtFrame = walk.divergedAtAction,
+            divergenceReason = walk.divergenceReason,
         )
+    }
+
+    /**
+     * Fold [replay]'s recorded actions one at a time, handing [visit] each action together with the
+     * state it was applied to and the state it produced — for tools that need every intermediate
+     * position rather than the viewer stream (the AI game-review logs re-derive what each seat could
+     * have done from `before`). Stops at a divergence, exactly as [reconstruct] does.
+     */
+    fun walk(replay: CompactReplay, visit: (ReplayStep) -> Unit): ReplayWalk {
+        val engine = engineFor(replay)
+        return fold(engine, replay, engine.initialState(replay), visit)
+    }
+
+    private fun fold(engine: ReplayEngine, replay: CompactReplay, start: GameState, visit: (ReplayStep) -> Unit): ReplayWalk {
+        var state = start
+        for ((index, action) in replay.actions.withIndex()) {
+            val step = engine.applyAction(replay, state, action, index)
+            if (step.failure != null) {
+                logger.warn(
+                    "Replay {} (recorded on {}) diverged at action {} ({}): {} — truncating to {} frames",
+                    replay.gameId, replay.engineVersion, index, action::class.simpleName, step.failure, 1 + index,
+                )
+                return ReplayWalk(state, ReplayFidelity.DIVERGED, index, step.failure)
+            }
+            val next = step.state!!
+            visit(ReplayStep(index, state, action, next))
+            state = next
+        }
+        val fidelity = if (replay.checkpoints.isEmpty()) ReplayFidelity.UNVERIFIED else ReplayFidelity.EXACT
+        return ReplayWalk(state, fidelity, null, null)
     }
 
     /**
