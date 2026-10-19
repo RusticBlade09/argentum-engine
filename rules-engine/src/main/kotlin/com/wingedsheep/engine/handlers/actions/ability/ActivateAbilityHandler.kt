@@ -326,12 +326,12 @@ class ActivateAbilityHandler(
         // stack for 608.2b re-validation and for `DynamicAmount.XValue` reads at resolution. When
         // the cost is being paid, the chosen set already rides on the action's costPayment.
         val variablePermanentsCost = effectiveCost.extractVariablePermanentsCost()
-        val chosenForCost = action.costPayment?.variableCostPermanents ?: emptyList()
+        val chosenForCost = action.costPayment?.variableCostPermanents
         // An X the ability's own text defines (CR 107.3c) outranks both: it is not the payer's to
         // choose, and it is the value every other instance of X on this activation uses (CR 107.3i)
         // — the X-linked non-mana costs and any `DynamicAmount.XValue` read at resolution.
         val effectiveXValue: Int? = definedXValue
-            ?: if (variablePermanentsCost != null && chosenForCost.isNotEmpty())
+            ?: if (variablePermanentsCost != null && chosenForCost != null)
                 variableCostX(state, variablePermanentsCost, chosenForCost)
             else action.xValue
 

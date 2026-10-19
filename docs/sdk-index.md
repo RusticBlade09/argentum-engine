@@ -305,6 +305,7 @@ Families:
 - `CardSource.FromZone(zone: Zone, player: Player, filter: GameObjectFilter, excludeSacrificedThisWay: Boolean)` — Cards from a specific zone matching an optional filter.
 - `CardSource.LastKnownCombatPairedWithSource` — The creatures that were blocking, or blocked by, the effect's source at the moment the source last left the battlefield (CR 509 combat pairing, captured as last-known information).
 - `CardSource.LastKnownEquipmentAttachedToSource` — The Equipment that was attached to the effect's source the moment a self-sacrifice / self-exile cost moved it off the battlefield (CR 113.7a last-known information).
+- `CardSource.SacrificedThisWay` — The cards sacrificed "this way" that are still in their owner's graveyard — read from the same `EffectContext.sacrificedPermanents` snapshots that com.wingedsheep.sdk.scripting.values.DynamicAmount…
 - `CardSource.Self` — The ability's own source card (com.wingedsheep.sdk.scripting.references sourceId).
 - `CardSource.SourceLinkedBattlefield(key: String)` — Still-current battlefield objects recorded by this source's original battlefield visit.
 - `CardSource.TappedAsCost` — Permanents that were tapped as part of the ability's activation cost.

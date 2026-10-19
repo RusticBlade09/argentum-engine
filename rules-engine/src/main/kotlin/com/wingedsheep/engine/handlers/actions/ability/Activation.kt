@@ -55,4 +55,8 @@ internal data class Activation(
     /** The permanents chosen for a variable-permanents cost, when the action carries them. */
     val chosenForCost: List<EntityId>
         get() = action.costPayment?.variableCostPermanents ?: emptyList()
+
+    /** Whether the payer has answered the variable-permanents choice — possibly with none. */
+    val variableCostChosen: Boolean
+        get() = action.costPayment?.variableCostPermanents != null
 }

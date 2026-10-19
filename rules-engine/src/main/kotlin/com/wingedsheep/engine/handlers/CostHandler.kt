@@ -1246,7 +1246,7 @@ class CostHandler(private val zones: ZoneTransitionService) {
     private fun payVariablePermanentsList(
         state: GameState,
         atom: CostAtom.VariablePermanents,
-        choices: List<EntityId>,
+        choices: List<EntityId>?,
         sourceId: EntityId,
         controllerId: EntityId,
         manaPool: ManaPool,
@@ -1258,7 +1258,7 @@ class CostHandler(private val zones: ZoneTransitionService) {
         // With no selection supplied, auto-pick ONLY when the choice is forced (exactly minCount
         // eligible). A real choice (more eligible than minCount) is paused for by
         // ActivateAbilityHandler; never silently guess which permanents to pay with.
-        val toPay: List<EntityId> = if (choices.isEmpty()) {
+        val toPay: List<EntityId> = if (choices == null) {
             val candidates = findMatchingCardsUnified(
                 state, state.controlledBattlefield(controllerId), filter, controllerId, sourceId
             ).let { if (excludeSelf) it.filter { id -> id != sourceId } else it }
@@ -1334,6 +1334,9 @@ class CostHandler(private val zones: ZoneTransitionService) {
             return CostPaymentResult.success(newState, manaPool, events)
         }
         if (atom.action == PermanentCostAction.SACRIFICE) {
+            // "Any number" answered with none sacrifices nothing (paySacrificeList would read an
+            // empty list as "not chosen" and refuse).
+            if (toPay.isEmpty()) return CostPaymentResult.success(state, manaPool)
             // requiredCount = the whole chosen set: the count is the payer's choice, not a printed N.
             return paySacrificeList(
                 state, toPay, filter,
@@ -1952,9 +1955,10 @@ data class CostPaymentChoices(
     /**
      * Permanents chosen for a [CostAtom.VariablePermanents] variable-count cost, kept apart from
      * [exileChoices] / [sacrificeChoices] so an ability carrying both a fixed and a variable
-     * permanent cost stays unambiguous. Mirrors `AdditionalCostPayment.variableCostPermanents`.
+     * permanent cost stays unambiguous. Mirrors `AdditionalCostPayment.variableCostPermanents`,
+     * including its `null` = "not chosen" vs empty = "chose none".
      */
-    val variablePermanentChoices: List<EntityId> = emptyList(),
+    val variablePermanentChoices: List<EntityId>? = null,
     val tapChoices: List<EntityId> = emptyList(),
     val bounceChoices: List<EntityId> = emptyList(),
     val xValue: Int = 0,

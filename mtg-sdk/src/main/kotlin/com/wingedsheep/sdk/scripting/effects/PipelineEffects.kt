@@ -311,6 +311,28 @@ sealed interface CardSource {
     }
 
     /**
+     * The cards sacrificed "this way" that are still in their owner's graveyard — read from the
+     * same `EffectContext.sacrificedPermanents` snapshots that
+     * [com.wingedsheep.sdk.scripting.values.DynamicAmount.TotalPowerSacrificedThisWay] sums, so it
+     * covers both a sacrifice *cost* (recorded at activation, CR 602.2b) and a sacrifice effect
+     * earlier in the same resolution. The source of a self-sacrifice cost isn't one of them; name
+     * it with [Self].
+     *
+     * "Those creature cards" in Sword of the Ages's "{T}, Sacrifice this artifact and any number of
+     * creatures you control: … then exile this artifact and those creature cards." The sacrifice
+     * counterpart of [ExiledAsCost] and [TappedAsCost].
+     *
+     * A card qualifies only while it is still the object the sacrifice put into the graveyard: a
+     * token has ceased to exist (CR 704.5d), and a card that has since left the graveyard is a new
+     * object (CR 400.7), so neither is gathered.
+     */
+    @SerialName("SacrificedThisWay")
+    @Serializable
+    data object SacrificedThisWay : CardSource {
+        override val description: String = "the cards sacrificed this way"
+    }
+
+    /**
      * Cards from the source permanent's linked exile (LinkedExileComponent).
      * Returns the entity IDs stored in the component, filtered to only those
      * currently in exile.

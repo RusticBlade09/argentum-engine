@@ -146,6 +146,18 @@ class GatherCardsExecutor(
                 }
             }
 
+            // The permanents sacrificed this way (a cost or an earlier same-resolution sacrifice),
+            // kept only while each is still in its owner's graveyard — a card that has moved on is
+            // a new object (CR 400.7), and a token is gone entirely.
+            is CardSource.SacrificedThisWay -> {
+                context.sacrificedPermanents.mapNotNull { snapshot ->
+                    val cardId = snapshot.entityId
+                    val ownerId = state.getEntity(cardId)?.get<OwnerComponent>()?.playerId
+                        ?: return@mapNotNull null
+                    cardId.takeIf { it in state.getZone(ZoneKey(ownerId, Zone.GRAVEYARD)) }
+                }.distinct()
+            }
+
             is CardSource.ControlledPermanents -> {
                 val playerId = resolvePlayer(source.player, context, state)
                     ?: return EffectResult.error(state, "Could not resolve player for GatherCards ControlledPermanents")

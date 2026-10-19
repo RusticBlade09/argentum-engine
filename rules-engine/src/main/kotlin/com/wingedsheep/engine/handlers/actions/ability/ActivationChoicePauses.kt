@@ -476,7 +476,7 @@ internal class ActivationChoicePauses(
         val action = activation.action
         val sourceName = activation.sourceName
         val variablePermanentsCost = activation.variablePermanentsCost
-        if (variablePermanentsCost == null || activation.chosenForCost.isNotEmpty()) return null
+        if (variablePermanentsCost == null || activation.variableCostChosen) return null
         val verb = VariablePermanentsCost.verb(variablePermanentsCost.action)
         val candidates = costHandler
             .findMatchingCardsUnified(
@@ -503,7 +503,7 @@ internal class ActivationChoicePauses(
             )
         }
         val prompt = if (maxCount == 1) "Choose ${quantify(1, variablePermanentsCost.filter.description)} to $verb for ${sourceName}"
-            else "Choose one or more ${variablePermanentsCost.filter.description}s to $verb for ${sourceName}"
+            else "Choose ${if (minCount <= 0) "any number of" else "one or more"} ${variablePermanentsCost.filter.description}s to $verb for ${sourceName}"
         val continuation = ActivateAbilityVariablePermanentsContinuation(
             action = action,
             candidates = candidates,
@@ -540,7 +540,7 @@ internal class ActivationChoicePauses(
     private fun variablePermanentsTargetChoice(state: GameState, activation: Activation): ExecutionResult? {
         val action = activation.action
         val sourceName = activation.sourceName
-        if (activation.variablePermanentsCost == null || activation.chosenForCost.isEmpty() || action.targets.isNotEmpty()) {
+        if (activation.variablePermanentsCost == null || !activation.variableCostChosen || action.targets.isNotEmpty()) {
             return null
         }
         val controllerTargetReqsExec = activation.targetRequirements.filter { it.chooser == TargetChooser.Controller }

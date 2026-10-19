@@ -561,8 +561,12 @@ data class AdditionalCostPayment(
      * exile cost: mixing them into one list would make "which permanents paid which leg" ambiguous.
      * The engine derives the ability's X from this list — its size, or the total mana value of its
      * members, per the atom's `xMeasure`.
+     *
+     * `null` means the payer hasn't chosen yet, so an activation pauses to ask; an empty list is the
+     * answer "none", legal for an "any number of" cost (minCount 0). Without the distinction a
+     * zero pick read back as "not chosen" and re-raised the same prompt forever.
      */
-    val variableCostPermanents: List<EntityId> = emptyList(),
+    val variableCostPermanents: List<EntityId>? = null,
 
     /** Cards chosen via Behold (from battlefield or hand) */
     val beheldCards: List<EntityId> = emptyList(),
@@ -626,7 +630,7 @@ data class AdditionalCostPayment(
                 discardedCards.isEmpty() &&
                 lifePaid == 0 &&
                 exiledCards.isEmpty() &&
-                variableCostPermanents.isEmpty() &&
+                variableCostPermanents.isNullOrEmpty() &&
                 beheldCards.isEmpty() &&
                 revealedCards.isEmpty() &&
                 cardsPutOnLibrary.isEmpty() &&

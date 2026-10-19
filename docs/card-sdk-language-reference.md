@@ -5116,6 +5116,16 @@ their library into their graveyard. If it's a creature card, you create a 2/2 bl
   `FromLinkedExile`, which is the pile a permanent has
   accumulated over its lifetime and would hand a second activation the first one's cards; this gather
   is scoped to the one payment that put the ability on the stack.
+- `CardSource.SacrificedThisWay` — the cards **sacrificed this way** that are still in their owner's
+  graveyard, the sacrifice counterpart of `ExiledAsCost`. Reads the same `EffectContext.sacrificedPermanents`
+  snapshots `DynamicAmount.TotalPowerSacrificedThisWay` sums, so it covers a sacrifice cost (fixed,
+  "sacrifice all", or the variable-count `Costs.SacrificePermanents`) and an earlier same-resolution
+  sacrifice effect alike. A self-sacrifice cost's source isn't among them — name it with `CardSource.Self`
+  / `EffectTarget.Self`. Tokens (ceased to exist) and cards that have left the graveyard since (new objects,
+  CR 400.7) aren't gathered. **Sword of the Ages**: "{T}, Sacrifice this artifact and any number of creatures
+  you control: … then exile this artifact and those creature cards" — `MoveToZone(Self, EXILE, fromZone =
+  GRAVEYARD)` plus `gather(CardSource.SacrificedThisWay)` → `exile(...)`. Only a variable cost whose action is
+  `SACRIFICE` records its picks here; an exile or tap variable cost does not.
 - `CardSource.AttachedTo(host, filter?, zone = BATTLEFIELD)` — the permanents attached to the `host` entity (any
   `EffectTarget` that resolves to a permanent — a spell's `ContextTarget`, `Self`, `TriggeringEntity`, …)
   that match `filter`, read off the host's `AttachmentsComponent` and intersected with the projected

@@ -40,6 +40,7 @@ import com.wingedsheep.sdk.core.CounterType
 import com.wingedsheep.sdk.core.ManaCost
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.AbilityCost
+import com.wingedsheep.sdk.scripting.costs.PermanentCostAction
 
 /**
  * Last-known information an activation captures while paying its costs (CR 113.7a / 608.2h), for
@@ -228,7 +229,7 @@ internal class ActivationCostPayer(
             discardChoices = action.costPayment?.discardedCards ?: emptyList(),
             putOnLibraryChoices = action.costPayment?.cardsPutOnLibrary ?: emptyList(),
             exileChoices = exileChoices,
-            variablePermanentChoices = action.costPayment?.variableCostPermanents ?: emptyList(),
+            variablePermanentChoices = action.costPayment?.variableCostPermanents,
             tapChoices = firstTapSlice,
             bounceChoices = action.costPayment?.bouncedPermanents ?: emptyList(),
             xValue = xValue,
@@ -524,8 +525,16 @@ internal class ActivationCostPayer(
         val sacrificeAllTargets = effectiveCost.extractSacrificeAllCost()
             ?.let { costHandler.sacrificeAllCandidates(state, it, action.playerId, action.sourceId) }
             .orEmpty()
-        val sacrificeTargetIds = chosenSacrifices + forcedSacrifices + sacrificeAllTargets +
-            (action.costPayment?.variableCostPermanents ?: emptyList())
+        // A variable-count cost's picks are sacrificed only when its action says so — an exile
+        // (Fabrication Foundry) or tap (Teamwork) cost moves nothing to the graveyard and must not
+        // read back as "sacrificed this way".
+        val variableSacrifices =
+            if (effectiveCost.extractVariablePermanentsCost()?.action == PermanentCostAction.SACRIFICE) {
+                action.costPayment?.variableCostPermanents ?: emptyList()
+            } else {
+                emptyList()
+            }
+        val sacrificeTargetIds = chosenSacrifices + forcedSacrifices + sacrificeAllTargets + variableSacrifices
         // The state-aware capture also freezes token-ness and copiable values, so "a copy of the
         // sacrificed permanent" can still be made after a sacrificed token ceased to exist.
         val sacrificedSnapshots = captureEntitySnapshots(sacrificeTargetIds, state)

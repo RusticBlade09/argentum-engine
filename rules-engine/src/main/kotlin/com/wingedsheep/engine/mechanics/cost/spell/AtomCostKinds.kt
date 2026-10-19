@@ -721,7 +721,7 @@ internal object VariablePermanentsCostKind : SpellCostKind<CostAtom.VariablePerm
         )
 
     override fun selectionSupplied(cost: CostAtom.VariablePermanents, payment: AdditionalCostPayment) =
-        payment.variableCostPermanents.isNotEmpty()
+        !payment.variableCostPermanents.isNullOrEmpty()
 
     override fun validate(check: SpellCostCheck, cost: CostAtom.VariablePermanents): String? {
         val state = check.state
@@ -774,7 +774,7 @@ internal object VariablePermanentsCostKind : SpellCostKind<CostAtom.VariablePerm
 
     override fun pay(ledger: SpellCostLedger, cost: CostAtom.VariablePermanents): String? {
         // Validation already re-checked control, filter, and the measure floor.
-        val chosen = ledger.payment.variableCostPermanents
+        val chosen = ledger.payment.variableCostPermanents.orEmpty()
         when (cost.action) {
             PermanentCostAction.TAP -> {
                 // The tap carries its *cause* ([TapReason]), which is what lets "whenever this

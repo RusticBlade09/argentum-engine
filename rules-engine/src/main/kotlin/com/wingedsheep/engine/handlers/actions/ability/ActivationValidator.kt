@@ -608,8 +608,8 @@ internal class ActivationValidator(
         // target validation sees the right cap; when the cost is paid via the two-step pause flow
         // the chosen set already rides on the action's costPayment.
         val variablePermanentsCost = effectiveCost.extractVariablePermanentsCost()
-        val chosenForCost = action.costPayment?.variableCostPermanents ?: emptyList()
-        val effectiveXValue = if (variablePermanentsCost != null && chosenForCost.isNotEmpty()) {
+        val chosenForCost = action.costPayment?.variableCostPermanents
+        val effectiveXValue = if (variablePermanentsCost != null && chosenForCost != null) {
             VariablePermanentsCost.measure(state, variablePermanentsCost.xMeasure, chosenForCost)
         } else {
             action.xValue
