@@ -1163,7 +1163,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         'Starting priority mode — Auto, Stops or Full Control. Every game begins in it; the mode button still switches it for the game you are in.',
         'Always stop at — your standing stops, for your turn and your opponents’. The phase-bar dots edit the same list.',
         'Hold priority over my own — triggered abilities, activated abilities, spells: get priority back while one of yours waits on the stack, whenever you can respond to it.',
-        'Auto-tap mana, and Follow the action for games with three or more players.',
+        'Auto-tap mana, Order my triggers automatically, and Follow the action for games with three or more players.',
       ] },
       { kind: 'h', text: 'Battlefield' },
       { kind: 'p', text: 'Identical permanents — same name, tapped state, counters, damage and so on — collapse into one stack with a count. Lands, creatures and other permanents each have their own rule:' },
@@ -1178,7 +1178,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       { kind: 'p', text: 'Signed in, Message alerts away from home decides whether new messages put an unread count on the chat button and show a preview while you’re in a game, a draft or on another page. The home screen always shows them.' },
       { kind: 'tip', text: 'Changes save as you make them. As a guest they live in this browser; signed in, they follow you to every device.' },
     ],
-    related: ['stops', 'priority-modes', 'own-stack-stops', 'auto-tap', 'card-preview', 'messages', 'guest-vs-account'],
+    related: ['stops', 'priority-modes', 'own-stack-stops', 'auto-tap', 'trigger-order', 'card-preview', 'messages', 'guest-vs-account'],
   },
   {
     id: 'phase-bar',
@@ -1225,7 +1225,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         'Remove counters as a cost — use the − and + controls on highlighted battlefield permanents. You may remove several counters from one permanent or spread the payment across them; Confirm becomes available when the required total is allocated. Open Adjust allocations in the prompt for a named list when the board is crowded or an attachment is hard to reach.',
         'Divide damage — assign amounts to each target; “Lethal” marks the point where a creature dies.',
         'Combat damage — with trample, deathtouch or several blockers, you assign attacking damage yourself, split among the blockers however you like (only trample needs every blocker at lethal before damage reaches the player).',
-        'Order — cards going to the top of a library get arrow buttons.',
+        'Order — cards going to the top of a library get arrow buttons; your own triggers can be dragged into order (see Ordering your triggers).',
         'Search — pick cards from a library, or Fail to Find.',
         'Piles — split cards into two piles, or assign them randomly.',
         'Options — longer lists (a card name, a creature type) come with a search box.',
@@ -1233,7 +1233,21 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       { kind: 'p', text: 'A strip above each prompt names the cards involved — the source, its target, what triggered it — so a long chain of triggers stays readable.' },
       { kind: 'p', text: 'Secret choices stay private until everyone has confirmed. Pick a number in the prompt, or click a highlighted creature to vote for it; Select None submits an optional ballot without a vote. The game log reveals everyone’s choices together after the last answer.' },
     ],
-    related: ['targeting-and-combat', 'yields', 'mana-payment', 'dexterity-flips'],
+    related: ['targeting-and-combat', 'yields', 'mana-payment', 'dexterity-flips', 'trigger-order'],
+  },
+  {
+    id: 'trigger-order',
+    section: 'playing',
+    title: 'Ordering your triggers',
+    summary:
+      'When several of your abilities trigger at once, they go on the stack in the order they triggered. Turn off Order my triggers automatically (Preferences → Gameplay) to choose the order yourself — scry before you draw, make the token before the counters go out.',
+    body: [
+      { kind: 'p', text: 'With it off, the game stops before your triggers go on the stack and lists them top to bottom in the order they will resolve: the top one resolves first. Drag a row, use its arrows, or press Alt+↑/↓ on it, then Put on the stack. Reset order puts them back the way they triggered.' },
+      { kind: 'p', text: 'You are only asked when the order can matter. A single trigger, or several copies of the same ability that choose no targets (two Soul Wardens seeing one creature enter), goes straight on the stack. Abilities that need targets pick them after you set the order, one by one.' },
+      { kind: 'p', text: 'If your opponent’s abilities triggered at the same moment, the player whose turn it is orders theirs first, so the other player’s end up on top and resolve first.' },
+      { kind: 'tip', text: 'Tick Don’t ask again in the prompt to go back to automatic ordering; it takes effect straight away.' },
+    ],
+    related: ['preferences', 'decisions', 'yields'],
   },
   {
     id: 'yields',
@@ -1245,7 +1259,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       { kind: 'p', text: 'This is the fix for a repeating optional trigger asking you the same question every turn. Active yields are listed in a panel while they are in force, so you can revoke one at any time.' },
     ],
     shortcuts: ['stack-yield-menu'],
-    related: ['priority-modes'],
+    related: ['priority-modes', 'trigger-order'],
   },
   {
     id: 'card-preview',

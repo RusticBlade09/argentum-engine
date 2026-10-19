@@ -30,6 +30,14 @@ export interface Announcement {
 
 export const ANNOUNCEMENTS: readonly Announcement[] = [
   {
+    id: 'feature-order-your-triggers',
+    date: '2026-10-19',
+    kind: 'feature',
+    title: 'Order your own triggers',
+    body:
+      'When several of your abilities trigger at once you can now choose the order they go on the stack — scry before the draw, make the token before the anthem trigger counts. Turn off Order my triggers automatically in Preferences → Gameplay, and the game asks whenever the order can matter, with a list you drag into place.',
+  },
+  {
     id: 'set-snc',
     date: '2026-10-17',
     kind: 'set',

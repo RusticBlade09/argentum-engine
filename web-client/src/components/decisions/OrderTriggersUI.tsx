@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useGameStore } from '@/store/gameStore.ts'
 import { usePreferences } from '@/store/preferencesStore.ts'
 import type { OrderTriggersDecision, TriggerToOrder } from '@/types'
@@ -32,6 +32,12 @@ export function OrderTriggersUI({ decision }: { decision: OrderTriggersDecision 
   const [preview, setPreview] = useState<TriggerToOrder | null>(null)
 
   const changed = order.some((trigger, position) => trigger !== position)
+
+  // The panel opens over whatever card the pointer was resting on, which then never sees its
+  // mouseleave: drop that board hover so its preview doesn't hang over the list.
+  useEffect(() => {
+    hoverCard(null)
+  }, [hoverCard])
 
   // Slide rows to their new place (FLIP): remember where each row was, and after the reorder
   // start it there and let it travel to where it now sits.
@@ -96,8 +102,19 @@ export function OrderTriggersUI({ decision }: { decision: OrderTriggersDecision 
           </p>
         </header>
 
-        <div className={styles.endLabel} aria-hidden="true">
-          <span className={styles.endArrow}>▲</span> Resolves first
+        <div className={styles.listHead}>
+          <span className={styles.endLabel} aria-hidden="true">
+            <span className={styles.endArrow}>▲</span> Resolves first
+          </span>
+          {/* Always laid out, so showing it doesn't shift the list. */}
+          <button
+            type="button"
+            className={styles.resetButton}
+            style={{ visibility: changed ? 'visible' : 'hidden' }}
+            onClick={() => setOrder(decision.triggers.map((_, i) => i))}
+          >
+            Reset order
+          </button>
         </div>
 
         <ol className={styles.list} aria-label="Triggered abilities, first to resolve at the top">
@@ -197,7 +214,7 @@ export function OrderTriggersUI({ decision }: { decision: OrderTriggersDecision 
           })}
         </ol>
 
-        <div className={styles.endLabel} aria-hidden="true">
+        <div className={`${styles.endLabel} ${styles.endLabelLast}`} aria-hidden="true">
           <span className={styles.endArrow}>▼</span> Resolves last
         </div>
 
@@ -206,15 +223,6 @@ export function OrderTriggersUI({ decision }: { decision: OrderTriggersDecision 
             <button onClick={() => setMinimized(true)} className={decisionStyles.viewBattlefieldButton}>
               View Battlefield
             </button>
-            {changed && (
-              <button
-                type="button"
-                className={styles.resetButton}
-                onClick={() => setOrder(decision.triggers.map((_, i) => i))}
-              >
-                Reset
-              </button>
-            )}
             <button onClick={confirm} className={decisionStyles.confirmButton} autoFocus>
               Put on the stack
             </button>

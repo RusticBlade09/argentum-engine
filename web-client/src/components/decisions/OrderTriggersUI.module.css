@@ -53,8 +53,14 @@
   text-transform: uppercase;
 }
 
-.endLabel:last-of-type {
+.endLabelLast {
   color: var(--text-muted);
+}
+
+.listHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .endArrow {
@@ -144,7 +150,7 @@
 }
 
 .grip {
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: 12px;
   letter-spacing: -3px;
   user-select: none;
@@ -265,17 +271,18 @@
 }
 
 .resetButton {
-  padding: var(--space-2) var(--space-5);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
+  padding: 2px var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--text-secondary);
-  font-size: var(--font-md);
+  color: var(--text-tertiary);
+  font-size: var(--font-xs);
+  text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: pointer;
 }
 
 .resetButton:hover {
-  background: var(--bg-panel-hover);
   color: var(--text-primary);
 }
 
