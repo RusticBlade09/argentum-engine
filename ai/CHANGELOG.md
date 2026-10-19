@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- Puts mana and other gift Auras on its own permanents and steal/strip Auras on the opponent's: reads land-mana bonuses (Overgrowth, Wild Growth), granted activated abilities, protection, unblockability, dynamic stat boosts, "you control enchanted permanent", "loses all abilities" and conditional statics, so Overgrowth no longer ramps the opponent's Swamp
 - #3421 Presses a winning position instead of sitting on it: when the board it would leave still dominates (creatures and cards in hand, and the race each way), an attack is credited for the damage it deals, so a team of four Bears swings past a lone Hill Giant and trades a Bear for six damage, and a bigger army trades evenly rather than waiting; behind, at parity, or facing a lethal crack-back it attacks exactly as before.
 - #3420 Expects the opponent to use its board in a fight: every attack and block it weighs is played out with the opponent using the activated abilities its permanents can afford (a team pump like Leonin Sun Standard, a pinger like Prodigal Sorcerer, keyword granters, regeneration, token blockers) when that wins them the combat, so it stops attacking or blocking into a pump the opponent has mana for, and still makes the play when they are tapped out or the trick can't win.
 - Stops casting an Aura whose only effect is an "if enchanted creature …" entry trigger onto a creature that fails the check (Earthbind on a creature without flying), since it would enter and do nothing.

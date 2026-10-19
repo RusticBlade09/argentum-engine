@@ -6,6 +6,16 @@ import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.model.CardDefinition
 import com.wingedsheep.sdk.scripting.ActivatedAbility
+import com.wingedsheep.sdk.scripting.AdditionalManaOnTap
+import com.wingedsheep.sdk.scripting.CantBeBlocked
+import com.wingedsheep.sdk.scripting.CompositeStaticAbility
+import com.wingedsheep.sdk.scripting.ConditionalStaticAbility
+import com.wingedsheep.sdk.scripting.ControlEnchantedPermanent
+import com.wingedsheep.sdk.scripting.GrantActivatedAbility
+import com.wingedsheep.sdk.scripting.GrantDynamicStats
+import com.wingedsheep.sdk.scripting.GrantProtection
+import com.wingedsheep.sdk.scripting.GrantProtectionFromCardType
+import com.wingedsheep.sdk.scripting.LoseAllAbilities
 import com.wingedsheep.sdk.scripting.CantAttack
 import com.wingedsheep.sdk.scripting.CantBlock
 import com.wingedsheep.sdk.scripting.EntersWithChoice
@@ -110,7 +120,14 @@ enum class TargetPolarity {
  * An Aura's target is the creature it will enchant, and what it does to that creature lives in its
  * static abilities (scoped to [Scope.AttachedTo]) and in triggers aimed at
  * [EffectTarget.EnchantedCreature] — Blossombind's "tap enchanted creature". Those are read the
- * same way and combined the same way.
+ * same way and combined the same way. Land Auras count too: Overgrowth's "whenever enchanted land
+ * is tapped for mana, its controller adds an additional {G}{G}" is ramp for whoever's land it
+ * enchants. "Enchant creature or Vehicle" Auras name their host as [EffectTarget.EnchantedPermanent]
+ * (Flood the Engine's "tap enchanted permanent"), which reads like "enchanted creature".
+ *
+ * An Aura whose slot still reads [TargetPolarity.UNKNOWN] keeps the removal ranking on purpose:
+ * the unread Auras are curses (Imprison, Brainwash) as often as gifts (Curiosity, Spirit Link), so
+ * neither side of the table is the safer default.
  *
  * An Aura's own activated abilities aimed at the creature it enchants count too: Strands of
  * Undeath's "{B}: Regenerate enchanted creature" can only be paid by the Aura's controller, so it
@@ -390,7 +407,9 @@ object TargetPolarityAnalyzer {
         for (effect in abilityEffects) {
             for (leaf in EffectWalker.leaves(effect)) {
                 for ((target, polarity) in classify(leaf, definitions)) {
-                    if (target == EffectTarget.EnchantedCreature) readings += polarity
+                    // "Enchanted creature" and "enchanted permanent" (Flood the Engine's "tap
+                    // enchanted permanent") both name the object the Aura is cast on.
+                    if (target in HOST_TARGETS) readings += polarity
                 }
             }
         }
@@ -455,6 +474,26 @@ object TargetPolarityAnalyzer {
         is CantBlock -> if (static.filter.scope != Scope.AttachedTo) null else TargetPolarity.HARMFUL
         is GrantTriggeredAbility -> if (static.filter.scope != Scope.AttachedTo) null else grantedTriggerPolarity(static.ability)
         is GrantWard -> if (static.filter.scope != Scope.AttachedTo) null else TargetPolarity.BENEFICIAL
+        is GrantProtection -> if (static.filter.scope != Scope.AttachedTo) null else TargetPolarity.BENEFICIAL
+        is GrantProtectionFromCardType -> if (static.filter.scope != Scope.AttachedTo) null else TargetPolarity.BENEFICIAL
+        is CantBeBlocked -> if (static.filter.scope != Scope.AttachedTo) null else TargetPolarity.BENEFICIAL
+        is GrantDynamicStats -> if (static.filter.scope != Scope.AttachedTo) null
+            else statsPolarity(static.powerBonus, static.toughnessBonus)
+        // An ability only the enchanted permanent's controller can activate, and only when they
+        // choose to — Abundant Growth's mana ability, Squirrel Nest's token maker — is theirs to use.
+        is GrantActivatedAbility -> if (static.filter.scope != Scope.AttachedTo) null else TargetPolarity.BENEFICIAL
+        // "Loses all abilities" (Lignify, Imprisoned in the Moon) is the curse shape.
+        is LoseAllAbilities -> if (static.filter.scope != Scope.AttachedTo) null else TargetPolarity.HARMFUL
+        // "Whenever enchanted land is tapped for mana, its controller adds an additional {G}{G}"
+        // (Overgrowth, Wild Growth, Fertile Ground): the bonus goes to the land's controller, so
+        // it is ramp for whoever's land it enchants. No filter: it only ever reads the host.
+        is AdditionalManaOnTap -> TargetPolarity.BENEFICIAL
+        // Control Magic, Annex, Confiscate: the host changes sides.
+        ControlEnchantedPermanent -> TargetPolarity.HARMFUL
+        // A condition gates the ability without turning it around ("as long as enchanted creature
+        // is a Vampire, it gets +2/+2"); rival conditional halves disagree and combine to UNKNOWN.
+        is ConditionalStaticAbility -> staticPolarity(static.ability)
+        is CompositeStaticAbility -> static.abilities.mapNotNull(::staticPolarity).takeIf { it.isNotEmpty() }?.let(::combine)
         // "Has base power and toughness 1/1" (Cursed Role) shrinks nearly anything it lands on; a
         // larger base is a gift or a curse depending on the creature, so it stays unread.
         is SetBasePowerToughnessStatic -> when {
