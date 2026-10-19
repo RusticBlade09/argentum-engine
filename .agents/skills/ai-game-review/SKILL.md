@@ -14,7 +14,7 @@ diff. Everything a later phase needs is written to the **run dir**.
 ```
 RUN=.claude/loop-runs/ai-review-<yyyymmdd-hhmm>/     (gitignored, in the main checkout)
   games/       <gameId>.replay.json + <gameId>.log per game, index.json (seats, AI names, winner)
-  findings/    one file per analysed game
+  findings/    the analysts' findings, saved by the orchestrator
   plan.md      ordered issue checklist — the source of truth for phase 4
 ```
 
@@ -50,10 +50,11 @@ recorded winner and `engineVersion`.
 
 ## Phase 2 — analyse (fresh subagents, read-only)
 
-Send the analysts **in one message**, **at most 4** at a time (batch 2–3 logs per agent beyond that).
-They read and grep only — **no Gradle, no `just` builds**. Each writes its findings file and returns at
-most ~10 lines. Prompt each with the log paths, the output path `$RUN/findings/<gameId>.md`, the repo
-path `$WT` to read code from, and:
+One analyst reads ~20 logs comfortably (a game renders to ~200 lines); run more only for bigger
+samples, **one after another**, so the machine isn't hogged. They read and grep only — **no Gradle, no
+`just` builds**. Subagents can't write report files, so each **returns its findings blocks in full**
+after a summary of at most ~12 lines; save the blocks to `$RUN/findings/<batch>.md` verbatim and read
+only the summary. Prompt each with the log paths, the repo path `$WT` to read code from, and:
 
 - **Focus: what the AI did wrong against a human.** Clear misplays a competent player wouldn't make —
   attacks into a losing board or not attacking for lethal; bad blocks, chump-blocking too early, not
@@ -86,7 +87,8 @@ path `$WT` to read code from, and:
 
 ## Phase 3 — plan (one fresh subagent)
 
-One `Plan` subagent reads `$RUN/findings/*` and writes `$RUN/plan.md`. Prompt it to:
+One `Plan` subagent reads `$RUN/findings/*` and returns the plan, which you save as `$RUN/plan.md`.
+Prompt it to:
 
 - **Dedupe** across games; **verify** each against the code in `$WT` (read-only) — confirm the root
   cause in `ai/src/main/kotlin/…` (or the engine) or drop it. Unsubstantiated low-confidence findings go
@@ -104,7 +106,7 @@ One `Plan` subagent reads `$RUN/findings/*` and writes `$RUN/plan.md`. Prompt it
     test: <the AI decision test or puzzle that fails before the fix — the position from the log>
     status: todo
   ```
-- Return the ordered titles only.
+- Return the checklist in full, preceded by the ordered titles.
 
 Show the user the ordered list (one line each), then proceed — stop here only on "plan only" /
 "just analyse".
