@@ -55,6 +55,11 @@ export interface Preferences {
     ownStackStops: OwnStackStop[]
     /** Pay mana costs automatically when you cast a spell or activate an ability. */
     autoTap: boolean
+    /**
+     * Put your own simultaneous triggered abilities on the stack in the order they triggered. Off:
+     * the game asks you to order them whenever the order can matter (CR 603.3b).
+     */
+    autoOrderTriggers: boolean
     /** Multiplayer: move the camera to the board where the action is. */
     followAction: boolean
   }
@@ -102,6 +107,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
     opponentTurnStops: [],
     ownStackStops: [],
     autoTap: true,
+    autoOrderTriggers: true,
     followAction: true,
   },
   battlefield: {
@@ -174,6 +180,7 @@ export function parsePreferences(raw: unknown): Preferences {
       opponentTurnStops: steps(g.opponentTurnStops),
       ownStackStops: ownStackStops(g.ownStackStops),
       autoTap: bool(g.autoTap, D.gameplay.autoTap),
+      autoOrderTriggers: bool(g.autoOrderTriggers, D.gameplay.autoOrderTriggers),
       followAction: bool(g.followAction, D.gameplay.followAction),
     },
     battlefield: {

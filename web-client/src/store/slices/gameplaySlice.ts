@@ -67,6 +67,7 @@ export interface GameplaySliceActions {
   submitDecision: (decisionId: string, selectedCards: readonly EntityId[]) => void
   submitTargetsDecision: (decisionId: string, selectedTargets: Record<number, readonly EntityId[]>) => void
   submitOrderedDecision: (decisionId: string, orderedObjects: readonly EntityId[]) => void
+  submitTriggerOrder: (decisionId: string, resolutionOrder: readonly number[]) => void
   submitYesNoDecision: (decisionId: string, choice: boolean) => void
   submitBatchYesNoDecision: (decisionId: string, choice: boolean, applyToAll: boolean) => void
   submitNumberDecision: (decisionId: string, number: number) => void
@@ -235,6 +236,22 @@ export const createGameplaySlice: SliceCreator<GameplaySlice> = (set, get) => ({
         type: 'OrderedResponse' as const,
         decisionId,
         orderedObjects: [...orderedObjects],
+      },
+    }
+    get().submitAction(action, decisionInteractionEpoch(action.response.decisionId))
+  },
+
+  submitTriggerOrder: (decisionId, resolutionOrder) => {
+    const { pendingDecision, playerId } = get()
+    if (!pendingDecision || pendingDecision.id !== decisionId || !playerId) return
+
+    const action = {
+      type: 'SubmitDecision' as const,
+      playerId: pendingDecision.playerId,
+      response: {
+        type: 'TriggerOrderResponse' as const,
+        decisionId,
+        resolutionOrder: [...resolutionOrder],
       },
     }
     get().submitAction(action, decisionInteractionEpoch(action.response.decisionId))

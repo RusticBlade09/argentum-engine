@@ -14,7 +14,7 @@ import { CLEARED_PIPELINE_SELECTIONS, isActionStillOffered } from '../ui/pipelin
 import type { SetState, GetState } from './types'
 import { useTableTalkStore } from '@/store/tableTalkStore'
 import { getPreferences } from '@/store/preferencesStore'
-import { createSetPriorityModeMessage, createSetStopOverridesMessage } from '@/types'
+import { createSetPriorityModeMessage, createSetStopOverridesMessage, createSetTriggerOrderingMessage } from '@/types'
 import type {
   LogEntry,
   DrawAnimation,
@@ -841,12 +841,12 @@ type GameplayHandlerKeys =
   | 'onGameOver' | 'onPlayerEliminated' | 'onError'
 
 /**
- * Send the player's standing stops and starting priority mode to the server for a new game, and
- * mirror them in the store so the step strip and mode button read right before the first update.
- * The server keeps both per game, so this runs once per game start.
+ * Send the player's standing stops, starting priority mode and trigger ordering to the server for a
+ * new game, and mirror them in the store so the step strip and mode button read right before the
+ * first update. The server keeps them per game, so this runs once per game start.
  */
 function applyGameplayPreferences(set: SetState) {
-  const { priorityMode, myTurnStops, opponentTurnStops, ownStackStops } = getPreferences().gameplay
+  const { priorityMode, myTurnStops, opponentTurnStops, ownStackStops, autoOrderTriggers } = getPreferences().gameplay
   set({
     stopOverrides: { myTurnStops, opponentTurnStops },
     priorityMode,
@@ -857,6 +857,7 @@ function applyGameplayPreferences(set: SetState) {
     ws?.send(createSetStopOverridesMessage(myTurnStops, opponentTurnStops, ownStackStops))
   }
   if (priorityMode !== 'auto') ws?.send(createSetPriorityModeMessage(priorityMode))
+  if (!autoOrderTriggers) ws?.send(createSetTriggerOrderingMessage(true))
 }
 
 export function createGameplayHandlers(set: SetState, get: GetState): Pick<MessageHandlers, GameplayHandlerKeys> {

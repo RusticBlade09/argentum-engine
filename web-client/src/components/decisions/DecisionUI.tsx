@@ -6,6 +6,7 @@ import { useResponsive } from '@/hooks/useResponsive.ts'
 import { LibrarySearchUI } from './LibrarySearchUI'
 import { ReorderCardsUI } from './ReorderCardsUI'
 import { OrderBlockersUI } from './OrderBlockersUI'
+import { OrderTriggersUI } from './OrderTriggersUI'
 import { CombatDamageAssignmentModal } from './CombatDamageAssignmentModal'
 import { CombatResolutionBoard } from './CombatResolutionBoard'
 import { YesNoDecisionUI } from './YesNoDecisionUI'
@@ -83,6 +84,11 @@ export function DecisionUI() {
   // Handle ReorderLibraryDecision with dedicated UI
   if (pendingDecision.type === 'ReorderLibraryDecision') {
     return <ReorderCardsUI key={pendingDecision.id} decision={pendingDecision} responsive={responsive} />
+  }
+
+  // Put your own simultaneous triggers on the stack in the order you choose (CR 603.3b)
+  if (pendingDecision.type === 'OrderTriggersDecision') {
+    return <OrderTriggersUI key={pendingDecision.id} decision={pendingDecision} />
   }
 
   // Handle OrderObjectsDecision (e.g., damage assignment order for blockers)

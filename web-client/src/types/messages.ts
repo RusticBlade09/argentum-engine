@@ -571,6 +571,33 @@ export interface OrderObjectsDecision extends PendingDecisionBase {
 }
 
 /**
+ * One triggered ability waiting to go on the stack, as an [OrderTriggersDecision] lists it.
+ * Card ids are looked up in the (already masked) game state; [sourceName] and [imageUri] cover a
+ * source that has left the game.
+ */
+export interface TriggerToOrder {
+  readonly sourceId: EntityId
+  readonly sourceName: string
+  /** What the ability does, as the stack will show it. */
+  readonly text: string
+  readonly imageUri?: string | null
+  /** What the ability triggered on, when that's a different object (the creature that entered). */
+  readonly triggeringEntityId?: EntityId
+  /** Its targets are chosen as it goes on the stack, right after this question. */
+  readonly choosesTargets?: boolean
+}
+
+/**
+ * Player puts their own simultaneous triggered abilities on the stack in the order they choose
+ * (CR 603.3b). [triggers] is the default order, first-to-resolve first; the answer is a
+ * `TriggerOrderResponse` listing their indices in the order they should resolve.
+ */
+export interface OrderTriggersDecision extends PendingDecisionBase {
+  readonly type: 'OrderTriggersDecision'
+  readonly triggers: readonly TriggerToOrder[]
+}
+
+/**
  * Player must choose a number (e.g., how many cards to draw).
  */
 export interface ChooseNumberDecision extends PendingDecisionBase {
@@ -949,6 +976,7 @@ export type PendingDecision =
   | SearchLibraryDecision
   | ReorderLibraryDecision
   | OrderObjectsDecision
+  | OrderTriggersDecision
   | ChooseNumberDecision
   | ChooseOptionDecision
   | ChooseReplacementDecision
@@ -2371,6 +2399,7 @@ export type ClientMessage =
   | SetAbilityYieldMessage
   | ClearAbilityYieldMessage
   | ClearAllYieldsMessage
+  | SetTriggerOrderingMessage
   // Undo
   | RequestUndoMessage
   // Resync
@@ -2997,6 +3026,15 @@ export interface ClearAbilityYieldMessage {
   readonly abilityId: string
 }
 
+/**
+ * Whether the player orders their own simultaneous triggers (the inverse of the "order my triggers
+ * automatically" preference). Sent at game start and whenever the preference changes.
+ */
+export interface SetTriggerOrderingMessage {
+  readonly type: 'setTriggerOrdering'
+  readonly manual: boolean
+}
+
 /** Clear all of the player's yields. */
 export interface ClearAllYieldsMessage {
   readonly type: 'clearAllYields'
@@ -3221,6 +3259,10 @@ export function createClearAbilityYieldMessage(
   abilityId: string,
 ): ClearAbilityYieldMessage {
   return { type: 'clearAbilityYield', cardDefinitionId, abilityId }
+}
+
+export function createSetTriggerOrderingMessage(manual: boolean): SetTriggerOrderingMessage {
+  return { type: 'setTriggerOrdering', manual }
 }
 
 export function createClearAllYieldsMessage(): ClearAllYieldsMessage {

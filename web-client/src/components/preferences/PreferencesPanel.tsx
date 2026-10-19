@@ -178,6 +178,12 @@ export function PreferencesPanel({ compact = false }: { compact?: boolean }) {
           onChange={(autoTap) => update('gameplay', { autoTap })}
         />
         <Toggle
+          label="Order my triggers automatically"
+          hint="When several of your abilities trigger at once, they go on the stack in the order they triggered. Off: you choose the order whenever it can matter — scry before you draw, make the token before the counters."
+          checked={gameplay.autoOrderTriggers}
+          onChange={(autoOrderTriggers) => update('gameplay', { autoOrderTriggers })}
+        />
+        <Toggle
           label="Follow the action"
           hint="In games with three or more players, move the camera to the board where something is happening."
           checked={gameplay.followAction}

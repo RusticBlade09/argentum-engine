@@ -527,6 +527,7 @@ data class GameState(
      * ("order my triggers automatically", on by default), so an absent player keeps the automatic
      * order and is never asked. Read by [com.wingedsheep.engine.mechanics.TriggerOrdering].
      */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val manualTriggerOrdering: Set<EntityId> = emptySet(),
 
     /**

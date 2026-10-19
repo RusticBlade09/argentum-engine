@@ -12,7 +12,7 @@ import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { usePreferences } from './preferencesStore'
 import { getWebSocket } from './slices/shared'
-import { createSetStopOverridesMessage } from '@/types'
+import { createSetStopOverridesMessage, createSetTriggerOrderingMessage } from '@/types'
 
 import { createConnectionSlice } from '@/store/slices'
 import { createGameplaySlice } from '@/store/slices'
@@ -72,9 +72,10 @@ export const useGameStore = create<GameStore>()(
 )
 
 // The preferences page (or the in-game settings dialog, or another device via the account sync) can
-// change a gameplay preference while a game store is alive: keep the live game in step. Stops go to
-// the server too, so a stop added from the dialog applies to the game in progress. The starting
-// priority mode deliberately does not — it only shapes the next game.
+// change a gameplay preference while a game store is alive: keep the live game in step. Stops and
+// trigger ordering go to the server too, so a change from the dialog (or the trigger-ordering
+// prompt's own "don't ask again") applies to the game in progress. The starting priority mode
+// deliberately does not — it only shapes the next game.
 usePreferences.subscribe((state, prev) => {
   const next = state.prefs.gameplay
   const before = prev.prefs.gameplay
@@ -90,6 +91,9 @@ usePreferences.subscribe((state, prev) => {
   if ((stopsChanged || ownStackStopsChanged) && game.gameState && !game.spectatingState) {
     if (stopsChanged) patch.stopOverrides = { myTurnStops: next.myTurnStops, opponentTurnStops: next.opponentTurnStops }
     getWebSocket()?.send(createSetStopOverridesMessage(next.myTurnStops, next.opponentTurnStops, next.ownStackStops))
+  }
+  if (next.autoOrderTriggers !== before.autoOrderTriggers && game.gameState && !game.spectatingState) {
+    getWebSocket()?.send(createSetTriggerOrderingMessage(!next.autoOrderTriggers))
   }
   if (Object.keys(patch).length) useGameStore.setState(patch)
 })
