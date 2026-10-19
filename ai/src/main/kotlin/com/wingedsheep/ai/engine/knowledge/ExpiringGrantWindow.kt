@@ -20,6 +20,9 @@ import com.wingedsheep.sdk.scripting.AbilityCost
 import com.wingedsheep.sdk.scripting.ActivatedAbility
 import com.wingedsheep.sdk.scripting.Duration
 import com.wingedsheep.sdk.scripting.TimingRule
+import com.wingedsheep.sdk.scripting.effects.AddCountersEffect
+import com.wingedsheep.sdk.scripting.effects.CantAttackEffect
+import com.wingedsheep.sdk.scripting.effects.CantBlockEffect
 import com.wingedsheep.sdk.scripting.effects.ChooseOptionEffect
 import com.wingedsheep.sdk.scripting.effects.Effect
 import com.wingedsheep.sdk.scripting.effects.ForEachEffect
@@ -126,8 +129,19 @@ internal object ExpiringGrantWindow {
          * [nothingCanSpend] can judge — see [PayoffKind.SHRINK].
          */
         readShrinks: Boolean = false,
+        /**
+         * [com.wingedsheep.ai.engine.AiProfile.refuseWastedPayoffs]: read an end-of-turn combat
+         * **restriction** ("target creature can't attack this turn") — see [restrictionHasNoWindow].
+         */
+        readRestrictions: Boolean = false,
     ): Boolean {
         if (ability.isManaAbility) return false
+
+        if (readRestrictions && activation != null &&
+            restrictionHasNoWindow(state, playerId, ability, activation, intents)
+        ) {
+            return true
+        }
 
         if ((refuseUnspendable || readShrinks) && activation != null &&
             nothingCanSpend(state, playerId, ability, activation, intents, refuseUnspendable, readShrinks)
@@ -254,6 +268,95 @@ internal object ExpiringGrantWindow {
                         }
                 }
             }
+        }
+    }
+
+    /**
+     * Whether [activation] spends an end-of-turn combat **restriction** where it cannot matter — the
+     * floor [com.wingedsheep.ai.engine.AiProfile.refuseWastedPayoffs] adds for "target creature
+     * can't attack this turn" and its mirror "target creature can't block this turn".
+     *
+     * Off a live game (`2878b4bb`, turns 20, 22, 24): Edifice of Authority ("{1}, {T}: Target
+     * creature can't attack this turn. Put a brick counter on this artifact.") activated in the
+     * AI's *own* precombat main on the human's Reaper from the Abyss — a creature that cannot attack
+     * on our turn anyway. The Edifice then sat tapped through the human's turn, and on turn 23 the
+     * Reaper and six friends took the AI from 18 to 4. Activated in the human's upkeep or beginning
+     * of combat, the same activation adds the same brick and keeps the 6/6 home.
+     *
+     * A restriction only buys something in one window, read off whose turn it is:
+     *
+     *  - **Can't attack** — on the turn of the creature's controller, before attackers are declared,
+     *    on a creature that could attack ([CombatMath.getCreaturesThatCanAttack]).
+     *  - **Can't block** — on our own turn, before blockers are declared, on an untapped creature
+     *    (and once attackers are declared, only while something is attacking).
+     *
+     * Outside that window the restriction is worth nothing, and the question is what else the
+     * ability buys:
+     *
+     *  - **Nothing else** — the activation is a waste of its cost, in this window, full stop.
+     *  - **A counter on the source** (the brick) — bought just the same by the activation in the
+     *    restriction's own window. That is dominance, not a guess, only when activating now *costs*
+     *    that window: the source taps to pay ([tapsItsSource]) and stays tapped until our untap step,
+     *    which for a can't-attack activated on our own turn is after the opponent's attack. A
+     *    can't-block, or a can't-attack after their attack, gets the source back before its next
+     *    window, so the counter there is free and stays the leaf's call.
+     *
+     * Any other leaf, a restriction on a creature of ours, a target that cannot be resolved, or a
+     * stack object that threatens us hands the decision back to the leaf score.
+     */
+    private fun restrictionHasNoWindow(
+        state: GameState,
+        playerId: EntityId,
+        ability: ActivatedAbility,
+        activation: ActivateAbility,
+        intents: IntentCatalog,
+    ): Boolean {
+        val restrictions = mutableListOf<Pair<Boolean, EffectTarget>>() // (isCantAttack, target)
+        var sideBenefit = false
+        for (leaf in EffectWalker.leaves(ability.effect)) {
+            when {
+                leaf is CantAttackEffect && leaf.duration == Duration.EndOfTurn -> restrictions += true to leaf.target
+                leaf is CantBlockEffect && leaf.duration == Duration.EndOfTurn -> restrictions += false to leaf.target
+                leaf is AddCountersEffect && leaf.target == EffectTarget.Self -> sideBenefit = true
+                leaf is TapUntapEffect && leaf.tap && leaf.target == EffectTarget.Self -> Unit
+                else -> return false
+            }
+        }
+        if (restrictions.isEmpty()) return false
+        if (somethingOnTheStackThreatensUs(state, playerId, intents)) return false
+
+        val projected = state.projectedState
+        val ourTurn = state.isActiveTurnFor(playerId)
+        for ((cantAttack, target) in restrictions) {
+            val affected = affectedBy(state, projected, playerId, target, activation) ?: return false
+            for (creature in affected) {
+                if (!projected.isCreature(creature)) return false
+                val controller = projected.getController(creature) ?: return false
+                if (controller == playerId) return false
+                val spendable = if (cantAttack) {
+                    state.isActiveTurnFor(controller) && state.step in UNTIL_ATTACKERS_DECLARED &&
+                        creature in CombatMath.getCreaturesThatCanAttack(state, projected, controller)
+                } else {
+                    ourTurn && opposingCanStillBeBlockedOut(state, creature)
+                }
+                if (spendable) return false
+            }
+        }
+        if (!sideBenefit) return true
+
+        // The side benefit is bought again in the restriction's own window, unless activating now
+        // keeps the source tapped through it.
+        return tapsItsSource(ability) && ourTurn && restrictions.all { (cantAttack, _) -> cantAttack }
+    }
+
+    /** Whether a can't-block on an opposing [creature] still keeps it out of a block this turn. */
+    private fun opposingCanStillBeBlockedOut(state: GameState, creature: EntityId): Boolean {
+        val entity = state.getEntity(creature) ?: return false
+        if (entity.has<TappedComponent>()) return false
+        return when (state.step) {
+            in UNTIL_ATTACKERS_DECLARED -> true
+            Step.DECLARE_ATTACKERS -> state.getBattlefield().any { state.getEntity(it)?.has<AttackingComponent>() == true }
+            else -> false
         }
     }
 

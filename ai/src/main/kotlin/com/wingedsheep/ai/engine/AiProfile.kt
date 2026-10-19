@@ -1152,6 +1152,13 @@ data class AiProfile(
      *   to give an opposing 2/4 -3/-1 until end of turn. [com.wingedsheep.ai.engine.knowledge.ExpiringGrantWindow]
      *   now reads a fixed stat loss that kills nothing as a payoff [refuseUnspendableGrants]' floor can
      *   judge: refused when the creature it lands on can no longer attack or block this turn.
+     * - **A combat restriction outside its window.** `2878b4bb` (2026-10-19) turns 20/22/24: Edifice
+     *   of Authority's "target creature can't attack this turn" (plus a brick counter) spent in the
+     *   AI's own main phase on the human's Reaper from the Abyss, which then attacked through the
+     *   tapped Edifice. [com.wingedsheep.ai.engine.knowledge.ExpiringGrantWindow] refuses a
+     *   this-turn can't-attack/can't-block where it restrains nothing — and, when the only other
+     *   payoff is a counter on a source that taps, where activating now keeps it tapped through the
+     *   window that matters.
      */
     val refuseWastedPayoffs: Boolean = false,
     /**
