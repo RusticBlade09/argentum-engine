@@ -541,6 +541,15 @@ sealed interface ClientMessage {
         val abilityId: String
     ) : ClientMessage
 
+    /**
+     * Whether the player orders their own simultaneous triggered abilities (CR 603.3b). The client
+     * sends its "order my triggers automatically" preference at game start and whenever it changes;
+     * until then the engine orders them automatically.
+     */
+    @Serializable
+    @SerialName("setTriggerOrdering")
+    data class SetTriggerOrdering(val manual: Boolean) : ClientMessage
+
     /** Clear all of the player's yields (the "Clear yields" control; MTGO `5`). */
     @Serializable
     @SerialName("clearAllYields")

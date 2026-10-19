@@ -131,6 +131,7 @@ class GamePlayHandler(
             is ClientMessage.SetAbilityYield -> handleSetAbilityYield(session, message)
             is ClientMessage.ClearAbilityYield -> handleClearAbilityYield(session, message)
             is ClientMessage.ClearAllYields -> handleClearAllYields(session)
+            is ClientMessage.SetTriggerOrdering -> handleSetTriggerOrdering(session, message)
             is ClientMessage.RequestUndo -> handleRequestUndo(session)
 
             is ClientMessage.RequestResync -> handleRequestResync(session)
@@ -1307,6 +1308,17 @@ class GamePlayHandler(
 
         gameSession.clearAllYields(playerSession.playerId)
         broadcastStateUpdate(gameSession, emptyList())
+    }
+
+    private fun handleSetTriggerOrdering(session: WebSocketSession, message: ClientMessage.SetTriggerOrdering) {
+        val playerSession = sessionRegistry.getPlayerSession(session.id)
+        if (playerSession == null) {
+            sender.sendError(session, ErrorCode.NOT_CONNECTED, "Not connected")
+            return
+        }
+        val gameSession = getGameSession(session, playerSession) ?: return
+
+        gameSession.setManualTriggerOrdering(playerSession.playerId, message.manual)
     }
 
     private fun handleRequestUndo(session: WebSocketSession) {

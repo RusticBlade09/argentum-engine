@@ -7,6 +7,7 @@ import com.wingedsheep.engine.event.TriggerProcessor
 import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.replacement.ReplacementRiders
 import com.wingedsheep.engine.mechanics.StateBasedActionChecker
+import com.wingedsheep.engine.mechanics.TriggerOrdering
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.nameVisibleToAll
 import com.wingedsheep.engine.state.components.player.EndTheTurnRequestedComponent
@@ -33,7 +34,10 @@ import com.wingedsheep.sdk.scripting.EventPattern
  * 3. **Drain.** Perform state-based actions and queue the triggers they cause. Then put the whole
  *    queue on the stack in APNAP order (CR 603.3b). Repeat until nothing is left.
  *
- * Putting a wave on the stack can stop for a choice (a trigger's targets or modes). The rest of
+ * A player who orders their own triggers is asked for that order before the wave is placed
+ * ([TriggerOrdering]); otherwise each player's abilities keep the order they triggered in.
+ *
+ * Putting a wave on the stack can stop for a choice (the order, a trigger's targets or modes). The rest of
  * that wave waits in [GameState.triggersBeingPlaced], and the drain after the answer places it
  * first, before any state-based action. Triggers that trigger in the meantime (ward, on the
  * answer's targets) join [GameState.pendingTriggers], the next wave, so they end up above it.
@@ -238,6 +242,12 @@ class Settler(
             }
 
             val waiting = if (resuming) state.triggersBeingPlaced else apnapOrder(state, state.pendingTriggers)
+            if (!resuming) {
+                // A player who orders their own triggers (CR 603.3b) is asked before any of them
+                // chooses targets; the wave waits, in APNAP order, until every answer is in.
+                val ordering = TriggerOrdering.ask(state.copy(pendingTriggers = emptyList(), triggersBeingPlaced = waiting))
+                if (ordering != null) return ExecutionResult.propagatePause(ordering.state, events + ordering.events)
+            }
             val placementState =
                 if (resuming) state.copy(triggersBeingPlaced = emptyList()) else state.copy(pendingTriggers = emptyList())
             val placed = triggerProcessor.processTriggers(placementState, waiting)

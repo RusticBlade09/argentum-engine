@@ -55,6 +55,7 @@ internal class NewGameProcedure(private val cardRegistry: CardRegistry) {
         nextObjectGeneration = from.nextObjectGeneration,
         timestamp = from.timestamp,
         yieldsByPlayer = from.yieldsByPlayer,
+        manualTriggerOrdering = from.manualTriggerOrdering,
     ).clearUntilEndOfTurnYields().copy(
         turnOrder = turnOrder,
         activePlayerId = turnOrder.first(),

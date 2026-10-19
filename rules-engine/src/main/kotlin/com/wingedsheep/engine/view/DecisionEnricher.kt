@@ -60,6 +60,10 @@ class DecisionEnricher(private val cardRegistry: CardRegistry) {
             is ReorderLibraryDecision -> masked.copy(cardInfo = masked.cardInfo.withImages(state, viewerId))
             is SelectCardsDecision -> masked.copy(cardInfo = masked.cardInfo?.withImages(state, viewerId))
             is OrderObjectsDecision -> masked.copy(cardInfo = masked.cardInfo?.withImages(state, viewerId))
+            // A source that has left the game keeps the art it was asked with.
+            is OrderTriggersDecision -> masked.copy(triggers = masked.triggers.map {
+                it.copy(imageUri = imageUriFor(state, it.sourceId, viewerId) ?: it.imageUri)
+            })
             is SplitPilesDecision -> masked.copy(cardInfo = masked.cardInfo?.withImages(state, viewerId))
             // Other decision types don't have card info to enrich
             else -> masked
@@ -82,6 +86,7 @@ class DecisionEnricher(private val cardRegistry: CardRegistry) {
             is ChooseNumberDecision -> "Choosing a number"
             is DistributeDecision -> "Distributing"
             is OrderObjectsDecision -> decision.orderingTitle ?: "Ordering blockers"
+            is OrderTriggersDecision -> "Ordering triggers"
             is SplitPilesDecision -> "Splitting piles"
             is SearchLibraryDecision -> "Searching library"
             is ReorderLibraryDecision -> "Reordering cards"

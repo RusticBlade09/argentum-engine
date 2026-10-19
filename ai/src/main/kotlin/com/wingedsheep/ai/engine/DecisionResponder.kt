@@ -190,6 +190,9 @@ class DecisionResponder(
             is ChooseNumberDecision -> respondNumber(state, decision, playerId)
             is DistributeDecision -> respondDistribute(state, decision, playerId)
             is OrderObjectsDecision -> respondOrder(state, decision, playerId)
+            // The AI never turns automatic ordering off; answering for a seat that did (a timeout)
+            // keeps the order the abilities triggered in, which is what automatic ordering does.
+            is OrderTriggersDecision -> TriggerOrderResponse(decision.id, decision.triggers.indices.toList())
             is SplitPilesDecision -> respondSplitPiles(state, decision, playerId)
             is ChooseOptionDecision -> respondOption(state, decision, playerId)
             is ChooseReplacementDecision -> respondReplacement(decision)

@@ -21,6 +21,7 @@ import com.wingedsheep.engine.core.ModesChosenResponse
 import com.wingedsheep.engine.core.NumberChosenResponse
 import com.wingedsheep.engine.core.OptionChosenResponse
 import com.wingedsheep.engine.core.OrderObjectsDecision
+import com.wingedsheep.engine.core.OrderTriggersDecision
 import com.wingedsheep.engine.core.PendingDecision
 import com.wingedsheep.engine.core.ReorderLibraryDecision
 import com.wingedsheep.engine.core.SearchLibraryDecision
@@ -573,6 +574,9 @@ class ObservationBuilder(
             }
             is OrderObjectsDecision ->
                 baseView(decision, PendingDecisionKind.ORDER_OBJECTS, baseShape, structured = true) to
+                    ActionRegistry.EMPTY
+            is OrderTriggersDecision ->
+                baseView(decision, PendingDecisionKind.ORDER_TRIGGERS, baseShape, structured = true) to
                     ActionRegistry.EMPTY
             is SplitPilesDecision ->
                 baseView(decision, PendingDecisionKind.SPLIT_PILES, baseShape, structured = true) to

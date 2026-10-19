@@ -257,6 +257,8 @@ private class ReplayEngine(
                 ReplayYieldOp.SET -> current.withYield(playerId, entry.identity!!, entry.kind!!)
                 ReplayYieldOp.CLEAR_ABILITY -> current.withoutYield(playerId, entry.identity!!)
                 ReplayYieldOp.CLEAR_ALL -> current.withoutYields(playerId)
+                ReplayYieldOp.MANUAL_TRIGGER_ORDERING -> current.withManualTriggerOrdering(playerId, true)
+                ReplayYieldOp.AUTOMATIC_TRIGGER_ORDERING -> current.withManualTriggerOrdering(playerId, false)
             }
         }
         return current

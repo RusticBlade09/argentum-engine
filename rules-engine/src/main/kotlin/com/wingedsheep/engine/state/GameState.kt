@@ -522,6 +522,14 @@ data class GameState(
     val yieldsByPlayer: Map<EntityId, PlayerYields> = emptyMap(),
 
     /**
+     * Players who put their own simultaneous triggered abilities on the stack in an order they
+     * choose (CR 603.3b), instead of the order the abilities triggered in. A client preference
+     * ("order my triggers automatically", on by default), so an absent player keeps the automatic
+     * order and is never asked. Read by [com.wingedsheep.engine.mechanics.TriggerOrdering].
+     */
+    val manualTriggerOrdering: Set<EntityId> = emptySet(),
+
+    /**
      * Active replacement-effect chain (CR 614.5 — each effect applies at most once).
      *
      * Set by the [com.wingedsheep.engine.replacement.ReplacementEffectProcessor] when a [com.wingedsheep.engine.handlers.effects.drawing.DrawReplacementDispatcher.DispatchResult.Replaced]
@@ -694,6 +702,13 @@ data class GameState(
 
     /** Drop all of [playerId]'s yields (the "clear yields" control). */
     fun withoutYields(playerId: EntityId): GameState = copy(yieldsByPlayer = yieldsByPlayer - playerId)
+
+    /** True when [playerId] chooses the order of their own simultaneous triggers (CR 603.3b). */
+    fun ordersOwnTriggers(playerId: EntityId): Boolean = playerId in manualTriggerOrdering
+
+    /** Set whether [playerId] orders their own simultaneous triggers or leaves it automatic. */
+    fun withManualTriggerOrdering(playerId: EntityId, manual: Boolean): GameState =
+        copy(manualTriggerOrdering = if (manual) manualTriggerOrdering + playerId else manualTriggerOrdering - playerId)
 
     /** Clear every player's [PlayerYields.untilEndOfTurn] slice (turn-boundary cleanup, CR 514). */
     fun clearUntilEndOfTurnYields(): GameState {

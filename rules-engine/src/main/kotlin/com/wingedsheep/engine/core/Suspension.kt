@@ -62,6 +62,7 @@ private fun PendingDecision.requestEventType(): String = when (this) {
     is ChooseNumberDecision -> "CHOOSE_NUMBER"
     is DistributeDecision -> "DISTRIBUTE"
     is OrderObjectsDecision -> "ORDER_OBJECTS"
+    is OrderTriggersDecision -> "ORDER_TRIGGERS"
     is SplitPilesDecision -> "SPLIT_PILES"
     is ChooseOptionDecision -> "CHOOSE_OPTION"
     is ChooseReplacementDecision -> "CHOOSE_REPLACEMENT"

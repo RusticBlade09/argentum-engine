@@ -155,7 +155,7 @@ internal class CardFacesProjector(
                 .firstOrNull { it.startsWith("−X:") || it.startsWith("-X:") }
                 ?.substringAfter(":")?.trim() else oracleDescriptions[loyalty]?.removeFirstOrNull())
                 ?: ability.descriptionOverride
-                ?: stackText.effectDisplayText(ability.effect, "this planeswalker")
+                ?: StackTextRenderer.effectDisplayText(ability.effect, "this planeswalker")
             ClientPlaneswalkerAbility(
                 abilityId = ability.id.value,
                 loyaltyChange = loyalty,

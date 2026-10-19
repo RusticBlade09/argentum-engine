@@ -363,39 +363,39 @@ internal class StackTextRenderer(
         triggeringPlayerId = triggered.triggerContext?.triggeringPlayerId
     )
 
-    /**
-     * The noun a [com.wingedsheep.sdk.scripting.targets.SELF_NOUN_TOKEN] referring to [entityId]
-     * should render as — "this creature" for a creature (incl. artifact/enchantment creatures), else
-     * the noun matching its projected card type, falling back to [DEFAULT_SELF_NOUN]
-     * ("this permanent") for a multi-type, DFC, or off-battlefield permanent whose type we can't pin
-     * down. Battlefield type reads go through projected state (Rule 613), never base `typeLine`.
-     */
-    fun selfNounFor(state: GameState, entityId: EntityId): String {
-        val types = state.projectedState.getTypes(entityId)
-        return when {
-            "CREATURE" in types -> "this creature"
-            "LAND" in types -> "this land"
-            "ARTIFACT" in types -> "this artifact"
-            "ENCHANTMENT" in types -> "this enchantment"
-            "PLANESWALKER" in types -> "this planeswalker"
-            "BATTLE" in types -> "this battle"
-            else -> DEFAULT_SELF_NOUN
-        }
-    }
-
-    /**
-     * Render [effect]'s display text with any self-noun placeholder resolved to [selfNoun] (the noun
-     * for the source permanent — see [selfNounFor]). Effects that carry no self-reference fall
-     * through to their default-resolved [Effect.description]. This is the type-aware render layer
-     * for [SelfReferentialDescription]: the SDK emits the placeholder token, the client sees the
-     * type-correct noun.
-     */
-    fun effectDisplayText(effect: Effect, selfNoun: String): String =
-        (effect as? SelfReferentialDescription)
-            ?.let { resolveSelfNoun(it.descriptionTemplate, selfNoun) }
-            ?: effect.description
-
     companion object {
+        /**
+         * The noun a [com.wingedsheep.sdk.scripting.targets.SELF_NOUN_TOKEN] referring to [entityId]
+         * should render as — "this creature" for a creature (incl. artifact/enchantment creatures), else
+         * the noun matching its projected card type, falling back to [DEFAULT_SELF_NOUN]
+         * ("this permanent") for a multi-type, DFC, or off-battlefield permanent whose type we can't pin
+         * down. Battlefield type reads go through projected state (Rule 613), never base `typeLine`.
+         */
+        fun selfNounFor(state: GameState, entityId: EntityId): String {
+            val types = state.projectedState.getTypes(entityId)
+            return when {
+                "CREATURE" in types -> "this creature"
+                "LAND" in types -> "this land"
+                "ARTIFACT" in types -> "this artifact"
+                "ENCHANTMENT" in types -> "this enchantment"
+                "PLANESWALKER" in types -> "this planeswalker"
+                "BATTLE" in types -> "this battle"
+                else -> DEFAULT_SELF_NOUN
+            }
+        }
+
+        /**
+         * Render [effect]'s display text with any self-noun placeholder resolved to [selfNoun] (the noun
+         * for the source permanent — see [selfNounFor]). Effects that carry no self-reference fall
+         * through to their default-resolved [Effect.description]. This is the type-aware render layer
+         * for [SelfReferentialDescription]: the SDK emits the placeholder token, the client sees the
+         * type-correct noun.
+         */
+        fun effectDisplayText(effect: Effect, selfNoun: String): String =
+            (effect as? SelfReferentialDescription)
+                ?.let { resolveSelfNoun(it.descriptionTemplate, selfNoun) }
+                ?: effect.description
+
         /** The client's view of a chosen target (an id to draw an arrow to, nothing more). */
         fun toClientTarget(target: ChosenTarget): ClientChosenTarget = when (target) {
             is ChosenTarget.Player -> ClientChosenTarget.Player(target.playerId)

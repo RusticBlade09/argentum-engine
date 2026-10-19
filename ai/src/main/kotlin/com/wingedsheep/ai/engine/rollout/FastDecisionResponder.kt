@@ -82,6 +82,9 @@ class FastDecisionResponder(private val intents: IntentCatalog = IntentCatalog.N
             // playout that aims every removal spell at the nearest 1/1 systematically undervalues
             // removal, which is a bias in the leaf the whole phase exists to improve.
             // In slot order: a slot that reads an earlier target draws from the earlier picks' table.
+            // Automatic ordering's order: a playout has no reason to prefer another.
+            is com.wingedsheep.engine.core.OrderTriggersDecision ->
+                com.wingedsheep.engine.core.TriggerOrderResponse(decision.id, decision.triggers.indices.toList())
             is ChooseTargetsDecision -> TargetsResponse(
                 decision.id,
                 decision.targetRequirements.fold(emptyMap()) { chosen, req ->

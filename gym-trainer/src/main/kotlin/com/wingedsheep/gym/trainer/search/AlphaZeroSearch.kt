@@ -361,6 +361,7 @@ class AlphaZeroSearch<T>(
         is ChooseReplacementDecision,
         is DistributeDecision,
         is OrderObjectsDecision,
+        is com.wingedsheep.engine.core.OrderTriggersDecision,
         is SplitPilesDecision,
         is SearchLibraryDecision,
         is ReorderLibraryDecision,

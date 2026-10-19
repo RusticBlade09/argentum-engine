@@ -64,6 +64,11 @@ class DecisionMasker(private val visibility: Visibility) {
                 )
             }
             is SelectCardsDecision -> decision.copy(context = context, cardInfo = maskInfo(decision.cardInfo))
+            // Built for the controller, who may look at their own face-down sources; anyone else
+            // shown it sees the label and no art.
+            is OrderTriggersDecision -> decision.copy(context = context, triggers = decision.triggers.map {
+                if (hidden(it.sourceId)) it.copy(sourceName = label(it.sourceId), imageUri = null) else it
+            })
             is OrderObjectsDecision -> decision.copy(context = context, cardInfo = maskInfo(decision.cardInfo))
             is SplitPilesDecision -> decision.copy(context = context, cardInfo = maskInfo(decision.cardInfo))
             // Listed one by one, with no `else`, so a new decision type does not compile until

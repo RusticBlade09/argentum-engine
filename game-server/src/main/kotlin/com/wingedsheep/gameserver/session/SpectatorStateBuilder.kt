@@ -106,6 +106,7 @@ class SpectatorStateBuilder(
             is ChooseNumberDecision -> "Choosing a number"
             is DistributeDecision -> "Distributing"
             is OrderObjectsDecision -> decision.orderingTitle ?: "Ordering blockers"
+            is com.wingedsheep.engine.core.OrderTriggersDecision -> "Ordering triggers"
             is SplitPilesDecision -> "Splitting piles"
             is SearchLibraryDecision -> "Searching library"
             is ReorderLibraryDecision -> "Reordering cards"

@@ -1415,6 +1415,21 @@ class GameSession(
         recordYield(com.wingedsheep.gameserver.replay.ReplayYieldOp.CLEAR_ALL, playerId, null, null)
     }
 
+    /**
+     * Set whether [playerId] orders their own simultaneous triggers (CR 603.3b). Like a yield it
+     * lives on the GameState and changes what the engine asks, so it is recorded for replay too.
+     */
+    fun setManualTriggerOrdering(playerId: EntityId, manual: Boolean) = synchronized(stateLock) {
+        val state = gameState ?: return@synchronized
+        if (state.ordersOwnTriggers(playerId) == manual) return@synchronized
+        gameState = state.withManualTriggerOrdering(playerId, manual)
+        recordYield(
+            if (manual) com.wingedsheep.gameserver.replay.ReplayYieldOp.MANUAL_TRIGGER_ORDERING
+            else com.wingedsheep.gameserver.replay.ReplayYieldOp.AUTOMATIC_TRIGGER_ORDERING,
+            playerId, null, null
+        )
+    }
+
     // =========================================================================
     // Auto-Pass Management
     // =========================================================================

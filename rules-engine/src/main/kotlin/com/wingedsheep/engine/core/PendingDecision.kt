@@ -526,6 +526,51 @@ data class OrderObjectsDecision(
 ) : PendingDecision
 
 /**
+ * Player puts their own simultaneous triggered abilities on the stack in an order they choose
+ * (CR 603.3b), before any of them chooses targets (CR 603.3d).
+ *
+ * Triggered abilities aren't objects until they're on the stack, so unlike [OrderObjectsDecision]
+ * the options are descriptions, answered by position with a [TriggerOrderResponse]. Raised only for
+ * a player who turned automatic ordering off; see [com.wingedsheep.engine.mechanics.TriggerOrdering].
+ *
+ * @property triggers The abilities in the order they resolve if the player keeps the default: the
+ *   first resolves first, so it goes on the stack last.
+ */
+@Serializable
+@SerialName("OrderTriggersDecision")
+data class OrderTriggersDecision(
+    override val id: String,
+    override val playerId: EntityId,
+    override val prompt: String,
+    override val context: DecisionContext,
+    val triggers: List<TriggerToOrder>
+) : PendingDecision
+
+/**
+ * One triggered ability waiting to go on the stack, as an [OrderTriggersDecision] shows it.
+ *
+ * Only ids travel for the cards involved: the client looks [sourceId] and [triggeringEntityId] up in
+ * its already-masked state, so a face-down source can't leak through the prompt.
+ */
+@Serializable
+data class TriggerToOrder(
+    /** The object whose ability triggered. */
+    val sourceId: EntityId,
+    /** The source's name as every player may see it. */
+    val sourceName: String,
+    /** What the ability does, as the stack will show it. */
+    val text: String,
+    /** The source's art, or null for a face-down source. */
+    val imageUri: String? = null,
+    /** What the ability triggered on, when that's a different object (the creature that entered). */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val triggeringEntityId: EntityId? = null,
+    /** True when the ability's targets are chosen as it goes on the stack, after this question. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val choosesTargets: Boolean = false
+)
+
+/**
  * Player must split cards into piles (e.g., Fact or Fiction).
  */
 @Serializable
@@ -803,6 +848,7 @@ sealed interface DecisionResponse {
         is NumberChosenResponse -> copy(decisionId = newId)
         is DistributionResponse -> copy(decisionId = newId)
         is OrderedResponse -> copy(decisionId = newId)
+        is TriggerOrderResponse -> copy(decisionId = newId)
         is PilesSplitResponse -> copy(decisionId = newId)
         is PlayCardResponse -> copy(decisionId = newId)
         is OptionChosenResponse -> copy(decisionId = newId)
@@ -919,6 +965,17 @@ data class DistributionResponse(
 data class OrderedResponse(
     override val decisionId: String,
     val orderedObjects: List<EntityId>
+) : DecisionResponse
+
+/**
+ * Response to [OrderTriggersDecision]: every index of its `triggers`, once each, in the order the
+ * abilities should resolve — the first resolves first.
+ */
+@Serializable
+@SerialName("TriggerOrderResponse")
+data class TriggerOrderResponse(
+    override val decisionId: String,
+    val resolutionOrder: List<Int>
 ) : DecisionResponse
 
 /**

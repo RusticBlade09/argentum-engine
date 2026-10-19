@@ -29,6 +29,8 @@ internal class JevDecisions(private val q: JevChoices, private val label: (Entit
             chosen + (r.index to cards("${d.prompt}: ${r.description}", d.legalTargetsFor(r.index, chosen), r.minTargets, r.maxTargets))
         })
         is OrderObjectsDecision -> OrderedResponse(d.id, cards("${d.prompt}: choose next in order", d.objects, d.objects.size, d.objects.size))
+        is OrderTriggersDecision -> TriggerOrderResponse(d.id, q.select("${d.prompt}: choose next to resolve",
+            d.triggers.indices.toList(), d.triggers.size, d.triggers.size) { "${d.triggers[it].sourceName}: ${d.triggers[it].text}" })
         is ReorderLibraryDecision -> OrderedResponse(d.id, cards("${d.prompt}: top first", d.cards, d.cards.size, d.cards.size))
         is SplitPilesDecision -> if (d.suggestedPiles != null) PilesSplitResponse(d.id, d.suggestedPiles!!) else {
             val piles = List(d.numberOfPiles) { mutableListOf<EntityId>() }

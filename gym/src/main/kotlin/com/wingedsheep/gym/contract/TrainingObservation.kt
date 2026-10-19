@@ -382,7 +382,8 @@ enum class PendingDecisionKind {
     COMBAT_RESOLUTION,
     SELECT_MANA_SOURCES,
     BUDGET_MODAL,
-    FLIP_ONTO_BATTLEFIELD
+    FLIP_ONTO_BATTLEFIELD,
+    ORDER_TRIGGERS
 }
 
 @Serializable

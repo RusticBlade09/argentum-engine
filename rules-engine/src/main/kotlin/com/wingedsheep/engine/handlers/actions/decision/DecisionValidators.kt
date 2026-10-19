@@ -31,6 +31,8 @@ import com.wingedsheep.engine.core.NumberChosenResponse
 import com.wingedsheep.engine.core.OptionChosenResponse
 import com.wingedsheep.engine.core.OrderObjectsDecision
 import com.wingedsheep.engine.core.OrderedResponse
+import com.wingedsheep.engine.core.OrderTriggersDecision
+import com.wingedsheep.engine.core.TriggerOrderResponse
 import com.wingedsheep.engine.core.PendingDecision
 import com.wingedsheep.engine.core.PilesSplitResponse
 import com.wingedsheep.engine.core.ReorderLibraryDecision
@@ -75,6 +77,7 @@ object DecisionValidators {
             is ChooseNumberDecision -> validateNumber(decision, response)
             is DistributeDecision -> validateDistribute(decision, response)
             is OrderObjectsDecision -> validateOrder(decision, response)
+            is OrderTriggersDecision -> validateTriggerOrder(decision, response)
             is SplitPilesDecision -> validateSplitPiles(decision, response)
             is ChooseOptionDecision -> validateOption(decision, response)
             is ChooseReplacementDecision -> validateReplacement(decision, response)
@@ -456,6 +459,16 @@ object DecisionValidators {
         }
         if (!isSameCollection(response.orderedObjects, decision.objects)) {
             return "Ordered objects must contain exactly the same objects as the decision"
+        }
+        return null
+    }
+
+    private fun validateTriggerOrder(decision: OrderTriggersDecision, response: DecisionResponse): String? {
+        if (response !is TriggerOrderResponse) {
+            return "Expected trigger ordering response"
+        }
+        if (response.resolutionOrder.sorted() != decision.triggers.indices.toList()) {
+            return "Order each triggered ability exactly once"
         }
         return null
     }
