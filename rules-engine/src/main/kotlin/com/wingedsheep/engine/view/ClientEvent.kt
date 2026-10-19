@@ -1794,7 +1794,7 @@ is PermanentsSacrificedEvent -> {
                 if (event.description != null) {
                     val isYours = event.playerId == viewingPlayerId
                     val desc = when (isYours) {
-                        true -> "You: ${event.description}"
+                        true -> "You: ${event.privateSourceName?.let { "($it) " } ?: ""}${event.description}"
                         false -> "Opponent: ${event.description}"
                     }
                     ClientEvent.DecisionMade(

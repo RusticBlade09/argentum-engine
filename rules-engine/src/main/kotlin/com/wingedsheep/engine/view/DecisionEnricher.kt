@@ -99,13 +99,15 @@ class DecisionEnricher(private val cardRegistry: CardRegistry) {
             is SelectManaSourcesDecision -> "Selecting mana sources"
         }
         val sourceId = decision.context.sourceId
+        // A card in a hidden hand is unknown to this viewer, and its id alone could name it.
+        val privateSourceHidden = decision.context.sourceIsPrivate && masker.isSourceHiddenFrom(decision, state, viewerId)
         return OpponentDecisionStatusView(
             playerId = decision.playerId,
             decisionType = decision::class.simpleName ?: "Unknown",
             displayText = displayText,
             sourceName = masker.maskFor(decision, state, viewerId).context.sourceName,
-            sourceId = sourceId,
-            sourceImageUri = sourceId?.let { imageUriFor(state, it, viewerId) }
+            sourceId = sourceId.takeUnless { privateSourceHidden },
+            sourceImageUri = sourceId?.takeUnless { privateSourceHidden }?.let { imageUriFor(state, it, viewerId) }
         )
     }
 }

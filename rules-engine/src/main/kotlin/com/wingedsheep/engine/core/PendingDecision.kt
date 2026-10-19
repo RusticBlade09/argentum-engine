@@ -80,7 +80,17 @@ data class DecisionContext(
      * [com.wingedsheep.sdk.scripting.AbilityIdentity]). Null for decisions not tied to a single
      * card ability.
      */
-    val abilityIdentity: com.wingedsheep.sdk.scripting.AbilityIdentity? = null
+    val abilityIdentity: com.wingedsheep.sdk.scripting.AbilityIdentity? = null,
+
+    /**
+     * The source is a card in a hidden zone that asking this question does not reveal — a leyline
+     * in its owner's opening hand (CR 103.6). Anyone who may not see that card is told nothing of
+     * it: no name, art or id in the decision, its status, or the logged answer. Unset, a source
+     * in a hand is treated as announced (a spell being cast from it), and only a face-down source
+     * is masked.
+     */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val sourceIsPrivate: Boolean = false,
 )
 
 /**

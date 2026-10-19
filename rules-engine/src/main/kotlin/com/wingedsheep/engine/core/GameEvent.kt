@@ -2074,7 +2074,12 @@ data class DecisionSubmittedEvent(
     val decisionId: String,
     val playerId: EntityId,
     /** Human-readable description of what was decided, for the game log */
-    val description: String? = null
+    val description: String? = null,
+    /**
+     * The name of a private decision source ([DecisionContext.sourceIsPrivate]), which only the
+     * deciding player's log line prefixes; every other seat reads [description] alone.
+     */
+    val privateSourceName: String? = null,
 ) : GameEvent
 
 // =============================================================================

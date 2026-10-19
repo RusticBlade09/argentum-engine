@@ -118,14 +118,17 @@ class SpectatorStateBuilder(
             is FlipOntoBattlefieldDecision -> "Taking aim"
             is SelectManaSourcesDecision -> "Selecting mana sources"
         }
+        // A card in a hidden hand is unknown to spectators, and its id alone could name it.
+        val privateSourceHidden = decision.context.sourceIsPrivate &&
+            masker.isSourceHiddenFrom(decision, state, anySeat, isSpectator = true)
         return ServerMessage.SpectatorDecisionStatus(
             playerName = playerName,
             playerId = decision.playerId.value,
             decisionType = decision::class.simpleName ?: "Unknown",
             displayText = displayText,
             sourceName = masker.maskFor(decision, state, anySeat, isSpectator = true).context.sourceName,
-            sourceId = decision.context.sourceId?.value,
-            sourceImageUri = decision.context.sourceId?.let { sourceImageUri(state, it, anySeat) }
+            sourceId = decision.context.sourceId?.takeUnless { privateSourceHidden }?.value,
+            sourceImageUri = decision.context.sourceId?.takeUnless { privateSourceHidden }?.let { sourceImageUri(state, it, anySeat) }
         )
     }
 

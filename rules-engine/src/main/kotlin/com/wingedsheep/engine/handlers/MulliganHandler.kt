@@ -502,7 +502,9 @@ class MulliganHandler(
             context = DecisionContext(
                 sourceId = leylineCardId,
                 sourceName = cardName,
-                phase = DecisionPhase.CASTING
+                phase = DecisionPhase.CASTING,
+                // Declining keeps the card in a hidden hand; the question must not name it.
+                sourceIsPrivate = true,
             ),
             yesText = if (isReveal) "Reveal" else "Yes",
             noText = if (isReveal) "Don't reveal" else "No",

@@ -39,6 +39,7 @@ class SubmitDecisionHandler(
         val pending = state.pendingDecision
             ?: return ExecutionResult.error(state, "No pending decision")
 
+        val privateSource = pending.context.sourceIsPrivate
         val submittedEvent = DecisionSubmittedEvent(
             pending.id,
             action.playerId,
@@ -46,7 +47,8 @@ class SubmitDecisionHandler(
             // question's answer never enters it: the line alone would say the question was asked.
             description = if ((state.peekContinuation() as? Suspension)?.answer is SecretChoiceContinuation ||
                 state.pendingQuestionIsPrivate) null
-                else buildDecisionDescription(state, pending, action.response)
+                else buildDecisionDescription(state, pending, action.response, nameSource = !privateSource),
+            privateSourceName = pending.context.sourceName?.takeIf { privateSource },
         )
 
         // ContinuationHandler consumes the question and answer together by popping its suspension,
@@ -98,9 +100,10 @@ class SubmitDecisionHandler(
     private fun buildDecisionDescription(
         state: GameState,
         pending: PendingDecision,
-        response: DecisionResponse
+        response: DecisionResponse,
+        nameSource: Boolean,
     ): String? {
-        val sourceName = pending.context.sourceName
+        val sourceName = pending.context.sourceName?.takeIf { nameSource }
         val sourcePrefix = sourceName?.let { "($it) " } ?: ""
 
         return when {
