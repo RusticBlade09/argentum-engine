@@ -516,4 +516,23 @@ class MulliganHandler(
         )
         return state.suspendForDecision(question, continuation)
     }
+
+    companion object {
+        /**
+         * Opening hands are still being decided (CR 103.5): some player has yet to keep, or has kept
+         * a mulligan hand and not yet put its cards on the bottom. Nobody has priority until they
+         * are settled, so only mulligan decisions (and a concession) can be made.
+         */
+        fun openingHandsPending(state: GameState): Boolean = nextOpeningHandDecider(state) != null
+
+        /**
+         * The player whose opening-hand decision comes next, in turn order from the starting
+         * player (CR 103.5), or `null` once every hand is settled. The mulligan actions carry no
+         * priority, so this is who a host offers them to.
+         */
+        fun nextOpeningHandDecider(state: GameState): EntityId? = state.turnOrder.firstOrNull { playerId ->
+            val mullState = state.getEntity(playerId)?.get<MulliganStateComponent>() ?: return@firstOrNull false
+            !mullState.hasKept || mullState.cardsToBottom > 0
+        }
+    }
 }

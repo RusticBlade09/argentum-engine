@@ -135,7 +135,7 @@ private fun playLogged(
     val players = seatIds.map { agent.createPlayer(registry, it, decklists) }
     val seatOf = seatIds.withIndex().associate { (i, id) -> id to i }
 
-    var state: GameState = init.state
+    var state: GameState = processor.beginGame(init.state, init.events).state
     val uuid = Regex("\\be\\d+\\b")
     // Drop the default-valued fields of the action data classes so a line shows only what was chosen.
     val noise = Regex(", \\w+=(?:null|false|\\[]|\\{}|0|1|AutoPay)(?=[,)])")

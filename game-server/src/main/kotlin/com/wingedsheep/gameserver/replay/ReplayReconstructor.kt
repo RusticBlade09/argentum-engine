@@ -208,7 +208,9 @@ private class ReplayEngine(
             shuffledDeckIds = replay.version >= CompactReplay.SHUFFLED_DECK_IDS_VERSION,
             shuffledTeamSeats = replay.version >= CompactReplay.SHUFFLED_TEAM_SEATS_VERSION,
         )
-        return applyYields(gameInitializer.initializeGame(config).state, replay.yields, afterActionCount = 0)
+        val initialized = gameInitializer.initializeGame(config)
+        val begun = actionProcessor.beginGame(initialized.state, initialized.events).state
+        return applyYields(begun, replay.yields, afterActionCount = 0)
     }
 
     /**

@@ -135,7 +135,9 @@ class ObservationBuilder(
         val obs = TrainingObservation(
             schemaHash = schemaHash,
             perspectivePlayerId = perspectivePlayerId,
-            agentToAct = state.pendingDecision?.playerId ?: state.priorityPlayerId,
+            agentToAct = state.pendingDecision?.playerId
+                ?: com.wingedsheep.engine.handlers.MulliganHandler.nextOpeningHandDecider(state)
+                ?: state.priorityPlayerId,
             turnNumber = state.turnNumber,
             phase = state.phase,
             step = state.step,

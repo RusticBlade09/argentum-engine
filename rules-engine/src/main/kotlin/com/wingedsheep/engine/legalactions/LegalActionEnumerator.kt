@@ -32,6 +32,7 @@ class LegalActionEnumerator(
     private val turnManager: TurnManager
 ) {
     private val combatEnumerator = CombatEnumerator()
+    private val mulliganEnumerator = MulliganEnumerator()
 
     private val enumerators: List<ActionEnumerator> = listOf(
         PassPriorityEnumerator(),
@@ -90,6 +91,12 @@ class LegalActionEnumerator(
             turnManager = turnManager,
             mode = mode
         )
+
+        // Before the first turn nobody has priority (CR 103.8): the opening-hand decisions are all
+        // there is, and the processor refuses anything else until every hand is settled.
+        if (com.wingedsheep.engine.handlers.MulliganHandler.openingHandsPending(state)) {
+            return mulliganEnumerator.enumerate(context)
+        }
 
         val forced = state.forcedPlayFor(playerId)
         // A resolving instruction can play its card during a combat declaration step.

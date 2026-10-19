@@ -10,7 +10,6 @@ import com.wingedsheep.engine.mechanics.StateBasedActionChecker
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.nameVisibleToAll
 import com.wingedsheep.engine.state.components.player.EndTheTurnRequestedComponent
-import com.wingedsheep.engine.state.components.player.MulliganStateComponent
 import com.wingedsheep.sdk.scripting.effects.Effect
 import com.wingedsheep.sdk.scripting.EventPattern
 
@@ -134,9 +133,8 @@ class Settler(
      * A player is still deciding on a mulligan. Only a player who has a mulligan record and hasn't
      * kept counts. A game set up past the opening hands, such as a test scenario, has no records.
      */
-    private fun mulligansInProgress(state: GameState): Boolean = state.turnOrder.any { playerId ->
-        state.getEntity(playerId)?.get<MulliganStateComponent>()?.hasKept == false
-    }
+    private fun mulligansInProgress(state: GameState): Boolean =
+        com.wingedsheep.engine.handlers.MulliganHandler.openingHandsPending(state)
 
     /**
      * An "end the turn" effect (CR 724.1) marks the active player while its spell or ability

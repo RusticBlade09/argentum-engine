@@ -721,7 +721,7 @@ class GameSession(
         )
 
         val result = gameInitializer.initializeGame(config)
-        gameState = result.state
+        gameState = actionProcessor.beginGame(result.state, result.events).state
         replayStartedAt = Instant.now()
         lastActionAt = replayStartedAt
         // Capture everything needed to reconstruct this game later, including the seed the engine

@@ -67,7 +67,11 @@ Key config fields:
   libraries except for identities the current perspective is entitled to know; since one agent is
   playing *both* seats, you want to see everything. (Never use it for real RL self-play — it leaks
   information.)
-- **`skipMulligans: true`** — skip the mulligan back-and-forth.
+- **`skipMulligans: true`** — skip the mulligan back-and-forth. Every hand is kept and the first
+  observation is a Leyline-style opening-hand question or the starting player's turn-1 upkeep. With
+  `false`, the first actions are each seat's `KeepHand` / `TakeMulligan`, then one `BottomCards` per
+  distinct set of cards to bottom (its `targetEntityIds` name them); `agentToAct` says whose turn to
+  decide it is.
 - `startingPlayerIndex` — pin it for reproducibility (null = random).
 
 The response is `{ "envId": "...", "observation": { ... } }`. Keep the `envId`.
