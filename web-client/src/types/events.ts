@@ -594,8 +594,11 @@ export interface PermanentsSacrificedEvent {
 
 export interface TargetReselectedEvent {
   readonly type: 'targetReselected'
+  readonly spellOrAbilityId: EntityId
   readonly spellOrAbilityName: string
+  readonly oldTargetId: EntityId | null
   readonly oldTargetName: string
+  readonly newTargetId: EntityId | null
   readonly newTargetName: string
   readonly sourceName: string
   readonly description: string

@@ -956,12 +956,18 @@ data class AbilityTriggeredEvent(
 
 /**
  * A spell or ability's target was randomly reselected (e.g., by Grip of Chaos).
+ *
+ * The names are the objects' real names; the ids travel with them so the client boundary can
+ * mask a face-down object's name for each viewer who may not see it.
  */
 @Serializable
 @SerialName("TargetReselectedEvent")
 data class TargetReselectedEvent(
+    val spellOrAbilityId: EntityId,
     val spellOrAbilityName: String,
+    val oldTargetId: EntityId?,
     val oldTargetName: String,
+    val newTargetId: EntityId?,
     val newTargetName: String,
     val sourceName: String
 ) : GameEvent

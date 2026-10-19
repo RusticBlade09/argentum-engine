@@ -1017,8 +1017,11 @@ sealed interface ClientEvent {
     @Serializable
     @SerialName("targetReselected")
     data class TargetReselected(
+        val spellOrAbilityId: EntityId,
         val spellOrAbilityName: String,
+        val oldTargetId: EntityId?,
         val oldTargetName: String,
+        val newTargetId: EntityId?,
         val newTargetName: String,
         val sourceName: String,
         override val description: String = "$sourceName changed $spellOrAbilityName's target from $oldTargetName to $newTargetName"
@@ -1783,9 +1786,13 @@ is PermanentsSacrificedEvent -> {
                 )
             }
 
+            // Carries the ids so FaceDownEventMasker hides a face-down object's name per viewer.
             is TargetReselectedEvent -> ClientEvent.TargetReselected(
+                spellOrAbilityId = event.spellOrAbilityId,
                 spellOrAbilityName = event.spellOrAbilityName,
+                oldTargetId = event.oldTargetId,
                 oldTargetName = event.oldTargetName,
+                newTargetId = event.newTargetId,
                 newTargetName = event.newTargetName,
                 sourceName = event.sourceName
             )
