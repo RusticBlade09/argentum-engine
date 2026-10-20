@@ -1381,6 +1381,10 @@ sealed interface CardPredicate : TextReplaceable<CardPredicate> {
      * The subfilter is evaluated in the same [com.wingedsheep.engine.handlers.PredicateContext]
      * as the outer match — so "you control" inside the subfilter resolves against the
      * outer chooser, exactly as for any other filter.
+     *
+     * A subfilter that names no zone means permanents on the battlefield (CR 109.2): "a spell
+     * that targets a creature" ignores a creature card targeted in a graveyard and a creature
+     * spell targeted on the stack. Add `currentlyIn(zone)` to the subfilter to look elsewhere.
      */
     @SerialName("TargetsMatching")
     @Serializable

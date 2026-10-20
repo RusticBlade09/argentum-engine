@@ -2401,7 +2401,7 @@ class TriggerMatcher(
             sourceId = sourceId
         )
         return castTargetEntities(event, state).distinct().filter { targetId ->
-            predicateEvaluator.matches(
+            predicateEvaluator.matchesChosenTarget(
                 state, state.projectedState, targetId, filter, predicateContext
             )
         }
@@ -2415,12 +2415,12 @@ class TriggerMatcher(
      * the payoff acts on" cannot drift.
      *
      * Narrowed to permanents on the battlefield when the ability triggered, because "…, **those
-     * creatures** …" is about permanents. The gate deliberately is not: a creature *card on the
-     * stack* satisfies an `IsCreature` filter, so a counterspell aimed at a creature spell fires
-     * these triggers (pre-existing, shared with Mockingbird and Iron Fist). Capturing that spell
-     * would be worse than useless — a permanent spell keeps its entity id as it resolves
-     * (`StackResolver.resolvePermanentSpell`) and `GrantKeywordExecutor` accepts a stack target, so
-     * the payoff would land on the permanent the spell became.
+     * creatures** …" is about permanents. The gate already reads zone-less filters as battlefield
+     * permanents (CR 109.2, [PredicateEvaluator.matchesChosenTarget]); the narrowing still matters
+     * for a filter that names another zone. Capturing a spell would be worse than useless — a
+     * permanent spell keeps its entity id as it resolves (`StackResolver.resolvePermanentSpell`)
+     * and `GrantKeywordExecutor` accepts a stack target, so the payoff would land on the permanent
+     * the spell became.
      */
     fun capturedCastTargets(
         trigger: EventPattern,

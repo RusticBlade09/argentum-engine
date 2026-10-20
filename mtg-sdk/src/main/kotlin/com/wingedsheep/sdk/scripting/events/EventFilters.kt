@@ -390,6 +390,8 @@ sealed interface SpellCastPredicate {
      * ("a spell that targets a creature you don't control" — Legolas, Master Archer).
      * The filter is evaluated against each chosen target relative to the trigger
      * controller (so `youControl()` / opponent-controlled predicates resolve correctly).
+     * A filter that names no zone means permanents on the battlefield (CR 109.2), as for
+     * [com.wingedsheep.sdk.scripting.predicates.CardPredicate.TargetsMatching].
      *
      * [only] is "a spell that targets **only a single** [filter]" (Ivy, Gleeful Spellthief; Vesuvan
      * Duplimancy): every instance of the word "target" on the spell — player targets included —

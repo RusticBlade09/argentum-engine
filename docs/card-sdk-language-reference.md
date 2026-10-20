@@ -6983,7 +6983,9 @@ work for abilities-on-stack (which carry no `CardComponent`).
 - `CardPredicate.TargetsMatching(subfilter)` — true when the stack object's `TargetsComponent`
   includes at least one chosen target matching `subfilter`. Player targets are skipped. The
   subfilter inherits the outer `PredicateContext`, so `Land.youControl()` inside the subfilter
-  resolves against the outer chooser. Used by Teferi's Response.
+  resolves against the outer chooser. A subfilter naming no zone means battlefield permanents
+  (CR 109.2) — a creature card targeted in a graveyard or a creature spell on the stack is not "a
+  creature"; add `currentlyIn(zone)` to look elsewhere. Used by Teferi's Response.
 - `CardPredicate.WouldDestroy(subfilter)` — true when the stack object (spell, activated or
   triggered ability) would destroy a battlefield permanent matching `subfilter` if it resolved right
   now. The engine previews the object's effect against its chosen targets, modes and X: a
@@ -8530,7 +8532,8 @@ matcher branch — `SpellCastEvent` does not grow a new field per axis.
   Hedron Grinder.
 - `SpellCastPredicate.TargetsMatching(filter)` — the cast spell has ≥1 chosen target matching
   `filter` (evaluated relative to the trigger controller). Used by Legolas, Master Archer
-  ("a spell that targets a creature you don't control").
+  ("a spell that targets a creature you don't control"). Zone-less filters mean battlefield
+  permanents (CR 109.2), as for `CardPredicate.TargetsMatching`.
   `only = true` is "a spell that targets **only a single** [filter]": every instance of "target" on
   the spell — players included — is one and the same object, and it matches `filter`. Several
   instances all aimed at one creature still count; a second object or any player target doesn't.

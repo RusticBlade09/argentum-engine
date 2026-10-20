@@ -134,6 +134,31 @@ class PredicateEvaluator(
     val amounts: DynamicAmountEvaluator get() = conditions.amounts
 
     /**
+     * Whether [targetId], one of the targets a spell or ability chose, is an object [subfilter]
+     * describes in "a spell that targets a creature" — the shared reading behind
+     * [CardPredicate.TargetsMatching] and [com.wingedsheep.sdk.scripting.events.SpellCastPredicate.TargetsMatching].
+     *
+     * CR 109.2: a description naming a card type without naming a zone (or saying "card" /
+     * "spell") means a permanent on the battlefield. So "targets a creature" is not satisfied by
+     * a creature *card* in a graveyard (Raise Dead) or a creature *spell* on the stack; a
+     * subfilter that names a zone itself ([StatePredicate.InZone]) is matched wherever it says.
+     */
+    fun matchesChosenTarget(
+        state: GameState,
+        projected: ProjectedState,
+        targetId: EntityId,
+        subfilter: GameObjectFilter,
+        context: PredicateContext
+    ): Boolean {
+        if (!subfilter.namesZone() && targetId !in state.getBattlefield()) return false
+        return matches(state, projected, targetId, subfilter, context)
+    }
+
+    private fun GameObjectFilter.namesZone(): Boolean =
+        statePredicates.any { it is StatePredicate.InZone || it == StatePredicate.IsOnBattlefield } ||
+            anyOf.any { it.namesZone() }
+
+    /**
      * Evaluate a GameObjectFilter against an entity using projected state.
      *
      * Always pass a [ProjectedState] — for battlefield entities this is required to see
@@ -737,7 +762,7 @@ class PredicateEvaluator(
                     is ChosenTarget.Spell -> chosen.spellEntityId
                     is ChosenTarget.Player -> return@any false
                 }
-                matches(state, projected, targetEntityId, predicate.subfilter, subContext)
+                matchesChosenTarget(state, projected, targetEntityId, predicate.subfilter, subContext)
             }
         }
         // The player half of the above: "a spell that targets you" asks whether some chosen
