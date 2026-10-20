@@ -248,7 +248,10 @@ data class LegalAction(
     val modalEnumeration: ModalLegalEnumeration? = null,
 
     // When true, prevents auto-pass whenever this action is available
-    override val holdPriority: Boolean = false
+    override val holdPriority: Boolean = false,
+
+    // Why this action would currently do nothing (see [PriorityAction.inertReason])
+    override val inertReason: String? = null
 ) : PriorityAction {
     /** [PriorityAction]'s name for [affordable]. The DTO calls the same thing `isAffordable`. */
     override val isAffordableAction: Boolean get() = affordable

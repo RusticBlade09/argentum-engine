@@ -622,9 +622,10 @@ export function buildActionOptions(
       key: `activate-${index}`,
       label: activateAction.description,
       manaCost: activateAction.manaCostString || null,
-      isAvailable: activateAction.isAffordable !== false,
+      isAvailable: activateAction.isAffordable !== false && activateAction.inertReason == null,
       action: activateAction,
       actionType: 'activate',
+      ...(activateAction.inertReason != null && { hint: activateAction.inertReason }),
     })
   })
 

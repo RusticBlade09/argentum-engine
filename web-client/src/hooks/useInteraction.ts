@@ -208,7 +208,7 @@ export function useInteraction() {
           }
         }
 
-        if (canAutoExecute(actionInfo)) {
+        if (canAutoExecute(actionInfo) && actionInfo.inertReason == null) {
           // Auto-execute simple action
           submitAction(actionInfo.action, actionInfo.interactionEpoch)
           selectCard(null)

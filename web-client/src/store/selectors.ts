@@ -585,7 +585,7 @@ export function isHighlightable(a: LegalActionInfo): boolean {
     a.additionalCostInfo != null ||
     a.manaCostString != null ||
     (a.hasXCost === true && (a.maxAffordableX ?? 0) > 0)
-  return (!a.isManaAbility || needsPlayerInput) && a.isAffordable !== false
+  return (!a.isManaAbility || needsPlayerInput) && a.isAffordable !== false && a.inertReason == null
 }
 
 /**
