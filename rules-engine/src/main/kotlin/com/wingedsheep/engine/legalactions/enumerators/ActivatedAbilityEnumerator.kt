@@ -1281,11 +1281,13 @@ class ActivatedAbilityEnumerator(
                 // also covers an "any player may activate" power-up on an opponent's permanent.
                 if (context.castPermissionUtils.isPowerUpActivationRestricted(state, ability)) continue
 
-                val effectiveCost = if (textReplacement != null) {
-                    ability.cost.applyTextReplacement(textReplacement)
-                } else {
-                    ability.cost
-                }
+                // A cost naming a mana cost (Merseine's "enchanted creature's mana cost", payable by
+                // the opponent whose creature is trapped) is priced before the shape check below,
+                // which only recognises plain atoms — as enumerateOwnPermanents does.
+                val effectiveCost = context.castPermissionUtils.lowerReferencedManaCost(
+                    state, entityId,
+                    if (textReplacement != null) ability.cost.applyTextReplacement(textReplacement) else ability.cost
+                )
 
                 // Check cost payability (Free cost always passes)
                 val anyPlayerAbilityContext = com.wingedsheep.engine.mechanics.mana.buildAbilityPaymentContext(cardComponent, projected, entityId, ability)
