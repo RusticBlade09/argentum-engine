@@ -568,7 +568,7 @@ data class ClientCard(
     /** Total number of copies for storm/copy effects on the stack */
     val copyTotal: Int? = null,
 
-    /** Chosen creature type for "as enters, choose a creature type" permanents (e.g., Doom Cannon) */
+    /** Chosen creature type (Doom Cannon) or planeswalker type (Deification) for "as enters, choose a … type" permanents */
     val chosenCreatureType: String? = null,
 
     /** Chosen color for "as enters, choose a color" permanents (e.g., Riptide Replicator) */
@@ -674,8 +674,14 @@ data class ClientCard(
      */
     val grantedCardTypes: Set<String> = emptySet(),
 
-    /** Damage distribution for DividedDamageEffect spells on the stack (target entity ID -> damage amount) */
+    /**
+     * The division a spell or ability on the stack announced (target entity ID -> share): damage for
+     * a divided-damage effect, counters for a counter distribution (see [damageDistributionUnit]).
+     */
     val damageDistribution: Map<EntityId, Int>? = null,
+
+    /** What [damageDistribution] divides when it isn't damage — "+1/+1 counter". Null means damage. */
+    val damageDistributionUnit: String? = null,
 
     /** For Sagas: the total number of chapters (e.g., 3). Null for non-Sagas. */
     val sagaTotalChapters: Int? = null,

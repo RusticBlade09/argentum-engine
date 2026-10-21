@@ -558,6 +558,7 @@ export enum CounterType {
   SLEEP = 'SLEEP',
   PIN = 'PIN',
   CARRION = 'CARRION',
+  PUPA = 'PUPA',
   POISON = 'POISON',
   GOLD = 'GOLD',
   PLAGUE = 'PLAGUE',
@@ -677,6 +678,7 @@ export enum CounterType {
   BRAIN = 'BRAIN',
   HATCHING = 'HATCHING',
   INTERVENTION = 'INTERVENTION',
+  REJECTION = 'REJECTION',
 }
 
 export const CounterTypeDisplayNames: Record<CounterType, string> = {
@@ -702,6 +704,7 @@ export const CounterTypeDisplayNames: Record<CounterType, string> = {
   [CounterType.SLEEP]: 'Sleep',
   [CounterType.PIN]: 'Pin',
   [CounterType.CARRION]: 'Carrion',
+  [CounterType.PUPA]: 'Pupa',
   [CounterType.POISON]: 'Poison',
   [CounterType.GOLD]: 'Gold',
   [CounterType.PLAGUE]: 'Plague',
@@ -819,6 +822,7 @@ export const CounterTypeDisplayNames: Record<CounterType, string> = {
   [CounterType.BRAIN]: 'Brain',
   [CounterType.HATCHING]: 'Hatching',
   [CounterType.INTERVENTION]: 'Intervention',
+  [CounterType.REJECTION]: 'Rejection',
 }
 
 /**

@@ -79,6 +79,7 @@ import com.wingedsheep.sdk.scripting.HealOtherDamage
 import com.wingedsheep.sdk.scripting.ModifyDamageAmount
 import com.wingedsheep.sdk.scripting.GainLifeInsteadOfLosingLife
 import com.wingedsheep.sdk.scripting.LifeLossFloor
+import com.wingedsheep.sdk.scripting.LoyaltyDamageFloor
 import com.wingedsheep.sdk.scripting.ModifyLifeLoss
 import com.wingedsheep.sdk.scripting.effects.LifeLossOrigin
 import com.wingedsheep.sdk.scripting.PreventDamage
@@ -496,11 +497,14 @@ object DamageUtils {
             // CR 120.4a — excess damage to a planeswalker is the amount above its loyalty,
             // computed before the counters come off.
             creatureExcessDamage = (effectiveAmount - currentLoyalty).coerceAtLeast(0)
+            val loyaltyRemoved = loyaltyRemovedByDamage(
+                newState, targetId, currentLoyalty, effectiveAmount, sourceId, isCombatDamage, zones.predicateEvaluator
+            )
             newState = newState.updateEntity(targetId) { container ->
-                container.with(counters.withRemoved(CounterType.LOYALTY, effectiveAmount))
+                container.with(counters.withRemoved(CounterType.LOYALTY, loyaltyRemoved))
             }
             val targetName = newState.getEntity(targetId)?.get<CardComponent>()?.name ?: "Planeswalker"
-            events.add(LoyaltyChangedEvent(targetId, targetName, -(effectiveAmount.coerceAtMost(currentLoyalty))))
+            if (loyaltyRemoved > 0) events.add(LoyaltyChangedEvent(targetId, targetName, -loyaltyRemoved))
         } else if (projected.isBattle(targetId)) {
             // CR 120.3h — damage dealt to a battle removes that many defense counters from it. The
             // battle isn't destroyed by the damage; state-based actions bin it once its defense
@@ -3040,6 +3044,48 @@ object DamageUtils {
             if (modifiedAmount > maxLossAllowed) modifiedAmount = maxLossAllowed
         }
         return modifiedAmount
+    }
+
+    /**
+     * How many loyalty counters [amount] damage actually removes from planeswalker [targetId],
+     * after [LoyaltyDamageFloor] replacements (Deification) leave it at least their floor. The
+     * damage itself is unchanged — only the counter removal is floored (CR 120.3c, CR 614.1a).
+     * Multiple matching floors pick the strictest (most counters kept).
+     */
+    fun loyaltyRemovedByDamage(
+        state: GameState,
+        targetId: EntityId,
+        currentLoyalty: Int,
+        amount: Int,
+        sourceId: EntityId?,
+        isCombatDamage: Boolean,
+        predicateEvaluator: PredicateEvaluator
+    ): Int {
+        var removed = amount.coerceAtMost(currentLoyalty)
+        if (removed <= 0) return removed
+        val projected = state.projectedState
+        for (active in com.wingedsheep.engine.replacement.ActiveReplacements.all(state)) {
+            val effect = active.effect as? LoyaltyDamageFloor ?: continue
+            if (currentLoyalty - removed >= effect.floor) continue
+            if (!active.granted && (projected.hasLostAllAbilities(active.sourceId) || projected.isFaceDown(active.sourceId))) continue
+            val pattern = effect.appliesTo
+            val damageTypeMatches = when (pattern.damageType) {
+                DamageType.Any -> true
+                DamageType.Combat -> isCombatDamage
+                DamageType.NonCombat -> !isCombatDamage
+            }
+            if (!damageTypeMatches || !pattern.amount.matches(amount)) continue
+            if (!damageSourceMatches(state, projected, pattern.source, sourceId,
+                    active.sourceId, active.controllerId, targetId, predicateEvaluator)) continue
+            if (!damageRecipientMatches(state, projected, pattern.recipient, targetId,
+                    active.sourceId, active.controllerId, predicateEvaluator)) continue
+            if (effect.restrictions.isNotEmpty()) {
+                val context = EffectContext(sourceId = active.sourceId, controllerId = active.controllerId)
+                if (effect.restrictions.any { !predicateEvaluator.conditions.evaluate(state, it, context) }) continue
+            }
+            removed = (currentLoyalty - effect.floor).coerceAtLeast(0)
+        }
+        return removed
     }
 
     /**

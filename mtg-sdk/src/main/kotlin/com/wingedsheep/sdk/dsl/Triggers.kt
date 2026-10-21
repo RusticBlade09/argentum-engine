@@ -152,6 +152,16 @@ class ObjectTriggerSubject internal constructor(
         spec(ZoneChangeEvent(filter = filterOrAny, from = from, to = Zone.BATTLEFIELD))
 
     /**
+     * "enters attacking" — the subject is put onto the battlefield attacking (CR 508.4), e.g. a
+     * token created "tapped and attacking" or a card put from hand "tapped and attacking" (Arni
+     * Metalbrow). A creature that enters attacking was never declared as an attacker, so this never
+     * overlaps [attacks]; "attacks or enters attacking" is `Triggers.or(subject.attacks(),
+     * subject.entersAttacking())`.
+     */
+    fun entersAttacking(): TriggerSpec =
+        spec(ZoneChangeEvent(filter = filterOrAny.attacking(), to = Zone.BATTLEFIELD))
+
+    /**
      * "leaves the battlefield", to [to] (any zone when null), or anywhere but [excludeTo] ("leaves
      * without dying" is `excludeTo = Zone.GRAVEYARD`). [excludeSacrifice] skips a leave caused by a
      * sacrifice. [asCraftMaterial] is "is exiled from the battlefield while you're activating a craft
@@ -1075,8 +1085,14 @@ class PlayerTriggerSubject internal constructor(private val player: Player) {
     fun gainsLife(firstTimeEachTurn: Boolean = false): TriggerSpec =
         spec(LifeGainEvent(player, firstTimeEachTurn = firstTimeEachTurn))
 
-    /** "loses life" — the amount is `TRIGGER_LIFE_LOST`. */
-    fun losesLife(): TriggerSpec = spec(LifeLossEvent(player))
+    /**
+     * "loses life" — once per life-loss event; the amount is `TRIGGER_LIFE_LOST`. [batch] is "one or
+     * more [players] lose life", once per simultaneous batch; [exactly] is "one or more [players]
+     * each lose exactly N life" (Ob Nixilis, Captive Kingpin), summed per player over the batch and
+     * always batched. See [LifeLossEvent].
+     */
+    fun losesLife(batch: Boolean = false, exactly: Int? = null): TriggerSpec =
+        spec(LifeLossEvent(player, batch = batch || exactly != null, exactAmount = exactly))
 
     /** "loses the game" (CR 104.3). */
     fun losesGame(): TriggerSpec = spec(PlayerLostGameEvent(player))

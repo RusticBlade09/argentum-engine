@@ -1,5 +1,6 @@
 package com.wingedsheep.engine.handlers.actions.spell
 
+import com.wingedsheep.engine.handlers.effects.AnnouncedDivision
 import com.wingedsheep.engine.state.LifePaymentPurpose
 
 import com.wingedsheep.engine.core.AdditionalCostSelectionKind
@@ -633,6 +634,9 @@ internal class CastValidator(
         if (cardDef.script.castRestrictions.isNotEmpty()) {
             legality.castRestrictionsFailure(state, action.playerId, cardDef.script.castRestrictions)?.let { return it }
         }
+        legality.spellXMaximum(state, action.playerId, action.cardId, cardDef.script)?.let { cap ->
+            if ((action.xValue ?: 0) > cap) return "X can't be greater than $cap"
+        }
         if (action.chosenModes.isNotEmpty()) {
             val modalEffect = cardDef.script.spellEffect as? ModalEffect
             if (modalEffect != null) {
@@ -940,11 +944,16 @@ internal class CastValidator(
     }
 
     /**
-     * A divided-damage spell aimed at more than one target (CR 601.2d): the distribution names
-     * exactly the chosen targets, sums to the spell's damage, and gives each at least 1. The kicked
-     * or cleaved effect is the one divided when that variant is cast. A `dynamicTotal` is evaluated
-     * with the announced X — the same value the stack object carries to resolution — so "X damage
-     * divided …" where X is fixed by a cost (Nahiri's Sacrifice) validates against that X.
+     * A spell that divides among its targets announces the division as it is cast (CR 601.2d) —
+     * required for divided damage among two or more targets: the distribution names exactly the chosen targets, sums to the amount divided, and
+     * gives each at least the division's floor (1 for damage, the effect's `minPerTarget` for
+     * counters). The kicked or cleaved effect is the one divided when that variant is cast. A
+     * `dynamicTotal` is evaluated with the announced X — the same value the stack object carries to
+     * resolution — so "X damage divided …" where X is fixed by a cost (Nahiri's Sacrifice) validates
+     * against that X, and a counter pool that is an "as you cast this spell" capture (Undercity
+     * Upheaval) is read from the capture's amount. A counter division may arrive unannounced — a pool
+     * that reads a mana-paid {X} isn't offered at cast ([CastSpellEnumerator]) — and then divides at
+     * resolution through a `DistributeDecision`, like an activated ability's.
      */
     private fun validateDamageDistribution(state: GameState, action: CastSpell, cardDef: CardDefinition?): String? {
         val spellEffect = if (action.declaredCostSlot != null && cardDef?.script?.kickerSpellEffect != null) {
@@ -956,24 +965,34 @@ internal class CastValidator(
         } else {
             cardDef?.script?.spellEffect
         }
-        if (spellEffect !is DividedDamageEffect || action.targets.size <= 1) return null
+        if (cardDef == null) return null
+        val division = AnnouncedDivision.ofSpell(spellEffect)
+        // Whatever split arrives is checked — even for a single target, since the executors honor
+        // an announced split verbatim — and a spell that divides nothing at cast takes none.
         val distribution = action.damageDistribution
-            ?: return "Damage distribution required for this spell when targeting multiple creatures"
-        if (distribution.keys != action.targets.map { it.toEntityId() }.toSet()) {
-            return "Damage distribution targets must match chosen targets"
+        if (division == null) {
+            return if (distribution != null) "This spell does not divide anything among its targets" else null
         }
-        val total = spellEffect.dynamicTotal?.let { amount ->
-            val context = EffectContext(sourceId = action.cardId, controllerId = action.playerId, xValue = action.xValue)
-            predicateEvaluator.amounts.evaluate(state, amount, context).coerceAtLeast(0)
-        } ?: spellEffect.totalDamage
+        val isDamage = division is DividedDamageEffect
+        val unit = if (isDamage) "damage" else "counters"
+        if (distribution == null) {
+            // A counter division submitted without a split divides at resolution, as an activation's does.
+            return if (isDamage && action.targets.size > 1) {
+                "Damage distribution required for this spell when targeting multiple creatures"
+            } else null
+        }
+        if (distribution.keys != action.targets.map { it.toEntityId() }.toSet()) {
+            return "Distribution targets must match chosen targets"
+        }
+        val context = EffectContext(sourceId = action.cardId, controllerId = action.playerId, xValue = action.xValue)
+        val total = AnnouncedDivision.total(state, division, context, predicateEvaluator.amounts, cardDef.script.castTimeCaptures)
         val totalDistributed = distribution.values.sum()
         if (totalDistributed != total) {
-            return "Total distributed damage ($totalDistributed) must equal $total"
+            return "Total distributed $unit ($totalDistributed) must equal $total"
         }
-        // Each target gets at least 1 damage (CR 601.2d)
-        val minPerTarget = 1
+        val minPerTarget = AnnouncedDivision.minPerTarget(division)
         if (distribution.values.any { it < minPerTarget }) {
-            return "Each target must receive at least $minPerTarget damage"
+            return "Each target must receive at least $minPerTarget $unit"
         }
         return null
     }

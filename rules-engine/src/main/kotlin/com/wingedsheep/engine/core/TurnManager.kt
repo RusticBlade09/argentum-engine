@@ -698,6 +698,7 @@ class TurnManager(
                 // off now, on entry to this additional one (CR 500.9).
                 val beforeCopyExpiry = redirectedState
                 redirectedState = cleanupPhaseManager.performNextEndStepExpiry(redirectedState)
+                redirectedState = cleanupPhaseManager.expireStepKeyedPermissions(redirectedState, Step.END)
 
                 // Phase is unchanged (END and CLEANUP both live in the ending phase), so only the
                 // step-changed event is emitted — that re-fires the end-step triggers.
@@ -746,6 +747,8 @@ class TurnManager(
             phase = nextPhase,
             priorityPassedBy = emptySet()
         )
+        // "Until your next end step" may-play windows close as their step begins (Rocco).
+        newState = cleanupPhaseManager.expireStepKeyedPermissions(newState, nextStep)
 
         val events = mutableListOf<GameEvent>()
 

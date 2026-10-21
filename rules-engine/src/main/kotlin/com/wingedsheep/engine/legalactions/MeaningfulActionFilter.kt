@@ -56,6 +56,14 @@ interface PriorityAction {
      * count: the player simply picks none.
      */
     val hasUnfillableTargetRequirement: Boolean
+
+    /**
+     * Why taking this action right now would do nothing, or null when it can matter. Set when the
+     * choice the effect makes on resolution has no eligible option yet — Forcefield's "unblocked
+     * creature of your choice" before blockers are declared. Still legal to take (nothing requires
+     * the effect to do anything), but never worth a stop, and the client greys it out with this text.
+     */
+    val inertReason: String? get() = null
 }
 
 /**
@@ -211,6 +219,9 @@ object MeaningfulActionFilter {
         // An "up to N" requirement (`minTargets == 0`) is the exception: it is cast choosing none.
         if (action.requiresTargets && action.validTargets.isNullOrEmpty() && action.minTargets > 0) return false
         if (action.hasUnfillableTargetRequirement) return false
+
+        // An ability whose resolution-time choice has nothing to choose from would do nothing.
+        if (action.inertReason != null) return false
 
         // A non-mana activated ability is meaningful.
         if (action.actionType == "ActivateAbility") return true

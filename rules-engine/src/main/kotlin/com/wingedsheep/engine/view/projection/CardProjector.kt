@@ -2,6 +2,7 @@ package com.wingedsheep.engine.view.projection
 
 import com.wingedsheep.engine.mechanics.combat.BandsWithOtherRules
 import com.wingedsheep.engine.handlers.ConditionEvaluator
+import com.wingedsheep.engine.handlers.effects.AnnouncedDivision
 import com.wingedsheep.engine.handlers.effects.FaceDownTurnUp
 import com.wingedsheep.engine.mechanics.SoulbondPairing
 import com.wingedsheep.engine.mechanics.layers.ProjectedState
@@ -624,6 +625,7 @@ internal class CardProjector(
             damageDistribution = (spellOnStack?.damageDistribution
                 ?: container.get<TriggeredAbilityOnStackComponent>()?.damageDistribution
                 ?: container.get<ActivatedAbilityOnStackComponent>()?.damageDistribution)?.takeIf { it.isNotEmpty() },
+            damageDistributionUnit = distributionUnit(container, spellOnStack, cardDef),
             sagaTotalChapters = cardDef?.finalChapter,
             classLevel = container.get<ClassLevelComponent>()?.currentLevel,
             classMaxLevel = cardDef?.maxClassLevel,
@@ -815,10 +817,11 @@ internal class CardProjector(
     private fun chosenValues(frame: CardFrame): ChosenValues {
         val container = frame.container
         return ChosenValues(
-            // Get chosen creature type for "as enters" permanents (e.g., Doom Cannon) or spells on stack (e.g., Aphetto Dredging).
+            // Get chosen creature type for "as enters" permanents (e.g., Doom Cannon) or spells on stack (e.g., Aphetto Dredging),
+            // or a chosen planeswalker type (Deification) — the subtype HasChosenSubtype matches.
             // Note: temporary type changes from floating SetCreatureSubtypes effects (e.g., Mistform Wall, Figure of Fable)
             // are surfaced via the "type-change" active-effect badge in CardActiveEffectsProjector, not as a chosen-type label.
-            creatureType = container.chosenCreatureType() ?: frame.spellOnStack?.chosenCreatureType,
+            creatureType = container.chosenSubtype() ?: frame.spellOnStack?.chosenCreatureType,
             // Get chosen color for "as enters, choose a color" permanents (e.g., Riptide Replicator)
             color = container.chosenColor()?.displayName,
             mode = chosenModeLabel(frame),
@@ -939,5 +942,27 @@ internal class CardProjector(
 
         fun abilityFlagsOf(keywords: Set<String>): Set<AbilityFlag> =
             keywords.mapNotNull { try { AbilityFlag.valueOf(it) } catch (_: Exception) { null } }.toSet()
+    }
+
+    /**
+     * The unit of the division a stack object announced, when it divides counters rather than damage
+     * ("+1/+1 counter" — Undercity Upheaval, Ajani, Sleeper Agent's −3), so the target arrows don't
+     * label counters as damage. Null for damage, and when nothing was announced.
+     */
+    private fun distributionUnit(
+        container: ComponentContainer,
+        spellOnStack: SpellOnStackComponent?,
+        cardDef: CardDefinition?
+    ): String? {
+        val announced = spellOnStack?.damageDistribution
+            ?: container.get<TriggeredAbilityOnStackComponent>()?.damageDistribution
+            ?: container.get<ActivatedAbilityOnStackComponent>()?.damageDistribution
+        if (announced.isNullOrEmpty()) return null
+        val division = when {
+            spellOnStack != null -> AnnouncedDivision.ofSpell(cardDef?.script?.spellEffect)
+            else -> (container.get<TriggeredAbilityOnStackComponent>()?.effect
+                ?: container.get<ActivatedAbilityOnStackComponent>()?.effect)?.let(AnnouncedDivision::of)
+        }
+        return division?.let(AnnouncedDivision::counterUnit)
     }
 }

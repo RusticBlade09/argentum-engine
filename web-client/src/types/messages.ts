@@ -1132,6 +1132,12 @@ export interface LegalActionInfo {
   readonly isManaAbility?: boolean
   /** Whether this action can currently be afforded/executed (default true) */
   readonly isAffordable?: boolean
+  /**
+   * Why taking this action right now would do nothing — its resolution-time choice has no eligible
+   * option yet (Forcefield's "unblocked creature" before blockers are declared). The card doesn't
+   * glow and the menu greys the option out with this line under it.
+   */
+  readonly inertReason?: string
   /** Additional cost info (sacrifice, etc.) */
   readonly additionalCostInfo?: AdditionalCostInfo
   /** Whether this spell has Convoke */

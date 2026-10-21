@@ -224,7 +224,9 @@ data class LegalActionInfo(
     val tapForPowerRequired: Int? = null,
     val tapForPowerCreatures: List<TapForPowerCreatureInfo>? = null,
     val modalEnumeration: ModalLegalEnumerationInfo? = null,
-    val holdPriority: Boolean = false
+    val holdPriority: Boolean = false,
+    /** Why activating this right now would do nothing; the client greys the option out with it. */
+    val inertReason: String? = null
 )
 
 /**

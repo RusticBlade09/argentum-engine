@@ -58,6 +58,8 @@ import com.wingedsheep.sdk.core.ManaCost
 import com.wingedsheep.sdk.core.Step
 import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.model.EntityId
+import com.wingedsheep.engine.core.LifeChangeReason
+import com.wingedsheep.engine.core.LifeChangedEvent
 import com.wingedsheep.sdk.scripting.predicates.ControllerPredicate
 import com.wingedsheep.sdk.scripting.*
 import com.wingedsheep.sdk.scripting.predicates.evaluateWith
@@ -397,6 +399,11 @@ class TriggerDetector(
         // (e.g., Deeproot Pilgrimage). Fires the trigger at most once per source regardless of how
         // many matching permanents were tapped simultaneously; the per-event path skips batch taps.
         detectTapBatchTriggers(state, events, triggers, index)
+
+        // Detect "whenever one or more [players] lose [exactly N] life" batching triggers
+        // (LifeLossEvent(batch = true), e.g. Ob Nixilis, Captive Kingpin). Fires once per life-loss
+        // occurrence (simultaneous damage summed per player); the per-event path skips them.
+        detectLifeLossBatchTriggers(state, events, triggers, index)
 
         // Detect "whenever you untap one or more permanents …" batching triggers (e.g. The
         // Millennium Calendar). The untap step untaps all your permanents in one batch; this fires
@@ -1436,13 +1443,17 @@ class TriggerDetector(
                 if (Zone.BATTLEFIELD !in ability.activeZones) continue
                 if (isGraveyardToHandSelfTrigger(ability, event, entityId)) continue
                 if (matcher.matchesTrigger(ability.trigger, ability.binding, event, entityId, controllerId, state)) {
+                    // A disjunctive trigger (`Triggers.or`) expands like the atom this event matched: "whenever a
+                    // creature you control attacks or enters attacking" (Arni Metalbrow) fires once per attacker,
+                    // with that attacker as the triggering entity, exactly as its bare `attacks()` atom would.
+                    val trigger = matcher.matchedAtom(ability.trigger, ability.binding, event, entityId, controllerId, state)
                     // For "whenever a creature attacks" (AttackEvent with ANY binding),
                     // create one trigger per attacking creature (Rule 603.2c)
                     // "Whenever another creature attacks" (OTHER) expands the same way, minus the source.
-                    if (ability.trigger is EventPattern.AttackEvent &&
+                    if (trigger is EventPattern.AttackEvent &&
                         (ability.binding == TriggerBinding.ANY || ability.binding == TriggerBinding.OTHER) &&
                         event is AttackersDeclaredEvent) {
-                        val attackFilter = (ability.trigger as EventPattern.AttackEvent).filter
+                        val attackFilter = (trigger as EventPattern.AttackEvent).filter
                         for (attackerId in event.attackers) {
                             if (ability.binding == TriggerBinding.OTHER && attackerId == entityId) continue
                             if (attackFilter != null) {
@@ -1481,10 +1492,9 @@ class TriggerDetector(
                     // creature matching the filter regardless of controller.
                     // "Whenever another Goblin you control becomes blocked" (OTHER, Ib Halfheart) expands
                     // the same way, minus the source.
-                    else if (ability.trigger is EventPattern.BecomesBlockedEvent &&
+                    else if (trigger is EventPattern.BecomesBlockedEvent &&
                         (ability.binding == TriggerBinding.ANY || ability.binding == TriggerBinding.OTHER) &&
                         event is com.wingedsheep.engine.core.BlockingRelationshipsEvent) {
-                        val trigger = ability.trigger as EventPattern.BecomesBlockedEvent
                         val creatureFilter = trigger.filter
                         val blockedAttackers = event.newlyBlockedAttackers
                         for (attackerId in blockedAttackers) {
@@ -1521,9 +1531,9 @@ class TriggerDetector(
                     }
                     // For "whenever a creature [you control] blocks" (BlockEvent with ANY binding),
                     // create one trigger per matching blocker.
-                    else if (ability.trigger is EventPattern.BlockEvent && ability.binding == TriggerBinding.ANY &&
+                    else if (trigger is EventPattern.BlockEvent && ability.binding == TriggerBinding.ANY &&
                         event is com.wingedsheep.engine.core.BlockingRelationshipsEvent) {
-                        val blockTrigger = ability.trigger as EventPattern.BlockEvent
+                        val blockTrigger = trigger as EventPattern.BlockEvent
                         val blockFilter = blockTrigger.filter
                         // "one or more … block" (batch): a block declaration is one simultaneous
                         // event, so fire once if any declared blocker matches, and never on a
@@ -1589,10 +1599,10 @@ class TriggerDetector(
                     // For "whenever this creature blocks a [filter]" (BlockEvent with SELF binding +
                     // attackerFilter), create one trigger per blocked attacker matching the filter.
                     // triggeringEntityId = the blocked attacker. Skystinger pattern.
-                    else if (ability.trigger is EventPattern.BlockEvent && ability.binding == TriggerBinding.SELF &&
-                        (ability.trigger as EventPattern.BlockEvent).attackerFilter != null &&
+                    else if (trigger is EventPattern.BlockEvent && ability.binding == TriggerBinding.SELF &&
+                        (trigger as EventPattern.BlockEvent).attackerFilter != null &&
                         event is com.wingedsheep.engine.core.BlockingRelationshipsEvent) {
-                        val attackerFilter = (ability.trigger as EventPattern.BlockEvent).attackerFilter!!
+                        val attackerFilter = (trigger as EventPattern.BlockEvent).attackerFilter!!
                         val blockedAttackerIds = event.blockers[entityId] ?: emptyList()
                         for (attackerId in blockedAttackerIds) {
                             if (predicateEvaluator.matches(
@@ -1621,7 +1631,7 @@ class TriggerDetector(
                     //   - Filtered ("becomes blocked by a creature matching [filter]"): fire once per
                     //     matching blocker, with triggeringEntityId = the blocker, so effects targeting
                     //     the triggering entity resolve to that blocker (Flanking gives each -1/-1).
-                    else if (ability.trigger is EventPattern.BecomesBlockedEvent &&
+                    else if (trigger is EventPattern.BecomesBlockedEvent &&
                         (ability.binding == TriggerBinding.SELF || ability.binding == TriggerBinding.ATTACHED) &&
                         event is com.wingedsheep.engine.core.BlockingRelationshipsEvent) {
                         val combatCreatureId = if (ability.binding == TriggerBinding.ATTACHED) {
@@ -1629,7 +1639,7 @@ class TriggerDetector(
                                 ?.get<com.wingedsheep.engine.state.components.battlefield.AttachedToComponent>()
                                 ?.targetId ?: continue
                         } else entityId
-                        val blockerFilter = (ability.trigger as EventPattern.BecomesBlockedEvent).filter
+                        val blockerFilter = (trigger as EventPattern.BecomesBlockedEvent).filter
                         if (blockerFilter == null) {
                             val isBlocked = combatCreatureId in event.newlyBlockedAttackers
                             if (isBlocked) {
@@ -1669,10 +1679,9 @@ class TriggerDetector(
                     // binding (an Equipment/Aura whose equipped/enchanted creature is in combat —
                     // Barrow-Blade); for ATTACHED the combat relationships are read against the
                     // attached creature, but the trigger's source stays the equipment.
-                    else if (ability.trigger is EventPattern.BlocksOrBecomesBlockedByEvent &&
+                    else if (trigger is EventPattern.BlocksOrBecomesBlockedByEvent &&
                         (ability.binding == TriggerBinding.SELF || ability.binding == TriggerBinding.ATTACHED) &&
                         event is com.wingedsheep.engine.core.BlockingRelationshipsEvent) {
-                        val trigger = ability.trigger as EventPattern.BlocksOrBecomesBlockedByEvent
                         val combatCreatureId: EntityId? = if (ability.binding == TriggerBinding.ATTACHED) {
                             state.getEntity(entityId)
                                 ?.get<com.wingedsheep.engine.state.components.battlefield.AttachedToComponent>()
@@ -1728,7 +1737,7 @@ class TriggerDetector(
                     // BlocksOrBecomesBlockedBy case. The combat relationships are read against the
                     // enchanted creature; the trigger's source stays the Aura/Equipment, and the
                     // triggering entity is the attacker so "it"/"its controller" bind to it.
-                    else if (ability.trigger is EventPattern.BecomesUnblockedEvent &&
+                    else if (trigger is EventPattern.BecomesUnblockedEvent &&
                         ability.binding == TriggerBinding.ATTACHED &&
                         event is com.wingedsheep.engine.core.BlockersDeclaredEvent) {
                         val attachedCreatureId = state.getEntity(entityId)
@@ -1754,10 +1763,10 @@ class TriggerDetector(
                     // blocked, that player …" (Coveted Jewel). The block event names no attacking
                     // player, so bind the unblocked attackers' controller as the triggering player —
                     // once per such player when several attack together (2HG; the card's ruling).
-                    else if (ability.trigger is EventPattern.CreaturesAttackYouEvent &&
-                        (ability.trigger as EventPattern.CreaturesAttackYouEvent).unblocked) {
+                    else if (trigger is EventPattern.CreaturesAttackYouEvent &&
+                        (trigger as EventPattern.CreaturesAttackYouEvent).unblocked) {
                         val attackers = matcher.unblockedAttackersAgainstYou(
-                            ability.trigger as EventPattern.CreaturesAttackYouEvent, event, controllerId, state
+                            trigger as EventPattern.CreaturesAttackYouEvent, event, controllerId, state
                         )
                         for ((attackingPlayer, theirs) in attackers.groupBy { projected.getController(it) }) {
                             if (attackingPlayer == null) continue
@@ -1779,7 +1788,7 @@ class TriggerDetector(
                     // twice that many rad counters" (Struggle for Project Purity): capture the
                     // attackers declared at you, so "that many" is fixed at declaration (CR 508.1)
                     // rather than re-counted at resolution after removals from combat.
-                    else if (ability.trigger is EventPattern.CreaturesAttackYouEvent &&
+                    else if (trigger is EventPattern.CreaturesAttackYouEvent &&
                         event is AttackersDeclaredEvent) {
                         triggers.add(
                             PendingTrigger(
@@ -1789,7 +1798,7 @@ class TriggerDetector(
                                 controllerId = controllerId,
                                 triggerContext = TriggerContext.fromEvent(event).copy(
                                     capturedEntityIds = matcher.attackersAgainstYou(
-                                        ability.trigger as EventPattern.CreaturesAttackYouEvent, event, controllerId, state
+                                        trigger as EventPattern.CreaturesAttackYouEvent, event, controllerId, state
                                     )
                                 )
                             )
@@ -1798,11 +1807,11 @@ class TriggerDetector(
                     // "Whenever you attack a player" (CR 508.3e) fires once for each player
                     // attacked, binding that player as "that player" (Echoing Assault, Meriadoc
                     // Brandybuck — the cards' rulings).
-                    else if (ability.trigger is EventPattern.YouAttackEvent &&
-                        (ability.trigger as EventPattern.YouAttackEvent).perAttackedPlayer &&
+                    else if (trigger is EventPattern.YouAttackEvent &&
+                        (trigger as EventPattern.YouAttackEvent).perAttackedPlayer &&
                         event is AttackersDeclaredEvent) {
                         val attacked = matcher.attackedPlayersFor(
-                            ability.trigger as EventPattern.YouAttackEvent, event, entityId, controllerId, state
+                            trigger as EventPattern.YouAttackEvent, event, entityId, controllerId, state
                         )
                         for (attackedPlayer in attacked) {
                             triggers.add(
@@ -1822,9 +1831,9 @@ class TriggerDetector(
                     // expand it here. `firstInDrawStep` singles out the first card of the drawer's
                     // draw step (CR 504.1) to skip (Orcish Bowmasters) or keep alone (Wiretapping)
                     // — the matcher computes the final firing count.
-                    else if (ability.trigger is EventPattern.DrawEvent && event is CardsDrawnEvent) {
+                    else if (trigger is EventPattern.DrawEvent && event is CardsDrawnEvent) {
                         val firings = matcher.drawTriggerFiringCount(
-                            ability.trigger as EventPattern.DrawEvent, event, controllerId, state,
+                            trigger as EventPattern.DrawEvent, event, controllerId, state,
                             samePlayerDrawsLaterInBatch
                         )
                         repeat(firings) {
@@ -1850,10 +1859,10 @@ class TriggerDetector(
                     // no single "it" to bind; it carries the matching cards as its captured collection.
                     // A mill trigger fires once per matching milled card, or once per mill
                     // instruction for "one or more" (batch) — see TriggerMatcher.millTriggerContexts.
-                    else if (ability.trigger is EventPattern.MillEvent &&
+                    else if (trigger is EventPattern.MillEvent &&
                         event is com.wingedsheep.engine.core.CardsMilledEvent) {
                         for (millContext in matcher.millTriggerContexts(
-                            ability.trigger as EventPattern.MillEvent, event, entityId, controllerId, state
+                            trigger as EventPattern.MillEvent, event, entityId, controllerId, state
                         )) {
                             triggers.add(
                                 PendingTrigger(
@@ -1866,9 +1875,9 @@ class TriggerDetector(
                             )
                         }
                     }
-                    else if (ability.trigger is EventPattern.DiscardEvent &&
+                    else if (trigger is EventPattern.DiscardEvent &&
                         event is CardsDiscardedEvent) {
-                        val discardTrigger = ability.trigger as EventPattern.DiscardEvent
+                        val discardTrigger = trigger as EventPattern.DiscardEvent
                         val matchingCards = matcher.matchingDiscardedCards(
                             discardTrigger,
                             event,
@@ -1932,11 +1941,11 @@ class TriggerDetector(
                         // wrong creature. Seeded into the resolving ability's pipeline as
                         // TRIGGER_CAPTURED_COLLECTION, the same channel batch ETB triggers use.
                         val capturedTargets = (event as? SpellCastEvent)?.let {
-                            matcher.capturedCastTargets(ability.trigger, it, state, entityId, controllerId)
+                            matcher.capturedCastTargets(trigger, it, state, entityId, controllerId)
                         }
                         // "Whenever you attack with one or more creatures, create that many …"
                         // (Rabble Rousing): the creatures the trigger counted, frozen at declaration.
-                        val capturedAttackers = (ability.trigger as? EventPattern.YouAttackEvent)?.let { trigger ->
+                        val capturedAttackers = (trigger as? EventPattern.YouAttackEvent)?.let { trigger ->
                             (event as? AttackersDeclaredEvent)?.let {
                                 matcher.youAttackAttackers(trigger, it, entityId, controllerId, state)
                             }
@@ -3248,6 +3257,80 @@ class TriggerDetector(
                 )
             }
         }
+    }
+
+    /**
+     * Detect "whenever one or more [players] lose life" / "… each lose exactly N life" batching
+     * triggers (`LifeLossEvent(batch = true)` — Ob Nixilis, Captive Kingpin).
+     *
+     * One action's event list can hold several life-loss *occurrences*, and the trigger fires once
+     * per occurrence in which a matching player lost life (with `exactAmount`, exactly that much):
+     *  - all damage in the list is one simultaneous occurrence, summed per player, so combat damage
+     *    from three 1/1s is one loss of 3 (Ob Nixilis ruling). First-strike and regular damage are
+     *    separate steps, so they arrive in separate lists.
+     *  - every other loss ("loses N life", radiation, a life payment) is split into runs: one
+     *    instruction makes each affected player lose life once, so a run ends when a player repeats —
+     *    "each opponent loses 1 life" is one occurrence, "loses 1 life, then loses 1 life" is two.
+     *
+     * However many players qualify within an occurrence, it fires once; the first qualifying player
+     * and their total are bound as the triggering player and `damageAmount`.
+     */
+    private fun detectLifeLossBatchTriggers(
+        state: GameState,
+        events: List<EngineGameEvent>,
+        triggers: MutableList<PendingTrigger>,
+        index: TriggerIndex
+    ) {
+        val occurrences = lifeLossOccurrences(events)
+        if (occurrences.isEmpty()) return
+
+        for (entry in index.getEntitiesForCategory(TriggerCategory.LIFE_LOSS)) {
+            for (ability in entry.abilities) {
+                val trigger = ability.trigger
+                if (trigger !is EventPattern.LifeLossEvent || !trigger.batch) continue
+                val exact = trigger.exactAmount
+                for (totals in occurrences) {
+                    val hit = totals.entries.firstOrNull { (playerId, lost) ->
+                        (exact == null || lost == exact) &&
+                            matcher.matchesPlayer(state, trigger.player, playerId, entry.controllerId)
+                    } ?: continue
+                    triggers.add(
+                        PendingTrigger(
+                            ability = ability,
+                            sourceId = entry.entityId,
+                            sourceName = entry.cardComponent.name,
+                            controllerId = entry.controllerId,
+                            triggerContext = TriggerContext(
+                                triggeringEntityId = hit.key,
+                                triggeringPlayerId = hit.key,
+                                damageAmount = hit.value
+                            )
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    /** Partitions an action's life loss into occurrences, each a per-player total; see [detectLifeLossBatchTriggers]. */
+    private fun lifeLossOccurrences(events: List<EngineGameEvent>): List<Map<EntityId, Int>> {
+        var damage: MutableMap<EntityId, Int>? = null
+        val occurrences = mutableListOf<Map<EntityId, Int>>()
+        var run: MutableMap<EntityId, Int>? = null
+        for (event in events) {
+            if (event !is LifeChangedEvent || event.reason == LifeChangeReason.LIFE_GAIN) continue
+            val lost = event.oldLife - event.newLife
+            if (lost <= 0) continue
+            if (event.reason == LifeChangeReason.DAMAGE) {
+                val totals = damage ?: mutableMapOf<EntityId, Int>().also { damage = it; occurrences.add(it) }
+                totals[event.playerId] = (totals[event.playerId] ?: 0) + lost
+                continue
+            }
+            val current = run?.takeUnless { event.playerId in it }
+                ?: mutableMapOf<EntityId, Int>().also { run = it; occurrences.add(it) }
+            current[event.playerId] = lost
+        }
+        return occurrences
     }
 
     /**

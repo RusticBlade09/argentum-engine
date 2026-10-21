@@ -190,7 +190,7 @@ Families:
 - `CardPredicate.HasAnyOfSubtypes(subtypes: List<Subtype>)` — Matches cards with any one of the given subtypes (OR logic).
 - `CardPredicate.HasBasicLandType(landType: String)` — Matches basic land types: Plains, Island, Swamp, Mountain, Forest
 - `CardPredicate.HasChosenColor` — Matches cards whose colors include the color chosen during this effect's resolution (e.g. via ChooseColorThenEffectcom.wingedsheep.sdk.scripting.effects.ChooseColorThenEffect).
-- `CardPredicate.HasChosenSubtype` — Matches creatures that have the subtype chosen on the source permanent (CastChoicesComponent)
+- `CardPredicate.HasChosenSubtype` — Matches objects that have the subtype chosen on the source permanent as it entered — its chosen creature type (com.wingedsheep.sdk.scripting.ChoiceSlot.CREATURE_TYPE) or, failing that, its chosen p…
 - `CardPredicate.HasColor(color: Color)`
 - `CardPredicate.HasCycling` — Matches a card with a cycling ability — plain cycling or any typecycling variant (typecycling is a variant of cycling, CR 702.29e).
 - `CardPredicate.HasExactlyColors(count: Int)` — Exactly count colors (CR 105.2).
@@ -1221,7 +1221,7 @@ Families:
 - `EventPattern.LandTappedForMana(player: Player, landFilter: GameObjectFilter?)` — When a player taps a land for mana (a land's mana ability resolves).
 - `EventPattern.LeaveBattlefieldWithoutDyingEvent(filter: GameObjectFilter, excludeSelf: Boolean)` — Whenever one or more creatures you control leave the battlefield without dying.
 - `EventPattern.LifeGainEvent(player: Player, firstTimeEachTurn: Boolean)` — When a player would gain life.
-- `EventPattern.LifeLossEvent(player: Player)` — When a player would lose life.
+- `EventPattern.LifeLossEvent(player: Player, batch: Boolean, exactAmount: Int?)` — When a player would lose life.
 - `EventPattern.LifePaymentEvent(player: Player)` — When a player would **pay** life — life spent to satisfy a cost (CR 118.8), as opposed to life lost to damage or to a "loses N life" effect.
 - `EventPattern.ManaAbilityResolved` — When a mana ability of this permanent resolves — "Whenever a mana ability of this creature resolves" (the ability Tyvar the Bellicose grants).
 - `EventPattern.ManifestedDreadEvent(player: Player)` — Whenever a player manifests dread (CR 701.60).
@@ -1370,7 +1370,7 @@ Families:
 - `ManaRestriction.AnySpend` — No restriction — this mana satisfies any spend context.
 - `ManaRestriction.CannotCastSpellsFromHand` — "This mana can't be spent to cast spells from your hand" (Heartwood Crafter).
 - `ManaRestriction.CannotCastSpellsOtherThan(cardTypes: Set<CardType>)` — "This mana can't be spent to cast a non-cardTypes spell" (Hydraulic Helper: "{T}: Add {U}.
-- `ManaRestriction.CardTypeSpellsOrAbilitiesOnly(cardType: CardType, allowSpells: Boolean, allowAbilities: Boolean, negated: Boolean)` — "Spend this mana only to cast cardType spells or activate abilities of [cardType sources]." Parameterized over card type so the same restriction shape covers Steelswarm Operator (artifact), hypothe…
+- `ManaRestriction.CardTypeSpellsOrAbilitiesOnly(cardType: CardType, allowSpells: Boolean, allowAbilities: Boolean, negated: Boolean, permanentSourcesOnly: Boolean)` — "Spend this mana only to cast cardType spells or activate abilities of [cardType sources]." Parameterized over card type so the same restriction shape covers Steelswarm Operator (artifact), hypothe…
 - `ManaRestriction.CastFromExileOnly`
 - `ManaRestriction.CastFromNonHandOnly` — "Spend this mana only to cast a spell from anywhere other than your hand." Used by Mm'menon, the Right Hand's granted artifact ability.
 - `ManaRestriction.ColorlessSpellsOnly` — "Spend this mana only to cast colorless spells." A spell is colorless when its colors are empty (CR 105.2c) — a devoid spell, an artifact with no colored symbols, and a face-down spell (CR 708.2) a…
@@ -1412,7 +1412,7 @@ Families:
 
 - `MayPlayExpiry.EndOfTurn` — Permission ends at the cleanup step of the current turn.
 - `MayPlayExpiry.Permanent` — Permission persists for as long as the card remains exiled.
-- `MayPlayExpiry.UntilControllerStep(step: Step, includeCurrentTurn: Boolean)` — Permission ends at the controller's next step.
+- `MayPlayExpiry.UntilControllerStep(step: Step, includeCurrentTurn: Boolean)` — Permission ends as the controller's next step begins.
 - `MayPlayExpiry.UntilSourceExilesAnother` — Permission persists indefinitely — across turns, and it survives the granting source leaving play (the permission's lifecycle is owned by the game state, not the source) — EXCEPT that it is revoked…
 - `MayPlayExpiry.WhileSourceOnBattlefield(sourceDescription: String)` — Permission lasts for as long as the **granting permanent stays on the battlefield** — regardless of who controls it, and regardless of who holds the permission.
 - `MayPlayExpiry.WhileYouControlSource(sourceDescription: String)` — Permission lasts for as long as the grant's controller controls the **granting permanent** — "you may cast it for as long as you control this creature" (Taster of Wares).
@@ -1460,6 +1460,7 @@ Families:
 - `Player.Each` — All players
 - `Player.EachDefendingPlayer` — All defending players in the current combat, in APNAP order, including those with no attackers assigned and before attackers are declared.
 - `Player.EachOpponent` — All opponents
+- `Player.EachStartingWithYou` — All players in turn order **starting with you** (the ability's controller), then each other player in turn order from the one after you — "Starting with you, each player …" (Eureka).
 - `Player.EachTargetedPlayer` — **Every** player among the spell or ability's chosen targets — "those players" after "choose any number of target players" (Officious Interrogation).
 - `Player.EnchantedPlayer` — The player enchanted by the source Aura — read from the source's com.wingedsheep.engine.state.components.battlefield.AttachedToComponent target id when it is a player.
 - `Player.InCollection(collection: String)` — "Those players" — every player recorded in the pipeline collection collection (written by com.wingedsheep.sdk.scripting.effects.StorePlayerEffect), iterated in APNAP order (CR 101.4) and skipping a…
@@ -1542,6 +1543,7 @@ Families:
 - `HalveDamage(restrictions: List<Condition>, appliesTo: EventPattern)` — Halve damage dealt, **rounded down** — the dividing mirror of DoubleDamage.
 - `HealOtherDamage(appliesTo: EventPattern)` — The damage is still dealt in full, but as part of the same replacement all *other* damage already marked on the recipient is **healed** (CR 701.69a: "If an effect states that damage already dealt t…
 - `LifeLossFloor(floor: Int, restrictions: List<Condition>, appliesTo: EventPattern)` — Floor the resulting life total when a player would lose life from damage.
+- `LoyaltyDamageFloor(floor: Int, restrictions: List<Condition>, appliesTo: EventPattern.DamageEvent)` — Floor the loyalty a planeswalker keeps when damage would remove its loyalty counters (CR 120.3c, CR 306.8): if damage matching appliesTo would leave the planeswalker with fewer than floor loyalty c…
 - `ModifyCounterPlacement(modifier: Int, appliesTo: EventPattern, placedByYou: Boolean)` — Add additional counters when counters are placed.
 - `ModifyDamageAmount(modifier: Int, dynamicModifier: DynamicAmount?, restrictions: List<Condition>, appliesTo: EventPattern)` — Modify damage dealt by an additive amount — either a fixed modifier or, when dynamicModifier is supplied, an amount computed at damage time against the replacement's *source* permanent.
 - `ModifyDrawAmount(modifier: Int, multiplier: Int, restrictions: List<Condition>, appliesTo: EventPattern.DrawCardsEvent)` — Modify the number of cards a draw event draws — `(count * multiplier) + modifier`, clamped to ≥ 0 — optionally gated by additional restrictions.
@@ -1679,6 +1681,7 @@ Families:
 - `StatePredicate.EnteredThisTurn` — Entered the battlefield this turn (has summoning sickness if creature)
 - `StatePredicate.ExiledByYou` — The candidate card is in exile and was put there by a spell or ability controlled by the asking player (the evaluation context's controller) — "a card from exile … if it was exiled by an ability yo…
 - `StatePredicate.ExiledWithSource` — The candidate card is one this effect's source permanent exiled — i.e. its entity id is recorded in the source's `LinkedExileComponent` (the same linkage set by `RedirectZoneChange(linkToSource = t…
+- `StatePredicate.HasActivatedAbilities(atLeast: Int, excludeManaAbilities: Boolean)` — The object currently has at least atLeast activated abilities — printed, copied, keyword (cycling, crew, saddle, class levels), intrinsic basic-land mana abilities, and every ability an effect, sta…
 - `StatePredicate.HasAnyCounter` — Has any counter of any type
 - `StatePredicate.HasCounter(counterType: CounterType, minCount: Int)` — Has at least minCount counters of the specified type.
 - `StatePredicate.HasDealtCombatDamageToPlayer` — Has dealt combat damage to a player (ever, since entering the battlefield)
@@ -1886,7 +1889,7 @@ Families:
 - `LoyaltyActivationPermission(filter: GameObjectFilter, instantSpeed: Boolean, times: Int)` — A static loyalty-activation permission for permanents matching filter — the battlefield counterpart of com.wingedsheep.sdk.scripting.effects.GrantLoyaltyActivationPermissionEffect, relaxing one or…
 - `ManaAbilitiesCostAdditionalLife(amount: Int, filter: GroupFilter)` — The mana abilities of permanents matching filter cost an additional amount life to activate — Thran Portal's "Mana abilities of this land cost an additional 1 life to activate." The life is an extr…
 - `MaxCounters(counterType: CounterType, max: Int)` — "This permanent can't have more than max counterType counters on it" (Rasputin Dreamweaver).
-- `MayCastFromGraveyard(filter: GameObjectFilter, lifeCost: Int, duringYourTurnOnly: Boolean, entersWithCounter: CounterType?, addedSubtypeOnEntry: String?, oncePerTurn: Boolean, exileInsteadOfGraveyard: Boolean, fromAnyGraveyard: Boolean, additionalCost: AdditionalCost?, playsLands: Boolean, grantedAbilityOnEntry: TriggeredAbility?)` — You may cast spells matching filter from your graveyard, optionally by paying lifeCost life in addition to their other costs.
+- `MayCastFromGraveyard(filter: GameObjectFilter, lifeCost: Int, duringYourTurnOnly: Boolean, entersWithCounter: CounterType?, addedSubtypeOnEntry: String?, oncePerTurn: Boolean, exileCastThisWay: CastThisWayExile, fromAnyGraveyard: Boolean, additionalCost: AdditionalCost?, playsLands: Boolean, grantedAbilityOnEntry: TriggeredAbility?)` — You may cast spells matching filter from your graveyard, optionally by paying lifeCost life in addition to their other costs.
 - `MayCastSelfFromZones(zones: List<Zone>, condition: Condition?, additionalCost: AdditionalCost?, castUsing: Keyword?, alternativeManaCost: ManaCost?)` — You may cast this card from specified zones (e.g., graveyard, exile).
 - `MayCastWithoutPayingManaCost(controllerOnly: Boolean, firstSpellOfTurnOnly: Boolean, spellFilter: GameObjectFilter, oncePerTurn: Boolean, fromZones: Set<Zone>?)` — Generic "may cast a spell without paying its mana cost" battlefield permission.
 - `MayPlayCardsFromExile(filter: GameObjectFilter, condition: Condition?, withAnyManaType: Boolean, withAnyManaColor: Boolean, oncePerTurn: Boolean)` — You may play cards in exile matching filter — "play", so lands and spells alike (CR 601.3: a permission from an effect is what lets a player cast a card from a zone other than their hand).

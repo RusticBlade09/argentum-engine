@@ -1894,7 +1894,7 @@ data class ModifyLifeLoss(
  *     `LifeLossFloor(floor = 1, appliesTo = LifeLossEvent(Player.You))`
  * - Worship ("If you control a creature, damage that would reduce your life total
  *   to less than 1 reduces it to 1 instead"):
- *     `LifeLossFloor(floor = 1, restrictions = listOf(YouControlACreature),
+ *     `LifeLossFloor(floor = 1, restrictions = listOf(Conditions.YouControl(GameObjectFilter.Creature)),
  *                    appliesTo = LifeLossEvent(Player.You))`
  *
  * @param floor Minimum resulting life total (default 1).
@@ -1931,6 +1931,54 @@ data class LifeLossFloor(
         val newRestrictions = restrictions.map { it.applyTextReplacement(replacer) }
         val anyChanged = newAppliesTo !== appliesTo ||
             newRestrictions.zip(restrictions).any { (n, o) -> n !== o }
+        return if (anyChanged) copy(appliesTo = newAppliesTo, restrictions = newRestrictions) else this
+    }
+}
+
+/**
+ * Floor the loyalty a planeswalker keeps when damage would remove its loyalty counters (CR 120.3c,
+ * CR 306.8): if damage matching [appliesTo] would leave the planeswalker with fewer than [floor]
+ * loyalty counters, only enough counters are removed to leave [floor] (none, if it already has
+ * [floor] or fewer). The planeswalker counterpart of [LifeLossFloor].
+ *
+ * Like [LifeLossFloor], this replaces only the *result* of the damage: the damage itself is still
+ * dealt in full, so lifelink, "deals damage" triggers and excess damage (CR 120.4a) still see the
+ * whole amount — Deification's ruling: "all damage is still dealt to the affected planeswalkers,
+ * and any additional effects of that damage will still happen."
+ *
+ * Why not an existing type: [LifeLossFloor] floors a *player's life total* and keys off a
+ * [EventPattern.LifeLossEvent], which never sees a planeswalker; [PreventDamagePerCounter] spends
+ * counters to *prevent* damage, which this must not do.
+ *
+ * [restrictions] are evaluated against this effect's source and its controller ("As long as you
+ * control a creature"). Multiple instances pick the strictest floor.
+ *
+ * Example — Deification ("As long as you control a creature, if damage dealt to a planeswalker you
+ * control of the chosen type would result in all loyalty counters on it being removed, instead all
+ * but one of those counters are removed"):
+ *   `LoyaltyDamageFloor(floor = 1, restrictions = listOf(Conditions.YouControl(GameObjectFilter.Creature)),
+ *      appliesTo = DamageEvent(recipient = Recipient.Object(planeswalker you control of the chosen type)))`
+ */
+@SerialName("LoyaltyDamageFloor")
+@Serializable
+data class LoyaltyDamageFloor(
+    val floor: Int = 1,
+    override val restrictions: List<Condition> = emptyList(),
+    override val appliesTo: EventPattern.DamageEvent
+) : ReplacementEffect {
+    override val description: String = buildString {
+        val restrictionDesc = restrictions.joinToString(" and ") { it.description.removePrefix("if ") }
+        if (restrictionDesc.isNotEmpty()) append("As long as $restrictionDesc, if ") else append("If ")
+        val counters = if (floor == 1) "loyalty counter" else "loyalty counters"
+        append("damage dealt to ${appliesTo.recipient.description} would leave it with fewer than $floor $counters, ")
+        append("instead only enough counters are removed to leave $floor")
+    }
+
+    override fun applyTextReplacement(replacer: TextReplacer): ReplacementEffect {
+        val newAppliesTo = appliesTo.applyTextReplacement(replacer) as EventPattern.DamageEvent
+        val newRestrictions = restrictions.map { it.applyTextReplacement(replacer) }
+        val anyChanged = newAppliesTo !== appliesTo ||
+            newRestrictions.zip(restrictions).any { (a, b) -> a !== b }
         return if (anyChanged) copy(appliesTo = newAppliesTo, restrictions = newRestrictions) else this
     }
 }
@@ -2203,6 +2251,13 @@ enum class ChoiceType {
     /** Choose a creature type (e.g., Doom Cannon, Cover of Darkness) */
     CREATURE_TYPE,
     /**
+     * Choose a planeswalker type (CR 205.3j), e.g. Deification: "As this enchantment enters, choose
+     * a planeswalker type." Stored under [com.wingedsheep.sdk.scripting.ChoiceSlot.PLANESWALKER_TYPE]
+     * and matched by [com.wingedsheep.sdk.scripting.predicates.CardPredicate.HasChosenSubtype], the
+     * same reader as a chosen creature type.
+     */
+    PLANESWALKER_TYPE,
+    /**
      * Choose a permanent on the battlefield — by default another creature you control (Dauntless
      * Bodyguard); [EntersWithChoice.permanentFilter] widens it (Scheming Fence's "a nonland
      * permanent"). Stored in [ChoiceSlot.CREATURE] whatever its type.
@@ -2433,6 +2488,11 @@ data class EntersWithChoice(
             "As this permanent enters, an opponent chooses a creature type"
         } else {
             "As this permanent enters, choose a creature type"
+        }
+        ChoiceType.PLANESWALKER_TYPE -> if (chooser == Player.AnOpponent) {
+            "As this permanent enters, an opponent chooses a planeswalker type"
+        } else {
+            "As this permanent enters, choose a planeswalker type"
         }
         ChoiceType.CREATURE_ON_BATTLEFIELD -> if (permanentFilter == null && !mayChooseNothing) {
             "As this creature enters, choose another creature you control"

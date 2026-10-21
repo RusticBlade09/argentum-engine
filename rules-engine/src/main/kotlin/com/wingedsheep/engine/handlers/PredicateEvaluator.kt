@@ -3,6 +3,7 @@ package com.wingedsheep.engine.handlers
 import com.wingedsheep.engine.mechanics.ManaValues
 import com.wingedsheep.engine.mechanics.layers.containsKeyword
 import com.wingedsheep.engine.state.components.battlefield.chosenCreatureType
+import com.wingedsheep.engine.state.components.battlefield.chosenSubtype
 import com.wingedsheep.engine.state.components.battlefield.chosenCreatureOf
 import com.wingedsheep.sdk.scripting.ChoiceSlot
 import com.wingedsheep.engine.state.components.battlefield.entitiesChoice
@@ -236,9 +237,9 @@ class PredicateEvaluator(
      * *unanswerable* rather than guessing — see [matchesSnapshotPredicate] — and an unanswerable
      * predicate makes the whole filter fail to match, which is the same answer the caller got before
      * any snapshot existed. Of the state predicates only the combat status the snapshot freezes —
-     * attacking, blocking — is answered (see [matchesSnapshotState]): a blocker killed by the damage
-     * is still "a blocking creature" to the trigger that damage fired (CR 603.10). Every other state
-     * predicate (tapped, …) describes a battlefield presence the object no longer has and is
+     * attacking, blocking, tapped — is answered (see [matchesSnapshotState]): a blocker killed by the
+     * damage is still "a blocking creature" to the trigger that damage fired (CR 603.10). Every other
+     * state predicate describes a battlefield presence the object no longer has and is
      * unanswerable.
      *
      * **Caller invariant: pass a snapshot captured with the state-aware
@@ -246,7 +247,7 @@ class PredicateEvaluator(
      * `(ids, state)` one), and populate [EntitySnapshot.typeLine] and [EntitySnapshot.keywords] on
      * top of it. The unanswerable-reports-null discipline above cannot cover
      * [EntitySnapshot.wasToken], [EntitySnapshot.wasFaceDown], [EntitySnapshot.keywords], [EntitySnapshot.wasAttacking],
-     * [EntitySnapshot.wasBlocking] or [EntitySnapshot.wasModified]: each defaults to a *legitimate* value
+     * [EntitySnapshot.wasBlocking], [EntitySnapshot.wasTapped] or [EntitySnapshot.wasModified]: each defaults to a *legitimate* value
      * (`false` / empty) with no "was never captured" state, so a snapshot taken by the projection-
      * only overload answers `IsToken` false, `IsNontoken` true, `IsFaceDown` false and every `HasKeyword` false with
      * full confidence rather than reporting unknown. There is one caller today
@@ -254,8 +255,9 @@ class PredicateEvaluator(
      * [com.wingedsheep.engine.state.components.stack.ActivatedAbilityOnStackComponent.lastKnownSourceSnapshot],
      * which does exactly that). The second, the `firstEachTurn` gate of
      * [com.wingedsheep.sdk.scripting.ReduceActivatedAbilityCost], reads snapshots built by
-     * `activationSourceSnapshot`, which populates every field this function answers directly; a
-     * third caller must do one or the other.
+     * `activationSourceSnapshot`, which populates every field this function answers directly except
+     * the combat and tap status (its filters never ask about those — the snapshot is a per-turn
+     * identity, so it must not vary with tapping); a third caller must do one or the other.
      */
     fun matchesSnapshot(
         state: GameState,
@@ -344,13 +346,15 @@ class PredicateEvaluator(
      * state-predicate sibling of [matchesSnapshotPredicate], with the same null-means-unknown
      * discipline. Only the status [EntitySnapshot] freezes is answered: attacking
      * ([EntitySnapshot.wasAttacking]), blocking ([EntitySnapshot.wasBlocking]), modified
-     * ([EntitySnapshot.wasModified]), face-down ([EntitySnapshot.wasFaceDown]) and entered this
-     * turn ([EntitySnapshot.enteredOnTurn], compared against the current turn).
+     * ([EntitySnapshot.wasModified]), face-down ([EntitySnapshot.wasFaceDown]), tapped
+     * ([EntitySnapshot.wasTapped]) and entered this turn ([EntitySnapshot.enteredOnTurn], compared against the current turn).
      */
     private fun matchesSnapshotState(state: GameState, snapshot: EntitySnapshot, predicate: StatePredicate): Boolean? =
         when (predicate) {
             StatePredicate.IsAttacking -> snapshot.wasAttacking
             StatePredicate.IsBlocking -> snapshot.wasBlocking
+            StatePredicate.IsTapped -> snapshot.wasTapped
+            StatePredicate.IsUntapped -> !snapshot.wasTapped
             StatePredicate.IsModified -> snapshot.wasModified
             StatePredicate.IsFaceDown -> snapshot.wasFaceDown
             StatePredicate.IsFaceUp -> !snapshot.wasFaceDown
@@ -1226,7 +1230,7 @@ class PredicateEvaluator(
             CardPredicate.HasChosenSubtype -> {
                 val sourceId = context?.sourceId ?: return false
                 val chosenType = state.getEntity(sourceId)
-                    ?.chosenCreatureType()
+                    ?.chosenSubtype()
                     ?: return false
                 val entitySubtypes = effectiveSubtypes(state, projected, entityId, card, projectedValues)
                 entitySubtypes.any { it.equals(chosenType, ignoreCase = true) } ||
@@ -1793,14 +1797,29 @@ class PredicateEvaluator(
                     state, projected, entityId, it, this
                 )
             } ?: false
+            // Shares HasManaAbility's re-entry guard: a static grant gated on this very predicate
+            // would otherwise re-ask for the same object's granted abilities forever.
+            is StatePredicate.HasActivatedAbilities -> if (entityId in manaAbilityQueries) false else cardRegistry?.let {
+                com.wingedsheep.engine.mechanics.ActivatedAbilityPresence.count(
+                    state, projected, entityId, it, this, predicate.excludeManaAbilities
+                ) >= predicate.atLeast
+            } ?: false
             StatePredicate.IsOnBattlefield -> entityId in state.getBattlefield()
             // The object's current zone — a resolving spell still reads STACK until it has finished
             // resolving, which is when a spell deals its damage.
             is StatePredicate.InZone -> state.logicalZone(entityId)?.zoneType == predicate.zone
 
             // Tap state
-            StatePredicate.IsTapped -> container.has<TappedComponent>()
-            StatePredicate.IsUntapped -> !container.has<TappedComponent>()
+            // Off the battlefield the live component is gone, so a permanent that has left answers
+            // from its frozen last-known tap state (CR 608.2h) — "if Voodoo Doll is untapped" after
+            // it was destroyed. The snapshot only exists outside the battlefield, so live reads are
+            // unchanged.
+            StatePredicate.IsTapped ->
+                container.has<TappedComponent>() ||
+                    container.get<LastKnownPermanentComponent>()?.snapshot?.wasTapped == true
+            StatePredicate.IsUntapped ->
+                !container.has<TappedComponent>() &&
+                    container.get<LastKnownPermanentComponent>()?.snapshot?.wasTapped != true
             StatePredicate.IsPrepared -> container.has<PreparedComponent>()
 
             // Combat state.

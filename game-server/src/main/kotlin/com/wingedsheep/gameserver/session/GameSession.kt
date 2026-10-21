@@ -1250,7 +1250,11 @@ class GameSession(
             // The same notion of "meaningful" the stop decision itself uses — otherwise the
             // button can promise a stop (say, at the opponent's end step for a spell we can't
             // actually pay for) that never arrives.
-            val hasMeaningfulActions = autoPassManager.getMeaningfulActions(legalActions).isNotEmpty()
+            // An inert action (Forcefield before blockers) isn't worth a stop now, but it is the
+            // kind that comes alive later in the turn — and the stop then arrives — so the label
+            // mustn't promise to skip past it ("To My Turn").
+            val hasMeaningfulActions = autoPassManager.getMeaningfulActions(legalActions).isNotEmpty() ||
+                legalActions.any { it.inertReason != null }
             autoPassManager.getNextStopPoint(state, playerId, hasMeaningfulActions, myTurnStops = playerOverrides.myTurnStops, opponentTurnStops = playerOverrides.opponentTurnStops, stopsMode = playerMode == PriorityMode.STOPS)
         } else {
             null

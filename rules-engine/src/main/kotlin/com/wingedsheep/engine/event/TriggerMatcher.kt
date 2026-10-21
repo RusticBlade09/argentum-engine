@@ -16,7 +16,7 @@ import com.wingedsheep.engine.handlers.PredicateEvaluator
 import com.wingedsheep.engine.mechanics.layers.ProjectedState
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.battlefield.CountersComponent
-import com.wingedsheep.engine.state.components.battlefield.chosenCreatureType
+import com.wingedsheep.engine.state.components.battlefield.chosenSubtype
 import com.wingedsheep.engine.state.components.battlefield.chosenOpponent
 import com.wingedsheep.engine.state.components.battlefield.chosenPlayer
 import com.wingedsheep.engine.state.components.identity.CardComponent
@@ -901,6 +901,9 @@ class TriggerMatcher(
             // singular templating), matched against each token-creation ZoneChangeEvent.
             is EventPattern.TokenCreationEvent -> matchesTokenCreationTrigger(trigger, event, controllerId, state)
             is EventPattern.LifeLossEvent -> {
+                // Batch ("one or more … lose [exactly N] life") triggers fire once per batch,
+                // handled by detectLifeLossBatchTriggers — never once per event here.
+                !trigger.batch &&
                 event is LifeChangedEvent &&
                     event.reason != com.wingedsheep.engine.core.LifeChangeReason.LIFE_GAIN &&
                     event.oldLife > event.newLife &&
@@ -1490,7 +1493,7 @@ class TriggerMatcher(
                         // Resolve the chosen subtype from the trigger source's CastChoicesComponent
                         // and check that the entering/leaving entity has that subtype.
                         val chosenType = state.getEntity(sourceId)
-                            ?.chosenCreatureType()
+                            ?.chosenSubtype()
                             ?: return false
                         val hasSubtype = if (event.toZone == Zone.BATTLEFIELD) {
                             projected.hasSubtype(event.entityId, chosenType)
@@ -1812,6 +1815,28 @@ class TriggerMatcher(
                 "Add an explicit branch — silent pass-through hid the IsNontoken bug for months."
             )
         }
+    }
+
+    /**
+     * The atom of [trigger] that [event] matched: the first matching constituent of an
+     * [EventPattern.AnyOf] (recursively), or [trigger] itself when it isn't a disjunction. The
+     * per-object expansions in [TriggerDetector] key on the atom's shape, so a `Triggers.or` trigger
+     * fires per attacker / blocker exactly like its bare atom. Call only after [matchesTrigger]
+     * returned true.
+     */
+    fun matchedAtom(
+        trigger: EventPattern,
+        binding: TriggerBinding,
+        event: EngineGameEvent,
+        sourceId: EntityId,
+        controllerId: EntityId,
+        state: GameState
+    ): EventPattern = when (trigger) {
+        is EventPattern.AnyOf -> trigger.events
+            .firstOrNull { matchesTrigger(it, binding, event, sourceId, controllerId, state) }
+            ?.let { matchedAtom(it, binding, event, sourceId, controllerId, state) }
+            ?: trigger
+        else -> trigger
     }
 
     /**
@@ -2662,9 +2687,15 @@ class TriggerMatcher(
         // `PredicateEvaluator` already falls back to `wasAttacking` for the resolution-time reading
         // (Garna, Bloodfist of Keld); without this arm the trigger path would fail open and fire
         // for every matching creature that dies, attacking or not.
+        // Any other zone change — an arrival in particular — reads the live combat state: a
+        // permanent put onto the battlefield "tapped and attacking" carries its
+        // `AttackingComponent` from the moment it enters (CR 508.4), so "whenever a creature you
+        // control enters attacking" (Arni Metalbrow) gates exactly instead of failing open for
+        // every creature that enters.
         com.wingedsheep.sdk.scripting.predicates.StatePredicate.IsAttacking -> {
             if (event.isBattlefieldDeparture) event.lastKnown?.wasAttacking == true
-            else matchesStatePredicateForTrigger(predicate, state, event.entityId)
+            else state.getEntity(event.entityId)
+                ?.has<com.wingedsheep.engine.state.components.combat.AttackingComponent>() == true
         }
         is com.wingedsheep.sdk.scripting.predicates.StatePredicate.Or ->
             predicate.predicates.any { matchesStatePredicateForZoneChangeTrigger(it, state, event, sourceId) }
@@ -2696,7 +2727,8 @@ class TriggerMatcher(
             val entity = state.getEntity(entityId) ?: return false
             entity.has<FaceDownComponent>()
         }
-        com.wingedsheep.sdk.scripting.predicates.StatePredicate.HasManaAbility ->
+        com.wingedsheep.sdk.scripting.predicates.StatePredicate.HasManaAbility,
+        is com.wingedsheep.sdk.scripting.predicates.StatePredicate.HasActivatedAbilities ->
             predicateEvaluator.matchesStatePredicate(state, entityId, predicate, projected = state.projectedState)
         // The commander designation stays on the card across zone changes (CR 903.3), so a live
         // read is right even after the permanent has left the battlefield.
