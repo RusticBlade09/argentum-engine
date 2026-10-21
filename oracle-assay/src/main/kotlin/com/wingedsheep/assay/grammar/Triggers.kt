@@ -876,6 +876,8 @@ object Triggers {
         ),
         triggerRule("when ${Normalizer.SELF} leaves the battlefield", SdkTriggers.self.leaves()),
         triggerRule("whenever ${Normalizer.SELF} attacks", SdkTriggers.self.attacks()),
+        triggerRule("whenever you attack", SdkTriggers.you.attacks()),
+        triggerRule("whenever you attack a player", SdkTriggers.you.attacksAPlayer()),
         triggerRule("whenever ${Normalizer.SELF} blocks", SdkTriggers.self.blocks()),
         triggerRule("whenever ${Normalizer.SELF} becomes blocked", SdkTriggers.self.becomesBlocked()),
         // "Whenever this creature becomes tapped, …" — Fallowsage, Veteran of the Depths, Chrome
