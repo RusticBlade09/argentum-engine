@@ -237,4 +237,39 @@ class TokensTest : StringSpec({
         Grammar.abilityLine.parseLine("Target player draws a card. Its controller creates a Food token.")
             .shouldBeInstanceOf<ParseOutcome.Declined>()
     }
+
+
+    "plain token copies retain their source and targeting" {
+        fragment("Create a token that's a copy of ~.")
+            .script.spellEffect shouldBe Effects.CreateTokenCopyOfSelf()
+
+        val targeted = fragment(
+            "Create a token that's a copy of target creature you control."
+        ).script
+
+        targeted.spellEffect shouldBe Effects.CreateTokenCopyOfTarget(
+            target = Targets.bound(),
+        )
+
+        roundTrips("Create a token that's a copy of ~.")
+        roundTrips("Create a token that's a copy of target artifact.")
+        roundTrips("Create a token that's a copy of target creature you control.")
+        roundTrips("Create a token that's a copy of target permanent you control.")
+    }
+
+    "token-copy exceptions preserve their meaning" {
+        roundTrips(
+            "Create a token that's a copy of target creature you control, " +
+                "except it isn't legendary."
+        )
+
+        roundTrips(
+            "Create a token that's a copy of target creature, except it's 1/1."
+        )
+
+        roundTrips(
+            "Create a token that's a copy of target artifact, except it's 4/4."
+        )
+    }
+
 })

@@ -1,5 +1,5 @@
 package com.wingedsheep.assay.grammar
-
+import com.wingedsheep.assay.normalize.Normalizer
 import com.wingedsheep.assay.syntax.Bindings
 import com.wingedsheep.assay.syntax.Phrase
 import com.wingedsheep.assay.syntax.alternate
@@ -11,9 +11,12 @@ import com.wingedsheep.assay.syntax.separated
 import com.wingedsheep.sdk.core.Color
 import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.core.Subtype
+import com.wingedsheep.sdk.core.Supertype
 import com.wingedsheep.sdk.dsl.Effects
 import com.wingedsheep.sdk.model.CardScript
+import com.wingedsheep.sdk.scripting.GameObjectFilter
 import com.wingedsheep.sdk.scripting.effects.CreatePredefinedTokenEffect
+import com.wingedsheep.sdk.scripting.effects.CreateTokenCopyOfTargetEffect
 import com.wingedsheep.sdk.scripting.effects.CreateTokenEffect
 import com.wingedsheep.sdk.scripting.effects.Effect
 import com.wingedsheep.sdk.scripting.references.Player
@@ -521,6 +524,135 @@ object Tokens {
             }
         }
 
+    /**
+     * Token copies of an existing permanent, rather than tokens with a newly
+     * specified body.
+     */
+    private val copyOfSelf: Phrase<CardScript> = constant(
+        "create a token that's a copy of ${Normalizer.SELF}",
+        CardScript(spellEffect = Effects.CreateTokenCopyOfSelf()),
+    )
+
+    private val copyOfTarget: Phrase<CardScript> =
+        phrase(
+            "create a token that's a copy of target {filter}",
+            name = "create a token copy of a target permanent",
+        ) {
+            slot("filter", Filters.filter)
+
+            fun scriptFor(filter: GameObjectFilter) = CardScript(
+                spellEffect = Effects.CreateTokenCopyOfTarget(
+                    target = Targets.bound(),
+                ),
+                targetRequirements = listOf(Targets.permanent(filter)),
+            )
+
+            build { bindings ->
+                scriptFor(bindings.value("filter"))
+            }
+
+            match { script ->
+                val requirement = script.targetRequirements.singleOrNull()
+                    ?: return@match null
+                val filter = Targets.permanentFilter(requirement)
+                    ?: return@match null
+
+                if (script != scriptFor(filter)) return@match null
+
+                bind("filter" to filter)
+            }
+        }
+    /**
+     * "Create a token that's a copy of target creature you control,
+     * except it isn't legendary."
+     *
+     * Removing legendary is a change to copiable characteristics, not an
+     * effect applied after token creation.
+     */
+    private val copyOfTargetNonlegendary: Phrase<CardScript> =
+        phrase(
+            "create a token that's a copy of target {filter}, except it isn't legendary",
+            name = "create a nonlegendary token copy of a target",
+        ) {
+            slot("filter", Filters.filter)
+
+            fun scriptFor(filter: GameObjectFilter) = CardScript(
+                spellEffect = Effects.CreateTokenCopyOfTarget(
+                    target = Targets.bound(),
+                    removedSupertypes = setOf(Supertype.LEGENDARY),
+                ),
+                targetRequirements = listOf(Targets.permanent(filter)),
+            )
+
+            build { scriptFor(it.value("filter")) }
+
+            match { script ->
+                val requirement = script.targetRequirements.singleOrNull()
+                    ?: return@match null
+                val filter = Targets.permanentFilter(requirement)
+                    ?: return@match null
+
+                if (script != scriptFor(filter)) return@match null
+                bind("filter" to filter)
+            }
+        }
+
+    /**
+     * "Create a token that's a copy of target creature, except it's 1/1."
+     *
+     * Power and toughness are stored as overrides on the token-copy effect.
+     * Both numbers must be present to reconstruct this printed sentence.
+     */
+    private val copyOfTargetWithStats: Phrase<CardScript> =
+        phrase(
+            "create a token that's a copy of target {filter}, except it's {p}/{t}",
+            name = "create a token copy with overridden power and toughness",
+        ) {
+            slot("filter", Filters.filter)
+            slot("p", Primitives.cardinal)
+            slot("t", Primitives.cardinal)
+
+            fun scriptFor(
+                filter: GameObjectFilter,
+                power: Int,
+                toughness: Int,
+            ) = CardScript(
+                spellEffect = Effects.CreateTokenCopyOfTarget(
+                    target = Targets.bound(),
+                    overridePower = power,
+                    overrideToughness = toughness,
+                ),
+                targetRequirements = listOf(Targets.permanent(filter)),
+            )
+
+            build { bindings ->
+                scriptFor(
+                    bindings.value("filter"),
+                    bindings.int("p"),
+                    bindings.int("t"),
+                )
+            }
+
+            match { script ->
+                val effect = script.spellEffect as? CreateTokenCopyOfTargetEffect
+                    ?: return@match null
+                val requirement = script.targetRequirements.singleOrNull()
+                    ?: return@match null
+                val filter = Targets.permanentFilter(requirement)
+                    ?: return@match null
+
+                val power = effect.overridePower ?: return@match null
+                val toughness = effect.overrideToughness ?: return@match null
+
+                if (script != scriptFor(filter, power, toughness)) return@match null
+
+                bind(
+                    "filter" to filter,
+                    "p" to power,
+                    "t" to toughness,
+                )
+            }
+        }
     /** One token clause, for the sentences that wrap it — see [Granted]. */
     val clause: Phrase<CardScript> get() = oneOf("a token clause", clauses)
 
@@ -566,7 +698,8 @@ object Tokens {
             PREDEFINED.flatMap { token ->
                 counts.dropLast(1).map { createPredefined(it, token) }
             } +
-            investigate
+            investigate +
+            listOf(copyOfSelf, copyOfTarget, copyOfTargetNonlegendary, copyOfTargetWithStats,)
 
     /**
      * "Its controller creates a 3/3 green Ape creature token." / "Its controller creates two Treasure
