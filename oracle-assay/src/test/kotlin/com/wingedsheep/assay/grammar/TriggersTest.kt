@@ -56,7 +56,7 @@ class TriggersTest : StringSpec({
             "Whenever ~ deals combat damage to a player, draw a card.",
         ).forEach { roundTrips(it) }
     }
-    
+
     "you attack prefixes preserve their distinct SDK trigger semantics" {
         val attack = "Whenever you attack, draw a card."
         val attackPlayer = "Whenever you attack a player, draw a card."

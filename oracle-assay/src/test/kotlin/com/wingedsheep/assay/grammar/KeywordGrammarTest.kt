@@ -89,20 +89,20 @@ class KeywordGrammarTest : StringSpec({
     "numeric reminder text handles singular and plural" {
         fun gloss(keyword: Keyword, n: Int) =
             Reminders.gloss(KeywordAbility.Numeric(keyword, n))
-    
+
         gloss(Keyword.ANNIHILATOR, 1) shouldBe
             "Whenever this creature attacks, defending player sacrifices a permanent of their choice."
-    
+
         gloss(Keyword.ANNIHILATOR, 2) shouldBe
             "Whenever this creature attacks, defending player sacrifices two permanents of their choice."
-    
+
         gloss(Keyword.MODULAR, 1) shouldBe
             "This creature enters with a +1/+1 counter on it. When it dies, you may put its +1/+1 counters on target artifact creature."
-    
+
         gloss(Keyword.MODULAR, 2) shouldBe
             "This creature enters with two +1/+1 counters on it. When it dies, you may put its +1/+1 counters on target artifact creature."
     }
-    
+
     "protection reads every quality it can express" {
         parse("Protection from black") shouldContainExactly
             listOf(KeywordAbility.Protection(ProtectionScope.Color(Color.BLACK)))

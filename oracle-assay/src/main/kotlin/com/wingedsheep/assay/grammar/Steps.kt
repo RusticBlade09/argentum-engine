@@ -3630,7 +3630,7 @@ object Steps {
             ): Phrase<CardScript> =
                 phrase("{inner} $surface", name = "$surface$tag") {
                     slot("inner", atom)
-    
+
                     fun scriptFor(inner: CardScript): CardScript? =
                         wrap(inner) { effect ->
                             CreateDelayedTriggerEffect(
@@ -3639,22 +3639,22 @@ object Steps {
                                 timing = timing,
                             )
                         }
-    
+
                     build { bindings ->
                         scriptFor(bindings.value("inner"))
                     }
-    
+
                     match { script ->
                         val delayed = script.spellEffect as? CreateDelayedTriggerEffect
                             ?: return@match null
-    
+
                         val inner = CardScript(
                             spellEffect = delayed.effect,
                             targetRequirements = script.targetRequirements,
                         )
-    
+
                         if (scriptFor(inner) != script) return@match null
-    
+
                         bind("inner" to inner)
                     }
                 }
@@ -3693,7 +3693,7 @@ object Steps {
                     ),
                 ),
             )
-    
+
 
         /**
          * "You may pay {B}{B}{B}. If you do, return it to your hand." — Ghastly Remains, Skirk

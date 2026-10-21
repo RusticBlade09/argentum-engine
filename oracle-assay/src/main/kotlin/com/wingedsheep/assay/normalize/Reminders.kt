@@ -112,7 +112,7 @@ object Reminders {
 
 
     private fun suspendGloss(ability: KeywordAbility.Suspend, self: String): String {
-        val base = 
+        val base =
             "Rather than cast this card from your hand, you may pay ${ability.cost} and exile it with " +
                 "${counted(ability.timeCounters, "time counter")} on it. At the beginning of your upkeep, remove a time " +
                 "counter. When the last is removed, you may cast it without paying its mana cost."

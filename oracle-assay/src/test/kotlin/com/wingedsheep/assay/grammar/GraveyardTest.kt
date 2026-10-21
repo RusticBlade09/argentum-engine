@@ -84,4 +84,3 @@ class GraveyardTest : StringSpec({
         target.filter.baseFilter shouldBe GameObjectFilter.Creature.ownedByYou()
     }
 })
-
