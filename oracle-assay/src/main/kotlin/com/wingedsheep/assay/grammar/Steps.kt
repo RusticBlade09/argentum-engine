@@ -3609,91 +3609,69 @@ object Steps {
         }
 
         /**
-         * A delayed effect: the inner clause describes what happens,
-         * and the suffix determines when its delayed trigger fires.
+         * "…sacrifice it **at end of combat**." — Dorothea and Mardu Blazebringer; "…destroy that
+         * creature at end of combat." — the old deathtouch templating; "…remove a +1/+1 counter
+         * from it at end of combat." — Fire Ants and the fading attackers. "…at the beginning of
+         * the next end step." and "…at the beginning of the next turn's upkeep." are the same rider
+         * over a different step.
          *
-         * Each surface has its own SDK timing semantics:
+         * A wrapper for [mayClause]'s reason: the clause says *what* happens and the rider says
+         * *when*, so writing it into each verb's template would be one rule per verb for a phrase
+         * that composes with all of them. `CreateDelayedTriggerEffect` is the SDK's own shape for
+         * that split — a step and the effect it defers — and CR 603.7a is the rule it spells: the
+         * delayed trigger is created on resolution and fires once, at the step the surface names.
+         * Each surface is a row rather than a slot over `Step`, because the surfaces are not one
+         * phrase with a word in it: the upkeep row also carries `NEXT_TURN` timing, which no other
+         * row does.
          *
-         * - "at end of combat": next end-of-combat step
-         * - "at the beginning of the next end step": next end step,
-         *   potentially during the current turn
-         * - "at the beginning of the next turn's upkeep": upkeep
-         *   of the next turn, never the current turn
-         *
-         * The inverse reconstructs the entire script so that no
-         * delayed-trigger fields are silently dropped.
+         * [inner] is the clause vocabulary of the position the rider sits in. First in a line it is
+         * [atom], where "it" is the source; later in a line it is [laterAtom] plus the source's
+         * *name*, with no source pronoun, for [laterClause]'s reason — after "Create a 1/1 red Pirate
+         * creature token…" the "it" of "Exile it at the beginning of the next end step" is the
+         * token, and after "Target creature you control gains flying…" (Krovikan Elementalist) it is
+         * that creature. Reading either as the source exiled or sacrificed the card itself. The token
+         * cleanups are [Tokens]' own rows instead.
          */
         private fun delayedAt(
-                surface: String,
-                step: Step,
-                timing: DelayedTriggerTiming = DelayedTriggerTiming.CURRENT_TURN_OR_LATER,
-            ): Phrase<CardScript> =
-                phrase("{inner} $surface", name = "$surface$tag") {
-                    slot("inner", atom)
+            inner: Phrase<CardScript>,
+            position: String,
+            surface: String,
+            step: Step,
+            timing: DelayedTriggerTiming = DelayedTriggerTiming.CURRENT_TURN_OR_LATER,
+        ): Phrase<CardScript> = phrase("{inner} $surface", name = "$surface$position$tag") {
+            slot("inner", inner)
+            fun scriptFor(inner: CardScript): CardScript? =
+                wrap(inner) { CreateDelayedTriggerEffect(step = step, effect = it, timing = timing) }
+            build { bindings -> scriptFor(bindings.value("inner")) }
+            match { script ->
+                val delayed = script.spellEffect as? CreateDelayedTriggerEffect ?: return@match null
+                val inner = CardScript(spellEffect = delayed.effect, targetRequirements = script.targetRequirements)
+                if (scriptFor(inner) != script) return@match null
+                bind("inner" to inner)
+            }
+        }
 
-                    fun scriptFor(inner: CardScript): CardScript? =
-                        wrap(inner) { effect ->
-                            CreateDelayedTriggerEffect(
-                                step = step,
-                                effect = effect,
-                                timing = timing,
-                            )
-                        }
-
-                    build { bindings ->
-                        scriptFor(bindings.value("inner"))
-                    }
-
-                    match { script ->
-                        val delayed = script.spellEffect as? CreateDelayedTriggerEffect
-                            ?: return@match null
-
-                        val inner = CardScript(
-                            spellEffect = delayed.effect,
-                            targetRequirements = script.targetRequirements,
-                        )
-
-                        if (scriptFor(inner) != script) return@match null
-
-                        bind("inner" to inner)
-                    }
-                }
-            /**
-             * "…sacrifice it **at end of combat**." — Dorothea and Mardu Blazebringer; "…destroy that
-             * creature at end of combat." — the old deathtouch templating; "…remove a +1/+1 counter
-             * from it at end of combat." — Fire Ants and the fading attackers.
-             *
-             * A wrapper for [mayClause]'s reason: the clause says *what* happens and the rider says
-             * *when*, so writing it into each verb's template would be one rule per verb for a phrase
-             * that composes with all of them. `CreateDelayedTriggerEffect` is the SDK's own shape for
-             * that split — a step and the effect it defers — and CR 603.7a is the rule it spells: the
-             * delayed trigger is created on resolution and fires once, at the next end-of-combat step.
-             *
-             * Only end of combat, and that is the corpus rather than a limit of the shape. Oracle's
-             * other deferrals name a *step of a turn* ("at the beginning of the next end step"), which
-             * is the same SDK field with a different `Step` and a different printed clause; each is a
-             * row of this rule the day someone counts it. What this rider must not become is a slot
-             * over `Step`, because the surfaces are not one phrase with a word in it.
-             */
-            private val delayedClause: Phrase<CardScript> = oneOf(
-                "a delayed effect$tag",
-                listOf(
-                    delayedAt(
-                        surface = "at end of combat",
-                        step = Step.END_COMBAT,
-                    ),
-                    delayedAt(
-                        surface = "at the beginning of the next end step",
-                        step = Step.END,
-                    ),
-                    delayedAt(
-                        surface = "at the beginning of the next turn's upkeep",
-                        step = Step.UPKEEP,
-                        timing = DelayedTriggerTiming.NEXT_TURN,
-                    ),
+        private fun delayedClause(inner: Phrase<CardScript>, position: String): Phrase<CardScript> = oneOf(
+            "a delayed effect$position$tag",
+            listOf(
+                delayedAt(inner, position, "at end of combat", Step.END_COMBAT),
+                delayedAt(inner, position, "at the beginning of the next end step", Step.END),
+                delayedAt(
+                    inner,
+                    position,
+                    "at the beginning of the next turn's upkeep",
+                    Step.UPKEEP,
+                    timing = DelayedTriggerTiming.NEXT_TURN,
                 ),
-            )
+            ),
+        )
 
+        private val delayedClause: Phrase<CardScript> = delayedClause(atom, "")
+
+        private val laterDelayedClause: Phrase<CardScript> = delayedClause(
+            oneOf("a later delayed effect$tag", listOf(laterAtom, SelfSteps.sacrificeNamed) + SelfSteps.named),
+            ", later",
+        )
 
         /**
          * "You may pay {B}{B}{B}. If you do, return it to your hand." — Ghastly Remains, Skirk
@@ -3857,7 +3835,7 @@ object Steps {
             // card in any sentence and no earlier mention can capture it — so [SelfSteps.named] is
             // a member here, which is what lets "Draw a card. Put a +1/+1 counter on ~." and
             // "{T}: Add {C}. Put a point counter on ~." read at all.
-            nonAnaphoric + mayClause + delayedClause + positionScoped +
+            nonAnaphoric + mayClause + laterDelayedClause + positionScoped +
                 Continuations.all + targetLifeByProperty + targetControllerLosesLife + SelfSteps.named,
         )
 

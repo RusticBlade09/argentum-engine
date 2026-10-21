@@ -109,8 +109,6 @@ object Reminders {
         else -> "this permanent"
     }
 
-
-
     private fun suspendGloss(ability: KeywordAbility.Suspend, self: String): String {
         val base =
             "Rather than cast this card from your hand, you may pay ${ability.cost} and exile it with " +
@@ -119,6 +117,7 @@ object Reminders {
 
         return if (self == "this creature") "$base It has haste." else base
     }
+
     private fun wardGloss(ability: KeywordAbility.Ward, self: String): String? {
         val cost = ability.cost
         val payment = when (cost) {

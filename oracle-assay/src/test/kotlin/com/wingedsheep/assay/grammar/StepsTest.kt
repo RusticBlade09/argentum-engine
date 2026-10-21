@@ -752,6 +752,16 @@ class StepsTest : StringSpec({
         }
     }
 
+    // Later in a line "it" is whatever the earlier clause made, so a delayed rider there has no
+    // source pronoun to read. First in a line, "it" is still the source.
+    "a delayed rider after another clause doesn't read it as the source" {
+        Grammar.abilityLine.parseLine(
+            "Create a 1/1 red Goblin creature token. Exile it at the beginning of the next turn's upkeep."
+        ).shouldBeInstanceOf<ParseOutcome.Declined>()
+        fragment("Exile ~ at the beginning of the next end step.").script.spellEffect
+            .shouldBeInstanceOf<CreateDelayedTriggerEffect>()
+    }
+
     // "If you do" gates the second clause on the first having happened, not on the choice: an empty
     // hand still "may discard", and must not draw. So it is `May(IfYouDo(…))`, never `May(A then B)`.
     "you may do an action, and if you do, the consequence follows" {

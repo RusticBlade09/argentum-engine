@@ -590,7 +590,6 @@ object Prevention {
         return toRecipient + fromRecipient + bothWays + layered
     }
 
-
     /**
      * One-shot damage prevention.
      *

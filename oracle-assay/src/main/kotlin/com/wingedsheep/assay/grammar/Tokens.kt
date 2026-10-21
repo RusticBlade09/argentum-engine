@@ -1,4 +1,5 @@
 package com.wingedsheep.assay.grammar
+
 import com.wingedsheep.assay.normalize.Normalizer
 import com.wingedsheep.assay.syntax.Bindings
 import com.wingedsheep.assay.syntax.Phrase
@@ -10,6 +11,7 @@ import com.wingedsheep.assay.syntax.phrase
 import com.wingedsheep.assay.syntax.separated
 import com.wingedsheep.sdk.core.Color
 import com.wingedsheep.sdk.core.Keyword
+import com.wingedsheep.sdk.core.Step
 import com.wingedsheep.sdk.core.Subtype
 import com.wingedsheep.sdk.core.Supertype
 import com.wingedsheep.sdk.dsl.Effects
@@ -562,6 +564,7 @@ object Tokens {
                 bind("filter" to filter)
             }
         }
+
     /**
      * "Create a token that's a copy of target creature you control,
      * except it isn't legendary."
@@ -653,10 +656,12 @@ object Tokens {
                 )
             }
         }
-    /** One token clause, for the sentences that wrap it — see [Granted]. */
-    val clause: Phrase<CardScript> get() = oneOf("a token clause", clauses)
 
-    val clauses: List<Phrase<CardScript>> =
+    /** One token clause, for the sentences that wrap it — see [Granted]. */
+    val clause: Phrase<CardScript> get() = oneOf("a token clause", bodies)
+
+    /** The clauses that create tokens, before any cleanup sentence — what [endStepCleanup] wraps. */
+    private val bodies: List<Phrase<CardScript>> =
         counts.flatMap { count ->
             listOf(false, true).flatMap { tapped ->
                 listOf(
@@ -699,7 +704,66 @@ object Tokens {
                 counts.dropLast(1).map { createPredefined(it, token) }
             } +
             investigate +
-            listOf(copyOfSelf, copyOfTarget, copyOfTargetNonlegendary, copyOfTargetWithStats,)
+            listOf(copyOfSelf, copyOfTarget, copyOfTargetNonlegendary, copyOfTargetWithStats)
+
+    /**
+     * "Create a 1/1 red Pirate creature token with menace and haste. **Exile it at the beginning of
+     * the next end step.**" — Daring Piracy; "Create a token that's a copy of target creature you
+     * control. **Sacrifice it at the beginning of the next end step.**" — The Fire Crystal.
+     *
+     * Two printed sentences and one rule, for Skirk Alarmist's reason (see [Morph]): the "it" of the
+     * second sentence is the token the first one made, and no clause standing after it can name
+     * that token — read on its own, "it" is the source, which would exile Daring Piracy itself. The
+     * SDK spells the cleanup as a field of the token effect (`exileAtStep` / `sacrificeAtStep`), so
+     * the rule reads the second sentence into that field. Single tokens only: "it" is one object,
+     * and the counted rows would print "create two … tokens. exile it".
+     */
+    private enum class Cleanup(val verb: String) { EXILE("exile"), SACRIFICE("sacrifice") }
+
+    private fun cleanupStep(effect: Effect, cleanup: Cleanup): Step? = when (effect) {
+        is CreateTokenEffect -> if (cleanup == Cleanup.EXILE) effect.exileAtStep else effect.sacrificeAtStep
+        is CreateTokenCopyOfTargetEffect -> if (cleanup == Cleanup.EXILE) effect.exileAtStep else effect.sacrificeAtStep
+        else -> null
+    }
+
+    private fun withCleanup(effect: Effect, cleanup: Cleanup, step: Step?): Effect? = when (effect) {
+        is CreateTokenEffect -> when {
+            effect.count != DynamicAmount.Fixed(1) -> null
+            cleanup == Cleanup.EXILE -> effect.copy(exileAtStep = step)
+            else -> effect.copy(sacrificeAtStep = step)
+        }
+        is CreateTokenCopyOfTargetEffect -> when {
+            effect.count != DynamicAmount.Fixed(1) -> null
+            cleanup == Cleanup.EXILE -> effect.copy(exileAtStep = step)
+            else -> effect.copy(sacrificeAtStep = step)
+        }
+        else -> null
+    }
+
+    private fun endStepCleanup(cleanup: Cleanup): Phrase<CardScript> = phrase(
+        "{token}. ${cleanup.verb} it at the beginning of the next end step",
+        name = "create a token and ${cleanup.verb} it at the next end step",
+    ) {
+        slot("token", oneOf("a token clause to clean up", bodies))
+        fun scriptFor(inner: CardScript): CardScript? {
+            val effect = inner.spellEffect ?: return null
+            if (inner != CardScript(spellEffect = effect, targetRequirements = inner.targetRequirements)) return null
+            if (Cleanup.entries.any { cleanupStep(effect, it) != null }) return null
+            val cleaned = withCleanup(effect, cleanup, Step.END) ?: return null
+            return CardScript(spellEffect = cleaned, targetRequirements = inner.targetRequirements)
+        }
+        build { scriptFor(it.value("token")) }
+        match { script ->
+            val effect = script.spellEffect ?: return@match null
+            if (cleanupStep(effect, cleanup) != Step.END) return@match null
+            val bare = withCleanup(effect, cleanup, null) ?: return@match null
+            val inner = CardScript(spellEffect = bare, targetRequirements = script.targetRequirements)
+            if (scriptFor(inner) != script) return@match null
+            bind("token" to inner)
+        }
+    }
+
+    val clauses: List<Phrase<CardScript>> = bodies + Cleanup.entries.map(::endStepCleanup)
 
     /**
      * "Its controller creates a 3/3 green Ape creature token." / "Its controller creates two Treasure

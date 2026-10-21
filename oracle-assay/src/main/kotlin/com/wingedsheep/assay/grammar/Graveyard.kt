@@ -494,23 +494,19 @@ object Graveyard {
             "put target {filter} from your graveyard on top of your library",
             "put a graveyard card on top of your library",
         ) { Effects.PutOnTopOfLibrary(it) },
-
         graveyardStep(
             "put target {filter} from your graveyard on the bottom of your library",
             "put a graveyard card on the bottom of your library",
         ) { Effects.PutOnBottomOfLibrary(it) },
-
         graveyardStep(
             "return up to one target {filter} from your graveyard to your hand",
             "return up to one card from your graveyard to your hand",
             optional = true,
         ) { Effects.Move(it, Zone.HAND) },
-
         graveyardStep(
             "return up to one target {filter} from your graveyard to the battlefield",
             "return up to one card from your graveyard to the battlefield",
             optional = true,
         ) { Effects.PutOntoBattlefieldFromGraveyard(it) },
-
-            )
-        }
+    )
+}

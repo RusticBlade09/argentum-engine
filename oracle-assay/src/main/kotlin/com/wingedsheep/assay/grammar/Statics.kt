@@ -471,24 +471,16 @@ object Statics {
 
 
     /**
-     * Combat requirements; what a creature must do, rather than what it cannot do.
+     * Combat requirements — what a creature must do, where [combatRestrictions] say what it can't.
      *
-     * "~ attacks each combat if able." - Phyrexian Juggernaut, Ashen Monstrosity,
-     * and Bloodrock Cyclops. The enchanted-creature form uses the same SDK ability,
-     * MustAttack, with GroupFilter.attachedCreature() instead of GroupFilter.source().
+     * "~ attacks each combat if able." (Phyrexian Juggernaut, Bloodrock Cyclops) and "Enchanted
+     * creature attacks each combat if able." are `MustAttack` over the source or the attached
+     * creature, and any legal defender satisfies them. "~ attacks a player each combat if able." is
+     * `MustAttackDefender.APlayer`: attacking a planeswalker or battle doesn't satisfy it while a
+     * player can be attacked.
      *
-     * "~ attacks each combat if able." and "Enchanted creature attacks each combat
-     * if able." use MustAttack with different GroupFilters. Both require the
-     * affected creature to attack, but permit any legal defender.
-     *
-     * "~ attacks a player each combat if able." is a distinct requirement:
-     * attacking a planeswalker or battle does not satisfy it while attacking
-     * a player is possible. The SDK represents this distinction through
-     * MustAttackDefender.APlayer.
-     *
-     * Only singular subjects are included here. The shared restriction() helper
-     * uses one verb form for every subject, while battlefield groups require
-     * "attack" instead of "attacks". Those forms need a separate grammar rule.
+     * Singular subjects only: [restriction] prints one verb form for every subject, and a group
+     * subject takes "attack" rather than "attacks", so those need a rule of their own.
      */
     private val combatRequirements: List<Phrase<StaticAbility>> =
         restriction<Unit>(
@@ -518,7 +510,6 @@ object Statics {
             },
             subjects = listOf(Subject.SOURCE, Subject.ATTACHED),
         )
-
 
     /**
      * "~ can't be blocked as long as it's attacking alone." — Gutter Skulker and five others;

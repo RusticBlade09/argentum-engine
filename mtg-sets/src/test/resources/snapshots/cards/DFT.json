@@ -14991,7 +14991,7 @@
                 "powerBonus": 2,
                 "toughnessBonus": 2,
                 "filter": {
-                    "baseFilter": "creature|artifact ctrl:you",
+                    "baseFilter": "artifact creature ctrl:you",
                     "excludeSelf": true
                 }
             }
