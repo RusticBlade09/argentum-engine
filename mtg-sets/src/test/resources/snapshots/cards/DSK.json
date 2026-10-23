@@ -19236,9 +19236,16 @@
                     "Graveyard"
                 ],
                 "condition": {
-                    "type": "CreatureWithSubtypeDiedThisTurn",
-                    "subtype": "Zombie",
-                    "present": false
+                    "type": "CreatureDiedThisTurnMatching",
+                    "filter": {
+                        "cardPredicates": [
+                            "IsCreature",
+                            {
+                                "type": "NotSubtype",
+                                "subtype": "Zombie"
+                            }
+                        ]
+                    }
                 }
             }
         ],

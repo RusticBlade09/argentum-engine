@@ -14266,8 +14266,8 @@
                     "tokenType": "Food"
                 },
                 "interveningIf": {
-                    "type": "CreatureWithSubtypeDiedThisTurn",
-                    "subtype": "Human",
+                    "type": "CreatureDiedThisTurnMatching",
+                    "filter": "creature Human",
                     "player": "You"
                 }
             }

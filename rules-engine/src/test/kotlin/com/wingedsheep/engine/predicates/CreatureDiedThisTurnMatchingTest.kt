@@ -11,12 +11,18 @@ import com.wingedsheep.sdk.dsl.Conditions
 import com.wingedsheep.sdk.model.Deck
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.conditions.Condition
+import com.wingedsheep.sdk.scripting.conditions.CreatureDiedThisTurnMatching
+import com.wingedsheep.sdk.scripting.GameObjectFilter
+import com.wingedsheep.engine.support.creatureDeath
+import com.wingedsheep.engine.support.recordCreatureDeaths
+import io.kotest.matchers.string.shouldContain
 import com.wingedsheep.sdk.scripting.references.Player
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 
 /**
- * `CreatureWithSubtypeDiedThisTurn` with its `player` scope — "a non-Skeleton creature died under
+ * `CreatureDiedThisTurnMatching` — its subtype test, its `notNamed` test (Ebondeath, Dracolich) and its
+ * `player` scope — "a non-Skeleton creature died under
  * your control this turn" (Cult Conscript) versus the global "a non-Zombie creature died this turn"
  * (Undead Sprinter).
  *
@@ -24,7 +30,7 @@ import io.kotest.matchers.shouldBe
  * scoped form needs one death that is both under that player's control and passes the subtype
  * test — two different deaths can't satisfy it between them.
  */
-class CreatureWithSubtypeDiedThisTurnTest : FunSpec({
+class CreatureDiedThisTurnMatchingTest : FunSpec({
 
     fun driver() = GameTestDriver().apply {
         registerCards(TestCards.all)
@@ -80,5 +86,52 @@ class CreatureWithSubtypeDiedThisTurnTest : FunSpec({
         d.holds(goblinMine) shouldBe true
         d.holds(nonGoblinAnywhere) shouldBe true
         d.holds(goblinTheirs) shouldBe false
+    }
+
+    val notLions = Conditions.CreatureNotNamedDiedThisTurn("Savannah Lions")
+    val notLionsMine = Conditions.CreatureNotNamedDiedThisTurn("Savannah Lions", player = Player.You)
+
+    test("not-named form — false with no deaths and when only that name died") {
+        val d = driver()
+        d.holds(notLions) shouldBe false
+        d.kill(d.putPermanentOnBattlefield(d.player1, "Savannah Lions"))
+        d.kill(d.putPermanentOnBattlefield(d.player2, "Savannah Lions"))
+        d.holds(notLions) shouldBe false
+    }
+
+    test("not-named form — any differently named death satisfies it, under any controller") {
+        val d = driver()
+        d.kill(d.putPermanentOnBattlefield(d.player1, "Savannah Lions"))
+        d.kill(d.putPermanentOnBattlefield(d.player2, "Goblin Guide"))
+        d.holds(notLions) shouldBe true
+        d.holds(notLionsMine) shouldBe false
+        d.holds(Conditions.CreatureNotNamedDiedThisTurn("Goblin Guide", player = Player.You)) shouldBe true
+    }
+
+    test("subtype and name tests combine on a single death") {
+        val d = driver()
+        d.kill(d.putPermanentOnBattlefield(d.player1, "Goblin Guide"))
+        d.kill(d.putPermanentOnBattlefield(d.player1, "Savannah Lions"))
+        val goblin = GameObjectFilter.Creature.withSubtype(Subtype.GOBLIN)
+        d.holds(CreatureDiedThisTurnMatching(goblin.notNamed("Goblin Guide"))) shouldBe false
+        d.holds(CreatureDiedThisTurnMatching(goblin.named("Goblin Guide"))) shouldBe true
+        d.holds(CreatureDiedThisTurnMatching(GameObjectFilter.Creature.notSubtype(Subtype.GOBLIN).notNamed("Goblin Guide"))) shouldBe true
+    }
+
+    test("a face-down creature dies nameless and with no subtypes (CR 708.2a)") {
+        val d = driver()
+        d.recordCreatureDeaths(
+            d.player1,
+            creatureDeath(name = "Savannah Lions").copy(name = null, wasFaceDown = true, subtypes = emptySet())
+        )
+        d.holds(notLions) shouldBe true
+        d.holds(CreatureDiedThisTurnMatching(GameObjectFilter.Creature.named("Savannah Lions"))) shouldBe false
+        d.holds(nonGoblinMine) shouldBe true
+    }
+
+    test("description names the filter and the scope") {
+        nonGoblinMine.description shouldContain "non-Goblin"
+        nonGoblinMine.description shouldContain "died under your control this turn"
+        notLions.description shouldContain "Savannah Lions"
     }
 })

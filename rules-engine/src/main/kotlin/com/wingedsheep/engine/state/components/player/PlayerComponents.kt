@@ -1490,22 +1490,24 @@ data class PermanentsPutIntoGraveyardFromBattlefieldThisTurnComponent(
 ) : Component
 
 /**
- * Records the last-known subtypes of each creature that died under this player's control during
- * the current turn — one [diedSubtypeSets] entry per death, in death order. Subtypes are stored
- * as their raw strings (e.g. "Zombie"), captured from the dying creature's projected type line at
- * the moment it left the battlefield (CR 603.10 / last-known information), so a creature that loses
- * its types after death is still recorded with the subtypes it had as it died.
+ * Records each creature that died under this player's control during the current turn — one
+ * [deaths] entry per death, in death order: a lean [EntitySnapshot] of the creature as it last
+ * existed on the battlefield (CR 603.10 / last-known information) — its projected name, type line,
+ * subtypes, colors, P/T, keywords, counters and token / face-down status — so a creature that loses
+ * its types after death is still recorded as it was when it died. A face-down creature is recorded
+ * with no name (CR 708.2a).
  *
  * Cleared at end of turn by CleanupPhaseManager alongside [CreaturesDiedThisTurnComponent].
  *
- * Backs the subtype-filtered death conditions
- * ([com.wingedsheep.sdk.scripting.conditions.CreatureWithSubtypeDiedThisTurn]): "a Goblin died this
- * turn" / "a non-Zombie creature died this turn" (Undead Sprinter, DSK). Summed across all players
- * this gives the game-wide record, since the condition is global.
+ * Backs the filtered death condition
+ * ([com.wingedsheep.sdk.scripting.conditions.CreatureDiedThisTurnMatching], matched through
+ * `PredicateEvaluator.matchesSnapshot`): "a Goblin died this turn", "a non-Zombie creature died this
+ * turn" (Undead Sprinter, DSK), "a creature not named Ebondeath, Dracolich died this turn" (AFR).
+ * Summed across all players this gives the game-wide record, since that condition is global by default.
  */
 @Serializable
-data class CreatureSubtypesDiedThisTurnComponent(
-    val diedSubtypeSets: List<Set<String>> = emptyList()
+data class CreatureDeathsThisTurnComponent(
+    val deaths: List<com.wingedsheep.engine.state.components.stack.EntitySnapshot> = emptyList()
 ) : Component
 
 /**

@@ -15338,20 +15338,30 @@ default to "you" so card authors don't need to pass it explicitly.
   Used by Barrensteppe Siege (Mardu). Dual-mode.
 - `SubtypeCreatureDiedThisTurn(subtype, player = Player.Each)` /
   `NonSubtypeCreatureDiedThisTurn(subtype, player = Player.Each)` — subtype-filtered death gates,
-  **global** by default. Backed by `CreatureSubtypesDiedThisTurnComponent`, which records one
-  entry per death holding the dying creature's **last-known subtypes** (captured from projected state
-  at the moment it left the battlefield, CR 603.10), so a creature whose types change after death is
-  still recorded by the subtypes it had as it died. `SubtypeCreatureDiedThisTurn(Subtype.GOBLIN)` is
+  **global** by default. Backed by `CreatureDeathsThisTurnComponent`, which records one
+  last-known snapshot per death (the dying creature's projected name, type line, subtypes, colors,
+  P/T, keywords and token status, captured as it left the battlefield, CR 603.10), so a creature whose
+  types change after death is still recorded by the subtypes it had as it died. `SubtypeCreatureDiedThisTurn(Subtype.GOBLIN)` is
   true iff some dead creature *had* Goblin; `NonSubtypeCreatureDiedThisTurn(Subtype.ZOMBIE)` is true
   iff some dead creature *lacked* Zombie (note the asymmetry — a turn in which only Zombies died does
   not satisfy the non-Zombie form; a Zombie + a Human both dying satisfies both forms). Used by Undead
   Sprinter (DSK): "if a non-Zombie creature died this turn". Pass `player = Player.You` for "died
   **under your control**": each death is recorded under its last-known controller, so the scoped form
-  reads only that player's records and one death must satisfy both the subtype test and the scope —
-  don't spell it as `ControlledCreatureDiedThisTurn` AND a global subtype gate, which two different
+  reads only that player's records and one death must satisfy both the filter and the scope —
+  don't spell it as `ControlledCreatureDiedThisTurn` AND a global filtered gate, which two different
   deaths could satisfy between them. Used by Cult Conscript (DMU): "Activate only if a non-Skeleton
-  creature died under your control this turn". Dual-mode. The underlying SDK condition is
-  `CreatureWithSubtypeDiedThisTurn(subtype, present, player)`. Cleared at end of turn by `CleanupPhaseManager`.
+  creature died under your control this turn". Dual-mode. Cleared at end of turn by `CleanupPhaseManager`.
+- `CreatureNotNamedDiedThisTurn(name, player = Player.Each)` — "if a creature not named [name]
+  died this turn", **global** by default. True iff some dead creature's last-known name differs from
+  `name` — projected, so a copy dies under the name it was copying, and a face-down creature dies
+  nameless (CR 708.2a) and so counts. A turn in which only creatures named `name` died does not
+  satisfy it. Ebondeath, Dracolich (AFR): `MayCastSelfFromZones(listOf(Zone.GRAVEYARD), condition =
+  Conditions.CreatureNotNamedDiedThisTurn("Ebondeath, Dracolich"))`.
+- `CreatureDiedThisTurnMatching(filter, player = Player.Each)` — the SDK condition under the three
+  facades above: "if a [filter] creature died this turn", one death matching `filter` through
+  `PredicateEvaluator.matchesSnapshot` against its last-known snapshot. Any filter a snapshot can answer
+  composes (`Creature.withSubtype(...).notNamed(...)`, `.nontoken()`, `.withKeyword(...)`); predicates
+  it can't (a chosen name, a stored collection) never match.
 - `YouHadPermanentLeaveBattlefieldThisTurn` — intervening-if "if a permanent you controlled left
   the battlefield this turn". Per-player, scoped to the source's controller. Counts every permanent
   type (creatures, lands, artifacts, enchantments, planeswalkers) and includes tokens — broader
@@ -16840,7 +16850,7 @@ control this turn" is `CompareAmounts(cardTypeEnteredUnderControlThisTurn(ARTIFA
 `DynamicAmounts.creaturesWithSubtypeDiedThisTurn(subtype, player?)` — "the number of [subtype]s that
 died this turn" (the CHK Zubera cycle: "for each Zubera that died this turn"). Game-wide by default;
 pass a player to count only deaths under that player's control. Reads the same per-death record as the
-`CreatureWithSubtypeDiedThisTurn` condition (`CreatureSubtypesDiedThisTurnComponent`, each entry the
+`CreatureDiedThisTurnMatching` condition (`CreatureDeathsThisTurnComponent`, each entry the
 dying creature's last-known projected subtypes), so a dies trigger's own source is already counted when
 it resolves, and a creature that had the type only through a continuous effect counts.
 
