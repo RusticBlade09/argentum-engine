@@ -210,6 +210,54 @@
     ]
 }
 
+// Klingon Strike Force
+{
+    "name": "Klingon Strike Force",
+    "manaCost": "{3}{R}{R}",
+    "typeLine": "Creature — Klingon Warrior",
+    "oracleText": "Trample (This creature can deal excess combat damage to the player it's attacking.)\nHaste (This creature can attack and {T} as soon as it comes under your control.)\nWhen this creature dies, it deals 2 damage to each opponent.",
+    "creatureStats": {
+        "power": 5,
+        "toughness": 5
+    },
+    "keywords": [
+        "TRAMPLE",
+        "HASTE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Klingon Strike Force:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "from": "Battlefield",
+                    "to": "Graveyard"
+                },
+                "effect": {
+                    "type": "DealDamage",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 2
+                    },
+                    "target": {
+                        "type": "PlayerRef",
+                        "player": "EachOpponent"
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "199",
+        "rarity": "RARE",
+        "artist": "Fahmi Fauzi",
+        "imageUri": "https://cards.scryfall.io/normal/front/b/c/bc121e37-b01c-4cf3-bd41-19a1cb21caa5.jpg?1784036722"
+    },
+    "colorIdentityOverride": [
+        "RED"
+    ]
+}
+
 // Kolinahr Priest
 {
     "name": "Kolinahr Priest",
