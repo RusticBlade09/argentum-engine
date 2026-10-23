@@ -110,6 +110,30 @@
     ]
 }
 
+// Exocomp
+{
+    "name": "Exocomp",
+    "manaCost": "{2}{U}",
+    "typeLine": "Artifact Creature — Construct",
+    "oracleText": "Flying (This creature can't be blocked except by creatures with flying or reach.)",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 1
+    },
+    "keywords": [
+        "FLYING"
+    ],
+    "metadata": {
+        "collectorNumber": "145",
+        "artist": "Pierre Raveneau",
+        "flavorText": "Their ability to replicate new circuits as they learn inadvertently bootstrapped exocomps into sentience in the 2360s.",
+        "imageUri": "https://cards.scryfall.io/normal/front/4/6/46012ec9-9605-44fe-84a9-6aab0738737f.jpg?1785981040"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Gorn Captain
 {
     "name": "Gorn Captain",
