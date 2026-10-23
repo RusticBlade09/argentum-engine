@@ -294,6 +294,25 @@ set-loop CODE="" MODEL="" PRIORITY="":
 commander-loop MODEL="" TOP="":
     scripts/commander-loop "{{MODEL}}" "{{TOP}}"
 
+# Guided setup: check tools, pick a set or paste a decklist, pick Claude Code/Codex + model, and go
+[group: 'ai']
+contribute:
+    scripts/contribute
+
+# Waits out subscription usage limits; stop with `touch .claude/loop-runs/cards-<list>.stop`.
+# --local: test + commit each unit on one local branch (no PRs) so you open a single PR at the end.
+# Implement the missing cards of a card list or decklist: card-loop <list-file> [model] [--local]
+[group: 'ai']
+[no-cd]
+card-loop *ARGS:
+    {{justfile_directory()}}/scripts/card-loop {{ARGS}}
+
+# Which cards of a card list or decklist are implemented and which are missing: card-list-status <list-file>
+[group: 'build']
+[no-cd]
+card-list-status *ARGS:
+    {{justfile_directory()}}/scripts/card-list-status {{ARGS}}
+
 # Rank the cards EDHREC's top Commander decks run that we lack, in deck-completion order
 [group: 'build']
 commander-staples *ARGS:
