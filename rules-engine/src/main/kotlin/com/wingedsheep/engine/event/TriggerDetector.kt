@@ -494,6 +494,11 @@ class TriggerDetector(
         // a doubler's filter, add a copy.
         duplicateSourceTriggers(state, triggers)
 
+        // Duplicate dungeon room abilities for their owner's AdditionalDungeonRoomTriggers statics
+        // (Hama Pashar, Ruin Seeker). Room abilities trigger from the command zone, outside any
+        // permanent filter's reach, so they get their own pass.
+        duplicateDungeonRoomTriggers(state, triggers)
+
         // Detect event-based delayed triggers (e.g. Long River Lurker's
         // "whenever that creature deals combat damage this turn, you may exile it").
         detectEventBasedDelayedTriggers(state, events, triggers)
@@ -4651,6 +4656,46 @@ class TriggerDetector(
             }
         }
         triggers.addAll(duplicates)
+    }
+
+    /**
+     * Duplicate room abilities (CR 309.4c) for [AdditionalDungeonRoomTriggers]: each copy controlled
+     * by a dungeon card's owner adds one more firing of every room ability that dungeon card is the
+     * source of. Copies are additive.
+     */
+    private fun duplicateDungeonRoomTriggers(
+        state: GameState,
+        triggers: MutableList<PendingTrigger>
+    ) {
+        val rooms = triggers.filter(DungeonRoomAbilities::isRoomAbility)
+        if (rooms.isEmpty()) return
+
+        val projected = state.projectedState
+        val doublersByPlayer = mutableMapOf<EntityId, Int>()
+        for (permanentId in state.getBattlefield()) {
+            val container = state.getEntity(permanentId) ?: continue
+            val card = container.get<CardComponent>() ?: continue
+            if (container.has<FaceDownComponent>() || projected.hasLostAllAbilities(permanentId)) continue
+            val controllerId = projected.getController(permanentId) ?: continue
+            val cardDef = cardRegistry.getCard(card.cardDefinitionId) ?: continue
+            val classLevel = container.get<ClassLevelComponent>()?.currentLevel
+            for (ability in cardDef.script.effectiveStaticAbilities(classLevel)) {
+                val applies = when (ability) {
+                    is AdditionalDungeonRoomTriggers -> true
+                    is ConditionalStaticAbility -> ability.ability is AdditionalDungeonRoomTriggers &&
+                        conditionEvaluator.evaluate(
+                            state, ability.condition,
+                            EffectContext(sourceId = permanentId, controllerId = controllerId)
+                        )
+                    else -> false
+                }
+                if (applies) doublersByPlayer.merge(controllerId, 1, Int::plus)
+            }
+        }
+        if (doublersByPlayer.isEmpty()) return
+
+        // A dungeon's owner controls its room abilities (CR 309.4c), so the controller is the owner.
+        for (room in rooms) repeat(doublersByPlayer[room.controllerId] ?: 0) { triggers.add(room) }
     }
 
     private fun isSpellCastOrCopiedPattern(pattern: EventPattern): Boolean = when (pattern) {
