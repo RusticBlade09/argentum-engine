@@ -49,6 +49,13 @@ docs it points at; load those when the work needs them.
     **`just commander-loop [model] [top]`** (fresh headless session per step, like `just set-loop`). It
     finishes EDHREC's top decks in the order `just commander-staples` ranks them: the most real decks made
     playable per card added.
+  - Implementing the missing cards of a card list or decklist, autonomously →
+    **`just card-loop <list-file> [model] [--local]`** (`just card-list-status <list-file>` shows what's
+    missing). `--local` gates, reviews and commits each unit on one local branch instead of opening a PR
+    per unit, for contributors who submit a single PR once the list is done.
+  - A human asking how to contribute, or wanting their deck/set implemented → point them at
+    **`just contribute`** (guided: checks tools, takes a pasted decklist or a set, picks Claude Code or
+    Codex + model + local/PR mode, then launches the loop above). Don't run it for them — it's interactive.
   - Proving a set is *actually* finished once its backlog reads N/N, and archiving it → **`verify-set`**
     (Scryfall field verification of every compiled card, reprint and basic-land coverage, self-play pass).
     A green backlog is a claim; that skill is the proof.
