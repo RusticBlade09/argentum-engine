@@ -61,6 +61,7 @@ import com.wingedsheep.sdk.core.CardType
 import com.wingedsheep.sdk.core.Color
 import com.wingedsheep.engine.state.components.stack.ActivatedAbilityOnStackComponent
 import com.wingedsheep.engine.state.components.stack.EntitySnapshot
+import com.wingedsheep.engine.state.components.stack.chosenSubtype
 import com.wingedsheep.engine.state.components.stack.SpellOnStackComponent
 import com.wingedsheep.engine.state.components.stack.TriggeredAbilityOnStackComponent
 import com.wingedsheep.sdk.core.Keyword
@@ -1234,8 +1235,12 @@ class PredicateEvaluator(
 
             CardPredicate.HasChosenSubtype -> {
                 val sourceId = context?.sourceId ?: return false
-                val chosenType = state.getEntity(sourceId)
-                    ?.chosenSubtype()
+                // Once the source has left (a self-sacrifice cost — Dawn-Blessed Pennant), its
+                // cast-choices bag is stripped; read the choice as it last existed (CR 113.7a).
+                val chosenType = context.lastKnownSourceSnapshot
+                    ?.takeIf { it.entityId == sourceId }
+                    ?.chosenSubtype
+                    ?: state.getEntity(sourceId)?.chosenSubtype()
                     ?: return false
                 val entitySubtypes = effectiveSubtypes(state, projected, entityId, card, projectedValues)
                 entitySubtypes.any { it.equals(chosenType, ignoreCase = true) } ||
