@@ -131,20 +131,8 @@ internal class CastCostTotaller(
             }
         }
 
-        // Airbend: a fixed alternative cost ({2}) is paid *instead of* the printed cost — it
-        // replaces the base. A cost increase (e.g. Soul Partition's tax, or a Thalia-style "costs
-        // {1} more") is not part of the cost it replaces, so it still applies on top: an airbended
-        // card cast under a {1}-tax costs {3}, not {2}.
-        if (!playForFree) {
-            val fixedAltCost = state.getEntity(action.cardId)
-                ?.get<PlayWithFixedAlternativeManaCostComponent>()
-                ?.takeIf { it.controllerId == action.playerId }
-            if (fixedAltCost != null) {
-                effectiveCost = fixedAltCost.fixedCost
-            }
-        }
         // Apply runtime mana tax from exile permissions (e.g., Soul Partition) on top of whichever
-        // base applies (printed cost, the fixed alternative above, or a free cast's {0} — an
+        // base applies (printed cost, a fixed alternative cost from baseCost, or a free cast's {0} — an
         // increase survives "without paying its mana cost", CR 601.2f).
         val runtimeCostIncrease = state.getEntity(action.cardId)
             ?.get<PlayWithCostIncreaseComponent>()
@@ -155,8 +143,7 @@ internal class CastCostTotaller(
 
         // Splice (CR 702.47a): every revealed splice card's cost is an *additional* cost, so it lands
         // on top of whatever is paying for the spell itself — a free cast and an alternative cost both
-        // waive only the mana cost, never the additional costs (CR 601.2f–h). Added after the airbend
-        // branch above, which *replaces* effectiveCost outright and would otherwise wipe it.
+        // waive only the mana cost, never the additional costs (CR 601.2f–h).
         if (action.splicedCardIds.isNotEmpty()) {
             effectiveCost = SpliceCasts.addSpliceCosts(effectiveCost, state, action.splicedCardIds, cardRegistry)
         }
@@ -269,6 +256,13 @@ internal class CastCostTotaller(
     // The base
     // ---------------------------------------------------------------------------------------------
 
+    /** The fixed alternative mana cost stamped on the card for this caster, or null. */
+    private fun fixedAlternativeManaCost(state: GameState, action: CastSpell): ManaCost? =
+        state.getEntity(action.cardId)
+            ?.get<PlayWithFixedAlternativeManaCostComponent>()
+            ?.takeIf { it.appliesTo(state, action.playerId) }
+            ?.fixedCost
+
     private fun baseCost(
         state: GameState,
         action: CastSpell,
@@ -294,6 +288,21 @@ internal class CastCostTotaller(
                 card = cardDef,
             )
             playForFree -> ManaCost.ZERO
+            // A fixed alternative mana cost — airbend's {2}, foretell, madness, Jadzi's {1} — is paid
+            // *instead of* the printed cost (CR 118.9), so it replaces only the base: cost increases
+            // and reductions are applied to it (CR 601.2f) and additional costs such as kicker still
+            // land on top. Ahead of the face branch: a face chosen for such a cast (a modal DFC's
+            // back) is priced at the fixed cost too.
+            fixedAlternativeManaCost(state, action) != null && cardDef != null -> costCalculator.calculateEffectiveCost(
+                state,
+                castFace?.let { costCalculator.faceCharacteristics(cardDef, it) } ?: cardDef,
+                action.playerId,
+                action.targets.map { it.toEntityId() },
+                fromZone = if (castingFromCommandZone) Zone.COMMAND else castSourceZone(state, action.cardId),
+                declaredCostSlot = action.declaredCostSlot,
+                baseCost = checkNotNull(fixedAlternativeManaCost(state, action)),
+                card = cardDef,
+            )
             action.useAlternativeCost && action.alternativeCostType == AlternativeCostType.ESCAPE && cardDef != null -> {
                 val escape = EscapeCasts.effectiveEscape(
                     state, action.cardId, cardDef, action.playerId, cardRegistry, predicateEvaluator, action.escapeAbility

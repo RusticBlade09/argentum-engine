@@ -22,6 +22,7 @@ import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.identity.AfterResolveDestinationComponent
 import com.wingedsheep.engine.state.components.identity.PlayWithAdditionalCostComponent
 import com.wingedsheep.engine.state.components.identity.PlayWithCostIncreaseComponent
+import com.wingedsheep.engine.state.components.identity.PlayWithFixedAlternativeManaCostComponent
 import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.core.ManaCost
 import com.wingedsheep.engine.state.components.identity.PlayWithoutPayingCostComponent
@@ -144,12 +145,13 @@ class CastFromCollectionWithoutPayingCostExecutor(
             cardId = cardId,
             controllerId = controllerId,
             sourceId = context.sourceId,
-            withoutPayingCost = !effect.payManaCost,
+            withoutPayingCost = !effect.payManaCost && effect.alternativeManaCost == null,
             castTransformed = castTransformed,
             insteadOfGraveyard = effect.insteadOfGraveyard,
             faceIndex = faceIndex,
             alternativeCost = alternativeCost,
             additionalManaCost = effect.additionalManaCost,
+            alternativeManaCost = effect.alternativeManaCost,
             castFaceDown = effect.castFaceDown,
             turnsFaceUpInstead = effect.turnsFaceUpInstead,
         )
@@ -157,12 +159,16 @@ class CastFromCollectionWithoutPayingCostExecutor(
         if (prep is TargetPrep.NeedsTargets) {
             return EffectResult.from(newState.withPriority(controllerId).suspendForDecision(
                 prep.question,
-                prep.continuation.copy(grantedPermissionId = permId, alternativeCostType = castUsing)
+                prep.continuation.copy(
+                    grantedPermissionId = permId, alternativeCostType = castUsing,
+                    stampedAlternativeManaCost = effect.alternativeManaCost != null,
+                )
             ))
         }
 
         // No targets needed (or modal — CastSpellHandler will handle per-mode targets).
-        return invokeCast(newState, controllerId, cardId, permId, emptyList(), effect.storeCastTo, faceIndex, effect.castFaceDown, castFused, castUsing)
+        return invokeCast(newState, controllerId, cardId, permId, emptyList(), effect.storeCastTo, faceIndex, effect.castFaceDown, castFused, castUsing,
+            stampedAlternativeManaCost = effect.alternativeManaCost != null)
     }
 
     /** True when [cardId]'s definition has a back face to be cast transformed as. */
@@ -182,6 +188,7 @@ class CastFromCollectionWithoutPayingCostExecutor(
         castFaceDown: Boolean = false,
         castFused: Boolean = false,
         alternativeCostType: AlternativeCostType? = null,
+        stampedAlternativeManaCost: Boolean = false,
     ): EffectResult {
         val stateForCast = state.copy(priorityPlayerId = casterId)
         val castResult = castSpellHandlerProvider().execute(
@@ -193,7 +200,7 @@ class CastFromCollectionWithoutPayingCostExecutor(
         )
 
         if (castResult.error != null) {
-            return EffectResult.success(revokeFreeCast(state, cardId, grantedPermissionId))
+            return EffectResult.success(revokeFreeCast(state, cardId, grantedPermissionId, stampedAlternativeManaCost))
         }
 
         // The cast initiated (synchronously or pausing for X / further input). Publish the cast
@@ -267,10 +274,12 @@ class CastFromCollectionWithoutPayingCostExecutor(
             faceIndex: Int? = null,
             alternativeCost: AdditionalCost? = null,
             additionalManaCost: ManaCost? = null,
+            alternativeManaCost: ManaCost? = null,
             castFaceDown: Boolean = false,
             turnsFaceUpInstead: Boolean = false,
         ): Pair<EntityId, GameState> {
-            var stamped = if (!withoutPayingCost) state else state.updateEntity(cardId) { container ->
+            val (permId, withPermId) = state.newEntity()
+            var stamped = if (!withoutPayingCost) withPermId else withPermId.updateEntity(cardId) { container ->
                 container.with(PlayWithoutPayingCostComponent(controllerId = controllerId))
             }
             // "By paying [cost] rather than paying its mana cost": the mana cost is waived above and
@@ -289,6 +298,17 @@ class CastFromCollectionWithoutPayingCostExecutor(
                     container.with(PlayWithCostIncreaseComponent(controllerId, additionalManaCost))
                 }
             }
+            // "By paying {1} rather than paying its mana cost" (Jadzi): a fixed alternative mana cost
+            // (CR 118.9) through the stamp madness and airbend use. CastCostTotaller swaps it in for
+            // the printed cost in any zone while this grant's permission lives; SpellCaster strips
+            // it once the cast is made.
+            if (alternativeManaCost != null) {
+                stamped = stamped.updateEntity(cardId) { container ->
+                    container.with(
+                        PlayWithFixedAlternativeManaCostComponent(controllerId, alternativeManaCost, grantedPermissionId = permId)
+                    )
+                }
+            }
             // The cast-this-way rider rides the card, not the permission, so it survives the move
             // onto the stack and is still there when StackResolver picks the spell's destination.
             // Stamped here rather than by the caller so every entry point that grants a
@@ -298,7 +318,7 @@ class CastFromCollectionWithoutPayingCostExecutor(
                     container.with(AfterResolveDestinationComponent(destination = insteadOfGraveyard))
                 }
             }
-            val (permId, stateWithPerm) = stamped.newEntity()
+            val stateWithPerm = stamped
             val granted = stateWithPerm.addMayPlayPermission(
                 MayPlayPermission(
                     id = permId,
@@ -316,7 +336,12 @@ class CastFromCollectionWithoutPayingCostExecutor(
         }
 
         /** Undo [grantFreeCast] when the synthesized cast didn't happen after all. */
-        fun revokeFreeCast(state: GameState, cardId: EntityId, permissionId: EntityId?): GameState {
+        fun revokeFreeCast(
+            state: GameState,
+            cardId: EntityId,
+            permissionId: EntityId?,
+            stampedAlternativeManaCost: Boolean = false,
+        ): GameState {
             val withoutPermission = permissionId?.let { state.removeMayPlayPermission(it) } ?: state
             return withoutPermission.updateEntity(cardId) { container ->
                 container.without<PlayWithoutPayingCostComponent>()
@@ -327,6 +352,9 @@ class CastFromCollectionWithoutPayingCostExecutor(
                     // Nor its substitute cost, which would otherwise be owed by a later cast.
                     .without<PlayWithAdditionalCostComponent>()
                     .without<PlayWithCostIncreaseComponent>()
+                    // Only a cost this grant stamped: an airbend or madness cost the card already
+                    // carried belongs to that other permission and must survive.
+                    .let { if (stampedAlternativeManaCost) it.without<PlayWithFixedAlternativeManaCostComponent>() else it }
             }
         }
 

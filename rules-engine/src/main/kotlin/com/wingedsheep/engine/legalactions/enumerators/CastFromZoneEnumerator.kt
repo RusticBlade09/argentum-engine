@@ -625,7 +625,7 @@ class CastFromZoneEnumerator(
                     // The paid cast, priced by its target count (a prepare-spell copy is its face).
                     // A fixed alternative cost (below) replaces this price, so it carries no table.
                     val runtimeFixedAltCost = container.get<PlayWithFixedAlternativeManaCostComponent>()
-                        ?.takeIf { it.controllerId == playerId }
+                        ?.takeIf { it.appliesTo(state, playerId) }
                     val paidPricing = if (playForFree || cardDef == null) null else
                         context.costCalculator.priceByTargets(
                             state,
@@ -645,10 +645,19 @@ class CastFromZoneEnumerator(
                     } else {
                         cardComponent.manaCost
                     }
-                    // Airbend: a fixed alternative cost ({2}) is paid *instead of* the printed
-                    // cost — it replaces the base. A generic tax (Soul Partition / Thalia-style
-                    // cost increase) is not part of what it replaces, so it still applies on top.
-                    val baseCost = if (!playForFree && runtimeFixedAltCost != null) {
+                    // Airbend / foretell / madness: a fixed alternative cost ({2}) is paid *instead
+                    // of* the printed cost (CR 118.9) — it replaces the base, and cost increases and
+                    // reductions apply to it (CR 601.2f), exactly as CastCostTotaller prices the cast.
+                    val baseCost = if (!playForFree && runtimeFixedAltCost != null && cardDef != null) {
+                        context.costCalculator.calculateEffectiveCost(
+                            state,
+                            if (prepareFace != null) context.costCalculator.faceCharacteristics(cardDef, prepareFace) else cardDef,
+                            playerId,
+                            fromZone = castZone,
+                            baseCost = runtimeFixedAltCost.fixedCost,
+                            card = cardDef,
+                        )
+                    } else if (!playForFree && runtimeFixedAltCost != null) {
                         runtimeFixedAltCost.fixedCost
                     } else {
                         baseEffectiveCost
