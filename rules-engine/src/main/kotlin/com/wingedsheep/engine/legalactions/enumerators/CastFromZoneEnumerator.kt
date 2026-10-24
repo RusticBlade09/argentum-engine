@@ -547,7 +547,7 @@ class CastFromZoneEnumerator(
             val runtimeAdditionalCost = container.get<PlayWithAdditionalCostComponent>()
                 ?.takeIf { it.controllerId == playerId }
             val runtimeCostIncrease = container.get<PlayWithCostIncreaseComponent>()
-                ?.takeIf { it.controllerId == playerId }
+                ?.takeIf { it.appliesTo(state, playerId) }
             val cardComponent = container.get<CardComponent>() ?: continue
 
             // Land with play permission — skipped when every applicable permission is
@@ -667,6 +667,18 @@ class CastFromZoneEnumerator(
                     // it is cast from (Vizier of the Menagerie).
                     val anyManaType = permissions.any { it.withAnyManaType } ||
                         context.castPermissionUtils.canSpendAnyManaTypeForSpell(state, playerId, cardId)
+                    // "Unless it targets a creature you control" (Mavinda): targets aren't chosen
+                    // yet, so price the cheapest cast — waived when one of the spell's legal targets
+                    // (any mode's, for a modal spell) matches; CastCostTotaller charges it against
+                    // the targets actually chosen.
+                    val offeredCostIncrease = runtimeCostIncrease?.takeUnless { tax ->
+                        val waiver = tax.unlessAnyTargetMatches ?: return@takeUnless false
+                        val scriptDef = if (cardDef != null && prepareFace != null) {
+                            context.costCalculator.faceCharacteristics(cardDef, prepareFace)
+                        } else cardDef
+                        scriptDef != null &&
+                            context.costCalculator.anyLegalTargetMatches(state, scriptDef, playerId, cardId, waiver)
+                    }
                     // "As though it were mana of any color" (Stolen Strategy) relaxes only the
                     // colored pips — a {C} pip still needs colorless (CR 609.4b).
                     fun permitted(cost: ManaCost): ManaCost {
@@ -675,7 +687,7 @@ class CastFromZoneEnumerator(
                             permissions.any { it.withAnyManaColor } -> cost.relaxColoredRequirements()
                             else -> cost
                         }
-                        return if (runtimeCostIncrease != null) relaxed + runtimeCostIncrease.cost else relaxed
+                        return if (offeredCostIncrease != null) relaxed + offeredCostIncrease.cost else relaxed
                     }
                     val effectiveCost = permitted(baseCost)
                     val costString = if (playForFree) freeCostString(effectiveCost) else effectiveCost.toString()
