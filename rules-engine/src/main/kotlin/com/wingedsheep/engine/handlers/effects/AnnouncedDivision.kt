@@ -9,6 +9,7 @@ import com.wingedsheep.sdk.scripting.effects.DistributeCountersAmongTargetsEffec
 import com.wingedsheep.sdk.scripting.effects.DividedDamageEffect
 import com.wingedsheep.sdk.scripting.effects.Effect
 import com.wingedsheep.sdk.scripting.effects.GatedEffect
+import com.wingedsheep.sdk.scripting.targets.TargetRequirement
 import com.wingedsheep.sdk.scripting.values.DynamicAmount
 
 /**
@@ -43,15 +44,44 @@ object AnnouncedDivision {
      * The division a *spell* announces as it is cast (CR 601.2d): a top-level divided-damage effect,
      * or a counter division anywhere in the spell's sequence (Undercity Upheaval: "distribute X +1/+1
      * counters among any number of target creatures you control … creatures you control gain
-     * vigilance"). A split that lets a target get nothing (`minPerTarget = 0` — Wicked Slumber's
+     * vigilance"), or a divided-damage step scoped to one of the spell's target requirements (Magma
+     * Opus). A split that lets a target get nothing (`minPerTarget = 0` — Wicked Slumber's
      * "put a stun counter on either of them" twice) isn't a division: it is made at resolution among
      * the targets still legal then. Null when the spell divides nothing at cast.
      */
     fun ofSpell(spellEffect: Effect?): Effect? = when {
         spellEffect == null -> null
         spellEffect is DividedDamageEffect -> spellEffect
-        else -> of(spellEffect)?.takeIf { it is DistributeCountersAmongTargetsEffect && it.minPerTarget >= 1 }
+        else -> of(spellEffect)?.takeIf {
+            // Divided damage inside a sequence is announced when it is scoped to one of the
+            // spell's target requirements (Magma Opus: "… divided as you choose among any number of
+            // targets. Tap two target permanents. …"); an unscoped one keeps dividing at resolution.
+            (it is DividedDamageEffect && it.among != null) ||
+                (it is DistributeCountersAmongTargetsEffect && it.minPerTarget >= 1)
+        }
     }
+
+    /**
+     * Which of the announced targets [division] divides among: the flat-list slice of the one
+     * requirement it is scoped to ([DividedDamageEffect.among]), given how many targets each of
+     * [requirements] holds ([groupCounts]) — or every target when it isn't scoped.
+     */
+    fun <T> dividedTargets(
+        division: Effect,
+        requirements: List<TargetRequirement>,
+        groupCounts: List<Int>,
+        targets: List<T>
+    ): List<T> {
+        val group = groupIndex(division, requirements) ?: return targets
+        val start = groupCounts.take(group).sum()
+        return targets.drop(start).take(groupCounts.getOrElse(group) { 0 })
+    }
+
+    /** The index among [requirements] of the requirement [division] is scoped to; null when it divides among every target. */
+    fun groupIndex(division: Effect, requirements: List<TargetRequirement>): Int? =
+        (division as? DividedDamageEffect)?.among
+            ?.let { id -> requirements.indexOfFirst { it.id == id } }
+            ?.takeIf { it >= 0 }
 
     /**
      * The amount [division] divides, evaluated now — a dynamic total reads [context]'s X.
