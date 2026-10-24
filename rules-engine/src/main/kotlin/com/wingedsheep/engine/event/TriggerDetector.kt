@@ -336,7 +336,12 @@ class TriggerDetector(
                     nextSourceMove?.toZone == Zone.BATTLEFIELD) nextSourceMove.newObject
                 else nextSourceMove?.oldObject
                 val boundSourceAtEvent = sourceAtEvent ?: state.objectRef(pending.sourceId)
-                pending.copy(triggerContext = eventContext, objectReferences = com.wingedsheep.engine.handlers.ObjectReferenceEnvironment(
+                val enteredViaAnyOfAtom = pending.ability.trigger is com.wingedsheep.sdk.scripting.EventPattern.AnyOf &&
+                    event is ZoneChangeEvent && event.toZone == Zone.BATTLEFIELD &&
+                    isEntersBattlefieldTrigger(matcher.matchedAtom(
+                        pending.ability.trigger, pending.ability.binding, event, pending.sourceId, pending.controllerId, state
+                    ))
+                pending.copy(enteredViaAnyOfAtom = enteredViaAnyOfAtom, triggerContext = eventContext, objectReferences = com.wingedsheep.engine.handlers.ObjectReferenceEnvironment(
                     captured = true,
                     permittedMoves = (com.wingedsheep.engine.handlers.meldArrivalMoves(events, sourceEventContext?.triggeringObject) +
                         com.wingedsheep.engine.handlers.meldArrivalMoves(events, eventContext.triggeringObject)).distinct(),
@@ -1049,19 +1054,10 @@ class TriggerDetector(
             }
         }
 
-        // Whether an ability's trigger is an enters-the-battlefield shape (the only triggers an
-        // entry causes); leaves/attack/etc. triggers are never suppressed even if their context
-        // entity happens to have entered this batch.
-        fun isEntersTrigger(trigger: com.wingedsheep.sdk.scripting.EventPattern): Boolean = when (trigger) {
-            is com.wingedsheep.sdk.scripting.EventPattern.ZoneChangeEvent -> trigger.to == Zone.BATTLEFIELD
-            is com.wingedsheep.sdk.scripting.EventPattern.PermanentsEnteredEvent -> true
-            else -> false
-        }
-
         val iterator = triggers.listIterator()
         while (iterator.hasNext()) {
             val trigger = iterator.next()
-            if (!isEntersTrigger(trigger.ability.trigger)) continue
+            if (!trigger.isEntryCaused()) continue
             val ctx = trigger.triggerContext
             val captured = ctx.capturedEntityIds
             if (captured != null) {
@@ -5119,4 +5115,18 @@ class TriggerDetector(
          */
         val NON_BATTLEFIELD_EVENT_TRIGGER_ZONES = listOf(Zone.GRAVEYARD, Zone.COMMAND)
     }
+}
+
+/**
+ * Whether [trigger] is an enters-the-battlefield shape — the only triggers a permanent entering
+ * causes (a [com.wingedsheep.sdk.scripting.EventPattern.ZoneChangeEvent] to the battlefield, or a
+ * "one or more permanents entered" batch). Leaves/attack/etc. triggers never count, even if their
+ * context entity happens to have entered in the same batch. Shared by Torpor Orb's suppression and
+ * the Strict Proctor entry-cause stamp (through [PendingTrigger.isEntryCaused], which also covers a
+ * `Triggers.or` trigger that fired through its enters atom).
+ */
+internal fun isEntersBattlefieldTrigger(trigger: com.wingedsheep.sdk.scripting.EventPattern): Boolean = when (trigger) {
+    is com.wingedsheep.sdk.scripting.EventPattern.ZoneChangeEvent -> trigger.to == Zone.BATTLEFIELD
+    is com.wingedsheep.sdk.scripting.EventPattern.PermanentsEnteredEvent -> true
+    else -> false
 }
