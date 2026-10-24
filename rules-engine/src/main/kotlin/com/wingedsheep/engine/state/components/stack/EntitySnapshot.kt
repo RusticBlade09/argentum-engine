@@ -256,6 +256,15 @@ data class EntitySnapshot(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val numberChoices: Map<com.wingedsheep.sdk.scripting.ChoiceSlot, Int> = emptyMap(),
     /**
+     * The text choices locked into the cast-choices bag (`ChoiceValue.TextChoice`, e.g.
+     * `ChoiceSlot.CREATURE_TYPE`), frozen at departure for the same reason as [numberChoices]. A
+     * self-sacrificing ability still reads "target card of the chosen type" (Dawn-Blessed Pennant)
+     * from here once its source is in the graveyard (CR 113.7a).
+     */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val textChoices: Map<com.wingedsheep.sdk.scripting.ChoiceSlot, String> = emptyMap(),
+    /**
      * True if this permanent was face down (CR 708) when it left the battlefield.
      *
      * Frozen because a card put into a graveyard is always turned face up (CR 708.4), so by the
@@ -360,6 +369,7 @@ data class EntitySnapshot(
                 wasSuspected = projected.isSuspected(entityId),
                 name = state.getEntity(entityId)?.get<CardComponent>()?.name,
                 numberChoices = numberChoicesOf(state, entityId),
+                textChoices = textChoicesOf(state, entityId),
             )
         }
     }
@@ -371,6 +381,21 @@ internal fun numberChoicesOf(state: GameState, entityId: EntityId): Map<com.wing
         ?.chosen.orEmpty().mapNotNull { (slot, value) ->
             (value as? com.wingedsheep.engine.state.components.battlefield.ChoiceValue.NumberChoice)?.let { slot to it.amount }
         }.toMap()
+
+/** The text choices in [entityId]'s cast-choices bag, by slot. */
+internal fun textChoicesOf(state: GameState, entityId: EntityId): Map<com.wingedsheep.sdk.scripting.ChoiceSlot, String> =
+    state.getEntity(entityId)?.get<com.wingedsheep.engine.state.components.battlefield.CastChoicesComponent>()
+        ?.chosen.orEmpty().mapNotNull { (slot, value) ->
+            (value as? com.wingedsheep.engine.state.components.battlefield.ChoiceValue.TextChoice)?.let { slot to it.text }
+        }.toMap()
+
+/**
+ * The subtype `CardPredicate.HasChosenSubtype` matches, as the permanent last existed — the
+ * snapshot counterpart of `ComponentContainer.chosenSubtype()`.
+ */
+val EntitySnapshot.chosenSubtype: String?
+    get() = textChoices[com.wingedsheep.sdk.scripting.ChoiceSlot.CREATURE_TYPE]
+        ?: textChoices[com.wingedsheep.sdk.scripting.ChoiceSlot.PLANESWALKER_TYPE]
 
 /** The non-zero counters on [entityId]. */
 private fun countersOf(state: GameState, entityId: EntityId): Map<CounterType, Int> =
@@ -497,6 +522,7 @@ fun captureLastKnown(state: GameState, entityId: EntityId): EntitySnapshot {
         attachmentIds = attachmentIdsOf(state, entityId),
         // The cost strips the cast-choices bag too; "the last noted …" reads it from here.
         numberChoices = numberChoicesOf(state, entityId),
+        textChoices = textChoicesOf(state, entityId),
     )
 }
 
