@@ -4609,6 +4609,80 @@
     ]
 }
 
+// Warbriar Blessing
+{
+    "name": "Warbriar Blessing",
+    "manaCost": "{1}{G}",
+    "typeLine": "Enchantment — Aura",
+    "oracleText": "Enchant creature you control\nWhen this Aura enters, enchanted creature fights up to one target creature you don't control. (Each deals damage equal to its power to the other.)\nEnchanted creature gets +0/+2.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Warbriar Blessing:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Fight",
+                    "target1": "EnchantedCreature",
+                    "target2": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "optional": true,
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                "IsCreature"
+                            ],
+                            "controllerPredicate": {
+                                "type": "ControllerNot",
+                                "predicate": "ControlledByYou"
+                            }
+                        }
+                    },
+                    "id": "t0"
+                }
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "ModifyStats",
+                "powerBonus": 0,
+                "toughnessBonus": 2
+            }
+        ],
+        "auraTarget": {
+            "type": "TargetObject",
+            "filter": {
+                "baseFilter": "creature ctrl:you"
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "204",
+        "artist": "Michele Parisi",
+        "imageUri": "https://cards.scryfall.io/normal/front/1/1/11d64cab-2ed1-46d9-8034-0c2ba3f2e1ed.jpg?1783931526",
+        "rulings": [
+            {
+                "date": "2020-01-24",
+                "text": "If the target creature is an illegal target when Warbriar Blessing's triggered ability tries to resolve, the ability doesn't resolve. If the enchanted creature is no longer on the battlefield, the target creature won't deal or be dealt damage."
+            },
+            {
+                "date": "2020-01-24",
+                "text": "If Warbriar Blessing leaves the battlefield before its enters-the-battlefield triggered ability resolves, the creature it last enchanted before it left will be the one to fight."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "GREEN"
+    ]
+}
+
 // Wavebreak Hippocamp
 {
     "name": "Wavebreak Hippocamp",
