@@ -154,6 +154,7 @@ import com.wingedsheep.sdk.scripting.effects.SetLifeTotalEffect
 import com.wingedsheep.sdk.scripting.effects.ModifyStatsEffect
 import com.wingedsheep.sdk.scripting.effects.FaceDownMode
 import com.wingedsheep.sdk.scripting.effects.MoveToZoneEffect
+import com.wingedsheep.sdk.scripting.effects.EntryCounter
 import com.wingedsheep.sdk.scripting.effects.GrantSuspendEffect
 import com.wingedsheep.sdk.scripting.effects.LibraryChoicePosition
 import com.wingedsheep.sdk.scripting.effects.PutOnLibraryPositionOfChoiceEffect
@@ -1041,7 +1042,7 @@ object Effects {
         target = target,
         destination = Zone.EXILE,
         fromZone = fromZone,
-        addCounterType = addCounterType
+        entryCounters = listOfNotNull(addCounterType?.let { EntryCounter(it) })
     )
 
     /**
@@ -5097,7 +5098,10 @@ object Effects {
      * less-common shapes (custom placement, `fromZone` gating, face-down entry, linked exile,
      * `positionFromTop`, controller override). `addCounterType` + `addCounterIf` spell "it enters
      * with a counter on it" and its conditional form "if a creature enters this way, it enters with
-     * an additional +1/+1 counter" (the filter is read off projected state as the card lands).
+     * an additional +1/+1 counter" (the filter is read off projected state as the card lands);
+     * [entryCounters] lists several such counters, each with its own condition — "an additional
+     * +1/+1 counter if it's a creature and an additional loyalty counter if it's a planeswalker"
+     * (Semester's End).
      */
     fun Move(
         target: EffectTarget,
@@ -5111,22 +5115,25 @@ object Effects {
         positionFromTop: Int? = null,
         addCounterType: CounterType? = null,
         addCounterIf: GameObjectFilter? = null,
+        entryCounters: List<EntryCounter> = emptyList(),
         attackDefender: com.wingedsheep.sdk.scripting.effects.EnteringAttackDefender =
             com.wingedsheep.sdk.scripting.effects.EnteringAttackDefender.JOIN_SOURCE
-    ): Effect = MoveToZoneEffect(
-        target = target,
-        destination = destination,
-        placement = placement,
-        byDestruction = byDestruction,
-        controllerOverride = controllerOverride,
-        fromZone = fromZone,
-        faceDown = faceDown,
-        linkToSource = linkToSource,
-        positionFromTop = positionFromTop,
-        addCounterType = addCounterType,
-        addCounterIf = addCounterIf,
-        attackDefender = attackDefender
-    )
+    ): Effect {
+        require(addCounterIf == null || addCounterType != null) { "addCounterIf needs an addCounterType" }
+        return MoveToZoneEffect(
+            target = target,
+            destination = destination,
+            placement = placement,
+            byDestruction = byDestruction,
+            controllerOverride = controllerOverride,
+            fromZone = fromZone,
+            faceDown = faceDown,
+            linkToSource = linkToSource,
+            positionFromTop = positionFromTop,
+            entryCounters = listOfNotNull(addCounterType?.let { EntryCounter(it, addCounterIf) }) + entryCounters,
+            attackDefender = attackDefender
+        )
+    }
 
     /**
      * Apply [effect] to every entity matching [filter] (Rule: "each", "all"). Within the inner
