@@ -608,6 +608,61 @@
     ]
 }
 
+// Demon of Loathing
+{
+    "name": "Demon of Loathing",
+    "manaCost": "{5}{B}{B}",
+    "typeLine": "Creature — Demon",
+    "oracleText": "Flying, trample\nWhenever this creature deals combat damage to a player, that player sacrifices a creature of their choice.",
+    "creatureStats": {
+        "power": 7,
+        "toughness": 7
+    },
+    "keywords": [
+        "FLYING",
+        "TRAMPLE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Demon of Loathing:1",
+                "trigger": {
+                    "type": "DealsDamageEvent",
+                    "damageType": "DamageCombat",
+                    "recipient": {
+                        "type": "RecipientPlayer",
+                        "player": "Any"
+                    }
+                },
+                "effect": {
+                    "type": "ForceSacrifice",
+                    "filter": "creature",
+                    "target": {
+                        "type": "PlayerRef",
+                        "player": "TriggeringPlayer"
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "292",
+        "rarity": "RARE",
+        "artist": "Tomasz Jedruszek",
+        "flavorText": "Hatred is a potent ally, but an insatiable master.",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/7/57564f6f-7c99-4325-8a0e-22342e73767b.jpg?1783931489",
+        "rulings": [
+            {
+                "date": "2020-01-24",
+                "text": "If a creature is dealt lethal damage at the same time that Demon of Loathing deals combat damage to its controller, that player can't sacrifice that creature."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
 // Discordant Piper
 {
     "name": "Discordant Piper",
