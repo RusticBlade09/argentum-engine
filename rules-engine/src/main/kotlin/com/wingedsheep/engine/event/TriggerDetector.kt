@@ -1294,11 +1294,12 @@ class TriggerDetector(
      *
      * Two scoping modes:
      *  - **Entity-scoped** (`watchedEntityId != null`): the trigger watches one concrete entity —
-     *    DealsDamageEvent (scoped on damage source) and ZoneChangeEvent ("when *that* creature dies
-     *    this turn"). The spec's GameObjectFilter is not applied; the watched entity is the scope.
+     *    DealsDamageEvent (scoped on damage source), DamageReceivedEvent (scoped on the damaged
+     *    entity) and ZoneChangeEvent ("when *that* creature dies this turn"). The spec's GameObjectFilter is not applied; the watched entity is the scope.
      *  - **Filter-scoped** (`watchedEntityId == null`): the trigger watches a *group* described by
      *    the spec's GameObjectFilter + TriggerBinding — the attack-declaration events ("when you next
-     *    attack this turn") and ZoneChangeEvent ("whenever a creature you control enters this turn").
+     *    attack this turn"), DamageReceivedEvent ("whenever a creature an opponent controls is dealt
+     *    damage this turn") and ZoneChangeEvent ("whenever a creature you control enters this turn").
      *    These delegate to the shared [TriggerMatcher] so they behave identically to battlefield
      *    triggers, honoring the filter (including its controller predicate) and binding.
      */
@@ -1350,6 +1351,21 @@ class TriggerDetector(
                 // the baked recipient. The spec's recipient filter still applies on top.
                 if (watchedRecipientId != null && event.targetId != watchedRecipientId) return false
                 matcher.matchesDealsDamageTrigger(specEvent, event, state, controllerId, sourceId)
+            }
+            // "Until end of turn, whenever a creature an opponent controls is dealt damage, destroy
+            // it" (Green Dragon). The recipient form only — the per-source form ("a source deals
+            // damage to …") has no delayed reading. Entity-scoped: the damaged entity must be the
+            // watched one. Filter-scoped: the canonical matcher applies the recipient filter, and
+            // the damaged permanent is the triggering entity (TriggerContext.fromEvent).
+            // Simultaneous combat damage to one recipient folds into one trigger below (CR 603.2c).
+            is com.wingedsheep.sdk.scripting.EventPattern.DamageReceivedEvent -> {
+                if (event !is com.wingedsheep.engine.core.DamageDealtEvent || specEvent.source != null) return false
+                if (watchedEntityId != null) {
+                    // Only the object the trigger was created for (CR 400.7): the same card back on
+                    // the battlefield is a new object. One already gone (killed by this damage) stays it.
+                    event.targetId == watchedEntityId && (watchedObject == null ||
+                        watchedEntityId !in state.getBattlefield() || state.objectRef(watchedEntityId) == watchedObject)
+                } else matcher.matchesTrigger(specEvent, spec.binding, event, sourceId, controllerId, state)
             }
             // "When damage is prevented this way": fires only for this delayed trigger's own
             // shield, matched by the linkId echoed back on the DamagePreventedEvent.
