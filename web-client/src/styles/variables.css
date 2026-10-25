@@ -19,6 +19,10 @@
   --z-combat: 2000;
   --z-targeting: 2500;
   --z-tooltip: 10000;
+  /* The game's result (the player's Victory/Defeat card, the spectator's game-over banner). Above
+   * the in-game animation layers (floating life changes, draws, reveals and coin flips sit at
+   * 10000–10002), so the last hit's numbers never paint over who won. */
+  --z-game-result: 10010;
 
   /* =========================================================================
    * Colors - Background Surfaces
