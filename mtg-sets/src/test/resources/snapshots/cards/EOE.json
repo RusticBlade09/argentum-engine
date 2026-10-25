@@ -3435,6 +3435,14 @@
                     }
                 },
                 {
+                    "type": "GrantKeyword",
+                    "keyword": "VIGILANCE",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                {
                     "type": "DealDamage",
                     "amount": {
                         "type": "EntityProperty",
