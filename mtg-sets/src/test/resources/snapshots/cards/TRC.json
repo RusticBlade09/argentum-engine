@@ -306,6 +306,47 @@
     ]
 }
 
+// Spock, Logical Choice
+{
+    "name": "Spock, Logical Choice",
+    "manaCost": "{3}{U}{U}",
+    "typeLine": "Legendary Creature — Vulcan Human Scientist",
+    "oracleText": "Vigilance (Attacking doesn't cause this creature to tap.)\n{T}: Draw a card.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 5
+    },
+    "keywords": [
+        "VIGILANCE"
+    ],
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Spock, Logical Choice:1",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "DrawCards",
+                    "count": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                },
+                "descriptionOverride": "{T}: Draw a card."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "194",
+        "rarity": "MYTHIC",
+        "artist": "Bastien Jez",
+        "flavorText": "\"In critical moments, men sometimes see exactly what they wish to see.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/a/5a741052-e92d-4e9c-8cfa-3b5ed1f432f5.jpg?1784065332"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Starfleet Crew
 {
     "name": "Starfleet Crew",
