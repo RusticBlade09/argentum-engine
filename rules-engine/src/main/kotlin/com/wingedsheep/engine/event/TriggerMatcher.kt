@@ -1662,6 +1662,10 @@ class TriggerMatcher(
             val entity = projected.getBaseState().getEntity(entityId) ?: return false
             return entity.has<com.wingedsheep.engine.state.components.identity.TokenComponent>()
         }
+        // Projected colors (layer 5) while the entity has a projection entry, as PredicateEvaluator
+        // reads them; once it has left the battlefield (a creature that just died) the printed colors.
+        fun colors(): Set<String> =
+            projected.getProjectedValues(entityId)?.colors ?: cardComponent.colors.map { it.name }.toSet()
         // Off the battlefield (a spell on the stack, a card that just moved) a printed P/T is read
         // directly and a `*` is its characteristic-defining ability evaluated in place (CR 604.3).
         fun unprojectedStat(isPower: Boolean): Int? =
@@ -1814,6 +1818,11 @@ class TriggerMatcher(
                 !projected.hasKeyword(entityId, predicate.keyword)
             is com.wingedsheep.sdk.scripting.predicates.CardPredicate.IsToken -> isToken()
             is com.wingedsheep.sdk.scripting.predicates.CardPredicate.IsNontoken -> !isToken()
+            // Face-down permanents are colorless (CR 708.2).
+            is com.wingedsheep.sdk.scripting.predicates.CardPredicate.HasColor ->
+                !isFaceDown && predicate.color.name in colors()
+            is com.wingedsheep.sdk.scripting.predicates.CardPredicate.NotColor ->
+                isFaceDown || predicate.color.name !in colors()
             // Static whole-card layout characteristic, so it is read off the card component and is
             // unaffected by face-down status or by which face is currently up.
             is com.wingedsheep.sdk.scripting.predicates.CardPredicate.IsDoubleFaced ->
