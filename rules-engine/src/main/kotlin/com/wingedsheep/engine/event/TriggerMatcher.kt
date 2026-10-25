@@ -1434,6 +1434,20 @@ class TriggerMatcher(
             // function, not fall through to the live-entity path: a token is swept by 704.5d
             // before the matcher runs, so the generic cardComponent-based path returns false for
             // every predicate inside the composite and the trigger silently misses token deaths.
+            val lastKnownColors = event.lastKnown?.colors?.takeIf { event.isBattlefieldDeparture }
+
+            fun matchesOnEntity(predicate: com.wingedsheep.sdk.scripting.predicates.CardPredicate): Boolean {
+                if (cardComponent == null) return false
+                return matchesCardPredicate(
+                    predicate, cardComponent, projected, event.entityId, isFaceDown,
+                    lastKnownPower = event.lastKnown?.power,
+                    lastKnownToughness = event.lastKnown?.toughness,
+                    lastKnownWasToken = event.lastKnown?.wasToken == true,
+                    lastKnownBasePower = event.lastKnown?.basePower,
+                    lastKnownBaseToughness = event.lastKnown?.baseToughness
+                )
+            }
+
             fun matchesLkiPredicate(predicate: com.wingedsheep.sdk.scripting.predicates.CardPredicate): Boolean {
                 if (liveEntryTypes.isNotEmpty()) {
                     projectedCardTypeMatch(predicate, liveEntryTypes, isFaceDown)?.let { return it }
@@ -1545,18 +1559,13 @@ class TriggerMatcher(
                         predicate.predicates.all { matchesLkiPredicate(it) }
                     is com.wingedsheep.sdk.scripting.predicates.CardPredicate.Not ->
                         !matchesLkiPredicate(predicate.predicate)
-                    else -> {
-                        // For other predicates, check the entity's type
-                        if (cardComponent == null) return false
-                        matchesCardPredicate(
-                            predicate, cardComponent, projected, event.entityId, isFaceDown,
-                            lastKnownPower = event.lastKnown?.power,
-                            lastKnownToughness = event.lastKnown?.toughness,
-                            lastKnownWasToken = event.lastKnown?.wasToken == true,
-                            lastKnownBasePower = event.lastKnown?.basePower,
-                            lastKnownBaseToughness = event.lastKnown?.baseToughness
-                        )
-                    }
+                    // A permanent that left is matched by the colors it left with, frozen on the
+                    // event (none while face down); in its new zone it has only its printed colors.
+                    is com.wingedsheep.sdk.scripting.predicates.CardPredicate.HasColor ->
+                        lastKnownColors?.let { predicate.color.name in it } ?: matchesOnEntity(predicate)
+                    is com.wingedsheep.sdk.scripting.predicates.CardPredicate.NotColor ->
+                        lastKnownColors?.let { predicate.color.name !in it } ?: matchesOnEntity(predicate)
+                    else -> matchesOnEntity(predicate)
                 }
             }
 
@@ -1663,7 +1672,7 @@ class TriggerMatcher(
             return entity.has<com.wingedsheep.engine.state.components.identity.TokenComponent>()
         }
         // Projected colors (layer 5) while the entity has a projection entry, as PredicateEvaluator
-        // reads them; once it has left the battlefield (a creature that just died) the printed colors.
+        // reads them; printed colors for a card off the battlefield.
         fun colors(): Set<String> =
             projected.getProjectedValues(entityId)?.colors ?: cardComponent.colors.map { it.name }.toSet()
         // Off the battlefield (a spell on the stack, a card that just moved) a printed P/T is read
