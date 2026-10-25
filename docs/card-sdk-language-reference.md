@@ -2584,7 +2584,14 @@ wrappers: Word of Command composes it inside `WithManaAbilitySources` and
   announced with the spell/ability, respects hexproof/shroud, and the ability is countered if that
   target is illegal on resolution (CR 608.2b). Pair it with `Targets.PermanentOrPlayer`. Both forms
   place counters identically: replacement effects honored, placement attributed to the controller,
-  and a recipient that "can't have counters put on it" (Blossombind) skipped.
+  and a recipient that "can't have counters put on it" (Blossombind) skipped. Pass `storeAs` to
+  publish **the permanents that had a counter put on them this way** to a pipeline collection —
+  `runStoringCollection { Effects.Proliferate(storeAs = it) }` — for a follow-up that acts on them.
+  Only permanents a counter actually landed on are stored (a chosen recipient whose placement was
+  prevented or replaced to zero isn't; players never are); under "proliferate twice instead" it is
+  the union of every proliferate in the run. Ripples of Potential: `Pipeline { val countered =
+  runStoringCollection { Proliferate(storeAs = it) }; val chosen = chooseAnyNumber(countered, filter
+  = Permanent.youControl()); run(ForEachInCollection(chosen, PhaseOut(IterationEntity))) }`.
 - `AddCountersOfChosenKind(target?, count = 1)` — "choose a counter on target permanent. Put an additional
   counter of that kind on that permanent" (Ichormoon Gauntlet). The one-kind sibling of the targeted
   `Proliferate(target)`: at resolution the controller picks one kind among those on the recipient
@@ -3531,8 +3538,8 @@ wrappers: Word of Command composes it inside `WithManaAbilitySources` and
 - `CantSearchLibrariesEffect(target, duration = EndOfTurn)` — target player(s) can't search libraries. Facade:
   `Effects.CantSearchLibraries(target, duration)`; `EffectTarget.PlayerRef(Player.Each)` for "Players can't search
   libraries this turn" (Shadow of Doubt). Stamps `CantSearchLibrariesComponent` (cleared at end-of-turn cleanup). Enforced
-  at the search itself: a `GatherCardsEffect(search = true)` whose effect controller (the searcher) carries it finds no
-  library cards, and the `EmitLibrarySearchedEventEffect` tail emits nothing. The rest of the instruction still runs, so a
+  at the search itself: a `GatherCardsEffect(search = true)` whose `searcher` (the effect controller by default) carries it
+  finds no library cards, and the `EmitLibrarySearchedEventEffect` tail emits nothing. The rest of the instruction still runs, so a
   "search …, then shuffle" still shuffles; looking at / revealing the top of a library is not a search and is untouched.
   An optional search ("you may search … then shuffle" — a `Effects.May` whose action leads with a search gather) can't be
   chosen at all, so it is skipped without a prompt and without the shuffle.
@@ -4687,6 +4694,17 @@ one-off pipeline belongs inline in the card file via `Effects.Pipeline { }` (§5
   gather → pick → move → shuffle) as one sentence — "Search your library for a basic Island, Swamp, or
   Mountain card, put it onto the battlefield tapped, then shuffle" — and a bare `gather(search = true)`
   reads "Search your library for …", never "Look at …".
+- `gather(source, search = true, searcher = Player.X)` — who performs the search (`GatherCardsEffect.searcher`,
+  default `Player.You`, the effect's controller). Leave it at `You` for "search your library" and for "search target
+  player's library" (Cranial Extraction, Supreme Inquisitor — *you* search theirs; no searched event). When **another
+  player searches their own library** — "Its controller may search their library" (Erode, Sandworm:
+  `Player.ControllerOf("target")`), "target player … searches their library" (Restorative Technique, Settle the
+  Wreckage: `Player.TargetPlayer`), "that player … searches their library" (Mornsong Aria: `Player.TriggeringPlayer`) —
+  name that player as the searcher, the same ref as the source's player, and end the pipeline with
+  `run(EmitLibrarySearchedEventEffect)`. The can't-search check (Shadow of Doubt) and an `Effects.May` that leads with
+  the search read the searcher, and the emit tail reports the search as the searcher's, so "whenever an opponent
+  searches their library" (Wan Shi Tong, Librarian) sees the right player. `LibrarySearchFlagTest` flags a
+  "… search(es) their library" card whose other-player search gather leaves the searcher at `You`.
 - `searchMultipleZones(zones, filter, count?, destination?, tapped?, reveal?)` — search several zones (e.g. library and/or graveyard) in one effect; shuffles automatically if `LIBRARY` is among the zones. Pass `reveal = true` for "reveal it" tutors (Delivery Moogle).
 
 **Sideboard / wish (`Patterns.Sideboard.*`)**
@@ -5842,6 +5860,7 @@ non-object shapes are the `Targets.*` presets.
 - `target(TargetFilter.InstantOrSorcerySpellOnStack.youControl())` — an instant or sorcery spell on the stack you control (copy-your-spell modes).
 - `target(TargetFilter.CreatureSpellOnStack.youControl())` — a creature spell on the stack you control (Choreographed Sparks' "Copy target creature spell you control").
 - `target(TargetFilter.ActivatedOrTriggeredAbilityOnStack)` / `target(TargetFilter.ActivatedAbilityOnStack)` — an ability on the stack (Stifle).
+- `target(TargetFilter.LoyaltyAbilityOnStack)` — a loyalty ability on the stack (`CardPredicate.IsLoyaltyAbility`; Verdant Command).
 - `target(TargetFilter.ActivatedOrTriggeredAbilityOnStack.youControl())` — an activated or triggered ability **you control** on the stack (`TargetFilter.ActivatedOrTriggeredAbilityOnStack.youControl()`). Mana abilities never use the stack, so they're excluded automatically. Pair with `Effects.CopyTargetSpellOrAbility` — **Gogo, Master of Mimicry**.
 - `target(TargetFilter.ActivatedOrTriggeredAbilityOnStack.youControl().abilitySourceMatches(sourceFilter))` — the same, narrowed to abilities whose **source** matches `sourceFilter` (`CardPredicate.AbilitySourceMatches`): "copy target activated or triggered ability you control **from a creature source**" (**Echo, Perceptive Prodigy**, `GameObjectFilter.Creature`) / "**from an artifact source**" (**Scientist Supreme of A.I.M.**, `GameObjectFilter.Artifact`). The restriction is on the ability's source per CR 113.7, matched with last known information when the source has already left the battlefield (CR 113.7a), so a dead creature's dies trigger still qualifies.
 - `target(TargetFilter.SpellOrAbilityOnStack)` — a spell or ability whose single target is changed (Willbender; pair with `Effects.ChangeTarget()`).
@@ -7212,6 +7231,11 @@ work for abilities-on-stack (which carry no `CardComponent`).
 - `CardPredicate.IsActivatedAbility` — activated abilities only (excludes triggered abilities and
   spells). Mana abilities never use the stack, so they're never matched. Exposed as the
   `TargetObject(filter = TargetFilter.ActivatedAbilityOnStack)` target requirement (Bind: "Counter target activated ability").
+- `CardPredicate.IsLoyaltyAbility` — loyalty abilities only: activated abilities on the stack with a
+  loyalty symbol in their cost (CR 606.2), read off the captured `ActivatedAbilityOnStackComponent.activatedAbility`
+  (`isPlaneswalkerAbility`), so a copy of a loyalty ability matches too. Exposed as
+  `TargetFilter.LoyaltyAbilityOnStack`; Verdant Command narrows it with
+  `.abilitySourceMatches(GameObjectFilter.Planeswalker)` for "Counter target loyalty ability of a planeswalker".
 - `CardPredicate.TargetsMatching(subfilter)` — true when the stack object's `TargetsComponent`
   includes at least one chosen target matching `subfilter`. Player targets are skipped. The
   subfilter inherits the outer `PredicateContext`, so `Land.youControl()` inside the subfilter
@@ -11171,8 +11195,11 @@ staticAbility {
     `NthOfTypePerTurn(2)` with `target = YouCast(GameObjectFilter.Any)` for Uthros Psionicist's "the
     second spell you cast each turn costs {2} less". Requires a filter-bearing target
     (`YouCast` / `AnyCaster`) — it needs a notion of "type" to count.
-  - `OnlyIf(condition)` — applies only while `condition` holds at cast time (evaluated with the
-    caster as controller). Gates the *whole* modification, so it composes with the dynamic per-unit
+  - `OnlyIf(condition)` — applies only while `condition` holds at cast time. "You" in the condition
+    is the modifier's controller (the caster only for a `SelfCast` modifier), so a tax on other
+    players' spells reads its own controller's state: Paladin Class's "spells your opponents cast
+    during your turn cost {1} more" is `OpponentsCast(GameObjectFilter.Any)` gated by
+    `OnlyIf(Conditions.IsYourTurn)`. Gates the *whole* modification, so it composes with the dynamic per-unit
     reductions that a fixed-amount source can't express: Temur Battlecrier's "During your turn, …"
     is `OnlyIf(Conditions.IsYourTurn)` over `ReduceGenericBy(PermanentsYouControlMatching(…))`. For a
     fixed conditional reduction pair it with `ReduceGeneric` (Mental Modulation:
@@ -18357,6 +18384,7 @@ are their printed spellings (`CounterType.printed`). Text converts back only thr
 - `collection` (`CounterType.COLLECTION`): MH3 — Charitable Levy. Passive accumulate-then-threshold marker: its noncreature-cast trigger adds one, and `Conditions.SourceCounterCountAtLeast(COLLECTION, 3)` gates the sacrifice. No inherent rule; the passive-counter badge displays its count.
 - `corpse` (`CounterType.CORPSE`): LEA — Scavenging Ghoul. Passive spendable store with no inherent rule: its each-end-step trigger adds one per creature that died this turn (`DynamicAmounts.creaturesDiedThisTurn(Player.Each)`) and `Costs.RemoveCounterFromSelf(CounterType.CORPSE, 1)` pays for its regeneration. The passive-counter badge displays its count.
 - `vitality` (`CounterType.VITALITY`): LEA — Living Artifact. Passive spendable store with no inherent rule: its `Triggers.you.isDealtDamage()` trigger adds `DynamicAmounts.triggerDamageAmount()` of them, and its upkeep trigger may remove one to gain 1 life. The passive-counter badge displays its count.
+- `void` (`CounterType.VOID`): AFR — Sphere of Annihilation. Passive tally with no inherent rule: `EntersWithDynamicCounters(VOID, xValue())` sets it, and the upkeep trigger snapshots it with `storeNumber(countersOnSelf(VOID))` before exiling everything whose mana value is at most that number (`CardPredicate.ManaValueAtMostDynamic(slot.amount)`). The passive-counter badge displays its count.
 - `phyresis` (`CounterType.PHYRESIS`): DMU — Weatherlight Compleated. Passive tally with no inherent rule; `Conditions.SourceCounterCountAtLeast(PHYRESIS, 4)` gates its conditional Phyrexian-creature type change and `…AtLeast(PHYRESIS, 7)` its draw-or-scry branch. The passive-counter badge displays its count.
 - `muster` (`CounterType.MUSTER`): GTC — Assemble the Legion. Passive tally with no inherent rule: its upkeep trigger adds one, then creates a Soldier token for each (`DynamicAmounts.countersOnSelf(MUSTER)`). The passive-counter badge displays its count.
 - `hatching` (`CounterType.HATCHING`): NEO — The Dragon-Kami Reborn. A pure marker on a face-down card in exile: chapters I–II exile one of the top three with `move(..., faceDown = FaceDownMode.HIDDEN, lookableInExile = true, addCounterType = CounterType.HATCHING)`, and Dragon-Kami's Egg gathers `CardSource.FromZone(Zone.EXILE, Player.You, GameObjectFilter.Creature.withCounter(CounterType.HATCHING))` to cast one for free. The exile browser badges its count.

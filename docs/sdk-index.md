@@ -217,6 +217,7 @@ Families:
 - `CardPredicate.IsKindred` — Kindred (formerly Tribal, CR 308) — the card type that lets a non-creature card carry creature types.
 - `CardPredicate.IsLand`
 - `CardPredicate.IsLegendary`
+- `CardPredicate.IsLoyaltyAbility` — Matches only **loyalty abilities** on the stack — activated abilities with a loyalty symbol in their cost (CR 606.2).
 - `CardPredicate.IsMonocolored`
 - `CardPredicate.IsMulticolored`
 - `CardPredicate.IsNonartifact`
@@ -883,7 +884,7 @@ Families:
 - `GainLifeEffect(amount: DynamicAmount, target: EffectTarget)` — Gain life effect.
 - `GameIsDrawEffect` — "The game is a draw." (CR 104.4c) — the game ends at once with no winner and no loser (Divine Intervention).
 - `GatedEffect(gate: Gate, then: Effect, otherwise: Effect?, decisionMaker: EffectTarget?, descriptionOverride: String?, hint: String?)` — One resolution frame for the optional / gated-effect cluster.
-- `GatherCardsEffect(source: CardSource, storeAs: String, revealed: Boolean, lookAudience: LookAudience, search: Boolean)` — Gather cards from a source and store them in a named collection.
+- `GatherCardsEffect(source: CardSource, storeAs: String, revealed: Boolean, lookAudience: LookAudience, search: Boolean, searcher: Player)` — Gather cards from a source and store them in a named collection.
 - `GatherSubtypesEffect(from: String, storeAs: String)` — Extract the subtypes of each entity in a stored collection and save the result as a list of subtype sets in `storedSubtypeGroupsstoreAs`.
 - `GatherUntilMatchEffect(player: Player, filter: GameObjectFilter, storeMatch: String, storeRevealed: String, count: DynamicAmount)` — Walk a player's library top-down until count cards matching filter have been revealed (or the library runs out).
 - `GiftGivenEffect` — Signals that a gift was given (Bloomburrow gift mechanic).
@@ -999,7 +1000,7 @@ Families:
 - `PreventDamageEffect(target: EffectTarget, recipientGroup: GameObjectFilter?, recipientGroupIncludesController: Boolean, amount: DynamicAmount?, scope: PreventionScope, direction: PreventionDirection, sourceFilter: PreventionSourceFilter, onPrevented: Effect?, gainLifeFromColors: Set<Color>, duration: Duration, preventDamage: Boolean, nextInstanceOnly: Boolean, halvePreventedDamage: Boolean, gainLifeFromPrevented: Boolean, toPlayersOnly: Boolean)` — Unified damage prevention effect.
 - `PreventLandPlaysThisTurnEffect(target: EffectTarget)` — Prevent the target player from playing lands for the rest of this turn.
 - `PreventNextDamageLeavingAmountEffect(amountToLeave: DynamicAmount, target: EffectTarget, eligibleSource: GameObjectFilter, scope: PreventionScope, duration: Duration)` — A single-instance prevention shield that leaves up to amountToLeave damage unprevented.
-- `ProliferateEffect(target: EffectTarget?)` — Give one additional counter of each kind already there to any number of permanents and/or players.
+- `ProliferateEffect(target: EffectTarget?, storeAs: String?)` — Give one additional counter of each kind already there to any number of permanents and/or players.
 - `ProvokeEffect(target: EffectTarget)` — Provoke effect: untap target creature and force it to block the source creature if able.
 - `PutOnLibraryPositionOfChoiceEffect(target: EffectTarget, positions: List<LibraryChoicePosition>)` — The target's owner puts it into their library at one of the offered positions.
 - `PutOntoBattlefieldAsAuraEffect(enchant: GameObjectFilter, grantedStaticAbilities: List<StaticAbility>, grantedAbilities: List<ActivatedAbility>, target: EffectTarget, fromZone: Zone?)` — Put a card onto the battlefield **as an Aura** it isn't printed as: "return it to the battlefield.

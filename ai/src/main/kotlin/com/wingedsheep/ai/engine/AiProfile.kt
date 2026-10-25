@@ -1159,6 +1159,16 @@ data class AiProfile(
      *   this-turn can't-attack/can't-block where it restrains nothing — and, when the only other
      *   payoff is a counter on a source that taps, where activating now keeps it tapped through the
      *   window that matters.
+     * - **An end-of-combat sweep over blocks that won't happen.** 2026-10-25 playtest, turn 27:
+     *   Glyph of Doom cast on our own Wall in our own precombat main, where the Wall can't block.
+     *   [com.wingedsheep.ai.engine.knowledge.IdleBlockWatcher] floors a spell whose only effect is an
+     *   end-of-combat sweep over what its target blocked this turn, when that creature has blocked
+     *   nothing and can't block before the sweep fires.
+     * - **Borrowed spell mana with no spell to spend it on.** Same playtest, turn 26: Piracy cast
+     *   holding only counterspells, with nothing to counter.
+     *   [com.wingedsheep.ai.engine.knowledge.UnspendableManaGrant] floors a spell whose only effect is
+     *   an until-end-of-turn, spells-only "tap permanents you don't control for mana" grant when the
+     *   position it resolves to offers no affordable spell with fillable targets.
      */
     val refuseWastedPayoffs: Boolean = false,
     /**
@@ -1253,6 +1263,21 @@ data class AiProfile(
      * that margin). Mandatory, vigilant and can't-block attackers stay. 1v1 is untouched. Pinned by `MinimalLethalInPodsTest`.
      */
     val minimalLethalInPods: Boolean = false,
+    /**
+     * Read a blocker whose block trigger destroys the attacker it blocks as a killer, the way
+     * deathtouch is read.
+     *
+     * Off a 4-player AI-vs-AI playtest (2026-10-25, game 01, turn 29): a hexproof 6/5 Leviathan
+     * token attacked alone into an untapped Alaborn Zealot ("When this creature blocks a creature,
+     * destroy both creatures") and traded for the 1/1. The attack evaluator predicts the defender's
+     * blocks with the stats-and-keywords block heuristic, which saw a 1/1 in front of a 6/5 as a
+     * chump it would never make — so the Zealot block was never simulated and the trigger never
+     * priced. With this on, the heuristic reads the untargeted self-blocks destroy-the-blocked
+     * trigger ([com.wingedsheep.ai.engine.knowledge.BlockTriggerRemoval]) as a kill that first
+     * strike cannot stop, and a trade when it destroys the blocker too. Pinned by
+     * `BlockTriggersKillTest`.
+     */
+    val blockTriggersKill: Boolean = false,
     /** Non-null profiles may only be selected automatically for this set. Arena selection stays explicit. */
     val restrictedToSet: String? = null,
 ) {
@@ -2211,6 +2236,7 @@ data class AiProfile(
             lifelinkWaitsForBlocks = true,
             tapToGrowAtTheirEndStep = true,
             minimalLethalInPods = true,
+            blockTriggersKill = true,
         )
 
         /**

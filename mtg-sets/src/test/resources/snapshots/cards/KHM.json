@@ -1989,6 +1989,178 @@
     ]
 }
 
+// Esika, God of the Tree
+{
+    "name": "Esika, God of the Tree",
+    "manaCost": "{1}{G}{G}",
+    "typeLine": "Legendary Creature — God",
+    "oracleText": "Vigilance\n{T}: Add one mana of any color.\nOther legendary creatures you control have vigilance and \"{T}: Add one mana of any color.\"",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 4
+    },
+    "keywords": [
+        "VIGILANCE"
+    ],
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Esika, God of the Tree:1",
+                "cost": "CostTap",
+                "effect": "AddManaOfChoice",
+                "timing": "ManaAbility",
+                "isManaAbility": true,
+                "descriptionOverride": "{T}: Add one mana of any color."
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "GrantKeyword",
+                "keyword": "VIGILANCE",
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            "IsCreature",
+                            "IsLegendary"
+                        ],
+                        "controllerPredicate": "ControlledByYou"
+                    },
+                    "excludeSelf": true
+                }
+            },
+            {
+                "type": "GrantActivatedAbility",
+                "ability": {
+                    "id": "Esika, God of the Tree:2",
+                    "cost": "CostTap",
+                    "effect": "AddManaOfChoice",
+                    "timing": "ManaAbility",
+                    "isManaAbility": true,
+                    "descriptionOverride": "{T}: Add one mana of any color."
+                },
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            "IsCreature",
+                            "IsLegendary"
+                        ],
+                        "controllerPredicate": "ControlledByYou"
+                    },
+                    "excludeSelf": true
+                }
+            }
+        ]
+    },
+    "backFace": {
+        "name": "The Prismatic Bridge",
+        "manaCost": "{W}{U}{B}{R}{G}",
+        "typeLine": "Legendary Enchantment",
+        "oracleText": "At the beginning of your upkeep, reveal cards from the top of your library until you reveal a creature or planeswalker card. Put that card onto the battlefield and the rest on the bottom of your library in a random order.",
+        "script": {
+            "triggeredAbilities": [
+                {
+                    "id": "The Prismatic Bridge:1",
+                    "trigger": {
+                        "type": "StepEvent",
+                        "step": "UPKEEP"
+                    },
+                    "binding": "ANY",
+                    "effect": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "GatherUntilMatch",
+                                "filter": "creature|planeswalker",
+                                "storeMatch": "matched0",
+                                "storeRevealed": "revealed0"
+                            },
+                            {
+                                "type": "RevealCollection",
+                                "from": "revealed0",
+                                "fromZone": "Library",
+                                "toZone": "Battlefield"
+                            },
+                            {
+                                "type": "MoveCollection",
+                                "from": "matched0",
+                                "destination": {
+                                    "type": "ToZone",
+                                    "zone": "Battlefield"
+                                }
+                            },
+                            {
+                                "type": "FilterCollection",
+                                "from": "revealed0",
+                                "collectionFilter": {
+                                    "type": "ExcludeOtherCollection",
+                                    "otherCollectionName": "matched0"
+                                },
+                                "storeMatching": "matching3"
+                            },
+                            {
+                                "type": "MoveCollection",
+                                "from": "matching3",
+                                "destination": {
+                                    "type": "ToZone",
+                                    "zone": "Library",
+                                    "placement": "Bottom"
+                                },
+                                "order": "Random"
+                            }
+                        ]
+                    },
+                    "descriptionOverride": "At the beginning of your upkeep, reveal cards from the top of your library until you reveal a creature or planeswalker card. Put that card onto the battlefield and the rest on the bottom of your library in a random order."
+                }
+            ]
+        },
+        "metadata": {
+            "collectorNumber": "168",
+            "rarity": "MYTHIC",
+            "artist": "Johannes Voss",
+            "flavorText": "Starnheim awaits.",
+            "imageUri": "https://cards.scryfall.io/normal/back/f/6/f6cd7465-9dd0-473c-ac5e-dd9e2f22f5f6.jpg?1783928221",
+            "rulings": [
+                {
+                    "date": "2021-02-05",
+                    "text": "While resolving the triggered ability of The Prismatic Bridge, if there are no creature or planeswalker cards in your library, you'll simply reveal your entire library, randomize it, and continue playing."
+                },
+                {
+                    "date": "2021-02-05",
+                    "text": "If you reveal a double-faced card whose front face is a creature or planeswalker, you'll put it onto the battlefield with its front face up."
+                }
+            ]
+        },
+        "colorIdentityOverride": [
+            "WHITE",
+            "BLUE",
+            "BLACK",
+            "RED",
+            "GREEN"
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "168",
+        "rarity": "MYTHIC",
+        "artist": "Johannes Voss",
+        "flavorText": "\"I know this world, from canopy to roots.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/6/f6cd7465-9dd0-473c-ac5e-dd9e2f22f5f6.jpg?1783928221",
+        "rulings": [
+            {
+                "date": "2021-02-05",
+                "text": "If a creature loses vigilance after it attacks (perhaps because Esika leaves the battlefield), that creature will continue attacking. It won't become tapped."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE",
+        "BLUE",
+        "BLACK",
+        "RED",
+        "GREEN"
+    ],
+    "layout": "MODAL_DFC"
+}
+
 // Feed the Serpent
 {
     "name": "Feed the Serpent",
@@ -3296,6 +3468,139 @@
     },
     "colorIdentityOverride": [
         "WHITE"
+    ]
+}
+
+// Koma, Cosmos Serpent
+{
+    "name": "Koma, Cosmos Serpent",
+    "manaCost": "{3}{G}{G}{U}{U}",
+    "typeLine": "Legendary Creature — Serpent",
+    "oracleText": "This spell can't be countered.\nAt the beginning of each upkeep, create a 3/3 blue Serpent creature token named Koma's Coil.\nSacrifice another Serpent: Choose one —\n• Tap target permanent. Its activated abilities can't be activated this turn.\n• Koma gains indestructible until end of turn.",
+    "creatureStats": {
+        "power": 6,
+        "toughness": 6
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Koma, Cosmos Serpent:1",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "UPKEEP",
+                    "player": "Each"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "CreateToken",
+                    "power": 3,
+                    "toughness": 3,
+                    "colors": [
+                        "BLUE"
+                    ],
+                    "creatureTypes": [
+                        "Serpent"
+                    ],
+                    "name": "Koma's Coil",
+                    "imageUri": "https://cards.scryfall.io/normal/front/5/4/54a1c6a9-3531-4432-9157-e4400dbc89fd.jpg?1783928080"
+                }
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Koma, Cosmos Serpent:2",
+                "cost": {
+                    "type": "CostAtomWrapper",
+                    "atom": {
+                        "type": "AtomSacrifice",
+                        "filter": "Serpent",
+                        "excludeSelf": true
+                    }
+                },
+                "effect": {
+                    "type": "Modal",
+                    "modes": [
+                        {
+                            "effect": {
+                                "type": "Composite",
+                                "effects": [
+                                    {
+                                        "type": "TapUntap",
+                                        "target": {
+                                            "type": "BoundVariable",
+                                            "name": "t0"
+                                        }
+                                    },
+                                    {
+                                        "type": "GrantStaticAbility",
+                                        "ability": {
+                                            "type": "PreventActivatedAbilities",
+                                            "filter": {
+                                                "cardPredicates": [
+                                                    "IsPermanent"
+                                                ],
+                                                "statePredicates": [
+                                                    "IsSource"
+                                                ]
+                                            }
+                                        },
+                                        "target": {
+                                            "type": "BoundVariable",
+                                            "name": "t0"
+                                        }
+                                    }
+                                ]
+                            },
+                            "targetRequirements": [
+                                {
+                                    "type": "TargetObject",
+                                    "filter": {
+                                        "baseFilter": "permanent"
+                                    },
+                                    "id": "t0"
+                                }
+                            ],
+                            "description": "Tap target permanent. Its activated abilities can't be activated this turn"
+                        },
+                        {
+                            "effect": {
+                                "type": "GrantKeyword",
+                                "keyword": "INDESTRUCTIBLE",
+                                "target": "Self"
+                            },
+                            "description": "Koma gains indestructible until end of turn"
+                        }
+                    ],
+                    "countsAsModalSpell": false
+                },
+                "descriptionOverride": "Sacrifice another Serpent: Choose one — tap target permanent and its activated abilities can't be activated this turn; or Koma gains indestructible until end of turn."
+            }
+        ],
+        "cantBeCountered": true
+    },
+    "metadata": {
+        "collectorNumber": "221",
+        "rarity": "MYTHIC",
+        "artist": "Jesper Ejsing",
+        "imageUri": "https://cards.scryfall.io/normal/front/2/d/2de25ea4-284a-4c16-b823-048ff00c6a03.jpg?1783928194",
+        "rulings": [
+            {
+                "date": "2021-02-05",
+                "text": "You can't sacrifice Koma itself to activate its last ability, but you can sacrifice any other Serpent you control, including Koma's Coil."
+            },
+            {
+                "date": "2021-02-05",
+                "text": "If you choose the first mode of Koma's activated ability, you can choose a permanent that's already tapped as the target. The effect stopping its activated abilities will still apply."
+            },
+            {
+                "date": "2021-02-05",
+                "text": "The first mode of Koma's activated ability doesn't stop static abilities from affecting the game, and it doesn't stop triggered abilities from triggering. Unlike similar effects, it does stop mana abilities from being activated."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "GREEN",
+        "BLUE"
     ]
 }
 
@@ -5308,6 +5613,62 @@
     },
     "colorIdentityOverride": [
         "RED"
+    ]
+}
+
+// Vega, the Watcher
+{
+    "name": "Vega, the Watcher",
+    "manaCost": "{1}{W}{U}",
+    "typeLine": "Legendary Creature — Bird Spirit",
+    "oracleText": "Flying\nWhenever you cast a spell from anywhere other than your hand, draw a card.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 2
+    },
+    "keywords": [
+        "FLYING"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Vega, the Watcher:1",
+                "trigger": {
+                    "type": "SpellCastEvent",
+                    "requires": [
+                        {
+                            "type": "SpellCastFromZoneOtherThan",
+                            "zone": "Hand"
+                        }
+                    ]
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "DrawCards",
+                    "count": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "233",
+        "rarity": "UNCOMMON",
+        "artist": "Paul Scott Canavan",
+        "flavorText": "One eye sees the past, one the present, and one the future—and none can be deceived.",
+        "imageUri": "https://cards.scryfall.io/normal/front/2/8/28fced7f-3078-4a54-8f76-0ef14c732e97.jpg?1783928189",
+        "rulings": [
+            {
+                "date": "2021-02-05",
+                "text": "Vega's ability will resolve before the spell that caused it to trigger. It will resolve even if that spell is countered."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE",
+        "BLUE"
     ]
 }
 

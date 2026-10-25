@@ -750,6 +750,139 @@
     ]
 }
 
+// Bard Class
+{
+    "name": "Bard Class",
+    "manaCost": "{R}{G}",
+    "typeLine": "Enchantment — Class",
+    "oracleText": "(Gain the next level as a sorcery to add its ability.)\nLegendary creatures you control enter with an additional +1/+1 counter on them.\n{R}{G}: Level 2 — Legendary spells you cast cost {R}{G} less to cast. This effect reduces only the amount of colored mana you pay.\n{3}{R}{G}: Level 3 — Whenever you cast a legendary spell, exile the top two cards of your library. You may play them this turn.",
+    "script": {
+        "replacementEffects": [
+            {
+                "type": "EntersWithCounters",
+                "count": 1,
+                "appliesTo": {
+                    "type": "ZoneChangeEvent",
+                    "filter": {
+                        "cardPredicates": [
+                            "IsCreature",
+                            "IsLegendary"
+                        ],
+                        "controllerPredicate": "ControlledByYou"
+                    },
+                    "to": "Battlefield"
+                }
+            }
+        ],
+        "classLevels": [
+            {
+                "level": 2,
+                "cost": "{R}{G}",
+                "staticAbilities": [
+                    {
+                        "type": "ModifySpellCost",
+                        "target": {
+                            "type": "YouCast",
+                            "filter": {
+                                "cardPredicates": [
+                                    "IsLegendary"
+                                ]
+                            }
+                        },
+                        "modification": {
+                            "type": "ReduceColored",
+                            "symbols": "{R}{G}"
+                        }
+                    }
+                ]
+            },
+            {
+                "level": 3,
+                "cost": "{3}{R}{G}",
+                "triggeredAbilities": [
+                    {
+                        "id": "Bard Class:1",
+                        "trigger": {
+                            "type": "SpellCastEvent",
+                            "spellFilter": {
+                                "cardPredicates": [
+                                    "IsLegendary"
+                                ]
+                            }
+                        },
+                        "binding": "ANY",
+                        "effect": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "GatherCards",
+                                    "source": {
+                                        "type": "TopOfLibrary",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 2
+                                        }
+                                    },
+                                    "storeAs": "impulseExiled"
+                                },
+                                {
+                                    "type": "MoveCollection",
+                                    "from": "impulseExiled",
+                                    "destination": {
+                                        "type": "ToZone",
+                                        "zone": "Exile"
+                                    }
+                                },
+                                {
+                                    "type": "GrantMayPlayFromExile",
+                                    "from": "impulseExiled"
+                                }
+                            ]
+                        },
+                        "descriptionOverride": "Whenever you cast a legendary spell, exile the top two cards of your library. You may play them this turn."
+                    }
+                ]
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "217",
+        "rarity": "RARE",
+        "artist": "Andrew Mar",
+        "imageUri": "https://cards.scryfall.io/normal/front/3/7/37d6343a-c514-4ca6-a415-62d1a473ae20.jpg?1783926450",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "If you control multiple Bard Classes, legendary creatures you control enter the battlefield with that many additional +1/+1 counters."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Unlike most abilities that reduce the costs of spells, Bard Class's Level 2 ability cannot be applied to generic mana costs. For example, a spell that costs {2}{G} to cast would instead cost {2} to cast."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "If you do not play the cards exiled with Bard Classes Level 3 ability on the turn they are exiled, they will remain exiled indefinitely and cannot be played on a later turn."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "If you exile a modal double-faced card this way, you may cast either face of that card."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Gaining a level is a normal activated ability. It uses the stack and can be responded to."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Gaining a level won't remove abilities that a Class had at a previous level."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "RED",
+        "GREEN"
+    ]
+}
+
 // Battle Cry Goblin
 {
     "name": "Battle Cry Goblin",
@@ -1983,6 +2116,143 @@
     ]
 }
 
+// Cleric Class
+{
+    "name": "Cleric Class",
+    "manaCost": "{W}",
+    "typeLine": "Enchantment — Class",
+    "oracleText": "(Gain the next level as a sorcery to add its ability.)\nIf you would gain life, you gain that much life plus 1 instead.\n{3}{W}: Level 2 — Whenever you gain life, put a +1/+1 counter on target creature you control.\n{4}{W}: Level 3 — When this Class becomes level 3, return target creature card from your graveyard to the battlefield. You gain life equal to that creature's toughness.",
+    "script": {
+        "replacementEffects": [
+            {
+                "type": "ModifyLifeGain",
+                "multiplier": 1,
+                "modifier": 1
+            }
+        ],
+        "classLevels": [
+            {
+                "level": 2,
+                "cost": "{3}{W}",
+                "triggeredAbilities": [
+                    {
+                        "id": "Cleric Class:1",
+                        "trigger": "LifeGainEvent",
+                        "binding": "ANY",
+                        "effect": {
+                            "type": "AddCounters",
+                            "counterType": "PLUS_ONE_PLUS_ONE",
+                            "count": 1,
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        },
+                        "targetRequirement": {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "creature ctrl:you"
+                            },
+                            "id": "t0"
+                        },
+                        "descriptionOverride": "Whenever you gain life, put a +1/+1 counter on target creature you control."
+                    }
+                ]
+            },
+            {
+                "level": 3,
+                "cost": "{4}{W}",
+                "triggeredAbilities": [
+                    {
+                        "id": "Cleric Class:2",
+                        "trigger": {
+                            "type": "ZoneChangeEvent",
+                            "to": "Battlefield"
+                        },
+                        "effect": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "MoveToZone",
+                                    "target": {
+                                        "type": "BoundVariable",
+                                        "name": "t1"
+                                    },
+                                    "destination": "Battlefield",
+                                    "fromZone": "Graveyard"
+                                },
+                                {
+                                    "type": "GainLife",
+                                    "amount": {
+                                        "type": "EntityProperty",
+                                        "entity": {
+                                            "type": "BoundVariable",
+                                            "name": "t1"
+                                        },
+                                        "numericProperty": "Toughness"
+                                    }
+                                }
+                            ]
+                        },
+                        "targetRequirement": {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "creature own:you",
+                                "zone": "Graveyard"
+                            },
+                            "id": "t1"
+                        },
+                        "descriptionOverride": "When this Class becomes level 3, return target creature card from your graveyard to the battlefield. You gain life equal to that creature's toughness."
+                    }
+                ]
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "6",
+        "rarity": "UNCOMMON",
+        "artist": "Alayna Danner",
+        "imageUri": "https://cards.scryfall.io/normal/front/4/7/47ce8b7e-d8e1-489a-a69e-99089eeb8739.jpg?1783926538",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "If you gain life at the same time a creature is dealt lethal damage, it dies before Cleric Class's level 2 ability can put a +1/+1 counter on it."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "An ability that triggers \"whenever you gain life\" triggers just once for each life gain event, no matter how much life you gain."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Each creature with lifelink dealing combat damage causes a separate life gain event. For example, if two creatures you control with lifelink deal combat damage at the same time, you will gain 2 additional life from Cleric Class's first ability and its level 2 ability will trigger twice. However, if a single creature you control with lifelink deals combat damage to multiple creatures, players, and/or planeswalkers at the same time (perhaps because it has trample or was blocked by more than one creature), you will only gain 1 additional life and the ability will trigger only once."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "If you gain an amount of life \"for each\" of something, that life is gained as one event and the ability will trigger only once."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "When Cleric Class's level 3 ability resolves, you gain life equal to the creature's toughness as it exists on battlefield, which may be different than its toughness in the graveyard."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Gaining a level is a normal activated ability. It uses the stack and can be responded to."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Gaining a level won't remove abilities that a Class had at a previous level."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "You can't activate the first level ability of a Class unless that Class is level 1. Similarly, you can't activate the second level ability of a Class unless that Class is level 2."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
 // Clever Conjurer
 {
     "name": "Clever Conjurer",
@@ -3029,6 +3299,130 @@
     ]
 }
 
+// Demilich
+{
+    "name": "Demilich",
+    "manaCost": "{U}{U}{U}{U}",
+    "typeLine": "Creature — Skeleton Wizard",
+    "oracleText": "This spell costs {U} less to cast for each instant and sorcery spell you've cast this turn.\nWhenever this creature attacks, exile up to one target instant or sorcery card from your graveyard. Copy it. You may cast the copy.\nYou may cast this card from your graveyard by exiling four instant and/or sorcery cards from your graveyard in addition to paying its other costs.",
+    "creatureStats": {
+        "power": 4,
+        "toughness": 3
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Demilich:1",
+                "trigger": "AttackEvent",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "MoveToZone",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            },
+                            "destination": "Exile"
+                        },
+                        {
+                            "type": "CopyCardIntoCollection",
+                            "source": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            },
+                            "storeAs": "copy1"
+                        },
+                        {
+                            "type": "Gated",
+                            "gate": "Gate.MayDecide",
+                            "then": {
+                                "type": "CastFromCollectionWithoutPayingCost",
+                                "from": "copy1",
+                                "payManaCost": true
+                            },
+                            "descriptionOverride": "You may cast the copy."
+                        }
+                    ]
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "optional": true,
+                    "filter": {
+                        "baseFilter": "instant|sorcery own:you",
+                        "zone": "Graveyard"
+                    },
+                    "id": "t0"
+                },
+                "descriptionOverride": "Whenever this creature attacks, exile up to one target instant or sorcery card from your graveyard. Copy it. You may cast the copy."
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "ModifySpellCost",
+                "target": "SelfCast",
+                "modification": {
+                    "type": "ReduceColoredPerUnit",
+                    "symbols": "{U}",
+                    "countSource": {
+                        "type": "Dynamic",
+                        "amount": {
+                            "type": "SpellsCastThisTurn",
+                            "filter": "instant|sorcery"
+                        }
+                    }
+                }
+            },
+            {
+                "type": "MayCastSelfFromZones",
+                "zones": [
+                    "Graveyard"
+                ],
+                "additionalCost": {
+                    "type": "AdditionalAtom",
+                    "atom": {
+                        "type": "AtomExileFrom",
+                        "zone": "Graveyard",
+                        "filter": "instant|sorcery",
+                        "count": 4
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "53",
+        "rarity": "MYTHIC",
+        "artist": "Daniel Zrom",
+        "imageUri": "https://cards.scryfall.io/normal/front/0/a/0a1351ed-b9df-4a6d-aaa1-ec6db673d265.jpg?1783926516",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "While casting Demilich, if you are required to pay an additional cost that includes a generic mana component, Demilich's cost reduction effect can apply to it. For example, if you're required to pay an additional {1} to cast Demilich (perhaps because of Sphere of Resistance), and you've cast five or more instant and/or sorcery spells this turn, you would pay {0} to cast Demilich."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "If you exile a card as the triggered ability resolves, that card will remain exiled whether you cast the copy or not."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Casting the copy happens as part of the resolution of Demilich's triggered ability. If you choose to cast it, you must do so right away. If you choose not to cast it right away, the copy ceases to exist the next time a player would receive priority."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "You must pay all normal costs for casting the copy."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Demilich's last ability doesn't change when you can cast it. In most cases, you can cast Demilich only during your main phase."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Demogorgon's Clutches
 {
     "name": "Demogorgon's Clutches",
@@ -3511,6 +3905,57 @@
     ]
 }
 
+// Displacer Beast
+{
+    "name": "Displacer Beast",
+    "manaCost": "{2}{U}",
+    "typeLine": "Creature — Cat Beast",
+    "oracleText": "When this creature enters, venture into the dungeon. (Enter the first room or advance to the next room.)\nDisplacement — {3}{U}: Return this creature to its owner's hand.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 2
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Displacer Beast:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": "VentureIntoTheDungeon"
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Displacer Beast:2",
+                "cost": {
+                    "type": "CostAtomWrapper",
+                    "atom": {
+                        "type": "AtomMana",
+                        "cost": "{3}{U}"
+                    }
+                },
+                "effect": {
+                    "type": "MoveToZone",
+                    "target": "Self",
+                    "destination": "Hand"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "54",
+        "rarity": "UNCOMMON",
+        "artist": "Bryan Sola",
+        "flavorText": "The only place you can be sure it's not is wherever it appears to be.",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/5/95d5c36c-bcc8-459c-9f4b-b265ccdb1f06.jpg?1783926516"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Divine Smite
 {
     "name": "Divine Smite",
@@ -3697,6 +4142,91 @@
             }
         ]
     }
+}
+
+// Dragon Turtle
+{
+    "name": "Dragon Turtle",
+    "manaCost": "{1}{U}{U}",
+    "typeLine": "Creature — Dragon Turtle",
+    "oracleText": "Flash\nDrag Below — When this creature enters, tap it and up to one target creature an opponent controls. They don't untap during their controllers' next untap steps.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 5
+    },
+    "keywords": [
+        "FLASH"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Dragon Turtle:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "TapUntap",
+                            "target": "Self"
+                        },
+                        {
+                            "type": "TapUntap",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        },
+                        {
+                            "type": "GrantKeyword",
+                            "keyword": "DOESNT_UNTAP",
+                            "target": "Self",
+                            "duration": "UntilAfterAffectedControllersNextUntap"
+                        },
+                        {
+                            "type": "GrantKeyword",
+                            "keyword": "DOESNT_UNTAP",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            },
+                            "duration": "UntilAfterAffectedControllersNextUntap"
+                        }
+                    ]
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "optional": true,
+                    "filter": {
+                        "baseFilter": "creature ctrl:opponent"
+                    },
+                    "id": "t0"
+                },
+                "descriptionOverride": "Drag Below — When this creature enters, tap it and up to one target creature an opponent controls. They don't untap during their controllers' next untap steps."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "56",
+        "rarity": "RARE",
+        "artist": "Dan Murayama Scott",
+        "imageUri": "https://cards.scryfall.io/normal/front/d/4/d436ba80-386f-40ad-b0ca-a98cc50de964.jpg?1783926517",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "If you target an opponent's creature with Dragon Turtle's Drag Below ability and that target is illegal as the ability tries to resolve, the entire ability is removed from the stack and does nothing. Dragon Turtle will remain untapped and will untap as normal during its controller's next untap step."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "If, however, there are no legal targets for the Drag Below ability when Dragon Turtle enters the battlefield (or you choose not to target anything), Dragon Turtle's ability will still resolve and cause it to be tapped and it won't untap during its controllers next untap step."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
 }
 
 // Dragon's Fire
@@ -4100,6 +4630,80 @@
     ]
 }
 
+// Dungeon Descent
+{
+    "name": "Dungeon Descent",
+    "manaCost": "",
+    "typeLine": "Land",
+    "oracleText": "This land enters tapped.\n{T}: Add {C}.\n{4}, {T}, Tap an untapped legendary creature you control: Venture into the dungeon. Activate only as a sorcery. (Enter the first room or advance to the next room.)",
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Dungeon Descent:1",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "AddColorlessMana",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                },
+                "timing": "ManaAbility",
+                "isManaAbility": true
+            },
+            {
+                "id": "Dungeon Descent:2",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{4}"
+                            }
+                        },
+                        "CostTap",
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomTapPermanents",
+                                "filter": {
+                                    "cardPredicates": [
+                                        "IsCreature",
+                                        "IsLegendary"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                "effect": "VentureIntoTheDungeon",
+                "timing": "SorcerySpeed"
+            }
+        ],
+        "replacementEffects": [
+            "EntersTapped"
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "255",
+        "rarity": "RARE",
+        "artist": "Kasia 'Kafis' Zielińska",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/4/f4cccdbc-f4f4-42b6-9747-6ef703ff949a.jpg?1783926435",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "The player venturing into the dungeon chooses which dungeon they will venture into. They may choose a dungeon that they have already completed this game."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Choosing the dungeon or room to venture into is part of resolving the venture into the dungeon keyword action. Once that choice is made, players may not respond until after the appropriate room ability has triggered."
+            }
+        ]
+    }
+}
+
 // Dungeon Map
 {
     "name": "Dungeon Map",
@@ -4409,6 +5013,121 @@
     },
     "colorIdentityOverride": [
         "BLACK"
+    ]
+}
+
+// Eccentric Apprentice
+{
+    "name": "Eccentric Apprentice",
+    "manaCost": "{2}{U}",
+    "typeLine": "Creature — Tiefling Wizard",
+    "oracleText": "Flying\nWhen this creature enters, venture into the dungeon. (Enter the first room or advance to the next room.)\nAt the beginning of combat on your turn, if you've completed a dungeon, up to one target creature becomes a Bird with base power and toughness 1/1 and flying until end of turn.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 2
+    },
+    "keywords": [
+        "FLYING"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Eccentric Apprentice:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": "VentureIntoTheDungeon"
+            },
+            {
+                "id": "Eccentric Apprentice:2",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "BEGIN_COMBAT"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "SetCreatureSubtypes",
+                            "subtypes": [
+                                "Bird"
+                            ],
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            },
+                            "duration": "EndOfTurn"
+                        },
+                        {
+                            "type": "SetBaseStats",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            },
+                            "power": {
+                                "type": "Fixed",
+                                "amount": 1
+                            },
+                            "toughness": {
+                                "type": "Fixed",
+                                "amount": 1
+                            },
+                            "duration": "EndOfTurn"
+                        },
+                        {
+                            "type": "GrantKeyword",
+                            "keyword": "FLYING",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        }
+                    ]
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "optional": true,
+                    "filter": {
+                        "baseFilter": "creature"
+                    },
+                    "id": "t0"
+                },
+                "interveningIf": {
+                    "type": "Compare",
+                    "left": "DungeonsCompleted",
+                    "operator": "GTE",
+                    "right": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "57",
+        "rarity": "UNCOMMON",
+        "artist": "Campbell White",
+        "imageUri": "https://cards.scryfall.io/normal/front/3/b/3baa08ac-9a94-4e22-91bb-c6966cd0a0de.jpg?1783926516",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "Eccentric Apprentice's last ability works even if it wasn't on the battlefield when you completed a dungeon and even if the dungeon was completed on a previous turn."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "A creature that becomes a Bird this way loses all other creature types but does not lose any of its abilities."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "The last ability will overwrite any previous effects that set the creature's power and toughness to specific numbers. Effects that otherwise modify the target creature's power and toughness will still apply no matter when they took effect. The same is true for +1/+1 counters."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
     ]
 }
 
@@ -5176,6 +5895,141 @@
     }
 }
 
+// Fighter Class
+{
+    "name": "Fighter Class",
+    "manaCost": "{R}{W}",
+    "typeLine": "Enchantment — Class",
+    "oracleText": "(Gain the next level as a sorcery to add its ability.)\nWhen this Class enters, search your library for an Equipment card, reveal it, put it into your hand, then shuffle.\n{1}{R}{W}: Level 2 — Equip abilities you activate cost {2} less to activate.\n{3}{R}{W}: Level 3 — Whenever a creature you control attacks, up to one target creature blocks it this combat if able.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Fighter Class:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "FromZone",
+                                "zone": "Library",
+                                "filter": "artifact Equipment"
+                            },
+                            "storeAs": "searchable",
+                            "search": true
+                        },
+                        {
+                            "type": "SelectFromCollection",
+                            "from": "searchable",
+                            "selection": {
+                                "type": "ChooseUpTo",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            "storeSelected": "found",
+                            "prompt": "Search your library for an Equipment artifact card to put into your hand",
+                            "selectedLabel": "Put into your hand"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "found",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Hand"
+                            },
+                            "revealed": true
+                        },
+                        "ShuffleLibrary",
+                        "EmitLibrarySearchedEvent"
+                    ]
+                },
+                "descriptionOverride": "When this Class enters, search your library for an Equipment card, reveal it, put it into your hand, then shuffle."
+            }
+        ],
+        "classLevels": [
+            {
+                "level": 2,
+                "cost": "{1}{R}{W}",
+                "staticAbilities": [
+                    {
+                        "type": "ReduceEquipCost",
+                        "amount": 2
+                    }
+                ]
+            },
+            {
+                "level": 3,
+                "cost": "{3}{R}{W}",
+                "triggeredAbilities": [
+                    {
+                        "id": "Fighter Class:2",
+                        "trigger": {
+                            "type": "AttackEvent",
+                            "filter": "creature ctrl:you"
+                        },
+                        "binding": "ANY",
+                        "effect": {
+                            "type": "ForceBlock",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            },
+                            "attacker": "TriggeringEntity"
+                        },
+                        "targetRequirement": {
+                            "type": "TargetObject",
+                            "optional": true,
+                            "filter": {
+                                "baseFilter": "creature"
+                            },
+                            "id": "t0"
+                        },
+                        "descriptionOverride": "Whenever a creature you control attacks, up to one target creature blocks it this combat if able."
+                    }
+                ]
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "222",
+        "rarity": "RARE",
+        "artist": "Volkan Baǵa",
+        "imageUri": "https://cards.scryfall.io/normal/front/d/5/d54a8329-b940-42c9-8ace-1d74407d14cb.jpg?1783926448",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "The discount to equip abilities applies only to generic mana requirements. If you control multiple Fighter Classes that are level 2 or higher, equip abilities cost {2} less for each one. This can't make an ability cost less than {0}."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "For the last triggered ability, if the target creature is tapped or is affected by a spell or ability that says it can't block, then it doesn't block. If there's a cost associated with having that creature block, its controller isn't forced to pay that cost, so it doesn't have to block in that case either."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "If the last triggered ability triggers more than once in the same combat, a single creature may be required to block more than one creature. As long as it doesn't have an ability that would allow that, its controller choose which attacking creature it blocks."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Gaining a level is a normal activated ability. It uses the stack and can be responded to."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Gaining a level won't remove abilities that a Class had at a previous level."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "RED",
+        "WHITE"
+    ]
+}
+
 // Find the Path
 {
     "name": "Find the Path",
@@ -5415,6 +6269,461 @@
     },
     "colorIdentityOverride": [
         "RED"
+    ]
+}
+
+// Flumph
+{
+    "name": "Flumph",
+    "manaCost": "{1}{W}",
+    "typeLine": "Creature — Jellyfish",
+    "oracleText": "Defender, flying\nWhenever this creature is dealt damage, you and target opponent each draw a card.",
+    "creatureStats": {
+        "power": 0,
+        "toughness": 4
+    },
+    "keywords": [
+        "DEFENDER",
+        "FLYING"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Flumph:1",
+                "trigger": "DamageReceivedEvent",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            }
+                        },
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            },
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        }
+                    ]
+                },
+                "targetRequirement": {
+                    "type": "TargetOpponent",
+                    "id": "t0"
+                },
+                "descriptionOverride": "Whenever this creature is dealt damage, you and target opponent each draw a card."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "15",
+        "rarity": "RARE",
+        "artist": "Brian Valeza",
+        "flavorText": "Flumphs siphon thoughts and energy from evil aberrations, and are often eager to share the dark knowledge they obtain with friendly adventurers.",
+        "imageUri": "https://cards.scryfall.io/normal/front/c/d/cdc86e78-8911-4a0d-ba3a-7802f8d991ef.jpg?1783926532"
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
+// Fly
+{
+    "name": "Fly",
+    "manaCost": "{U}",
+    "typeLine": "Enchantment — Aura",
+    "oracleText": "Enchant creature\nEnchanted creature has flying and \"Whenever this creature deals combat damage to a player, venture into the dungeon.\" (Enter the first room or advance to the next room.)",
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "GrantKeyword",
+                "keyword": "FLYING"
+            },
+            {
+                "type": "GrantTriggeredAbility",
+                "ability": {
+                    "id": "Fly:1",
+                    "trigger": {
+                        "type": "DealsDamageEvent",
+                        "damageType": "DamageCombat",
+                        "recipient": {
+                            "type": "RecipientPlayer",
+                            "player": "Any"
+                        }
+                    },
+                    "effect": "VentureIntoTheDungeon"
+                }
+            }
+        ],
+        "auraTarget": {
+            "type": "TargetObject",
+            "filter": {
+                "baseFilter": "creature"
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "59",
+        "rarity": "UNCOMMON",
+        "artist": "Lie Setiawan",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/1/f1a91cc6-67e1-4f1b-86e2-eb388a75d6ad.jpg?1783926514"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
+// Forsworn Paladin
+{
+    "name": "Forsworn Paladin",
+    "manaCost": "{B}",
+    "typeLine": "Creature — Human Knight",
+    "oracleText": "Menace\n{1}{B}, {T}, Pay 1 life: Create a Treasure token.\n{2}{B}: Target creature gets +2/+0 until end of turn. If mana from a Treasure was spent to activate this ability, that creature also gains deathtouch until end of turn.",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 1
+    },
+    "keywords": [
+        "MENACE"
+    ],
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Forsworn Paladin:1",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{1}{B}"
+                            }
+                        },
+                        "CostTap",
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomPayLife",
+                                "amount": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            }
+                        }
+                    ]
+                },
+                "effect": {
+                    "type": "CreatePredefinedToken",
+                    "tokenType": "Treasure"
+                }
+            },
+            {
+                "id": "Forsworn Paladin:2",
+                "cost": {
+                    "type": "CostAtomWrapper",
+                    "atom": {
+                        "type": "AtomMana",
+                        "cost": "{2}{B}"
+                    }
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "ModifyStats",
+                            "powerModifier": {
+                                "type": "Fixed",
+                                "amount": 2
+                            },
+                            "toughnessModifier": {
+                                "type": "Fixed",
+                                "amount": 0
+                            },
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        },
+                        {
+                            "type": "Gated",
+                            "gate": {
+                                "type": "Gate.WhenCondition",
+                                "condition": {
+                                    "type": "Compare",
+                                    "left": {
+                                        "type": "ManaSpentFromSubtype",
+                                        "subtype": "Treasure",
+                                        "payment": "ACTIVATION"
+                                    },
+                                    "operator": "GTE",
+                                    "right": {
+                                        "type": "Fixed",
+                                        "amount": 1
+                                    }
+                                }
+                            },
+                            "then": {
+                                "type": "GrantKeyword",
+                                "keyword": "DEATHTOUCH",
+                                "target": {
+                                    "type": "BoundVariable",
+                                    "name": "t0"
+                                }
+                            }
+                        }
+                    ]
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "creature"
+                        },
+                        "id": "t0"
+                    }
+                ]
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "104",
+        "rarity": "RARE",
+        "artist": "Lorenzo Mastroianni",
+        "imageUri": "https://cards.scryfall.io/normal/front/4/a/4acaf396-f950-42da-85ab-149ffb31fee6.jpg?1783926494"
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
+// Froghemoth
+{
+    "name": "Froghemoth",
+    "manaCost": "{3}{G}{G}",
+    "typeLine": "Creature — Frog Horror",
+    "oracleText": "Trample, haste\nWhenever this creature deals combat damage to a player, exile up to that many target cards from their graveyard. Put a +1/+1 counter on this creature for each creature card exiled this way. You gain 1 life for each noncreature card exiled this way.",
+    "creatureStats": {
+        "power": 4,
+        "toughness": 4
+    },
+    "keywords": [
+        "TRAMPLE",
+        "HASTE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Froghemoth:1",
+                "trigger": {
+                    "type": "DealsDamageEvent",
+                    "damageType": "DamageCombat",
+                    "recipient": {
+                        "type": "RecipientPlayer",
+                        "player": "Any"
+                    }
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": "ChosenTargets",
+                            "storeAs": "gathered0"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "gathered0",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Exile"
+                            },
+                            "storeMovedAs": "moved1"
+                        },
+                        {
+                            "type": "FilterCollection",
+                            "from": "moved1",
+                            "filter": "creature",
+                            "storeMatching": "matching2"
+                        },
+                        {
+                            "type": "FilterCollection",
+                            "from": "moved1",
+                            "filter": "noncreature",
+                            "storeMatching": "matching3"
+                        },
+                        {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "AddDynamicCounters",
+                                    "counterType": "PLUS_ONE_PLUS_ONE",
+                                    "amount": {
+                                        "type": "VariableReference",
+                                        "variableName": "matching2_count"
+                                    },
+                                    "target": "Self"
+                                },
+                                {
+                                    "type": "GainLife",
+                                    "amount": {
+                                        "type": "VariableReference",
+                                        "variableName": "matching3_count"
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "optional": true,
+                    "filter": {
+                        "baseFilter": "own:triggering-player",
+                        "zone": "Graveyard"
+                    },
+                    "id": "t0",
+                    "dynamicMaxCount": {
+                        "type": "ContextProperty",
+                        "key": "TRIGGER_DAMAGE_AMOUNT"
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "184",
+        "rarity": "RARE",
+        "artist": "Brent Hollowell",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/2/728e9567-2585-4c03-99a5-3e84fd8044d2.jpg?1783926463"
+    },
+    "colorIdentityOverride": [
+        "GREEN"
+    ]
+}
+
+// Gelatinous Cube
+{
+    "name": "Gelatinous Cube",
+    "manaCost": "{2}{B}{B}",
+    "typeLine": "Creature — Ooze",
+    "oracleText": "Engulf — When this creature enters, exile target non-Ooze creature an opponent controls until this creature leaves the battlefield.\nDissolve — {X}{B}: Put target creature card with mana value X exiled with this creature into its owner's graveyard.",
+    "creatureStats": {
+        "power": 4,
+        "toughness": 3
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Gelatinous Cube:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "MoveUntilSourceLeaves",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "destination": "Exile"
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                "IsCreature",
+                                {
+                                    "type": "NotSubtype",
+                                    "subtype": "Ooze"
+                                }
+                            ],
+                            "controllerPredicate": "ControlledByOpponent"
+                        }
+                    },
+                    "id": "t0"
+                }
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Gelatinous Cube:2",
+                "cost": {
+                    "type": "CostAtomWrapper",
+                    "atom": {
+                        "type": "AtomMana",
+                        "cost": "{X}{B}"
+                    }
+                },
+                "effect": {
+                    "type": "MoveToZone",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t1"
+                    },
+                    "destination": "Graveyard",
+                    "fromZone": "Exile"
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": {
+                                "cardPredicates": [
+                                    "IsCreature",
+                                    {
+                                        "type": "CompareNumericProperty",
+                                        "property": "MANA_VALUE",
+                                        "operator": "EQ",
+                                        "amount": "XValue"
+                                    }
+                                ],
+                                "statePredicates": [
+                                    "ExiledWithSource"
+                                ]
+                            },
+                            "zone": "Exile"
+                        },
+                        "id": "t1"
+                    }
+                ]
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "105",
+        "rarity": "RARE",
+        "artist": "Olivier Bernard",
+        "imageUri": "https://cards.scryfall.io/normal/front/1/c/1c472e70-300c-4881-86e7-c5ca690ab9b6.jpg?1783926493",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "If Gelatinous Cube leaves the battlefield before its Engulf ability resolves, the target non-Ooze creature won't be exiled."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Auras attached to the exiled creature will be put into their owners' graveyards. Any Equipment will become unattached and remain on the battlefield. Any counters on the exiled creature will cease to exist. When the card returns to the battlefield, it will be a new object with no connection to the card that was exiled."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "If a token is exiled this way, it will cease to exist and won't return to the battlefield."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "If the engulfed creature card leaves exile, perhaps because of the Dissolve ability, it won't return to the battlefield after Gelatinous Cube leaves the battlefield."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK"
     ]
 }
 
@@ -6006,6 +7315,135 @@
     },
     "colorIdentityOverride": [
         "BLACK"
+    ]
+}
+
+// Guardian of Faith
+{
+    "name": "Guardian of Faith",
+    "manaCost": "{1}{W}{W}",
+    "typeLine": "Creature — Spirit Knight",
+    "oracleText": "Flash\nVigilance\nWhen this creature enters, any number of other target creatures you control phase out. (Treat them and anything attached to them as though they don't exist until their controller's next turn.)",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 2
+    },
+    "keywords": [
+        "FLASH",
+        "VIGILANCE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Guardian of Faith:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "ForEach",
+                    "space": "IterationSpace.Targets",
+                    "body": {
+                        "type": "PhaseOut",
+                        "target": {
+                            "type": "ContextTarget",
+                            "index": 0
+                        }
+                    }
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "unlimited": true,
+                    "filter": {
+                        "baseFilter": "creature ctrl:you",
+                        "excludeSelf": true
+                    },
+                    "id": "t0"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "18",
+        "rarity": "RARE",
+        "artist": "Brian Valeza",
+        "imageUri": "https://cards.scryfall.io/normal/front/0/8/08e3dda1-a1d3-48c9-8c81-da7eae20ac8a.jpg?1783926532",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "An attacking or blocking creature that phases out is removed from combat."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Permanents phase back in during their controller's untap step, immediately before that player untaps their permanents. Creatures that phase in this way are able to attack and pay a cost of {T} during that turn."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Phasing out doesn't cause any \"leaves the battlefield\" abilities to trigger. Similarly, phasing in won't cause any \"enters the battlefield\" abilities to trigger."
+            }
+        ]
+    }
+}
+
+// Guild Thief
+{
+    "name": "Guild Thief",
+    "manaCost": "{1}{U}",
+    "typeLine": "Creature — Orc Rogue",
+    "oracleText": "Whenever this creature deals combat damage to a player, put a +1/+1 counter on it.\nCunning Action — {3}{U}: This creature can't be blocked this turn.",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 1
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Guild Thief:1",
+                "trigger": {
+                    "type": "DealsDamageEvent",
+                    "damageType": "DamageCombat",
+                    "recipient": {
+                        "type": "RecipientPlayer",
+                        "player": "Any"
+                    }
+                },
+                "effect": {
+                    "type": "AddCounters",
+                    "counterType": "PLUS_ONE_PLUS_ONE",
+                    "count": 1,
+                    "target": "Self"
+                },
+                "descriptionOverride": "Whenever this creature deals combat damage to a player, put a +1/+1 counter on it."
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Guild Thief:2",
+                "cost": {
+                    "type": "CostAtomWrapper",
+                    "atom": {
+                        "type": "AtomMana",
+                        "cost": "{3}{U}"
+                    }
+                },
+                "effect": {
+                    "type": "GrantKeyword",
+                    "keyword": "CANT_BE_BLOCKED",
+                    "target": "Self"
+                },
+                "descriptionOverride": "Cunning Action — {3}{U}: This creature can't be blocked this turn."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "61",
+        "rarity": "UNCOMMON",
+        "artist": "Mike Jordana",
+        "flavorText": "She puts some coin in the Guild's pocket and sends a message at the same time.",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/d/fd4348ec-fdb1-4c3b-bec5-42513c6c0662.jpg?1783926512"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
     ]
 }
 
@@ -7677,6 +9115,96 @@
     "colorIdentityOverride": []
 }
 
+// Iymrith, Desert Doom
+{
+    "name": "Iymrith, Desert Doom",
+    "manaCost": "{3}{U}{U}",
+    "typeLine": "Legendary Creature — Dragon",
+    "oracleText": "Flying\nIymrith has ward {4} as long as it's untapped.\nWhenever Iymrith deals combat damage to a player, draw a card. Then if you have fewer than three cards in hand, draw cards equal to the difference.",
+    "creatureStats": {
+        "power": 5,
+        "toughness": 5
+    },
+    "keywords": [
+        "FLYING"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Iymrith, Desert Doom:1",
+                "trigger": {
+                    "type": "DealsDamageEvent",
+                    "damageType": "DamageCombat",
+                    "recipient": {
+                        "type": "RecipientPlayer",
+                        "player": "Any"
+                    }
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            }
+                        },
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "IfPositive",
+                                "amount": {
+                                    "type": "Subtract",
+                                    "left": {
+                                        "type": "Fixed",
+                                        "amount": 3
+                                    },
+                                    "right": {
+                                        "type": "Count",
+                                        "player": "You",
+                                        "zone": "Hand"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "ConditionalStaticAbility",
+                "ability": {
+                    "type": "GrantWard",
+                    "cost": {
+                        "type": "WardCost.Mana",
+                        "manaCost": "{4}"
+                    },
+                    "filter": {
+                        "baseFilter": "permanent",
+                        "scope": "Self"
+                    }
+                },
+                "condition": {
+                    "type": "EntityMatches",
+                    "entity": "Self",
+                    "filter": "untapped"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "62",
+        "rarity": "MYTHIC",
+        "artist": "Wisnu Tan",
+        "imageUri": "https://cards.scryfall.io/normal/front/c/3/c3e6025d-d273-4ae4-9929-5e588612f1b3.jpg?1783926511"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Jaded Sell-Sword
 {
     "name": "Jaded Sell-Sword",
@@ -8622,6 +10150,127 @@
     }
 }
 
+// Mind Flayer
+{
+    "name": "Mind Flayer",
+    "manaCost": "{3}{U}{U}",
+    "typeLine": "Creature — Horror",
+    "oracleText": "Dominate Monster — When this creature enters, gain control of target creature for as long as you control this creature.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 3
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Mind Flayer:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "GainControl",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "duration": {
+                        "type": "WhileYouControlSource",
+                        "sourceDescription": "Mind Flayer"
+                    }
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": "creature"
+                    },
+                    "id": "t0"
+                },
+                "descriptionOverride": "When this creature enters, gain control of target creature for as long as you control this creature."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "63",
+        "rarity": "RARE",
+        "artist": "Daarken",
+        "flavorText": "\"Shed your thoughts and let my will flow through you.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/c/2/c29ac797-a186-4224-94e1-9bb9dca4b029.jpg?1783926511",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "If Mind Flayer leaves the battlefield or you lose control of it before its Dominate Monster ability resolves, control of the target creature doesn't change at all."
+            }
+        ]
+    }
+}
+
+// Minimus Containment
+{
+    "name": "Minimus Containment",
+    "manaCost": "{2}{W}",
+    "typeLine": "Enchantment — Aura",
+    "oracleText": "Enchant nonland permanent\nEnchanted permanent is a Treasure artifact with \"{T}, Sacrifice this artifact: Add one mana of any color,\" and it loses all other abilities. (If it was a creature, it's no longer a creature.)",
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "TransformPermanent",
+                "setCardTypes": [
+                    "ARTIFACT"
+                ],
+                "setSubtypes": [
+                    "Treasure"
+                ]
+            },
+            "LoseAllAbilities",
+            {
+                "type": "GrantActivatedAbility",
+                "ability": {
+                    "id": "Minimus Containment:1",
+                    "cost": {
+                        "type": "CostComposite",
+                        "costs": [
+                            "CostTap",
+                            "CostSacrificeSelf"
+                        ]
+                    },
+                    "effect": "AddManaOfChoice",
+                    "isManaAbility": true,
+                    "descriptionOverride": "{T}, Sacrifice this artifact: Add one mana of any color."
+                }
+            }
+        ],
+        "auraTarget": {
+            "type": "TargetObject",
+            "filter": {
+                "baseFilter": "nonland permanent"
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "24",
+        "artist": "Steve Prescott",
+        "imageUri": "https://cards.scryfall.io/normal/front/0/5/0556f0d9-50d2-4c67-8522-de366d96500a.jpg?1783926530",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "A creature enchanted with Minimus Containment stops being a creature. Equipment attached to that creature become unattached. Auras attached to that creature will be put into their owner's graveyard (unless they could also enchant a Treasure artifact)."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "The enchanted permanent still retains its name, colors, mana cost, and mana value. It isn't a token unless it already was one."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "If an effect refers to a Treasure, it means any Treasure artifact, not just a Treasure artifact token."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
 // Minion of the Mighty
 {
     "name": "Minion of the Mighty",
@@ -8709,6 +10358,146 @@
     },
     "colorIdentityOverride": [
         "RED"
+    ]
+}
+
+// Monk Class
+{
+    "name": "Monk Class",
+    "manaCost": "{W}{U}",
+    "typeLine": "Enchantment — Class",
+    "oracleText": "(Gain the next level as a sorcery to add its ability.)\nThe second spell you cast each turn costs {1} less to cast.\n{W}{U}: Level 2 — When this Class becomes level 2, return up to one target nonland permanent to its owner's hand.\n{1}{W}{U}: Level 3 — At the beginning of your upkeep, exile the top card of your library. For as long as it remains exiled, it has \"You may cast this card from exile as long as you've cast another spell this turn.\"",
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "ModifySpellCost",
+                "target": {
+                    "type": "YouCast",
+                    "filter": {}
+                },
+                "modification": {
+                    "type": "ReduceGeneric",
+                    "amount": 1
+                },
+                "gating": {
+                    "type": "NthOfTypePerTurn",
+                    "n": 2
+                }
+            }
+        ],
+        "classLevels": [
+            {
+                "level": 2,
+                "cost": "{W}{U}",
+                "triggeredAbilities": [
+                    {
+                        "id": "Monk Class:1",
+                        "trigger": {
+                            "type": "ZoneChangeEvent",
+                            "to": "Battlefield"
+                        },
+                        "effect": {
+                            "type": "MoveToZone",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            },
+                            "destination": "Hand"
+                        },
+                        "targetRequirement": {
+                            "type": "TargetObject",
+                            "optional": true,
+                            "filter": {
+                                "baseFilter": "nonland permanent"
+                            },
+                            "id": "t0"
+                        },
+                        "descriptionOverride": "When this Class becomes level 2, return up to one target nonland permanent to its owner's hand."
+                    }
+                ]
+            },
+            {
+                "level": 3,
+                "cost": "{1}{W}{U}",
+                "triggeredAbilities": [
+                    {
+                        "id": "Monk Class:2",
+                        "trigger": {
+                            "type": "StepEvent",
+                            "step": "UPKEEP"
+                        },
+                        "binding": "ANY",
+                        "effect": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "GatherCards",
+                                    "source": {
+                                        "type": "TopOfLibrary",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "storeAs": "gathered0"
+                                },
+                                {
+                                    "type": "MoveCollection",
+                                    "from": "gathered0",
+                                    "destination": {
+                                        "type": "ToZone",
+                                        "zone": "Exile"
+                                    }
+                                },
+                                {
+                                    "type": "GrantMayPlayFromExile",
+                                    "from": "gathered0",
+                                    "expiry": "Permanent",
+                                    "condition": {
+                                        "type": "PlayerCastSpellsThisTurn",
+                                        "atLeast": 1
+                                    },
+                                    "nonLandOnly": true
+                                }
+                            ]
+                        },
+                        "descriptionOverride": "At the beginning of your upkeep, exile the top card of your library. For as long as it remains exiled, it has \"You may cast this card from exile as long as you've cast another spell this turn.\""
+                    }
+                ]
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "228",
+        "rarity": "RARE",
+        "artist": "Randy Vargas",
+        "imageUri": "https://cards.scryfall.io/normal/front/b/2/b2edd708-46ee-4963-b7e6-b631616d78fe.jpg?1783926446",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "If Monk Class is the first spell you cast, the next spell is the second spell and costs {1} less. If Monk Class is the second (or later) spell you cast, its bonus won't apply until the next turn."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "If you have more than one Monk Class on the battlefield, their abilities are cumulative. For example, if you control two Monk Classes, the second spell you cast each turn costs {2} less to cast."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Gaining a level is a normal activated ability. It uses the stack and can be responded to."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Gaining a level won't remove abilities that a Class had at a previous level."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "You can't activate the first level ability of a Class unless that Class is level 1. Similarly, you can't activate the second level ability of a Class unless that Class is level 2."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE",
+        "BLUE"
     ]
 }
 
@@ -9363,6 +11152,136 @@
     ]
 }
 
+// Paladin Class
+{
+    "name": "Paladin Class",
+    "manaCost": "{W}",
+    "typeLine": "Enchantment — Class",
+    "oracleText": "(Gain the next level as a sorcery to add its ability.)\nSpells your opponents cast during your turn cost {1} more to cast.\n{2}{W}: Level 2 — Creatures you control get +1/+1.\n{4}{W}: Level 3 — Whenever you attack, until end of turn, target attacking creature gets +1/+1 for each other attacking creature and gains double strike.",
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "ModifySpellCost",
+                "target": "OpponentsCast",
+                "modification": {
+                    "type": "IncreaseGeneric",
+                    "amount": 1
+                },
+                "gating": {
+                    "type": "OnlyIf",
+                    "condition": "IsYourTurn"
+                }
+            }
+        ],
+        "classLevels": [
+            {
+                "level": 2,
+                "cost": "{2}{W}",
+                "staticAbilities": [
+                    {
+                        "type": "ModifyStats",
+                        "powerBonus": 1,
+                        "toughnessBonus": 1,
+                        "filter": {
+                            "baseFilter": "creature ctrl:you"
+                        }
+                    }
+                ]
+            },
+            {
+                "level": 3,
+                "cost": "{4}{W}",
+                "triggeredAbilities": [
+                    {
+                        "id": "Paladin Class:1",
+                        "trigger": "YouAttackEvent",
+                        "binding": "ANY",
+                        "effect": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "ModifyStats",
+                                    "powerModifier": {
+                                        "type": "Subtract",
+                                        "left": {
+                                            "type": "AggregateBattlefield",
+                                            "player": "Each",
+                                            "filter": "creature attacking"
+                                        },
+                                        "right": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "toughnessModifier": {
+                                        "type": "Subtract",
+                                        "left": {
+                                            "type": "AggregateBattlefield",
+                                            "player": "Each",
+                                            "filter": "creature attacking"
+                                        },
+                                        "right": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "target": {
+                                        "type": "BoundVariable",
+                                        "name": "t0"
+                                    }
+                                },
+                                {
+                                    "type": "GrantKeyword",
+                                    "keyword": "DOUBLE_STRIKE",
+                                    "target": {
+                                        "type": "BoundVariable",
+                                        "name": "t0"
+                                    }
+                                }
+                            ]
+                        },
+                        "targetRequirement": {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "creature attacking"
+                            },
+                            "id": "t0"
+                        },
+                        "descriptionOverride": "Whenever you attack, until end of turn, target attacking creature gets +1/+1 for each other attacking creature and gains double strike."
+                    }
+                ]
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "29",
+        "rarity": "RARE",
+        "artist": "Campbell White",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/b/5bf81fb1-7992-4ae9-b1a8-80c31579a2bf.jpg?1783926526",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "Additional costs from Paladin Class cards are cumulative. For example, if you control two Paladin Class cards, spells your opponents cast cost {2} more to cast."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "If Paladin Class is level 3 and you attack with exactly one creature, it won't get a power and toughness bonus, but it will get double strike."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Gaining a level is a normal activated ability. It uses the stack and can be responded to."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Gaining a level won't remove abilities that a Class had at a previous level."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
 // Paladin's Shield
 {
     "name": "Paladin's Shield",
@@ -9841,6 +11760,162 @@
     ]
 }
 
+// Power of Persuasion
+{
+    "name": "Power of Persuasion",
+    "manaCost": "{2}{U}",
+    "typeLine": "Sorcery",
+    "oracleText": "Choose target creature an opponent controls, then roll a d20.\n1—9 | Return it to its owner's hand.\n10—19 | Its owner puts it on their choice of the top or bottom of their library.\n20 | Gain control of it until the end of your next turn.",
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "RollDice",
+                    "sides": 20,
+                    "storeTotalAs": "diceResult0"
+                },
+                {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.WhenCondition",
+                        "condition": {
+                            "type": "All",
+                            "conditions": [
+                                {
+                                    "type": "Compare",
+                                    "left": {
+                                        "type": "VariableReference",
+                                        "variableName": "diceResult0"
+                                    },
+                                    "operator": "GTE",
+                                    "right": {
+                                        "type": "Fixed",
+                                        "amount": 1
+                                    }
+                                },
+                                {
+                                    "type": "Compare",
+                                    "left": {
+                                        "type": "VariableReference",
+                                        "variableName": "diceResult0"
+                                    },
+                                    "operator": "LTE",
+                                    "right": {
+                                        "type": "Fixed",
+                                        "amount": 9
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "then": {
+                        "type": "MoveToZone",
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t0"
+                        },
+                        "destination": "Hand"
+                    }
+                },
+                {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.WhenCondition",
+                        "condition": {
+                            "type": "All",
+                            "conditions": [
+                                {
+                                    "type": "Compare",
+                                    "left": {
+                                        "type": "VariableReference",
+                                        "variableName": "diceResult0"
+                                    },
+                                    "operator": "GTE",
+                                    "right": {
+                                        "type": "Fixed",
+                                        "amount": 10
+                                    }
+                                },
+                                {
+                                    "type": "Compare",
+                                    "left": {
+                                        "type": "VariableReference",
+                                        "variableName": "diceResult0"
+                                    },
+                                    "operator": "LTE",
+                                    "right": {
+                                        "type": "Fixed",
+                                        "amount": 19
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "then": {
+                        "type": "PutOnLibraryPositionOfChoice",
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t0"
+                        }
+                    }
+                },
+                {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.WhenCondition",
+                        "condition": {
+                            "type": "Compare",
+                            "left": {
+                                "type": "VariableReference",
+                                "variableName": "diceResult0"
+                            },
+                            "operator": "GTE",
+                            "right": {
+                                "type": "Fixed",
+                                "amount": 20
+                            }
+                        }
+                    },
+                    "then": {
+                        "type": "GainControl",
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t0"
+                        },
+                        "duration": "EndOfYourNextTurn"
+                    }
+                }
+            ]
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": "creature ctrl:opponent"
+                },
+                "id": "t0"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "67",
+        "rarity": "UNCOMMON",
+        "artist": "Brian Valeza",
+        "imageUri": "https://cards.scryfall.io/normal/front/8/d/8d84cb72-d0a0-4af0-aded-47e5fb7addef.jpg?1783926511",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "The instruction to roll a die and the effect that occurs because of the result are all part of the same ability. Players do not get the chance to respond to the ability after knowing the result of the roll."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "An effect that says \"choose a target, then roll a d20\" or similar still uses the normal process of putting an ability on the stack and resolving it. Choosing targets is part of putting the ability on the stack and rolling the d20 happens later, as the ability resolves."
+            }
+        ]
+    }
+}
+
 // Precipitous Drop
 {
     "name": "Precipitous Drop",
@@ -10259,6 +12334,117 @@
     ]
 }
 
+// Ranger Class
+{
+    "name": "Ranger Class",
+    "manaCost": "{1}{G}",
+    "typeLine": "Enchantment — Class",
+    "oracleText": "(Gain the next level as a sorcery to add its ability.)\nWhen this Class enters, create a 2/2 green Wolf creature token.\n{1}{G}: Level 2 — Whenever you attack, put a +1/+1 counter on target attacking creature.\n{3}{G}: Level 3 — You may look at the top card of your library any time.\nYou may cast creature spells from the top of your library.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Ranger Class:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "CreateToken",
+                    "power": 2,
+                    "toughness": 2,
+                    "colors": [
+                        "GREEN"
+                    ],
+                    "creatureTypes": [
+                        "Wolf"
+                    ]
+                },
+                "descriptionOverride": "When this Class enters, create a 2/2 green Wolf creature token."
+            }
+        ],
+        "classLevels": [
+            {
+                "level": 2,
+                "cost": "{1}{G}",
+                "triggeredAbilities": [
+                    {
+                        "id": "Ranger Class:2",
+                        "trigger": "YouAttackEvent",
+                        "binding": "ANY",
+                        "effect": {
+                            "type": "AddCounters",
+                            "counterType": "PLUS_ONE_PLUS_ONE",
+                            "count": 1,
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        },
+                        "targetRequirement": {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "creature attacking"
+                            },
+                            "id": "t0"
+                        },
+                        "descriptionOverride": "Whenever you attack, put a +1/+1 counter on target attacking creature."
+                    }
+                ]
+            },
+            {
+                "level": 3,
+                "cost": "{3}{G}",
+                "staticAbilities": [
+                    "LookAtTopOfLibrary",
+                    {
+                        "type": "CastSpellTypesFromTopOfLibrary",
+                        "filter": "creature"
+                    }
+                ]
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "202",
+        "rarity": "RARE",
+        "artist": "Suzanne Helmigh",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/c/7ca392ca-3219-4694-9a74-aa079c76b91e.jpg?1783926456",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "The triggered ability Ranger Class gets at level 2 can trigger only once per combat, no matter how many creatures you attack with."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "If Ranger Class is level 3, you can look at the top card of your library whenever you want (with one restriction; see below), even if you don't have priority. This action doesn't use the stack. Knowing what that card is becomes part of the information you have access to, just like you can look at the cards in your hand."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "If the top card of your library changes while you're casting a spell, playing a land, or activating an ability, you can't look at the new top card until you finish doing so. This means that if you cast a spell from the top of your library, you can't look at the next one until you're done paying for that spell."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Ranger Class doesn't change when you can cast creature spells. Normally, this means during your main phase when the stack is empty, although flash may change this."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "You'll still pay all costs for the spell, including additional costs. You may also pay alternative costs if any are available."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Gaining a level won't remove abilities that a Class had at a previous level."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Gaining a level is a normal activated ability. It uses the stack and can be responded to."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "GREEN"
+    ]
+}
+
 // Ranger's Hawk
 {
     "name": "Ranger's Hawk",
@@ -10371,6 +12557,141 @@
     },
     "colorIdentityOverride": [
         "GREEN"
+    ]
+}
+
+// Ray of Enfeeblement
+{
+    "name": "Ray of Enfeeblement",
+    "manaCost": "{B}",
+    "typeLine": "Instant",
+    "oracleText": "Target creature gets -4/-1 until end of turn. If that creature is white, it gets -4/-4 until end of turn instead.",
+    "script": {
+        "spellEffect": {
+            "type": "Gated",
+            "gate": {
+                "type": "Gate.WhenCondition",
+                "condition": {
+                    "type": "EntityMatches",
+                    "entity": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "filter": "white"
+                }
+            },
+            "then": {
+                "type": "ModifyStats",
+                "powerModifier": {
+                    "type": "Fixed",
+                    "amount": -4
+                },
+                "toughnessModifier": {
+                    "type": "Fixed",
+                    "amount": -4
+                },
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "t0"
+                }
+            },
+            "otherwise": {
+                "type": "ModifyStats",
+                "powerModifier": {
+                    "type": "Fixed",
+                    "amount": -4
+                },
+                "toughnessModifier": {
+                    "type": "Fixed",
+                    "amount": -1
+                },
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "t0"
+                }
+            }
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": "creature"
+                },
+                "id": "t0"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "116",
+        "rarity": "UNCOMMON",
+        "artist": "Campbell White",
+        "flavorText": "Erigan cried out in pain as a hideous weakness settled into his bones.",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/f/ff5d948b-fd89-4b90-9b63-ad7da13b5f0e.jpg?1783926490"
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
+// Ray of Frost
+{
+    "name": "Ray of Frost",
+    "manaCost": "{1}{U}",
+    "typeLine": "Enchantment — Aura",
+    "oracleText": "Flash\nEnchant creature\nWhen this Aura enters, if enchanted creature is red, tap it.\nAs long as enchanted creature is red, it loses all abilities.\nEnchanted creature doesn't untap during its controller's untap step.",
+    "keywords": [
+        "FLASH"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Ray of Frost:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "TapUntap",
+                    "target": "EnchantedCreature"
+                },
+                "interveningIf": {
+                    "type": "EntityMatches",
+                    "entity": "EnchantedPermanent",
+                    "filter": "creature red"
+                },
+                "descriptionOverride": "When this Aura enters, if enchanted creature is red, tap it."
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "ConditionalStaticAbility",
+                "ability": "LoseAllAbilities",
+                "condition": {
+                    "type": "EntityMatches",
+                    "entity": "EnchantedPermanent",
+                    "filter": "creature red"
+                }
+            },
+            {
+                "type": "GrantKeyword",
+                "keyword": "DOESNT_UNTAP"
+            }
+        ],
+        "auraTarget": {
+            "type": "TargetObject",
+            "filter": {
+                "baseFilter": "creature"
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "68",
+        "rarity": "UNCOMMON",
+        "artist": "Kim Sokol",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/e/7edd5058-a964-4288-937b-84df6e9ba7c4.jpg?1783926511"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
     ]
 }
 
@@ -10546,6 +12867,115 @@
     },
     "colorIdentityOverride": [
         "BLUE"
+    ]
+}
+
+// Rogue Class
+{
+    "name": "Rogue Class",
+    "manaCost": "{U}{B}",
+    "typeLine": "Enchantment — Class",
+    "oracleText": "(Gain the next level as a sorcery to add its ability.)\nWhenever a creature you control deals combat damage to a player, exile the top card of that player's library face down. You may look at it for as long as it remains exiled.\n{1}{U}{B}: Level 2 — Creatures you control have menace.\n{2}{U}{B}: Level 3 — You may play cards exiled with this Class, and you may spend mana as though it were mana of any color to cast those spells.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Rogue Class:1",
+                "trigger": {
+                    "type": "DealsDamageEvent",
+                    "damageType": "DamageCombat",
+                    "recipient": {
+                        "type": "RecipientPlayer",
+                        "player": "Any"
+                    },
+                    "sourceFilter": "creature ctrl:you"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "TopOfLibrary",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                },
+                                "player": "TriggeringPlayer"
+                            },
+                            "storeAs": "gathered0"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "gathered0",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Exile",
+                                "player": "TriggeringPlayer"
+                            },
+                            "linkToSource": true,
+                            "faceDown": "HIDDEN",
+                            "lookableInExile": true
+                        }
+                    ]
+                },
+                "descriptionOverride": "Whenever a creature you control deals combat damage to a player, exile the top card of that player's library face down. You may look at it for as long as it remains exiled."
+            }
+        ],
+        "classLevels": [
+            {
+                "level": 2,
+                "cost": "{1}{U}{B}",
+                "staticAbilities": [
+                    {
+                        "type": "GrantKeyword",
+                        "keyword": "MENACE",
+                        "filter": {
+                            "baseFilter": "creature ctrl:you"
+                        }
+                    }
+                ]
+            },
+            {
+                "level": 3,
+                "cost": "{2}{U}{B}",
+                "staticAbilities": [
+                    {
+                        "type": "MayPlayCardsFromExile",
+                        "filter": {
+                            "statePredicates": [
+                                "ExiledWithSource"
+                            ]
+                        },
+                        "withAnyManaColor": true
+                    }
+                ]
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "230",
+        "rarity": "RARE",
+        "artist": "Véronique Meignaud",
+        "imageUri": "https://cards.scryfall.io/normal/front/0/7/0727f65b-cfbe-47d5-87c6-239cf8d93ca6.jpg?1783926444",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "If you have more than one Rogue Class on the battlefield, they each track exiled cards individually."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Gaining a level won't remove abilities that a Class had at a previous level."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Gaining a level is a normal activated ability. It uses the stack and can be responded to."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE",
+        "BLACK"
     ]
 }
 
@@ -11076,6 +13506,180 @@
     ]
 }
 
+// Skeletal Swarming
+{
+    "name": "Skeletal Swarming",
+    "manaCost": "{3}{B}{G}",
+    "typeLine": "Enchantment",
+    "oracleText": "Each Skeleton you control has trample, attacks each combat if able, and gets +X/+0, where X is the number of other Skeletons you control.\nAt the beginning of your end step, create a tapped 1/1 black Skeleton creature token. If a creature died this turn, create two of those tokens instead.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Skeletal Swarming:1",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "END"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "CreateToken",
+                    "count": {
+                        "type": "Conditional",
+                        "condition": "CreatureDiedThisTurn",
+                        "ifTrue": {
+                            "type": "Fixed",
+                            "amount": 2
+                        },
+                        "ifFalse": {
+                            "type": "Fixed",
+                            "amount": 1
+                        }
+                    },
+                    "power": 1,
+                    "toughness": 1,
+                    "colors": [
+                        "BLACK"
+                    ],
+                    "creatureTypes": [
+                        "Skeleton"
+                    ],
+                    "imageUri": "https://cards.scryfall.io/normal/front/f/a/fa6fdb57-82f3-4695-b1fa-1f301ea4ef83.jpg?1783926346",
+                    "tapped": true
+                }
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "GrantKeyword",
+                "keyword": "TRAMPLE",
+                "filter": {
+                    "baseFilter": "creature Skeleton ctrl:you"
+                }
+            },
+            {
+                "type": "MustAttack",
+                "filter": {
+                    "baseFilter": "creature Skeleton ctrl:you"
+                }
+            },
+            {
+                "type": "GrantDynamicStats",
+                "filter": {
+                    "baseFilter": "creature Skeleton ctrl:you"
+                },
+                "powerBonus": {
+                    "type": "AggregateBattlefield",
+                    "player": "You",
+                    "filter": "creature Skeleton",
+                    "excludeSelf": true
+                },
+                "toughnessBonus": {
+                    "type": "Fixed",
+                    "amount": 0
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "232",
+        "rarity": "RARE",
+        "artist": "Svetlin Velinov",
+        "imageUri": "https://cards.scryfall.io/normal/front/3/7/3768ac68-0d87-4f99-aa77-2d009df0a567.jpg?1783926443"
+    },
+    "colorIdentityOverride": [
+        "BLACK",
+        "GREEN"
+    ]
+}
+
+// Skullport Merchant
+{
+    "name": "Skullport Merchant",
+    "manaCost": "{2}{B}",
+    "typeLine": "Creature — Dwarf Citizen",
+    "oracleText": "When this creature enters, create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")\n{1}{B}, Sacrifice another creature or a Treasure: Draw a card.",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 4
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Skullport Merchant:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "CreatePredefinedToken",
+                    "tokenType": "Treasure"
+                }
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Skullport Merchant:2",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{1}{B}"
+                            }
+                        },
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomSacrifice",
+                                "filter": {
+                                    "cardPredicates": [
+                                        {
+                                            "type": "Or",
+                                            "predicates": [
+                                                "IsCreature",
+                                                {
+                                                    "type": "And",
+                                                    "predicates": [
+                                                        "IsArtifact",
+                                                        {
+                                                            "type": "HasSubtype",
+                                                            "subtype": "Treasure"
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                "excludeSelf": true
+                            }
+                        }
+                    ]
+                },
+                "effect": {
+                    "type": "DrawCards",
+                    "count": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "120",
+        "rarity": "UNCOMMON",
+        "artist": "Aaron Miller",
+        "flavorText": "\"Buy something or get out.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/2/b/2bbb8865-dc37-4d56-9a2d-a92f7462c338.jpg?1783926487"
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
 // Sorcerer Class
 {
     "name": "Sorcerer Class",
@@ -11405,6 +14009,145 @@
     "colorIdentityOverride": []
 }
 
+// Sphere of Annihilation
+{
+    "name": "Sphere of Annihilation",
+    "manaCost": "{X}{B}",
+    "typeLine": "Artifact",
+    "oracleText": "This artifact enters with X void counters on it.\nAt the beginning of your upkeep, exile this artifact, all creatures and planeswalkers with mana value less than or equal to the number of void counters on it, and all creature and planeswalker cards in graveyards with mana value less than or equal to the number of void counters on it.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Sphere of Annihilation:1",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "UPKEEP"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "StoreNumber",
+                            "name": "voids",
+                            "amount": {
+                                "type": "EntityProperty",
+                                "entity": "Self",
+                                "numericProperty": {
+                                    "type": "CounterCount",
+                                    "counterType": "VOID"
+                                }
+                            }
+                        },
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "Entity",
+                                "entity": "Self"
+                            },
+                            "storeAs": "gathered1"
+                        },
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "BattlefieldMatching",
+                                "filter": {
+                                    "cardPredicates": [
+                                        {
+                                            "type": "Or",
+                                            "predicates": [
+                                                "IsCreature",
+                                                "IsPlaneswalker"
+                                            ]
+                                        },
+                                        {
+                                            "type": "ManaValueAtMostDynamic",
+                                            "amount": {
+                                                "type": "VariableReference",
+                                                "variableName": "voids"
+                                            }
+                                        }
+                                    ]
+                                },
+                                "excludeSelf": true
+                            },
+                            "storeAs": "gathered2"
+                        },
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "FromZone",
+                                "zone": "Graveyard",
+                                "player": "Each",
+                                "filter": {
+                                    "cardPredicates": [
+                                        {
+                                            "type": "Or",
+                                            "predicates": [
+                                                "IsCreature",
+                                                "IsPlaneswalker"
+                                            ]
+                                        },
+                                        {
+                                            "type": "ManaValueAtMostDynamic",
+                                            "amount": {
+                                                "type": "VariableReference",
+                                                "variableName": "voids"
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            "storeAs": "gathered3"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "gathered1",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Exile"
+                            }
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "gathered2",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Exile"
+                            }
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "gathered3",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Exile"
+                            }
+                        }
+                    ]
+                },
+                "descriptionOverride": "At the beginning of your upkeep, exile this artifact, all creatures and planeswalkers with mana value less than or equal to the number of void counters on it, and all creature and planeswalker cards in graveyards with mana value less than or equal to the number of void counters on it."
+            }
+        ],
+        "replacementEffects": [
+            {
+                "type": "EntersWithDynamicCounters",
+                "counterType": "VOID",
+                "count": "XValue"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "121",
+        "rarity": "RARE",
+        "artist": "Jason Felix",
+        "imageUri": "https://cards.scryfall.io/normal/front/3/d/3d2315a9-584b-4c59-af43-dd38bcb6c322.jpg?1783926488"
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
 // Spiked Pit Trap
 {
     "name": "Spiked Pit Trap",
@@ -11529,6 +14272,84 @@
     }
 }
 
+// Split the Party
+{
+    "name": "Split the Party",
+    "manaCost": "{3}{U}{U}",
+    "typeLine": "Sorcery",
+    "oracleText": "Choose target player. Return half the creatures they control to their owner's hand, rounded up.",
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "GatherCards",
+                    "source": {
+                        "type": "ControlledPermanents",
+                        "player": {
+                            "type": "BoundVariable",
+                            "name": "t0"
+                        },
+                        "filter": "creature"
+                    },
+                    "storeAs": "gathered0"
+                },
+                {
+                    "type": "SelectFromCollection",
+                    "from": "gathered0",
+                    "selection": {
+                        "type": "ChooseExactly",
+                        "count": {
+                            "type": "Divide",
+                            "numerator": {
+                                "type": "VariableReference",
+                                "variableName": "gathered0_count"
+                            },
+                            "denominator": {
+                                "type": "Fixed",
+                                "amount": 2
+                            }
+                        }
+                    },
+                    "storeSelected": "selected1",
+                    "prompt": "Choose half the creatures they control, rounded up, to return to their owner's hand",
+                    "useTargetingUI": true
+                },
+                {
+                    "type": "MoveCollection",
+                    "from": "selected1",
+                    "destination": {
+                        "type": "ToZone",
+                        "zone": "Hand"
+                    }
+                }
+            ]
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetPlayer",
+                "id": "t0"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "76",
+        "rarity": "UNCOMMON",
+        "artist": "Zoltan Boros",
+        "flavorText": "Don't.",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/4/743a0a96-f90a-4852-9a92-848795518e0a.jpg?1783926506",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "The player that controls Split the Party chooses which creatures to return to their owner's hand as it resolves."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Spoils of the Hunt
 {
     "name": "Spoils of the Hunt",
@@ -11624,6 +14445,47 @@
     },
     "colorIdentityOverride": [
         "WHITE"
+    ]
+}
+
+// Sudden Insight
+{
+    "name": "Sudden Insight",
+    "manaCost": "{4}{U}{U}",
+    "typeLine": "Instant",
+    "oracleText": "Draw a card for each different mana value among nonland cards in your graveyard.",
+    "script": {
+        "spellEffect": {
+            "type": "DrawCards",
+            "count": {
+                "type": "AggregateZone",
+                "player": "You",
+                "zone": "Graveyard",
+                "filter": "nonland",
+                "aggregation": "DISTINCT_VALUES",
+                "property": "MANA_VALUE"
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "77",
+        "rarity": "UNCOMMON",
+        "artist": "Dan Murayama Scott",
+        "flavorText": "A lucky draw from the Deck of Many Things gave Voltusk an inexplicable flash of understanding that he spent the rest of his life trying to repeat.",
+        "imageUri": "https://cards.scryfall.io/normal/front/0/6/06ec3c87-d5aa-4f8a-a9bf-ef4e38e21ad1.jpg?1783926506",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "If a card in your graveyard has {X} in its mana cost, X is 0 when determining that card's mana value."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Although land cards aren't considered, nonland cards with mana value 0 are. For example if the cards in your graveyard are an artifact card with mana cost {X} and a sorcery card with mana cost {2}{U}, you'll draw two cards."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
     ]
 }
 
@@ -11945,6 +14807,179 @@
     },
     "colorIdentityOverride": [
         "GREEN"
+    ]
+}
+
+// Tasha's Hideous Laughter
+{
+    "name": "Tasha's Hideous Laughter",
+    "manaCost": "{1}{U}{U}",
+    "typeLine": "Sorcery",
+    "oracleText": "Each opponent exiles cards from the top of their library until that player has exiled cards with total mana value 20 or greater.",
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "ExileLibraryUntilManaValue",
+                    "threshold": {
+                        "type": "Fixed",
+                        "amount": 20
+                    },
+                    "storeAs": "stored0"
+                }
+            ]
+        }
+    },
+    "metadata": {
+        "collectorNumber": "78",
+        "rarity": "RARE",
+        "artist": "Ilse Gort",
+        "flavorText": "The raging behir reared back, opened its terrible maw . . . and collapsed in a fit of horrifying giggles.",
+        "imageUri": "https://cards.scryfall.io/normal/front/c/4/c4932113-904f-427a-9566-509cc008f3ef.jpg?1783926505"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
+// Teleportation Circle
+{
+    "name": "Teleportation Circle",
+    "manaCost": "{3}{W}",
+    "typeLine": "Enchantment",
+    "oracleText": "At the beginning of your end step, exile up to one target artifact or creature you control, then return that card to the battlefield under its owner's control.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Teleportation Circle:1",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "END"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "MoveToZone",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            },
+                            "destination": "Exile"
+                        },
+                        {
+                            "type": "MoveToZone",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            },
+                            "destination": "Battlefield"
+                        }
+                    ]
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "optional": true,
+                    "filter": {
+                        "baseFilter": "artifact|creature ctrl:you"
+                    },
+                    "id": "t0"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "39",
+        "rarity": "RARE",
+        "artist": "Chris Cold",
+        "flavorText": "\"Hold on to your lunch!\"\n—Bartleby, gnome wizard",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/0/90140bc0-4a9c-4422-b07c-3400c7ccde56.jpg?1783926523",
+        "rulings": [
+            {
+                "date": "2026-01-27",
+                "text": "Once a permanent exiled this way returns, it's considered a new object with no relation to the object that it was. Auras attached to the exiled permanent will be put into their owners' graveyards. Equipment attached to the exiled permanent will become unattached and remain on the battlefield. Any counters on the exiled permanent will cease to exist."
+            },
+            {
+                "date": "2026-01-27",
+                "text": "If a token is exiled this way, it will cease to exist and won't return to the battlefield."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
+// The Blackstaff of Waterdeep
+{
+    "name": "The Blackstaff of Waterdeep",
+    "manaCost": "{U}",
+    "typeLine": "Legendary Artifact",
+    "oracleText": "You may choose not to untap The Blackstaff of Waterdeep during your untap step.\nAnimate Walking Statue — {1}{U}, {T}: Another target nontoken artifact you control becomes a 4/4 artifact creature for as long as The Blackstaff of Waterdeep remains tapped. Activate only as a sorcery.",
+    "flags": [
+        "MAY_NOT_UNTAP"
+    ],
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "The Blackstaff of Waterdeep:1",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{1}{U}"
+                            }
+                        },
+                        "CostTap"
+                    ]
+                },
+                "effect": {
+                    "type": "BecomeCreature",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "power": {
+                        "type": "Fixed",
+                        "amount": 4
+                    },
+                    "toughness": {
+                        "type": "Fixed",
+                        "amount": 4
+                    },
+                    "duration": {
+                        "type": "WhileSourceTapped",
+                        "sourceDescription": "The Blackstaff of Waterdeep"
+                    }
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "artifact nontoken ctrl:you",
+                            "excludeSelf": true
+                        },
+                        "id": "t0"
+                    }
+                ],
+                "timing": "SorcerySpeed",
+                "descriptionOverride": "Animate Walking Statue — Another target nontoken artifact you control becomes a 4/4 artifact creature for as long as The Blackstaff of Waterdeep remains tapped. Activate only as a sorcery."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "48",
+        "rarity": "RARE",
+        "artist": "Anna Steinbauer",
+        "imageUri": "https://cards.scryfall.io/normal/front/3/3/3317cbf3-13a1-4471-a23c-de429941e8a4.jpg?1783926518"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
     ]
 }
 
@@ -13153,6 +16188,104 @@
     ]
 }
 
+// Triumphant Adventurer
+{
+    "name": "Triumphant Adventurer",
+    "manaCost": "{W}{B}",
+    "typeLine": "Creature — Human Knight",
+    "oracleText": "Deathtouch\nDuring your turn, this creature has first strike.\nWhenever this creature attacks, venture into the dungeon. (Enter the first room or advance to the next room.)",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 1
+    },
+    "keywords": [
+        "DEATHTOUCH"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Triumphant Adventurer:1",
+                "trigger": "AttackEvent",
+                "effect": "VentureIntoTheDungeon"
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "ConditionalStaticAbility",
+                "ability": {
+                    "type": "GrantKeyword",
+                    "keyword": "FIRST_STRIKE",
+                    "filter": {
+                        "baseFilter": "permanent",
+                        "scope": "Self"
+                    }
+                },
+                "condition": "IsYourTurn"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "237",
+        "rarity": "RARE",
+        "artist": "Alexander Mokhov",
+        "imageUri": "https://cards.scryfall.io/normal/front/2/1/214d3167-4eea-42a1-a464-ddff59843142.jpg?1783926443"
+    },
+    "colorIdentityOverride": [
+        "WHITE",
+        "BLACK"
+    ]
+}
+
+// True Polymorph
+{
+    "name": "True Polymorph",
+    "manaCost": "{4}{U}{U}",
+    "typeLine": "Instant",
+    "oracleText": "Target artifact or creature becomes a copy of another target artifact or creature.",
+    "script": {
+        "spellEffect": {
+            "type": "EachPermanentBecomesCopyOfTarget",
+            "target": {
+                "type": "BoundVariable",
+                "name": "t1"
+            },
+            "affected": {
+                "type": "BoundVariable",
+                "name": "t0"
+            }
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": "creature|artifact"
+                },
+                "id": "t0"
+            },
+            {
+                "type": "TargetOther",
+                "baseRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": "creature|artifact"
+                    }
+                },
+                "id": "t1"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "80",
+        "rarity": "RARE",
+        "artist": "Steve Prescott",
+        "flavorText": "Maybe a little *too* convincing.",
+        "imageUri": "https://cards.scryfall.io/normal/front/0/4/04a1f384-9266-425c-b739-09d74871fc7b.jpg?1783926505"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Underdark Basilisk
 {
     "name": "Underdark Basilisk",
@@ -13496,6 +16629,242 @@
     ]
 }
 
+// Warlock Class
+{
+    "name": "Warlock Class",
+    "manaCost": "{B}",
+    "typeLine": "Enchantment — Class",
+    "oracleText": "(Gain the next level as a sorcery to add its ability.)\nAt the beginning of your end step, if a creature died this turn, each opponent loses 1 life.\n{1}{B}: Level 2 — When this Class becomes level 2, look at the top three cards of your library. Put one of them into your hand and the rest into your graveyard.\n{6}{B}: Level 3 — At the beginning of your end step, each opponent loses life equal to the life they lost this turn. (Damage causes loss of life.)",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Warlock Class:1",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "END"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "LoseLife",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 1
+                    },
+                    "target": {
+                        "type": "PlayerRef",
+                        "player": "EachOpponent"
+                    }
+                },
+                "interveningIf": "CreatureDiedThisTurn",
+                "descriptionOverride": "At the beginning of your end step, if a creature died this turn, each opponent loses 1 life."
+            }
+        ],
+        "classLevels": [
+            {
+                "level": 2,
+                "cost": "{1}{B}",
+                "triggeredAbilities": [
+                    {
+                        "id": "Warlock Class:2",
+                        "trigger": {
+                            "type": "ZoneChangeEvent",
+                            "to": "Battlefield"
+                        },
+                        "effect": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "GatherCards",
+                                    "source": {
+                                        "type": "TopOfLibrary",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 3
+                                        }
+                                    },
+                                    "storeAs": "looked"
+                                },
+                                {
+                                    "type": "SelectFromCollection",
+                                    "from": "looked",
+                                    "selection": {
+                                        "type": "ChooseExactly",
+                                        "count": {
+                                            "type": "Fixed",
+                                            "amount": 1
+                                        }
+                                    },
+                                    "storeSelected": "kept",
+                                    "storeRemainder": "rest",
+                                    "selectedLabel": "Put in hand",
+                                    "remainderLabel": "Put in graveyard"
+                                },
+                                {
+                                    "type": "MoveCollection",
+                                    "from": "kept",
+                                    "destination": {
+                                        "type": "ToZone",
+                                        "zone": "Hand"
+                                    }
+                                },
+                                {
+                                    "type": "MoveCollection",
+                                    "from": "rest",
+                                    "destination": {
+                                        "type": "ToZone",
+                                        "zone": "Graveyard"
+                                    }
+                                }
+                            ]
+                        },
+                        "descriptionOverride": "When this Class becomes level 2, look at the top three cards of your library. Put one of them into your hand and the rest into your graveyard."
+                    }
+                ]
+            },
+            {
+                "level": 3,
+                "cost": "{6}{B}",
+                "triggeredAbilities": [
+                    {
+                        "id": "Warlock Class:3",
+                        "trigger": {
+                            "type": "StepEvent",
+                            "step": "END"
+                        },
+                        "binding": "ANY",
+                        "effect": {
+                            "type": "ForEach",
+                            "space": {
+                                "type": "IterationSpace.Players",
+                                "players": "EachOpponent"
+                            },
+                            "body": {
+                                "type": "LoseLife",
+                                "amount": {
+                                    "type": "TurnTracking",
+                                    "player": "You",
+                                    "tracker": "LIFE_LOST_AMOUNT"
+                                },
+                                "target": "Controller"
+                            }
+                        },
+                        "descriptionOverride": "At the beginning of your end step, each opponent loses life equal to the life they lost this turn."
+                    }
+                ]
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "125",
+        "rarity": "UNCOMMON",
+        "artist": "Kieran Yanner",
+        "imageUri": "https://cards.scryfall.io/normal/front/b/7/b7faf899-96b7-454e-b634-6684c2d72f26.jpg?1783926487",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "Warlock Class does not need to have been on the battlefield when the creature died for its first ability. For example, if a creature died in combat and you cast Warlock Class in your second main phase, the ability will trigger at the beginning of your end step."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Warlock Class's first ability will trigger only once during your end step, no matter how many creatures died this turn. However, if no creatures have died so far this turn as the end step begins, the ability won't trigger at all. It's not possible to cause a creature to die during the end step in time to have the ability trigger."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Gaining a level is a normal activated ability. It uses the stack and can be responded to."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Gaining a level won't remove abilities that a Class had at a previous level."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "You can't activate the first level ability of a Class unless that Class is level 1. Similarly, you can't activate the second level ability of a Class unless that Class is level 2."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "You can multiclass or even control multiple Class enchantments of the same class. Each Class permanent tracks its own level separately."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
+// Werewolf Pack Leader
+{
+    "name": "Werewolf Pack Leader",
+    "manaCost": "{G}{G}",
+    "typeLine": "Creature — Human Werewolf",
+    "oracleText": "Pack tactics — Whenever this creature attacks, if you attacked with creatures with total power 6 or greater this combat, draw a card.\n{3}{G}: Until end of turn, this creature has base power and toughness 5/3, gains trample, and isn't a Human.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 3
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Werewolf Pack Leader:1",
+                "trigger": {
+                    "type": "AttackEvent",
+                    "requires": [
+                        {
+                            "type": "AttackersTotalPowerAtLeast",
+                            "n": 6
+                        }
+                    ]
+                },
+                "effect": {
+                    "type": "DrawCards",
+                    "count": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                }
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Werewolf Pack Leader:2",
+                "cost": {
+                    "type": "CostAtomWrapper",
+                    "atom": {
+                        "type": "AtomMana",
+                        "cost": "{3}{G}"
+                    }
+                },
+                "effect": {
+                    "type": "BecomeCreature",
+                    "power": {
+                        "type": "Fixed",
+                        "amount": 5
+                    },
+                    "toughness": {
+                        "type": "Fixed",
+                        "amount": 3
+                    },
+                    "keywords": [
+                        "TRAMPLE"
+                    ],
+                    "removeSubtypes": [
+                        "Human"
+                    ]
+                },
+                "descriptionOverride": "{3}{G}: Until end of turn, this creature has base power and toughness 5/3, gains trample, and isn't a Human."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "211",
+        "rarity": "RARE",
+        "artist": "Miranda Meeks",
+        "imageUri": "https://cards.scryfall.io/normal/front/e/8/e88e6b39-bb4d-4d69-8007-d42f31bcbc29.jpg?1783926452"
+    },
+    "colorIdentityOverride": [
+        "GREEN"
+    ]
+}
+
 // White Dragon
 {
     "name": "White Dragon",
@@ -13557,6 +16926,253 @@
     },
     "colorIdentityOverride": [
         "WHITE"
+    ]
+}
+
+// Wight
+{
+    "name": "Wight",
+    "manaCost": "{1}{B}",
+    "typeLine": "Creature — Zombie Soldier",
+    "oracleText": "This creature enters tapped.\nLife Drain — Whenever a creature dealt damage by this creature this turn dies, create a tapped 2/2 black Zombie creature token and exile that card.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 2
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Wight:1",
+                "trigger": "CreatureDealtDamageBySourceDiesEvent",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "CreateToken",
+                            "power": 2,
+                            "toughness": 2,
+                            "colors": [
+                                "BLACK"
+                            ],
+                            "creatureTypes": [
+                                "Zombie"
+                            ],
+                            "imageUri": "https://cards.scryfall.io/normal/front/0/b/0b08d210-01cb-46c5-9150-4dfb47f50ae7.jpg?1783926346",
+                            "tapped": true
+                        },
+                        {
+                            "type": "MoveToZone",
+                            "target": "TriggeringEntity",
+                            "destination": "Exile",
+                            "fromZone": "Graveyard"
+                        }
+                    ]
+                }
+            }
+        ],
+        "replacementEffects": [
+            "EntersTapped"
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "127",
+        "rarity": "RARE",
+        "artist": "Slawomir Maniak",
+        "flavorText": "Wights want the world to resound with echoes of their own cruel hatred.",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/6/f62abe9c-7599-433b-a964-10d6641f3586.jpg?1783926485"
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
+// Wild Shape
+{
+    "name": "Wild Shape",
+    "manaCost": "{G}",
+    "typeLine": "Instant",
+    "oracleText": "Choose one. Until end of turn, target creature you control has that base power and toughness, becomes that creature type, and gains that ability.\n• 1/3 Turtle with hexproof.\n• 1/5 Spider with reach.\n• 3/3 Elephant with trample.",
+    "script": {
+        "spellEffect": {
+            "type": "Modal",
+            "modes": [
+                {
+                    "effect": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "SetCreatureSubtypes",
+                                "subtypes": [
+                                    "Turtle"
+                                ],
+                                "target": {
+                                    "type": "BoundVariable",
+                                    "name": "t0"
+                                },
+                                "duration": "EndOfTurn"
+                            },
+                            {
+                                "type": "SetBaseStats",
+                                "target": {
+                                    "type": "BoundVariable",
+                                    "name": "t0"
+                                },
+                                "power": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                },
+                                "toughness": {
+                                    "type": "Fixed",
+                                    "amount": 3
+                                },
+                                "duration": "EndOfTurn"
+                            },
+                            {
+                                "type": "GrantKeyword",
+                                "keyword": "HEXPROOF",
+                                "target": {
+                                    "type": "BoundVariable",
+                                    "name": "t0"
+                                }
+                            }
+                        ]
+                    },
+                    "targetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "creature ctrl:you"
+                            },
+                            "id": "t0"
+                        }
+                    ],
+                    "description": "Target creature you control becomes a 1/3 Turtle with hexproof until end of turn"
+                },
+                {
+                    "effect": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "SetCreatureSubtypes",
+                                "subtypes": [
+                                    "Spider"
+                                ],
+                                "target": {
+                                    "type": "BoundVariable",
+                                    "name": "t1"
+                                },
+                                "duration": "EndOfTurn"
+                            },
+                            {
+                                "type": "SetBaseStats",
+                                "target": {
+                                    "type": "BoundVariable",
+                                    "name": "t1"
+                                },
+                                "power": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                },
+                                "toughness": {
+                                    "type": "Fixed",
+                                    "amount": 5
+                                },
+                                "duration": "EndOfTurn"
+                            },
+                            {
+                                "type": "GrantKeyword",
+                                "keyword": "REACH",
+                                "target": {
+                                    "type": "BoundVariable",
+                                    "name": "t1"
+                                }
+                            }
+                        ]
+                    },
+                    "targetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "creature ctrl:you"
+                            },
+                            "id": "t1"
+                        }
+                    ],
+                    "description": "Target creature you control becomes a 1/5 Spider with reach until end of turn"
+                },
+                {
+                    "effect": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "SetCreatureSubtypes",
+                                "subtypes": [
+                                    "Elephant"
+                                ],
+                                "target": {
+                                    "type": "BoundVariable",
+                                    "name": "t2"
+                                },
+                                "duration": "EndOfTurn"
+                            },
+                            {
+                                "type": "SetBaseStats",
+                                "target": {
+                                    "type": "BoundVariable",
+                                    "name": "t2"
+                                },
+                                "power": {
+                                    "type": "Fixed",
+                                    "amount": 3
+                                },
+                                "toughness": {
+                                    "type": "Fixed",
+                                    "amount": 3
+                                },
+                                "duration": "EndOfTurn"
+                            },
+                            {
+                                "type": "GrantKeyword",
+                                "keyword": "TRAMPLE",
+                                "target": {
+                                    "type": "BoundVariable",
+                                    "name": "t2"
+                                }
+                            }
+                        ]
+                    },
+                    "targetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "creature ctrl:you"
+                            },
+                            "id": "t2"
+                        }
+                    ],
+                    "description": "Target creature you control becomes a 3/3 Elephant with trample until end of turn"
+                }
+            ]
+        }
+    },
+    "metadata": {
+        "collectorNumber": "212",
+        "rarity": "UNCOMMON",
+        "artist": "Sam Guay",
+        "imageUri": "https://cards.scryfall.io/normal/front/e/c/ec9738f1-b2e7-45a5-b235-290256aabed0.jpg?1783926453",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "Both the target creature and the mode are chosen on announcement. You can't choose a different form if something changes in response to the spell."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "The creature loses all other creature types, but it retains its abilities. Wild Shape will overwrite any previous effects that set the creature's power and toughness to specific numbers. Effects that otherwise modify the target creature's power and toughness will still apply no matter when they took effect. The same is true for +1/+1 counters."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "GREEN"
     ]
 }
 
@@ -13677,6 +17293,236 @@
             {
                 "date": "2021-07-23",
                 "text": "You can't activate the first level ability of a Class unless that Class is level 1. Similarly, you can't activate the second level ability of a Class unless that Class is level 2."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
+// Wizard's Spellbook
+{
+    "name": "Wizard's Spellbook",
+    "manaCost": "{5}{U}{U}",
+    "typeLine": "Artifact — Book",
+    "oracleText": "{T}: Exile target instant or sorcery card from a graveyard. Roll a d20. Activate only as a sorcery.\n1—9 | Copy that card. You may cast the copy.\n10—19 | Copy that card. You may cast the copy by paying {1} rather than paying its mana cost.\n20 | Copy each card exiled with this artifact. You may cast any number of the copies without paying their mana costs.",
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Wizard's Spellbook:1",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": "ChosenTargets",
+                            "storeAs": "gathered0"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "gathered0",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Exile"
+                            },
+                            "linkToSource": true
+                        },
+                        {
+                            "type": "RollDice",
+                            "sides": 20,
+                            "storeTotalAs": "diceResult2"
+                        },
+                        {
+                            "type": "Gated",
+                            "gate": {
+                                "type": "Gate.WhenCondition",
+                                "condition": {
+                                    "type": "All",
+                                    "conditions": [
+                                        {
+                                            "type": "Compare",
+                                            "left": {
+                                                "type": "VariableReference",
+                                                "variableName": "diceResult2"
+                                            },
+                                            "operator": "GTE",
+                                            "right": {
+                                                "type": "Fixed",
+                                                "amount": 1
+                                            }
+                                        },
+                                        {
+                                            "type": "Compare",
+                                            "left": {
+                                                "type": "VariableReference",
+                                                "variableName": "diceResult2"
+                                            },
+                                            "operator": "LTE",
+                                            "right": {
+                                                "type": "Fixed",
+                                                "amount": 9
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            "then": {
+                                "type": "Composite",
+                                "effects": [
+                                    {
+                                        "type": "CopyCollectionIntoCollection",
+                                        "from": "gathered0",
+                                        "storeAs": "copies4"
+                                    },
+                                    {
+                                        "type": "Gated",
+                                        "gate": "Gate.MayDecide",
+                                        "then": {
+                                            "type": "CastFromCollectionWithoutPayingCost",
+                                            "from": "copies4",
+                                            "payManaCost": true
+                                        },
+                                        "descriptionOverride": "You may cast the copy."
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "type": "Gated",
+                            "gate": {
+                                "type": "Gate.WhenCondition",
+                                "condition": {
+                                    "type": "All",
+                                    "conditions": [
+                                        {
+                                            "type": "Compare",
+                                            "left": {
+                                                "type": "VariableReference",
+                                                "variableName": "diceResult2"
+                                            },
+                                            "operator": "GTE",
+                                            "right": {
+                                                "type": "Fixed",
+                                                "amount": 10
+                                            }
+                                        },
+                                        {
+                                            "type": "Compare",
+                                            "left": {
+                                                "type": "VariableReference",
+                                                "variableName": "diceResult2"
+                                            },
+                                            "operator": "LTE",
+                                            "right": {
+                                                "type": "Fixed",
+                                                "amount": 19
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            "then": {
+                                "type": "Composite",
+                                "effects": [
+                                    {
+                                        "type": "CopyCollectionIntoCollection",
+                                        "from": "gathered0",
+                                        "storeAs": "copies7"
+                                    },
+                                    {
+                                        "type": "Gated",
+                                        "gate": "Gate.MayDecide",
+                                        "then": {
+                                            "type": "CastFromCollectionWithoutPayingCost",
+                                            "from": "copies7",
+                                            "alternativeManaCost": "{1}"
+                                        },
+                                        "descriptionOverride": "You may cast the copy by paying {1} rather than paying its mana cost."
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "type": "Gated",
+                            "gate": {
+                                "type": "Gate.WhenCondition",
+                                "condition": {
+                                    "type": "Compare",
+                                    "left": {
+                                        "type": "VariableReference",
+                                        "variableName": "diceResult2"
+                                    },
+                                    "operator": "GTE",
+                                    "right": {
+                                        "type": "Fixed",
+                                        "amount": 20
+                                    }
+                                }
+                            },
+                            "then": {
+                                "type": "Composite",
+                                "effects": [
+                                    {
+                                        "type": "GatherCards",
+                                        "source": "FromLinkedExile",
+                                        "storeAs": "gathered10"
+                                    },
+                                    {
+                                        "type": "CopyCollectionIntoCollection",
+                                        "from": "gathered10",
+                                        "storeAs": "copies11"
+                                    },
+                                    {
+                                        "type": "CastAnyNumberFromCollectionWithoutPayingCost",
+                                        "from": "copies11"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "instant|sorcery",
+                            "zone": "Graveyard"
+                        },
+                        "id": "t0"
+                    }
+                ],
+                "timing": "SorcerySpeed",
+                "descriptionOverride": "Exile target instant or sorcery card from a graveyard. Roll a d20. 1—9: copy that card; you may cast the copy. 10—19: copy that card; you may cast the copy by paying {1} rather than paying its mana cost. 20: copy each card exiled with this artifact; you may cast any number of the copies without paying their mana costs."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "82",
+        "rarity": "RARE",
+        "artist": "Iris Compiet",
+        "imageUri": "https://cards.scryfall.io/normal/front/b/6/b6ed0a4c-0234-4341-8dcb-5eea6a9632e7.jpg?1783926504",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "If your result is 1–9, you must still pay all costs to cast the copy. You may pay any additional or alternative costs the spell has. If it has any mandatory additional costs, those must be paid."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "If your result is 10–19, you may pay {1} instead of its mana cost. You cannot pay its regular mana cost or any alternative costs the copy has. You may pay any additional costs and must pay mandatory additional costs."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "If your result is 20, you may cast the copies without paying their mana costs. You cannot pay their regular mana costs or any alternative costs the copies have. You may pay any additional costs and must pay mandatory additional costs. You may cast the copies in any order you choose."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "In all cases, any copies you don't cast cease to exist after the ability is finished resolving."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "If you control multiple copies of Wizard's Spellbook, each one tracks the cards it has exiled separately."
             }
         ]
     },
@@ -14173,6 +18019,93 @@
     ]
 }
 
+// You Find the Villains' Lair
+{
+    "name": "You Find the Villains' Lair",
+    "manaCost": "{1}{U}{U}",
+    "typeLine": "Instant",
+    "oracleText": "Choose one —\n• Foil Their Scheme — Counter target spell.\n• Learn Their Secrets — Draw two cards, then discard two cards.",
+    "script": {
+        "spellEffect": {
+            "type": "Modal",
+            "modes": [
+                {
+                    "effect": "Counter",
+                    "targetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": {},
+                                "zone": "Stack"
+                            },
+                            "id": "t0"
+                        }
+                    ],
+                    "description": "Foil Their Scheme — Counter target spell."
+                },
+                {
+                    "effect": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "DrawCards",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 2
+                                }
+                            },
+                            {
+                                "type": "Composite",
+                                "effects": [
+                                    {
+                                        "type": "GatherCards",
+                                        "source": {
+                                            "type": "FromZone",
+                                            "zone": "Hand"
+                                        },
+                                        "storeAs": "hand"
+                                    },
+                                    {
+                                        "type": "SelectFromCollection",
+                                        "from": "hand",
+                                        "selection": {
+                                            "type": "ChooseExactly",
+                                            "count": {
+                                                "type": "Fixed",
+                                                "amount": 2
+                                            }
+                                        },
+                                        "storeSelected": "discarded",
+                                        "prompt": "Choose 2 cards to discard"
+                                    },
+                                    {
+                                        "type": "MoveCollection",
+                                        "from": "discarded",
+                                        "destination": {
+                                            "type": "ToZone",
+                                            "zone": "Graveyard"
+                                        },
+                                        "moveType": "Discard"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "description": "Learn Their Secrets — Draw two cards, then discard two cards."
+                }
+            ]
+        }
+    },
+    "metadata": {
+        "collectorNumber": "84",
+        "artist": "Gabor Szikszai",
+        "imageUri": "https://cards.scryfall.io/normal/front/c/6/c6704458-6e9e-4795-a56d-25b68fbf9672.jpg?1783926504"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // You Happen On a Glade
 {
     "name": "You Happen On a Glade",
@@ -14255,6 +18188,172 @@
         "rarity": "UNCOMMON",
         "artist": "Anna Fehr",
         "imageUri": "https://cards.scryfall.io/normal/front/f/9/f9ae7693-a6b5-42f8-9f05-c0643b95a710.jpg?1783926450"
+    },
+    "colorIdentityOverride": [
+        "GREEN"
+    ]
+}
+
+// You Hear Something on Watch
+{
+    "name": "You Hear Something on Watch",
+    "manaCost": "{1}{W}",
+    "typeLine": "Instant",
+    "oracleText": "Choose one —\n• Rouse the Party — Creatures you control get +1/+1 until end of turn.\n• Set Off Traps — This spell deals 5 damage to target attacking creature.",
+    "script": {
+        "spellEffect": {
+            "type": "Modal",
+            "modes": [
+                {
+                    "effect": {
+                        "type": "ForEach",
+                        "space": {
+                            "type": "IterationSpace.Group",
+                            "filter": {
+                                "baseFilter": "creature ctrl:you"
+                            }
+                        },
+                        "body": {
+                            "type": "ModifyStats",
+                            "powerModifier": {
+                                "type": "Fixed",
+                                "amount": 1
+                            },
+                            "toughnessModifier": {
+                                "type": "Fixed",
+                                "amount": 1
+                            },
+                            "target": "IterationEntity"
+                        }
+                    },
+                    "description": "Rouse the Party — Creatures you control get +1/+1 until end of turn."
+                },
+                {
+                    "effect": {
+                        "type": "DealDamage",
+                        "amount": {
+                            "type": "Fixed",
+                            "amount": 5
+                        },
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t0"
+                        }
+                    },
+                    "targetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "creature attacking"
+                            },
+                            "id": "t0"
+                        }
+                    ],
+                    "description": "Set Off Traps — This spell deals 5 damage to target attacking creature."
+                }
+            ]
+        }
+    },
+    "metadata": {
+        "collectorNumber": "42",
+        "artist": "Zezhou Chen",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/6/76e939ab-9d0c-4685-805c-c8bc4e6af163.jpg?1783926521"
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
+// You Meet in a Tavern
+{
+    "name": "You Meet in a Tavern",
+    "manaCost": "{2}{G}{G}",
+    "typeLine": "Sorcery",
+    "oracleText": "Choose one —\n• Form a Party — Look at the top five cards of your library. You may reveal any number of creature cards from among them and put them into your hand. Put the rest on the bottom of your library in a random order.\n• Start a Brawl — Creatures you control get +2/+2 until end of turn.",
+    "script": {
+        "spellEffect": {
+            "type": "Modal",
+            "modes": [
+                {
+                    "effect": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "GatherCards",
+                                "source": {
+                                    "type": "TopOfLibrary",
+                                    "count": {
+                                        "type": "Fixed",
+                                        "amount": 5
+                                    }
+                                },
+                                "storeAs": "looked"
+                            },
+                            {
+                                "type": "SelectFromCollection",
+                                "from": "looked",
+                                "selection": "ChooseAnyNumber",
+                                "filter": "creature",
+                                "storeSelected": "kept",
+                                "storeRemainder": "rest",
+                                "prompt": "You may reveal any number of creature cards and put them into your hand",
+                                "showAllCards": true
+                            },
+                            {
+                                "type": "MoveCollection",
+                                "from": "kept",
+                                "destination": {
+                                    "type": "ToZone",
+                                    "zone": "Hand"
+                                },
+                                "revealed": true
+                            },
+                            {
+                                "type": "MoveCollection",
+                                "from": "rest",
+                                "destination": {
+                                    "type": "ToZone",
+                                    "zone": "Library",
+                                    "placement": "Bottom"
+                                },
+                                "order": "Random"
+                            }
+                        ]
+                    },
+                    "description": "Form a Party — Look at the top five cards of your library. You may reveal any number of creature cards from among them and put them into your hand. Put the rest on the bottom of your library in a random order."
+                },
+                {
+                    "effect": {
+                        "type": "ForEach",
+                        "space": {
+                            "type": "IterationSpace.Group",
+                            "filter": {
+                                "baseFilter": "creature ctrl:you"
+                            }
+                        },
+                        "body": {
+                            "type": "ModifyStats",
+                            "powerModifier": {
+                                "type": "Fixed",
+                                "amount": 2
+                            },
+                            "toughnessModifier": {
+                                "type": "Fixed",
+                                "amount": 2
+                            },
+                            "target": "IterationEntity"
+                        }
+                    },
+                    "description": "Start a Brawl — Creatures you control get +2/+2 until end of turn."
+                }
+            ]
+        }
+    },
+    "metadata": {
+        "collectorNumber": "215",
+        "rarity": "UNCOMMON",
+        "artist": "Zoltan Boros",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/9/593aa59a-4025-4df8-9f27-188fc7712fde.jpg?1783926450"
     },
     "colorIdentityOverride": [
         "GREEN"
@@ -14389,6 +18488,170 @@
     },
     "colorIdentityOverride": [
         "RED"
+    ]
+}
+
+// You're Ambushed on the Road
+{
+    "name": "You're Ambushed on the Road",
+    "manaCost": "{W}",
+    "typeLine": "Instant",
+    "oracleText": "Choose one —\n• Make a Retreat — Return target creature you control to its owner's hand.\n• Stand and Fight — Target creature gets +1/+3 until end of turn.",
+    "script": {
+        "spellEffect": {
+            "type": "Modal",
+            "modes": [
+                {
+                    "effect": {
+                        "type": "MoveToZone",
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t0"
+                        },
+                        "destination": "Hand"
+                    },
+                    "targetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "creature ctrl:you"
+                            },
+                            "id": "t0"
+                        }
+                    ],
+                    "description": "Make a Retreat — Return target creature you control to its owner's hand."
+                },
+                {
+                    "effect": {
+                        "type": "ModifyStats",
+                        "powerModifier": {
+                            "type": "Fixed",
+                            "amount": 1
+                        },
+                        "toughnessModifier": {
+                            "type": "Fixed",
+                            "amount": 3
+                        },
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t1"
+                        }
+                    },
+                    "targetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "creature"
+                            },
+                            "id": "t1"
+                        }
+                    ],
+                    "description": "Stand and Fight — Target creature gets +1/+3 until end of turn."
+                }
+            ]
+        }
+    },
+    "metadata": {
+        "collectorNumber": "43",
+        "artist": "Eric Deschamps",
+        "flavorText": "\"Hand over your loot and no one gets hurt!\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/2/726da84a-fdd4-46df-8ba4-f94d582bcce4.jpg?1783926521"
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
+// Yuan-Ti Fang-Blade
+{
+    "name": "Yuan-Ti Fang-Blade",
+    "manaCost": "{2}{B}",
+    "typeLine": "Creature — Snake Rogue",
+    "oracleText": "Deathtouch\nWhenever this creature deals combat damage to a player, venture into the dungeon. (Enter the first room or advance to the next room.)",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 2
+    },
+    "keywords": [
+        "DEATHTOUCH"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Yuan-Ti Fang-Blade:1",
+                "trigger": {
+                    "type": "DealsDamageEvent",
+                    "damageType": "DamageCombat",
+                    "recipient": {
+                        "type": "RecipientPlayer",
+                        "player": "Any"
+                    }
+                },
+                "effect": "VentureIntoTheDungeon"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "128",
+        "artist": "Simon Dominic",
+        "flavorText": "\"The air is sweet with the taste of your fear.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/a/7/a7e0e09c-ed43-4a37-85f2-c60bdfdb2624.jpg?1783926485"
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
+// Yuan-Ti Malison
+{
+    "name": "Yuan-Ti Malison",
+    "manaCost": "{1}{U}",
+    "typeLine": "Creature — Snake Rogue",
+    "oracleText": "This creature can't be blocked as long as it's attacking alone.\nWhenever this creature deals combat damage to a player, venture into the dungeon. (Enter the first room or advance to the next room.)",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 1
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Yuan-Ti Malison:1",
+                "trigger": {
+                    "type": "DealsDamageEvent",
+                    "damageType": "DamageCombat",
+                    "recipient": {
+                        "type": "RecipientPlayer",
+                        "player": "Any"
+                    }
+                },
+                "effect": "VentureIntoTheDungeon"
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "ConditionalStaticAbility",
+                "ability": "CantBeBlocked",
+                "condition": {
+                    "type": "EntityMatches",
+                    "entity": "Self",
+                    "filter": {
+                        "statePredicates": [
+                            "IsAttackingAlone"
+                        ]
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "86",
+        "rarity": "RARE",
+        "artist": "Oriana Menendez",
+        "flavorText": "Silent. Slithering. Sinister.",
+        "imageUri": "https://cards.scryfall.io/normal/front/0/f/0f51afd9-7093-4aa3-ad5b-7383684d6285.jpg?1783926503"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
     ]
 }
 
@@ -14597,5 +18860,50 @@
     "startingLoyalty": 4,
     "colorIdentityOverride": [
         "RED"
+    ]
+}
+
+// Zombie Ogre
+{
+    "name": "Zombie Ogre",
+    "manaCost": "{3}{B}{B}",
+    "typeLine": "Creature — Zombie Ogre",
+    "oracleText": "At the beginning of your end step, if a creature died this turn, venture into the dungeon. (Enter the first room or advance to the next room.)",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 5
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Zombie Ogre:1",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "END"
+                },
+                "binding": "ANY",
+                "effect": "VentureIntoTheDungeon",
+                "interveningIf": "CreatureDiedThisTurn"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "129",
+        "artist": "Nicholas Gregory",
+        "flavorText": "\"On the plus side, Throg no longer thinks he's clever.\"\n—Xanathar",
+        "imageUri": "https://cards.scryfall.io/normal/front/d/4/d4dbed36-190c-4748-b282-409a2fb5d134.jpg?1783926485",
+        "rulings": [
+            {
+                "date": "2021-07-23",
+                "text": "Zombie Ogre doesn't need to have been on the battlefield at the time the creature died for its ability to function."
+            },
+            {
+                "date": "2021-07-23",
+                "text": "Zombie Ogre's ability will trigger only once during your end step, no matter how many creatures died this turn. However, if no creatures have died so far this turn as the end step begins, the ability won't trigger at all. It's not possible to cause a creature to die during the end step in time to have the ability trigger."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK"
     ]
 }

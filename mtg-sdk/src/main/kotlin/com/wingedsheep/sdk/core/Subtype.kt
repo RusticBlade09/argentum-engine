@@ -356,7 +356,7 @@ value class Subtype(val value: String) {
             "Time Lord", "Toy", "Treefolk", "Trilobite", "Triskelavite", "Troll",
             "Turtle", "Tyranid",
             "Unicorn", "Utrom",
-            "Vampire", "Varmint", "Vedalken", "Villain", "Volver",
+            "Vampire", "Varmint", "Vedalken", "Villain", "Volver", "Vulcan",
             "Wall", "Walrus", "Warlock", "Warrior", "Weasel", "Weird", "Werewolf",
             "Whale", "Wizard", "Wolf", "Wolverine", "Wombat", "Worm", "Wraith",
             "Wurm",
