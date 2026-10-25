@@ -712,17 +712,23 @@ export function StackDisplay() {
           maxWidth: responsive.isMobile ? 120 : 160,
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
         }}>
-          <div style={{
-            color: '#b8a8cc',
-            fontSize: responsive.isMobile ? 8 : 9,
-            lineHeight: 1.35,
-            textAlign: 'center',
-            whiteSpace: 'pre-line',
-            overflow: 'hidden',
-            display: '-webkit-box',
-            WebkitLineClamp: 5,
-            WebkitBoxOrient: 'vertical',
-          }}>
+          {/* Never clamped: a cut-off rules sentence ("triggers only once..") reads as a different
+              rule. Ordinary abilities show whole; a rare wall of text scrolls inside the box rather
+              than pushing the board around, and the full text is on hover either way. */}
+          <div
+            title={displayText ?? undefined}
+            style={{
+              color: '#b8a8cc',
+              fontSize: responsive.isMobile ? 8 : 9,
+              lineHeight: 1.35,
+              textAlign: 'center',
+              whiteSpace: 'pre-line',
+              maxHeight: '14em',
+              overflowY: 'auto',
+              overscrollBehavior: 'contain',
+              scrollbarWidth: 'thin',
+            }}
+          >
             {displayText && <AbilityText text={displayText} size={responsive.isMobile ? 9 : 10} />}
           </div>
           {zoneTargets.length > 0 && (

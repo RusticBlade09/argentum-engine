@@ -550,7 +550,7 @@ function GameOverlay() {
     // One amber action: play again when there is a rematch to offer, otherwise back to the menu.
     // Everything else sits in the quieter row beneath it.
     return (
-      <div className={overlay.scrim} role="dialog" aria-modal="true" aria-labelledby="game-over-title">
+      <div className={`${overlay.scrim} ${overlay.scrimResult}`} role="dialog" aria-modal="true" aria-labelledby="game-over-title">
         <div className={overlay.card} data-result={gameOverState.result}>
           <p className={overlay.eyebrow}>Game over</p>
           <h1 id="game-over-title" className={overlay.title}>{title}</h1>
