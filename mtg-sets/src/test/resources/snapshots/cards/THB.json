@@ -2058,6 +2058,83 @@
     ]
 }
 
+// Nadir Kraken
+{
+    "name": "Nadir Kraken",
+    "manaCost": "{1}{U}{U}",
+    "typeLine": "Creature — Kraken",
+    "oracleText": "Whenever you draw a card, you may pay {1}. If you do, put a +1/+1 counter on this creature and create a 1/1 blue Tentacle creature token.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 3
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Nadir Kraken:1",
+                "trigger": "DrawEvent",
+                "binding": "ANY",
+                "effect": {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.MayPay",
+                        "cost": {
+                            "type": "PayManaCost",
+                            "cost": "{1}"
+                        }
+                    },
+                    "then": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "AddCounters",
+                                "counterType": "PLUS_ONE_PLUS_ONE",
+                                "count": 1,
+                                "target": "Self"
+                            },
+                            {
+                                "type": "CreateToken",
+                                "power": 1,
+                                "toughness": 1,
+                                "colors": [
+                                    "BLUE"
+                                ],
+                                "creatureTypes": [
+                                    "Tentacle"
+                                ],
+                                "imageUri": "https://cards.scryfall.io/normal/front/7/b/7b9f04f7-587e-4774-8aaa-09e8520efacb.jpg?1783931454"
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "55",
+        "rarity": "RARE",
+        "artist": "Dan Murayama Scott",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/8/7817e039-e509-4b6f-b5a3-deb3769bbdc8.jpg?1783931582",
+        "rulings": [
+            {
+                "date": "2020-01-24",
+                "text": "While resolving Nadir Kraken's ability, you can't pay {1} multiple times to create multiple Tentacles or to give it multiple +1/+1 counters."
+            },
+            {
+                "date": "2020-01-24",
+                "text": "You choose whether to pay {1} after drawing the card and seeing what it is. If you draw multiple cards, you see them all before deciding how many of the resulting triggers you'll pay {1} for."
+            },
+            {
+                "date": "2020-01-24",
+                "text": "If Nadir Kraken leaves the battlefield after its ability has triggered, you can still pay {1} and get a Tentacle, even though you won't put a +1/+1 counter on Nadir Kraken."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Naiad of Hidden Coves
 {
     "name": "Naiad of Hidden Coves",
