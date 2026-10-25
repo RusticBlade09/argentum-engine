@@ -3151,6 +3151,88 @@
     ]
 }
 
+// Rise to Glory
+{
+    "name": "Rise to Glory",
+    "manaCost": "{3}{W}{B}",
+    "typeLine": "Sorcery",
+    "oracleText": "Choose one or both —\n• Return target creature card from your graveyard to the battlefield.\n• Return target Aura card from your graveyard to the battlefield.",
+    "script": {
+        "spellEffect": {
+            "type": "Modal",
+            "modes": [
+                {
+                    "effect": {
+                        "type": "MoveToZone",
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t0"
+                        },
+                        "destination": "Battlefield",
+                        "fromZone": "Graveyard"
+                    },
+                    "targetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "creature own:you",
+                                "zone": "Graveyard"
+                            },
+                            "id": "t0"
+                        }
+                    ],
+                    "description": "Return target creature card from your graveyard to the battlefield"
+                },
+                {
+                    "effect": {
+                        "type": "MoveToZone",
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t1"
+                        },
+                        "destination": "Battlefield",
+                        "fromZone": "Graveyard"
+                    },
+                    "targetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "Aura own:you",
+                                "zone": "Graveyard"
+                            },
+                            "id": "t1"
+                        }
+                    ],
+                    "description": "Return target Aura card from your graveyard to the battlefield"
+                }
+            ],
+            "chooseCount": 2,
+            "minChooseCount": 1
+        }
+    },
+    "metadata": {
+        "collectorNumber": "225",
+        "rarity": "UNCOMMON",
+        "artist": "Howard Lyon",
+        "flavorText": "A hero dies, and a legend arises.",
+        "imageUri": "https://cards.scryfall.io/normal/front/c/f/cf6c11c8-64a1-46a4-979c-56a6d5b873d3.jpg?1783931519",
+        "rulings": [
+            {
+                "date": "2020-01-24",
+                "text": "If an Aura is put onto the battlefield without being cast, the Aura's controller-to-be chooses what it will enchant as it comes back onto the battlefield. An Aura put onto the battlefield this way doesn't target anything (so it could be attached to an opponent's permanent with hexproof, for example), but the Aura's enchant ability restricts what it can be attached to. If the Aura can't legally be attached to anything, it remains in its current zone."
+            },
+            {
+                "date": "2020-01-24",
+                "text": "Because modes are performed sequentially, an Aura returned to the battlefield with Rise to Glory can enchant a creature returned to the battlefield with Rise to Glory."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE",
+        "BLACK"
+    ]
+}
+
 // Rumbling Sentry
 {
     "name": "Rumbling Sentry",
