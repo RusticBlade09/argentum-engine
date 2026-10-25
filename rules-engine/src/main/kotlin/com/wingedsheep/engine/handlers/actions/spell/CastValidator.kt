@@ -459,10 +459,14 @@ internal class CastValidator(
         // MDFC's blue back face is not castable through such a permission even though the exiled
         // card is red. Authoritative: the enumerator applies the same rule, but the action is
         // client-supplied.
-        val castColors = action.faceIndex
-            ?.let { cardDef?.cardFaces?.getOrNull(it)?.manaCost?.colors }
-            ?: cardDef?.colors
-            ?: cardComponent.manaCost.colors
+        val castColors = state.projectedState.spellColors(
+            action.playerId,
+            action.faceIndex
+                ?.let { cardDef?.cardFaces?.getOrNull(it)?.manaCost?.colors }
+                ?: cardDef?.colors
+                ?: cardComponent.manaCost.colors,
+            action.cardId,
+        )
         if (permissions.none { it.authorizesSpellColors(castColors) }) {
             val required = permissions.firstNotNullOfOrNull { it.castColorRestriction }?.name?.lowercase()?.let { "$it spells" }
                 ?: permissions.firstNotNullOfOrNull { it.castColorCount }?.let { "spells with exactly $it colors" }
@@ -901,7 +905,10 @@ internal class CastValidator(
             addAll(SpliceCasts.targetRequirementsFor(state, action.splicedCardIds, cardRegistry))
         }.map { req -> castText?.let { req.applyTextReplacement(it) } ?: req }
         if (targetRequirements.isEmpty()) return null
-        val sourceColors = (transformedFace ?: cardDef).colors
+        // An off-battlefield SetColors (Mycosynth Lattice) recolors the spell being cast.
+        val sourceColors = state.projectedState.offBattlefieldColors(action.cardId)
+            ?.mapNotNullTo(linkedSetOf()) { name -> com.wingedsheep.sdk.core.Color.entries.firstOrNull { it.name == name } }
+            ?: (transformedFace ?: cardDef).colors
         val sourceSubtypes = (transformedFace ?: cardDef).typeLine.subtypes.map { it.value }.toSet()
         // A choose-N modal cast that sends its targets per mode already says which mode each target
         // belongs to, and those slices are what the stack records. Bind each slice against its own
@@ -1045,7 +1052,7 @@ internal class CastValidator(
         val chosen = action.conspiredCreatures
         if (chosen.size != 2) return "Conspire requires tapping exactly two creatures"
         if (chosen[0] == chosen[1]) return "Conspire requires two distinct creatures"
-        val spellColors = cardDef.colors
+        val spellColors = state.projectedState.spellColors(action.playerId, cardDef.colors, action.cardId)
         if (spellColors.isEmpty()) return "Cannot conspire: a colorless spell has no color to share"
         val projected = state.projectedState
         val battlefield = state.getBattlefield()
