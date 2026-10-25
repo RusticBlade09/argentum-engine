@@ -1723,13 +1723,9 @@
             {
                 "id": "Aurelia, the Law Above:1",
                 "trigger": {
-                    "type": "AttackEvent",
-                    "requires": [
-                        {
-                            "type": "AttackerCountAtLeast",
-                            "n": 3
-                        }
-                    ]
+                    "type": "YouAttackEvent",
+                    "minAttackers": 3,
+                    "player": "Each"
                 },
                 "binding": "ANY",
                 "effect": {
@@ -1744,13 +1740,9 @@
             {
                 "id": "Aurelia, the Law Above:2",
                 "trigger": {
-                    "type": "AttackEvent",
-                    "requires": [
-                        {
-                            "type": "AttackerCountAtLeast",
-                            "n": 5
-                        }
-                    ]
+                    "type": "YouAttackEvent",
+                    "minAttackers": 5,
+                    "player": "Each"
                 },
                 "binding": "ANY",
                 "effect": {
