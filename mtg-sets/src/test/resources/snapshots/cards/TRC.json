@@ -369,3 +369,28 @@
         "RED"
     ]
 }
+
+// Worf, Chief Tactical Officer
+{
+    "name": "Worf, Chief Tactical Officer",
+    "manaCost": "{2}{W}",
+    "typeLine": "Legendary Creature — Klingon Warrior Officer",
+    "oracleText": "Vigilance (Attacking doesn't cause this creature to tap.)",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 3
+    },
+    "keywords": [
+        "VIGILANCE"
+    ],
+    "metadata": {
+        "collectorNumber": "141",
+        "rarity": "UNCOMMON",
+        "artist": "Ariel Orea",
+        "flavorText": "\"The true test of a warrior is not without. It is within.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/c/e/ced54aa6-c8ee-451f-91cd-967fe766ec13.jpg?1786005790"
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
