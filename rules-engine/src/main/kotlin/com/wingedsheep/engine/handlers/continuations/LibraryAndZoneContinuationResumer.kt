@@ -1279,7 +1279,13 @@ class LibraryAndZoneContinuationResumer(
             .sortedBy { it.key }
             .flatMap { (_, ids) -> ids.map { entityIdToChosenTarget(state, it) } }
 
-        val stateForCast = state.copy(priorityPlayerId = continuation.casterId)
+        // Publish the cast card to the frame beneath *before* casting: a cast that pauses again
+        // (X, kicker, a mode) pushes its own frame on top, so it can't be published afterwards.
+        // A cast that fails to initiate falls back to `state`, which never saw the record.
+        val castCollections = continuation.storeCastTo?.let { mapOf(it to listOf(continuation.cardId)) }
+            ?: emptyMap()
+        val stateForCast = exposeCollectionsToNextFrame(state, castCollections)
+            .copy(priorityPlayerId = continuation.casterId)
         val castResult = castSpellHandler.execute(
             stateForCast,
             CastSpell(
@@ -1328,21 +1334,12 @@ class LibraryAndZoneContinuationResumer(
             return checkForMore(cleaned, fallbackEvents)
         }
 
-        // The cast initiated. Publish the cast card so an enclosing Effects.IfYouDo frame beneath
-        // (Kaervek's "If you do, you lose 2 life") sees a non-empty collection.
-        val castCollections = continuation.storeCastTo?.let { mapOf(it to listOf(continuation.cardId)) }
-            ?: emptyMap()
-
+        // The cast initiated, and the frame beneath already holds the cast card, so an enclosing
+        // Effects.IfYouDo (Kaervek's "If you do, you lose 2 life") sees a non-empty collection.
         if (castResult.pendingDecision != null) {
-            val exposed = exposeCollectionsToNextFrame(castResult.state, castCollections)
-            return ExecutionResult.propagatePause(
-                exposed,
-                castResult.events,
-            )
+            return ExecutionResult.propagatePause(castResult.state, castResult.events)
         }
-
-        val exposed = exposeCollectionsToNextFrame(castResult.state, castCollections)
-        return checkForMore(exposed, castResult.events)
+        return checkForMore(castResult.state, castResult.events)
     }
 
     /**
@@ -1386,9 +1383,13 @@ class LibraryAndZoneContinuationResumer(
         val chosenId = response.selectedCards.firstOrNull()
 
         // Declined, or a stale / no-longer-offered pick: end the loop. Uncast cards remain
-        // wherever they are.
+        // wherever they are; the "cast this way" record is handed to the step after the loop.
         if (chosenId == null || chosenId !in collection) {
-            return checkForMore(state, emptyList())
+            val recorded = continuation.storeCastTo?.let { key ->
+                val castSoFar = CastAnyNumberFromCollectionWithoutPayingCostExecutor.castSoFarKey(key)
+                mapOf(key to ctx.pipeline.storedCollections[castSoFar].orEmpty())
+            }.orEmpty()
+            return checkForMore(exposeCollectionsToNextFrame(state, recorded), emptyList())
         }
 
         val singleKey = "${continuation.from}\$next"
@@ -1427,6 +1428,9 @@ class LibraryAndZoneContinuationResumer(
                 from = singleKey,
                 payManaCost = continuation.payManaCost,
                 insteadOfGraveyard = continuation.insteadOfGraveyard,
+                // Published only if the cast initiates; the next iteration folds it into the record.
+                storeCastTo = continuation.storeCastTo
+                    ?.let(CastAnyNumberFromCollectionWithoutPayingCostExecutor::lastCastKey),
             ),
             CastAnyNumberFromCollectionWithoutPayingCostEffect(
                 from = continuation.from,
@@ -1444,6 +1448,7 @@ class LibraryAndZoneContinuationResumer(
                 },
                 playLands = continuation.playLands,
                 insteadOfGraveyard = continuation.insteadOfGraveyard,
+                storeCastTo = continuation.storeCastTo,
             ),
         )
         val result = effectRunner.runBuilt(state, effects, loopContext)
