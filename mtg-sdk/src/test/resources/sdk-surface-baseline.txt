@@ -1187,7 +1187,6 @@ Player.TriggeringPlayer — Player
 Player.You — Player
 PlayerRankMetric.CreaturesOfSubtype — PlayerRankMetric
 PlayerRankMetric.LifeTotal — PlayerRankMetric
-PlotCostTarget.YouPlotFromHand — PlotCostTarget
 PreventionSourceFilter.AnySource — PreventionSourceFilter
 PreventionSourceFilter.Chosen — PreventionSourceFilter
 PreventionSourceFilter.Matching — PreventionSourceFilter
@@ -1530,10 +1529,8 @@ MayCastWithoutPayingManaCost — StaticAbility
 MayPlayCardsFromExile — StaticAbility
 MayPlayLandsFromGraveyard — StaticAbility
 MayPlayPermanentsFromGraveyard — StaticAbility
-ModifyPlotCost — StaticAbility
 ModifySpellCost — StaticAbility
 ModifyStats — StaticAbility
-ModifyUnlockCost — StaticAbility
 MultiplyManaOnSourceTap — StaticAbility
 MustAttack — StaticAbility
 MustBeBlocked — StaticAbility
@@ -1611,7 +1608,6 @@ TargetSpellOrPermanent — TargetRequirement
 TimingRule.InstantSpeed — TimingRule
 TimingRule.ManaAbility — TimingRule
 TimingRule.SorcerySpeed — TimingRule
-UnlockCostTarget.YouUnlock — UnlockCostTarget
 WardCost.Choice — WardCost
 WardCost.CollectEvidence — WardCost
 WardCost.Composite — WardCost
@@ -1679,6 +1675,7 @@ EventPattern.DieRolledEvent — EventPattern — Mr. House, President and CEO (p
 EventPattern.DungeonCompletedEvent — EventPattern — Dungeon Crawler — EventPattern.SagaChapterResolvedEvent, EventPattern.CaseSolvedEvent — completing a dungeon is a player event as the dungeon card leaves the game (CR 309.7), not a permanent's chapter resolving or a Case being solved; neither carries the completing player
 EventPattern.EnlistedEvent — EventPattern — Guardian of New Benalia — ExertedAsItAttacksEvent, TapEvent — identifies the enlisting attacker and another creature's payment; a tap alone cannot identify the paid ability
 EventPattern.EvolvedEvent — EventPattern — Watchful Radstag — EventPattern.TrainedEvent, EventPattern.CountersPlacedEvent — CountersPlacedEvent fires for +1/+1 counters from any source (CR 702.100b counts only the evolve ability's own), and TrainedEvent is the training keyword action, which a "whenever this creature trains" payoff must not see on an evolve
+EventPattern.ForetoldEvent — EventPattern — Dream Devourer — EventPattern.ForagedEvent, EventPattern.CardsPutIntoExileEvent — "whenever you foretell a card" is the foretell special action, a keyword action of its own like forage; a hand-to-exile zone-change filter can't tell foretelling from any other exile from hand, and it must not fire for a card that merely becomes foretold (CR 702.143d)
 EventPattern.LearnEvent — EventPattern — Retriever Phoenix — EventPattern.ScryEvent, EventPattern.ProliferatedEvent — ScryEvent is a KeywordActionCountEvent (learn has no count to resize), ProliferatedEvent is a trigger pattern for an action that happened; this is the replacement-only "would learn" pattern ReplaceKeywordAction matches
 EventPattern.ManaAbilityResolved — EventPattern — Tyvar the Bellicose — EventPattern.LandTappedForMana, EventPattern.AbilityActivatedEvent — LandTappedForMana is "tapped for mana" (only a mana ability with {T} in its cost, CR 106.12) and lands only, and its event is emitted only for lands; AbilityActivatedEvent fires at activation, not resolution, and carries no amount of mana produced, which this payoff reads
 EventPattern.MutateEvent — EventPattern — Gemrazer — EventPattern.TurnFaceUpEvent, EventPattern.EvolvedEvent — a mutating spell merging with a permanent (CR 702.140d) is not a zone change (the permanent doesn't enter, CR 730.2b), a face-up turn, or a counter placement; no axis on those patterns can say "merged with"
@@ -1690,6 +1687,7 @@ GainLifeInsteadOfLosingLife — ReplacementEffect — Strong, the Brutish Thespi
 GameIsDrawEffect — Effect — Divine Intervention — WinGameEffect, LoseGameEffect — both name a player and act through losses that can't-lose / can't-win grants intercept; a draw (CR 104.4c) names nobody and marks no loss
 Goaded — StaticAbility — Martial Impetus — MustAttack, CantAttackYou — goad is a designation with a goader (CR 701.15b-c): the creature must attack and must attack a player other than each goader if able, stacking per goader; MustAttack lowers to a projected flag that can't carry who goads it or the second requirement, and CantAttackYou is an absolute restriction, not an if-able requirement that yields when the goader is the only player to attack
 GrantEscapeEffect — Effect — Desdemona, Freedom's Edge — GrantFlashbackEffect, GrantHarmonizeEffect — the single-card runtime grant of escape, the per-entity twin of GraveyardCardsHaveEscape; escape carries a non-mana half (exile N other cards) neither has, and it doesn't exile on resolution (both do), so a keyword axis on either would fork every engine read
+GrantForetellToCardsInHand — StaticAbility — Dream Devourer — GrantWarpToCardsInHand, GrantMiracleToCardsInHand — the whole-hand grant of foretell; warp and miracle grant an alternative cast from hand with a fixed cost, while foretell is a special action whose granted cost derives from each card's own mana cost (minus a generic reduction), is fixed as the card is exiled and outlives the grant, so a keyword axis on either would fork every engine read
 GrantHexproofFromToGroup — StaticAbility — Dragonfire Blade — GrantHexproofFromOwnColorsToGroup, GrantProtectionFromChosenColorToGroup — replaces the Monocolored/Multicolored pair with a ProtectionScope axis; OwnColors' quality varies per creature (a scope can't say "its own colors") and ChosenColor reads a chosen-color component and grants protection, not hexproof
 GrantLoyaltyActivationPermissionEffect — Effect — Urza Assembles the Titans — AllowLoyaltyActivationsThisTurnEffect, LoyaltyActivationPermission — renames and widens GrantInstantSpeedLoyaltyAbilitiesEffect with a times axis (no net new type); AllowLoyaltyActivationsThisTurn names one permanent and lapses when it leaves, so it can't cover planeswalkers that enter later, and LoyaltyActivationPermission is a static that lasts only while its source is on the battlefield, where a Saga chapter's grant must outlive the sacrificed Saga
 GrantOffspringToOwnSpells — StaticAbility — Zinnia, Valley's Voice — GrantKeywordToOwnSpells, GrantWebSlingingToSpells — GrantKeywordToOwnSpells grants a Keyword with at most an Int parameter and can't carry a ManaCost or bring an enters trigger; GrantWebSlingingToSpells carries a cost but grants an alternative cost, where offspring is an optional additional cost on its own cast-choice slot plus a synthesized token-copy trigger
@@ -1712,8 +1710,10 @@ ManaRestriction.ForetellOnly — ManaRestriction — Karfell Harbinger — ManaR
 ManaRestriction.SpellsWithKeywordOnly — ManaRestriction — Niko Defies Destiny — ManaRestriction.KickedSpellsOnly, ManaRestriction.SubtypeSpellsOnly — KickedSpellsOnly asks whether the kicker cost was paid, not whether the card has a keyword; SubtypeSpellsOnly reads type-line subtypes, and a keyword is not a subtype
 MarkMustAttackEffect — Effect — Sizzling Soloist — MarkMustAttackThisTurnEffect (renamed into this), MarkMustBlockThisTurnEffect — renames MarkMustAttackThisTurnEffect and gives it a window axis (this turn / its controller's next combat phase), no net new type; the blocking mirror is a floating effect with its own blocker-side semantics and no cross-turn window
 MaxCounters — StaticAbility — Rasputin Dreamweaver — CantReceiveCounters, CapCounterPlacementThisTurn — CantReceiveCounters is an all-kinds group prohibition projected as a flag that cost legality reads, with no kind or number to carry a limit; CapCounterPlacementThisTurn is a replacement that caps one placement then locks the recipient for the turn, blind to the counters already on it
+MayForetellOnAnyTurn — StaticAbility — Cosmos Charger — ModifySpecialActionCost, GrantFlashToSpellType — lifts the foretell special action's own-turn timing (CR 116.2h); a cost modifier doesn't carry timing, and flash grants change when spells are cast, not when a special action is taken
 MeldEffect — Effect — Titania, Voice of Gaea — ExileAndReturnTransformedEffect, ReturnSelfFromZoneTransformedEffect — both move one double-faced object and return it on a face of its own card; meld exiles two separate cards and returns them as one object whose characteristics come from a third definition (the meld result), with a pair check (CR 701.42b/c) neither has an axis for
 ModifyKeywordActionAmount — ReplacementEffect — Enhanced Surveillance — ModifyKeywordAction, ModifyDrawAmount — replaces and deletes ModifyMillAmount + ModifyScryAmount, one type whose appliesTo names the action (mill/scry/surveil) instead of one per action; ModifyKeywordAction inserts a prefix effect rather than resizing a count, and a draw is not a keyword action and has its own "N or more" announcement site
+ModifySpecialActionCost — StaticAbility — Cosmos Charger — ModifySpellCost, ReduceActivatedAbilityCost — merges ModifyPlotCost and ModifyUnlockCost (both deleted, with PlotCostTarget and UnlockCostTarget) into one cost modifier keyed by SpecialActionKind, adding foretell; net -3 types. Special actions aren't spells or abilities, so neither neighbour applies
 ModifySpellCostsEffect — Effect — Academy Loremaster — ReduceSpellCostsEffect (renamed into this), ModifySpellCost — renames and widens ReduceSpellCostsEffect with increase and player axes (no net new type); ModifySpellCost is a static that lasts only while its source is on the battlefield, where a resolved "spells they cast this turn cost {2} more" must outlive Academy Loremaster
 MoveAllCountersEffect — Effect — The Ozolith — MoveAllLastKnownCountersEffect, MoveCountersEffect — MoveAllLastKnownCounters reads a last-known counter map off a trigger or cost snapshot (the source already left), not a live permanent it empties; MoveCounters carries one kind and a counted amount, and "all of every kind" is neither (a nullable kind plus a sentinel amount would give it two meanings)
 NoteNumberForSourceEffect — Effect — Sigarda's Splendor — ChooseNumberForSourceEffect, StoreNumberEffect — ChooseNumberForSource writes the same durable slot but only from a player's bounded choice; StoreNumber evaluates a DynamicAmount but only into the resolving pipeline, gone once the ability ends
