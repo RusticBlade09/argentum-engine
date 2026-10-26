@@ -239,14 +239,9 @@ class SealedSession(
                 return "Card not in pool: $cardName"
             }
 
-            // Check count against pool
+            // Check count against pool — the only copy limit in Limited: every copy opened is playable
             if (count > availableInPool) {
                 return "Not enough copies of $cardName in pool (have $availableInPool, trying to use $count)"
-            }
-
-            // Enforce 4-copy limit
-            if (count > 4) {
-                return "Cannot have more than 4 copies of $cardName (have $count)"
             }
         }
 

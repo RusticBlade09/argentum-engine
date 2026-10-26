@@ -440,6 +440,11 @@ sealed interface ServerMessage {
          * the deckbuilder's usual 4-of cap), so adding a card must not consume it from the pool.
          */
         val poolPlay: Boolean = false,
+        /**
+         * Per-card copy cap for the deck (basic lands exempt), or null when the pool's own copy
+         * count is the only limit — Limited's default. Always set under [poolPlay].
+         */
+        val maxCopiesPerCard: Int? = null,
     ) : ServerMessage
 
     /**
@@ -549,6 +554,11 @@ sealed interface ServerMessage {
         val deckSizeMin: Int = 60,
         /** Commander Draft/Sealed only — when true, drafted/sealed decks may include duplicates. */
         val allowDuplicates: Boolean = true,
+        /**
+         * Limited pools only — when true, decks are capped at 4 copies of any non-basic card; when
+         * false (the default), every copy in the pool is playable. Pool Play always caps.
+         */
+        val limitedCopyLimit: Boolean = false,
         /** Commander Draft/Sealed only — "BRAWL" (25 life / 16 cmdr damage) or "COMMANDER" (30/21). */
         val commanderPreset: String = "BRAWL",
         /** When true, each booster mixes cards from the union of all selected sets. */

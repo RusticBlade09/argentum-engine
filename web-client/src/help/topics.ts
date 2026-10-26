@@ -909,6 +909,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         'Basic Lands has + / − per type and a Suggest button that fills the land count from your colours.',
         'In a Commander pool, the crown on a legendary creature (or a card that says it can be your commander) makes it your commander, and the ♛ Identity toggle restricts the pool to its colour identity. With one commander crowned, crowning a legal partner — another Partner card, a Background for a “Choose a Background” commander, and so on — adds it as a second commander; the identity is then both commanders’ combined.',
       ] },
+      { kind: 'p', text: 'You can play every copy of a card you opened or drafted — five Shocks in your pool means up to five Shocks in your deck. The host can turn on Copy limit → Max 4 under Rules in the lobby to cap every card except basic lands at 4 copies, as in constructed. Cube Pool Play always caps at 4.' },
       { kind: 'p', text: 'Submit Deck stays disabled until the deck is big enough, and says how many cards it still needs. After submitting you can still press Edit Deck until the first round begins. Export gives an MTG Arena-format list to copy or download.' },
       { kind: 'p', text: 'The cards you leave out become your sideboard — the “outside the game” cards that wish-style effects can fetch. There is no sideboarding between games: the deck you submit plays every round.' },
       { kind: 'p', text: 'Save Deck on the standings screen keeps the deck in My Decks, with the exact printings you opened or drafted.' },

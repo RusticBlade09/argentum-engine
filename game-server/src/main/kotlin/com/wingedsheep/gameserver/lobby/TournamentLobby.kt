@@ -363,6 +363,13 @@ class TournamentLobby(
      */
     var allowDuplicates: Boolean = true,
     /**
+     * Whether a Limited deck is capped at [MAX_COPIES_PER_CARD] copies of any non-basic card. Off by
+     * default: in Limited you may play every copy you drafted or opened — the pool is the only
+     * limit. Pool Play ([isCubePoolPlay]) always keeps the cap, since its pool has no copy count,
+     * and premade decks are constructed, so they always keep it too.
+     */
+    var limitedCopyLimit: Boolean = false,
+    /**
      * The host's 1v1 Commander life tuning (Brawl 25 vs. classic Commander 30) for Commander Draft
      * / Sealed formats. A multiplayer table ignores it — read [effectiveCommanderPreset], which is
      * what actually becomes a [com.wingedsheep.sdk.core.Format.Commander] at match start.
@@ -450,6 +457,12 @@ class TournamentLobby(
 
     /** Whether this lobby actually runs as Pool Play — the single source of that truth. */
     val isCubePoolPlay: Boolean get() = isCube && cubePoolPlay && format == TournamentFormat.SEALED
+
+    /**
+     * The per-card copy cap a pool-built deck is held to (basic lands exempt), or null when the
+     * pool's own copy count is the only limit. Pool Play always caps — its pool has no count.
+     */
+    val limitedCopyCap: Int? get() = MAX_COPIES_PER_CARD.takeIf { isCubePoolPlay || limitedCopyLimit }
 
     private var cubeBoosterGenerator: BoosterGenerator? = null
     private var cubeDealer: CubeDealer? = null
@@ -2109,6 +2122,7 @@ class TournamentLobby(
                 rules = rules.name,
                 deckSizeMin = deckSizeMin,
                 allowDuplicates = allowDuplicates,
+                limitedCopyLimit = limitedCopyLimit,
                 commanderPreset = commanderPreset.name,
                 chaosBoosters = chaosBoosters,
                 includedSetProducts = includedSetProducts.mapValues { (_, ids) -> ids.sorted() },
@@ -2159,13 +2173,13 @@ class TournamentLobby(
     }
 
     /**
-     * Limited deck validation: min 40 cards, every card present in the player's pool, no more copies
-     * than the pool holds, and a hard 4-of cap. Basic lands are exempt throughout (they're supplied,
-     * not drafted).
+     * Limited deck validation: min 40 cards, every card present in the player's pool, and no more
+     * copies than the pool holds — plus the 4-of cap when the host turned on [limitedCopyLimit].
+     * Basic lands are exempt throughout (they're supplied, not drafted).
      *
      * In Pool Play ([isCubePoolPlay]) copies are unlimited: the pool is the whole cube and every
      * player has the same one, so "how many copies did you open" is not a constraint — only
-     * membership in the cube and the 4-of cap survive.
+     * membership in the cube and the 4-of cap survive (see [limitedCopyCap]).
      */
     private fun validateDeck(pool: List<CardDefinition>, deckList: Map<String, Int>): String? {
         val totalCards = deckList.values.sum()
@@ -2200,9 +2214,9 @@ class TournamentLobby(
                 return "Not enough copies of $cardName in pool (have $availableInPool, trying to use $count)"
             }
 
-            // Enforce 4-copy limit
-            if (count > MAX_COPIES_PER_CARD) {
-                return "Cannot have more than $MAX_COPIES_PER_CARD copies of $cardName (have $count)"
+            val cap = limitedCopyCap
+            if (cap != null && count > cap) {
+                return "Cannot have more than $cap copies of $cardName (have $count)"
             }
         }
 

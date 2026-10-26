@@ -82,6 +82,7 @@ fun TournamentLobby.toPersistent(): PersistentTournamentLobby {
         completedAt = completedAt,
         isPublic = isPublic,
         aiAssistEnabled = aiAssistEnabled,
+        limitedCopyLimit = limitedCopyLimit,
         gameMode = gameMode.name,
         attackMode = chosenAttackMode?.name,
         randomTeams = randomTeams,
@@ -136,6 +137,7 @@ fun restoreTournamentLobby(
         gamesPerMatch = persistent.gamesPerMatch,
         isPublic = persistent.isPublic,
         aiAssistEnabled = persistent.aiAssistEnabled,
+        limitedCopyLimit = persistent.limitedCopyLimit,
         gameMode = runCatching { LobbyGameMode.valueOf(persistent.gameMode) }
             .getOrDefault(LobbyGameMode.TOURNAMENT),
         chosenAttackMode = persistent.attackMode

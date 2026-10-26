@@ -301,6 +301,7 @@ class LobbyHandler(
                     cardPool = playerState.cardPool.map { ConnectionHandler.cardToSealedCardInfo(it) },
                     basicLands = basicLandInfos,
                     poolPlay = lobby.isCubePoolPlay,
+                    maxCopiesPerCard = lobby.limitedCopyCap,
                 ))
             }
         }
@@ -943,6 +944,7 @@ class LobbyHandler(
                     cardPool = poolInfos,
                     basicLands = basicLandInfos,
                     poolPlay = lobby.isCubePoolPlay,
+                    maxCopiesPerCard = lobby.limitedCopyCap,
                 ))
                 ctx.broadcastLobbyUpdate(lobby)
 
@@ -998,6 +1000,7 @@ class LobbyHandler(
             cardPool = poolInfos,
             basicLands = basicLandInfos,
             poolPlay = lobby.isCubePoolPlay,
+            maxCopiesPerCard = lobby.limitedCopyCap,
         ))
         sender.send(session, lobby.buildLobbyUpdate(identity.playerId, aiGameManager::isAiPlayer))
 
@@ -1023,6 +1026,7 @@ class LobbyHandler(
             cardPool = poolInfos,
             basicLands = basicLandInfos,
             poolPlay = lobby.isCubePoolPlay,
+            maxCopiesPerCard = lobby.limitedCopyCap,
         ))
         sender.send(session, lobby.buildLobbyUpdate(identity.playerId, aiGameManager::isAiPlayer))
 
@@ -1401,6 +1405,7 @@ class LobbyHandler(
                             cardPool = poolInfos,
                             basicLands = basicLandInfos,
                             poolPlay = lobby.isCubePoolPlay,
+                            maxCopiesPerCard = lobby.limitedCopyCap,
                         ))
                     }
                 }
@@ -2769,6 +2774,7 @@ class LobbyHandler(
         }
 
         message.aiAssistEnabled?.let { lobby.aiAssistEnabled = it }
+        message.limitedCopyLimit?.let { lobby.limitedCopyLimit = it }
 
         message.ranked?.let { lobby.ranked = it }
         // Ranked only applies to a TOURNAMENT-mode bracket (1v1 matches); a mode switch in this same

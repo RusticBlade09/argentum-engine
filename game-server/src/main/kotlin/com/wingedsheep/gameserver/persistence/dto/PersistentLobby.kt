@@ -61,6 +61,8 @@ data class PersistentTournamentLobby(
     val isPublic: Boolean = false,
     /** Master switch for in-app AI assistance (Suggest Pick / Auto-build). */
     val aiAssistEnabled: Boolean = true,
+    /** Limited 4-of cap toggle; false = every copy in the pool is playable. */
+    val limitedCopyLimit: Boolean = false,
     /** Lobby mode axis: LobbyGameMode enum name ("TOURNAMENT" / "FREE_FOR_ALL"). */
     val gameMode: String = "TOURNAMENT",
     /** FFA attack rule the host picked: AttackMode enum name ("MULTIPLE" / "LEFT" / "RIGHT"); null = the rules' default. */
