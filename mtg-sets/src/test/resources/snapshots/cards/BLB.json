@@ -11491,7 +11491,7 @@
     "script": {
         "staticAbilities": [
             {
-                "type": "SetBaseToughnessForCreatureGroup",
+                "type": "SetBasePowerToughnessStatic",
                 "toughness": 1,
                 "filter": {
                     "baseFilter": "creature ctrl:opponent"
