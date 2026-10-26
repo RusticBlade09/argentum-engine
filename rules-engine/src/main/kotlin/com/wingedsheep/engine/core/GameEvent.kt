@@ -1066,13 +1066,21 @@ data class SpellFizzledEvent(
 ) : GameEvent
 
 /**
- * An ability resolved.
+ * A triggered or activated ability finished resolving and left the stack — the ability-side
+ * counterpart of [ResolvedEvent]. Mana abilities don't use the stack and emit
+ * [ManaAbilityResolvedEvent] instead.
+ *
+ * @property description The ability's text; empty for an activated ability, whose stack component
+ *   carries no rendered text (the same gap [AbilityActivatedEvent] has).
  */
 @Serializable
 @SerialName("AbilityResolvedEvent")
 data class AbilityResolvedEvent(
     val sourceId: EntityId,
-    val description: String
+    val sourceName: String,
+    val controllerId: EntityId,
+    val description: String,
+    val abilityEntityId: EntityId? = null
 ) : GameEvent
 
 /**

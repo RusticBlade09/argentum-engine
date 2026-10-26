@@ -1234,8 +1234,13 @@ class GameSession(
         val clientEvents = renaming?.toSeat(engineClientEvents, clientEventsSerializer) ?: engineClientEvents
         val pendingDecision = enginePendingDecision?.let { renaming?.toSeat(it, PendingDecision.serializer()) ?: it }
 
-        // Accumulate into persistent game log (filter noisy events)
-        val logEntries = clientEvents.filter { it !is ClientEvent.PermanentTapped && it !is ClientEvent.PermanentUntapped && it !is ClientEvent.ManaAdded }
+        // Accumulate into persistent game log (filter noisy events). An ability's resolution is a
+        // per-update signal for clients, not a log line: the trigger/activation line and the
+        // effect's own events already narrate it, and every trigger would otherwise log twice.
+        val logEntries = clientEvents.filter {
+            it !is ClientEvent.PermanentTapped && it !is ClientEvent.PermanentUntapped &&
+                it !is ClientEvent.ManaAdded && it !is ClientEvent.AbilityResolved
+        }
         val playerLog = gameLogs.getOrPut(playerId) { mutableListOf() }
         playerLog.addAll(logEntries)
 
