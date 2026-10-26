@@ -1098,6 +1098,7 @@ Families:
 - `EffectTarget.AffectedEntity` — AFFECTED ENTITY: the permanent a continuous effect is being applied to during state projection — the creature an Aura's static bonus lands on, one member of a lord's group.
 - `EffectTarget.AmassedArmy` — AMASSED ARMY: the Army chosen by the most recent Amass step in the resolving pipeline — "the amassed Army", whether or not it received counters (CR 701.47c).
 - `EffectTarget.AttachedToTriggeringPermanent` — ATTACHED-TO TRIGGERING PERMANENT: the permanent that the triggering attachment (Aura/ Equipment) became attached to — or, for the unattach mirror, came off of.
+- `EffectTarget.AttackedBy(attacker: EffectTarget.SingleEntity)` — ATTACKED BY: "the player or planeswalker attacker is attacking" — the defender itself, not the defending player (Raid Bombardment, Hellrider: "deals 1 damage to the player or planeswalker that crea…
 - `EffectTarget.BoundVariable(name: String)` — NAMED TARGET BINDING: Refers to a cast-time target by name rather than positional index.
 - `EffectTarget.ChosenCreature` — CHOSEN CREATURE: Refers to the creature chosen when this permanent entered the battlefield.
 - `EffectTarget.ContextTarget(index: Int)` — TARGET BINDING: Refers to a specific target selection from the declaration phase.
@@ -1469,7 +1470,7 @@ Families:
 - `Player.ControllerOfIterationEntity` — Controller of the entity the enclosing `ForEachInGroup` is currently iterating over — "for each attacking red creature, … unless **its controller** pays {2}{R}" (Heroism, Tidal Flats).
 - `Player.ControllerOfSource` — The controller of the effect's **source** — read off the source permanent rather than off the resolution context's `controllerId`.
 - `Player.ControllerOfTriggeringEntity` — The controller of the **triggering entity** — the player half of com.wingedsheep.sdk.scripting.targets.EffectTarget.ControllerOfTriggeringEntity, for the places that take a Player reference rather…
-- `Player.DefendingPlayer` — The defending player, per CR 802.2a: the specific player the ability's source is attacking, determined per attacking creature — never "the opponent" via turn order.
+- `Player.DefendingPlayer` — The defending player, per CR 802.2a: one specific player, determined per attacking creature — never "the opponent" via turn order.
 - `Player.Each` — All players
 - `Player.EachDefendingPlayer` — All defending players in the current combat, in APNAP order, including those with no attackers assigned and before attackers are declared.
 - `Player.EachOpponent` — All opponents
