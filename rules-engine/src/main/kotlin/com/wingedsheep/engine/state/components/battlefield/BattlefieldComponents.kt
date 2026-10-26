@@ -1022,10 +1022,11 @@ data class DamageDealtToCreaturesThisTurnComponent(
 
 /**
  * Last-known snapshot of a source that dealt damage to the bearer this turn — captured at the
- * moment the damage was dealt (CR 608.2h / 603.10a). Holds just what observer-style death triggers
- * need to evaluate a source filter ("dealt damage by a Spider you controlled"): the source's
- * controller and creature-subtypes as they were when it dealt the damage. Stored on the *damaged*
- * creature so it survives a source that died in the same combat.
+ * moment the damage was dealt (CR 608.2i / 603.10a). Holds just what a look-back source filter
+ * needs ("dealt damage by a Spider you controlled", "a Giant, Wizard, or spell you controlled dealt
+ * damage to it this turn"): the source's controller, card types, subtypes and name as they were
+ * when it dealt the damage. Stored on the *damaged* creature or planeswalker so it survives a
+ * source that died in the same combat.
  *
  * [sourceId] names the damaging object itself, so a "dealt damage by this creature" trigger on a
  * source that left the battlefield alongside its victim can still look back and find it (CR 603.10a).
@@ -1036,6 +1037,14 @@ data class DamageSourceLki(
     val sourceId: EntityId? = null,
     val sourceSubtypes: Set<com.wingedsheep.sdk.core.Subtype> = emptySet(),
     val sourceWasCreature: Boolean = true,
+    /**
+     * The source's card types when it dealt the damage — for a resolving spell, the types it has on
+     * the stack, so "a spell you controlled" (`InstantOrSorcery.youControl()`, the house reading of a
+     * spell that deals damage) can be asked of the record (Aegar, the Freezing Flame).
+     */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val sourceCardTypes: Set<com.wingedsheep.sdk.core.CardType> = emptySet(),
     /** The source's name when it dealt the damage; null for a nameless (face-down) source. */
     val sourceName: String? = null,
     /**
@@ -1046,21 +1055,13 @@ data class DamageSourceLki(
 ) {
     /**
      * Does this source, as it stood when it dealt the damage, match [filter]? "You" is [youId]. The
-     * snapshot holds only controller, creature-ness and creature subtypes, so a filter asking for
-     * anything else fails closed rather than matching every source.
+     * snapshot holds only controller, creature-ness, instant/sorcery-ness, subtypes and name, so a
+     * filter asking for anything else fails closed rather than matching every source.
      */
     fun matches(filter: com.wingedsheep.sdk.scripting.GameObjectFilter, youId: EntityId): Boolean {
         if (filter.statePredicates.isNotEmpty()) return false
         if (filter.anyOf.isNotEmpty() && filter.anyOf.none { matches(it, youId) }) return false
-        for (predicate in filter.cardPredicates) {
-            val ok = when (predicate) {
-                com.wingedsheep.sdk.scripting.predicates.CardPredicate.IsCreature -> sourceWasCreature
-                is com.wingedsheep.sdk.scripting.predicates.CardPredicate.HasSubtype -> predicate.subtype in sourceSubtypes
-                is com.wingedsheep.sdk.scripting.predicates.CardPredicate.NameEquals -> predicate.name == sourceName
-                else -> false
-            }
-            if (!ok) return false
-        }
+        if (!filter.cardPredicates.all(::matchesCard)) return false
         return when (filter.controllerPredicate) {
             null -> true
             com.wingedsheep.sdk.scripting.predicates.ControllerPredicate.ControlledByYou -> sourceControllerId == youId
@@ -1068,11 +1069,25 @@ data class DamageSourceLki(
             else -> false
         }
     }
+
+    private fun matchesCard(predicate: com.wingedsheep.sdk.scripting.predicates.CardPredicate): Boolean = when (predicate) {
+        com.wingedsheep.sdk.scripting.predicates.CardPredicate.IsCreature -> sourceWasCreature
+        com.wingedsheep.sdk.scripting.predicates.CardPredicate.IsInstant ->
+            com.wingedsheep.sdk.core.CardType.INSTANT in sourceCardTypes
+        com.wingedsheep.sdk.scripting.predicates.CardPredicate.IsSorcery ->
+            com.wingedsheep.sdk.core.CardType.SORCERY in sourceCardTypes
+        is com.wingedsheep.sdk.scripting.predicates.CardPredicate.Or -> predicate.predicates.any(::matchesCard)
+        // `or` wraps a multi-predicate branch (Creature.withSubtype(...)) in an And.
+        is com.wingedsheep.sdk.scripting.predicates.CardPredicate.And -> predicate.predicates.all(::matchesCard)
+        is com.wingedsheep.sdk.scripting.predicates.CardPredicate.HasSubtype -> predicate.subtype in sourceSubtypes
+        is com.wingedsheep.sdk.scripting.predicates.CardPredicate.NameEquals -> predicate.name == sourceName
+        else -> false
+    }
 }
 
 /**
- * Tracks the last-known snapshots of all sources that dealt damage to this creature this turn.
- * Read by observer death triggers of the form "whenever another creature dealt damage this turn by
+ * Tracks the last-known snapshots of all sources that dealt damage to this creature or
+ * planeswalker this turn. Read by observer death triggers of the form "whenever another creature dealt damage this turn by
  * [a source matching a filter] dies" (Shelob, Child of Ungoliant). Captured as last-known info on
  * the [com.wingedsheep.engine.core.ZoneChangeEvent] when the bearer leaves the battlefield, and
  * cleared at end of turn by [com.wingedsheep.engine.core.CleanupPhaseManager].
