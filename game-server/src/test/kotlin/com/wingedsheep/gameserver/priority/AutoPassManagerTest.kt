@@ -288,6 +288,13 @@ class AutoPassManagerTest : FunSpec({
         isAffordable = affordable
     )
 
+    fun pumpAbilityAction(playerId: EntityId, affordable: Boolean = true) = LegalActionInfo(
+        actionType = "ActivateAbility",
+        description = "{2}: +1/+0 until end of turn",
+        action = ActivateAbility(playerId, EntityId.generate(), AbilityId("pump")),
+        isAffordable = affordable
+    )
+
     fun unaffordableCastAction(playerId: EntityId) = LegalActionInfo(
         actionType = "CastSpell",
         description = "Cast Krosan Cloudscraper",
@@ -513,6 +520,27 @@ class AutoPassManagerTest : FunSpec({
             val actions = listOf(
                 passPriorityAction(player2),
                 crewVehicleAction(player2, affordable = false)
+            )
+
+            autoPassManager.shouldAutoPass(state, player2, actions) shouldBe true
+        }
+
+        test("STOP during opponent's declare attackers when player can pay for an activated ability") {
+            val state = createMockState(player2, player1, Step.DECLARE_ATTACKERS, hasAttackers = true)
+            val actions = listOf(
+                passPriorityAction(player2),
+                pumpAbilityAction(player2)
+            )
+
+            autoPassManager.shouldAutoPass(state, player2, actions) shouldBe false
+        }
+
+        test("Auto-pass during opponent's declare attackers when the only activated ability is unaffordable") {
+            // "{2}: +1/+0" with no untapped mana is offered greyed out — nothing to stop for (#3672).
+            val state = createMockState(player2, player1, Step.DECLARE_ATTACKERS, hasAttackers = true)
+            val actions = listOf(
+                passPriorityAction(player2),
+                pumpAbilityAction(player2, affordable = false)
             )
 
             autoPassManager.shouldAutoPass(state, player2, actions) shouldBe true

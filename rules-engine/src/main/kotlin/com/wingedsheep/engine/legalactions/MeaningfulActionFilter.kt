@@ -223,21 +223,10 @@ object MeaningfulActionFilter {
         // An ability whose resolution-time choice has nothing to choose from would do nothing.
         if (action.inertReason != null) return false
 
-        // A non-mana activated ability is meaningful.
-        if (action.actionType == "ActivateAbility") return true
-
-        // Everything with a cost is meaningful only if it can be paid. (Regular spells are only
-        // enumerated when affordable, but companion actions for cycling/morph cards are added
-        // with isAffordable = false.)
-        if (action.actionType in SPELL_CAST_ACTION_TYPES ||
-            action.actionType == "CycleCard" || action.actionType == "TypecycleCard" ||
-            action.actionType == "PlotCard" || action.actionType == "ForetellCard" ||
-            action.actionType == "PutCompanionIntoHand" || action.actionType == "CrewVehicle"
-        ) {
-            return action.isAffordableAction
-        }
-
-        return true
+        // Everything else is meaningful only if it can be paid. The enumerators offer unpayable
+        // actions greyed out (activated abilities, cycling, crew, suspend, saddle, the morph
+        // twins of a cast …) so the client can show them; none of them is a reason to stop.
+        return action.isAffordableAction
     }
 
     /** [isMeaningful] over a list, preserving the caller's own action type. */
