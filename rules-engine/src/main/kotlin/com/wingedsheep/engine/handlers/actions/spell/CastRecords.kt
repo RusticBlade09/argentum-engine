@@ -20,7 +20,7 @@ import com.wingedsheep.engine.state.components.identity.AfterResolveDestinationC
 import com.wingedsheep.sdk.scripting.CastThisWayExile
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.player.CardsDiscardedThisTurnComponent
-import com.wingedsheep.engine.state.components.stack.GraveyardCastRiderComponent
+import com.wingedsheep.engine.state.components.stack.CastThisWayEntryRiderComponent
 import com.wingedsheep.sdk.core.CardType
 import com.wingedsheep.sdk.core.CounterType
 import com.wingedsheep.sdk.core.Zone
@@ -43,6 +43,8 @@ internal class CastAuthorization(
     val oncePerTurnExileGranter: EntityId?,
     /** Glimpse the Cosmos: the exile rider of the card's own `MayCastSelfFromZones` permission this cast went through. */
     val selfZoneExileRider: CastThisWayExile = CastThisWayExile.NONE,
+    /** Kaldring, the Rimestaff: the `entersTapped` riders of the may-play permission this cast goes through. */
+    val mayPlayEntersTapped: List<com.wingedsheep.sdk.scripting.GameObjectFilter> = emptyList(),
 )
 
 /**
@@ -87,6 +89,7 @@ internal class CastRecords(
         oncePerTurnExileGranter = zoneResolver.findOncePerTurnExileGranter(state, action.playerId, action.cardId),
         selfZoneExileRider = zoneResolver.findMayCastSelfFromZoneAbility(state, action.playerId, action.cardId, action)
             ?.exileCastThisWay ?: CastThisWayExile.NONE,
+        mayPlayEntersTapped = zoneResolver.castEntersTappedRiders(state, action, cardComponent),
     )
 
     /**
@@ -241,10 +244,16 @@ internal class CastRecords(
         }
         val riderSubtype: String? = grant?.takeIf { it.hasEntryRider }?.addedSubtypeOnEntry
         val riderAbility = grant?.grantedAbilityOnEntry
-        if (riderCounter != null || riderSubtype != null || riderAbility != null) {
+        // Kaldring, the Rimestaff's "if you do, it enters tapped": a may-play permission's rider,
+        // when the cast had to go through it rather than a rider-free graveyard or exile grant.
+        val riderTapped = authorization.mayPlayEntersTapped.takeIf {
+            grant == null && authorization.linkedExileGranter == null && !isForageCast
+        } ?: emptyList()
+        if (riderCounter != null || riderSubtype != null || riderAbility != null || riderTapped.isNotEmpty()) {
             newState = newState.updateEntity(action.cardId) { c ->
-                c.with(GraveyardCastRiderComponent(
-                    entersWithCounter = riderCounter, addedSubtype = riderSubtype, grantedAbility = riderAbility
+                c.with(CastThisWayEntryRiderComponent(
+                    entersWithCounter = riderCounter, addedSubtype = riderSubtype, grantedAbility = riderAbility,
+                    entersTapped = riderTapped,
                 ))
             }
         }

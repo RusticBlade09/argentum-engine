@@ -2,6 +2,9 @@ package com.wingedsheep.engine.state.permissions
 
 import com.wingedsheep.engine.handlers.ConditionEvaluator
 import com.wingedsheep.engine.handlers.EffectContext
+import com.wingedsheep.engine.handlers.PredicateContext
+import com.wingedsheep.engine.handlers.PredicateEvaluator
+import com.wingedsheep.sdk.scripting.GameObjectFilter
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.sdk.model.EntityId
@@ -127,6 +130,40 @@ fun GameState.activeMayPlayFor(
         permission.controllerId == playerId && cardId in permission.cardIds
     } + StaticMayPlayGrants.forCard(this, cardId, playerId, cardRegistry, predicateEvaluator = conditionEvaluator.predicates)
     ).filter { permission -> permission.gateOpen(this, cardId, conditionEvaluator) }
+
+/**
+ * The `entersTapped` riders a play of [cardId] through its may-play permissions is bound by, or
+ * null when it is bound by none: some active permission authorizes the play, and every one that
+ * does carries an [MayPlayPermission.entersTapped] filter. The rider belongs to the permission a
+ * play goes through, so a rider-free permission covering the same card is the one the player plays
+ * it with. [authorizes] narrows to the permissions that could authorize this particular play (a
+ * land play skips `nonLandOnly` grants; a cast skips grants for another face or colour). Read while
+ * the card is still in the zone it is played from; the filters are matched against the permanent
+ * as it enters (see [matchesEntersTappedRiders]), so a modal DFC is judged by the face played.
+ */
+fun GameState.mayPlayEntersTappedRiders(
+    cardId: EntityId,
+    playerId: EntityId,
+    conditionEvaluator: ConditionEvaluator,
+    cardRegistry: CardRegistry,
+    authorizes: (MayPlayPermission) -> Boolean,
+): List<GameObjectFilter>? {
+    val authorizing = activeMayPlayFor(cardId, playerId, conditionEvaluator, cardRegistry).filter(authorizes)
+    if (authorizing.isEmpty()) return null
+    return authorizing.map { it.entersTapped ?: return null }
+}
+
+/** True when the entering permanent [entityId] matches every rider filter, so it enters tapped. */
+fun GameState.matchesEntersTappedRiders(
+    entityId: EntityId,
+    controllerId: EntityId,
+    riders: List<GameObjectFilter>,
+    predicates: PredicateEvaluator,
+): Boolean {
+    if (riders.isEmpty()) return false
+    val context = PredicateContext(controllerId = controllerId)
+    return riders.all { predicates.matches(this, projectedState, entityId, it, context) }
+}
 
 /**
  * True when at least one active permission authorizes [playerId] to play [cardId].
