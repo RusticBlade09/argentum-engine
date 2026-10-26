@@ -356,7 +356,8 @@ internal class CastValidator(
 
         // Modal DFC back face (CR 712.11b) — the hand-side counterpart of disturb. The caster chose
         // the back face, so the card goes on the stack transformed for that face's own mana cost. No
-        // zone guard is needed beyond the resolver's own (it only looks in hand).
+        // zone guard is needed beyond the resolver's own (the hand, or a may-play permission that
+        // covers the back face).
         val modalBackFace = if (action.useAlternativeCost && action.altAllows(AlternativeCostType.MODAL_BACK_FACE)) {
             zoneResolver.modalBackCastFace(state, playerId, cardId)
         } else null
@@ -425,12 +426,14 @@ internal class CastValidator(
     }
 
     /**
-     * A may-play permission authorizes exactly one set of characteristics. By default that is the
-     * card's primary face; a prepare-spell copy (Secrets of Strixhaven) or a permission carrying
-     * `castFaceIndex` ("cast it from your graveyard as an Adventure" — Mosswood Dreadknight,
-     * CR 715.3) authorizes an alternative face instead. `faceIndex` is client-supplied, so reject any
-     * face the permission doesn't cover — otherwise a hand-constructed action could cast the cheap
-     * Adventure half of a card that was only granted its creature half, or vice versa.
+     * Which faces a may-play permission authorizes ([MayPlayPermission.authorizesFace]): by default
+     * every face the card can be cast as — an Adventure (CR 715.3), either face of a modal DFC
+     * (CR 712.11b). A prepare-spell copy (Secrets of Strixhaven) or a permission carrying
+     * `castFaceIndex` ("cast it from your graveyard as an Adventure" — Mosswood Dreadknight)
+     * authorizes that one face, and the Adventure's own exile (CR 715.3d) only the creature.
+     * `faceIndex` is client-supplied, so reject any face the permission doesn't cover — otherwise a
+     * hand-constructed action could cast the cheap Adventure half of a card that was only granted
+     * its creature half, or vice versa.
      *
      * Only permissions constrain faces. The exile route also covers a linked-exile static grant
      * (Valgavoth, Maralen), which carries no permission and no face notion — an empty permission
@@ -446,11 +449,15 @@ internal class CastValidator(
         if (permissions.isEmpty()) return null
         val isPrepareCopy = state.getEntity(action.cardId)?.has<PreparedSpellCopyComponent>() == true &&
             cardDef?.layout == com.wingedsheep.sdk.model.CardLayout.PREPARE
-        val authorizedFaces: Set<Int?> =
-            if (isPrepareCopy) setOf(0) else permissions.map { it.castFaceIndex }.toSet()
-        if (action.faceIndex !in authorizedFaces) {
-            val faceName = action.faceIndex
-                ?.let { cardDef?.cardFaces?.getOrNull(it)?.name }
+        val modalBack = action.useAlternativeCost && action.altAllows(AlternativeCostType.MODAL_BACK_FACE)
+        val authorized = when {
+            isPrepareCopy -> action.faceIndex == 0 && !modalBack
+            modalBack -> permissions.any { it.authorizesModalBack }
+            else -> permissions.any { it.authorizesFace(action.faceIndex, cardDef) }
+        }
+        if (!authorized) {
+            val faceName = (if (modalBack) cardDef?.backFace?.name else null)
+                ?: action.faceIndex?.let { cardDef?.cardFaces?.getOrNull(it)?.name }
                 ?: cardComponent.name
             return "You don't have permission to cast $faceName from there"
         }
@@ -461,8 +468,8 @@ internal class CastValidator(
         // client-supplied.
         val castColors = state.projectedState.spellColors(
             action.playerId,
-            action.faceIndex
-                ?.let { cardDef?.cardFaces?.getOrNull(it)?.manaCost?.colors }
+            (if (modalBack) cardDef?.backFace?.colors else null)
+                ?: action.faceIndex?.let { cardDef?.cardFaces?.getOrNull(it)?.manaCost?.colors }
                 ?: cardDef?.colors
                 ?: cardComponent.manaCost.colors,
             action.cardId,

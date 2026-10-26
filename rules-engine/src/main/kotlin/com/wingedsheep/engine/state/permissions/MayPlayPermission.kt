@@ -171,6 +171,16 @@ data class MayPlayPermission(
      */
     val castFaceIndex: Int? = null,
     /**
+     * When true, this permission authorizes only the card's **primary** characteristics — none of
+     * its alternative faces. A permission without [castFaceIndex] otherwise covers every face the
+     * card can be cast as: "you may cast that card" lets an Adventurer card be cast as its Adventure
+     * (CR 715.3) and a modal double-faced card as either face (CR 712.11b). The exception is the
+     * Adventure's own exile — "may cast the creature later from exile" (CR 715.3d) — which grants
+     * the creature half alone. Read through [authorizesFace] / [authorizesModalBack].
+     */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val primaryFaceOnly: Boolean = false,
+    /**
      * When set, this permission authorizes casting only spells of this **color** — the color is
      * checked against the characteristics of the face actually being cast, not the card sitting in
      * exile. Mirrors
@@ -244,6 +254,28 @@ data class MayPlayPermission(
     fun authorizesSpellColors(castColors: Set<com.wingedsheep.sdk.core.Color>): Boolean =
         (castColorRestriction == null || castColorRestriction in castColors) &&
             (castColorCount == null || castColors.size == castColorCount)
+
+    /**
+     * Whether this permission lets its holder cast [cardDef] as `cardFaces[faceIndex]` (null: the
+     * primary characteristics). [castFaceIndex] pins one face; [primaryFaceOnly] and a
+     * [castTransformed] grant (whose cast face is the back, chosen elsewhere) pin the primary;
+     * otherwise every face the card can be cast as is covered (CR 712.11b / 715.3) —
+     * [com.wingedsheep.engine.mechanics.AlternativeFaceCasts.spellFaceIndices].
+     */
+    fun authorizesFace(faceIndex: Int?, cardDef: com.wingedsheep.sdk.model.CardDefinition?): Boolean = when {
+        castFaceIndex != null -> faceIndex == castFaceIndex
+        primaryFaceOnly || castTransformed -> faceIndex == null
+        else -> faceIndex == null ||
+            faceIndex in com.wingedsheep.engine.mechanics.AlternativeFaceCasts.spellFaceIndices(cardDef)
+    }
+
+    /**
+     * Whether this permission lets its holder cast a modal double-faced card as its permanent back
+     * face (CR 712.11b) — the back lives in `CardDefinition.backFace`, not `cardFaces`, so it is
+     * asked apart from [authorizesFace].
+     */
+    val authorizesModalBack: Boolean
+        get() = castFaceIndex == null && !primaryFaceOnly && !castTransformed && !castFaceDown
 
     init {
         // gateOpen falls back sourceId ?: cardId when building the EffectContext, which would
