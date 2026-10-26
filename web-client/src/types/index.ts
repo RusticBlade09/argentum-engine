@@ -106,6 +106,7 @@ export type {
   SpellCounteredEvent,
   AbilityTriggeredEvent,
   AbilityActivatedEvent,
+  AbilityResolvedEvent,
   PermanentTappedEvent,
   PermanentUntappedEvent,
   CounterAddedEvent,

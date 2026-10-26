@@ -9,6 +9,7 @@ import com.wingedsheep.engine.handlers.TargetingSourceType
 import com.wingedsheep.engine.handlers.effects.library.ChooseCreatureTypePipelineExecutor
 import com.wingedsheep.engine.state.ComponentContainer
 import com.wingedsheep.engine.state.beginResolutionControl
+import com.wingedsheep.engine.state.nameVisibleToAll
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.stack.*
@@ -111,9 +112,14 @@ internal class AbilityResolver(
         // Execute the effect
         return executeThenLeaveStack(
             state, abilityId, abilityComponent.effect, context,
+            // Masked as StackPlacement masks the matching AbilityTriggeredEvent: a face-down
+            // source's ward must not name the card underneath when it resolves either.
             abilityResolvedEvent = AbilityResolvedEvent(
                 abilityComponent.sourceId,
-                abilityComponent.description
+                nameVisibleToAll(state, abilityComponent.sourceId, abilityComponent.sourceName),
+                abilityComponent.controllerId,
+                abilityComponent.description,
+                abilityEntityId = abilityId
             ),
             sagaChapterResolvedEvent = sagaChapterResolvedEvent(abilityComponent)
         )
@@ -178,7 +184,10 @@ internal class AbilityResolver(
             state, abilityId, abilityComponent.effect, context,
             abilityResolvedEvent = AbilityResolvedEvent(
                 abilityComponent.sourceId,
-                abilityComponent.sourceName
+                abilityComponent.sourceName,
+                abilityComponent.controllerId,
+                abilityComponent.descriptionOverride ?: "",
+                abilityEntityId = abilityId
             )
         )
     }

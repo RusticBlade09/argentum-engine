@@ -391,6 +391,28 @@ sealed interface ClientEvent {
     ) : ClientEvent
 
     /**
+     * A triggered or activated ability finished resolving — the ability-side counterpart of
+     * [SpellResolved], so a client can react at the moment an ability resolves without diffing
+     * the stack. [abilityId] is the stack object that just left; [abilityDescription] is empty for
+     * an activated ability, as in [AbilityActivated].
+     */
+    @Serializable
+    @SerialName("abilityResolved")
+    data class AbilityResolved(
+        val sourceId: EntityId,
+        val sourceName: String,
+        val abilityDescription: String,
+        val abilityId: EntityId? = null,
+        val controllerId: EntityId? = null,
+        val isYours: Boolean? = null,
+        override val description: String = when (isYours) {
+            true -> "Your $sourceName's ability resolved"
+            false -> "Opponent's $sourceName's ability resolved"
+            null -> "$sourceName's ability resolved"
+        }
+    ) : ClientEvent
+
+    /**
      * A "you may" may-question was auto-resolved from the viewer's persistent yield (backlog §C).
      * Surfaced subtly in the log so the player knows the system acted for them.
      */
@@ -1438,6 +1460,15 @@ object ClientEventTransformer {
                 isYours = event.controllerId == viewingPlayerId
             )
 
+            is AbilityResolvedEvent -> ClientEvent.AbilityResolved(
+                sourceId = event.sourceId,
+                sourceName = event.sourceName,
+                abilityDescription = event.description,
+                abilityId = event.abilityEntityId,
+                controllerId = event.controllerId,
+                isYours = event.controllerId == viewingPlayerId
+            )
+
             // Only the controller (whose yield acted) sees the auto-answer note; it's their own
             // private preference, so opponents get nothing.
             is AbilityAutoAnsweredEvent ->
@@ -1840,7 +1871,6 @@ is PermanentsSacrificedEvent -> {
             is LandTappedForManaEvent,
             is ManaAbilityResolvedEvent,
             is DecisionRequestedEvent,
-            is AbilityResolvedEvent,
             is SagaChapterResolvedEvent,
             is DiscardRequiredEvent,
             is LookedAtCardsEvent,

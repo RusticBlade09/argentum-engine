@@ -33,6 +33,7 @@ export type ClientEvent =
   | SpellCounteredEvent
   | AbilityTriggeredEvent
   | AbilityActivatedEvent
+  | AbilityResolvedEvent
   | AbilityAutoAnsweredEvent
   | PermanentTappedEvent
   | PermanentUntappedEvent
@@ -288,6 +289,22 @@ export interface AbilityActivatedEvent {
   readonly sourceId: EntityId
   readonly sourceName: string
   readonly abilityDescription: string
+  readonly description: string
+}
+
+/**
+ * A triggered or activated ability finished resolving (the ability-side `spellResolved`).
+ * `abilityId` is the stack object that just left; `abilityDescription` is empty for an activated
+ * ability. Delivered per update only — the server keeps it out of the persistent game log.
+ */
+export interface AbilityResolvedEvent {
+  readonly type: 'abilityResolved'
+  readonly sourceId: EntityId
+  readonly sourceName: string
+  readonly abilityDescription: string
+  readonly abilityId?: EntityId
+  readonly controllerId?: EntityId
+  readonly isYours?: boolean
   readonly description: string
 }
 
