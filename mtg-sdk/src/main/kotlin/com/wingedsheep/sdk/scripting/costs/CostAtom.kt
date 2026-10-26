@@ -846,8 +846,8 @@ sealed interface CostAtom : TextReplaceable<CostAtom> {
     }
 
     /**
-     * Unattach the ability's source from the permanent it is attached to (CR 701.3d) — "Unattach
-     * this Equipment" (Sunforger). The cost twin of
+     * Unattach the ability's source — or, with [ofGrantingPermanent], the permanent that granted the
+     * ability — from what it is attached to (CR 701.3d) — "Unattach this Equipment" (Sunforger). The cost twin of
      * [com.wingedsheep.sdk.scripting.effects.UnattachEquipmentEffect]: the *effect* has existed for
      * a while (Stolen Uniform's rider), the *cost* had not.
      *
@@ -859,11 +859,19 @@ sealed interface CostAtom : TextReplaceable<CostAtom> {
      *
      * Ability-scoped: a spell on the stack is not attached to anything, so this is never a spell
      * additional cost or a "unless you …" [com.wingedsheep.sdk.scripting.PayCost].
+     *
+     * [ofGrantingPermanent] moves the cost from the ability's source to the permanent whose static
+     * ability *granted* it — Toralf's Hammer gives the equipped creature "{1}{R}, {T}, Unattach
+     * Toralf's Hammer: …", where `{T}` taps the creature and the unattach detaches the Equipment.
+     * Per CR 201.5a the name refers only to that specific granter (resolved at activation, like
+     * [com.wingedsheep.sdk.scripting.AbilityCost.TapGrantingPermanent]), and the same ruling-backed
+     * gate applies to it: the ability isn't offered unless the granter is attached to something.
      */
     @SerialName("AtomUnattach")
     @Serializable
-    data object Unattach : CostAtom {
-        override val description: String get() = "unattach this Equipment"
+    data class Unattach(val ofGrantingPermanent: Boolean = false) : CostAtom {
+        override val description: String
+            get() = if (ofGrantingPermanent) "unattach the granting Equipment" else "unattach this Equipment"
     }
 
     /**
