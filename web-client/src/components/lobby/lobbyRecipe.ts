@@ -84,6 +84,7 @@ export interface RecipeSettings {
   readonly rules?: GameRules
   readonly deckSizeMin?: number
   readonly allowDuplicates?: boolean
+  readonly limitedCopyLimit?: boolean
   readonly commanderPreset?: CommanderPreset
   readonly attackMode?: AttackMode
   readonly randomTeams?: boolean
@@ -250,6 +251,7 @@ export function recipeFromLobby(
         rules: view.axes.rules,
         deckSizeMin: s.deckSizeMin,
         allowDuplicates: s.allowDuplicates,
+        limitedCopyLimit: s.limitedCopyLimit ?? false,
         commanderPreset: s.commanderPreset,
         attackMode: s.attackMode,
         randomTeams: s.randomTeams,
@@ -460,6 +462,7 @@ function trimSettings(
     )
   }
   if (typeof raw.allowDuplicates === 'boolean') out.allowDuplicates = raw.allowDuplicates
+  if (typeof raw.limitedCopyLimit === 'boolean') out.limitedCopyLimit = raw.limitedCopyLimit
   if (typeof raw.randomTeams === 'boolean') out.randomTeams = raw.randomTeams
   if (typeof raw.aiAssistEnabled === 'boolean') out.aiAssistEnabled = raw.aiAssistEnabled
   if (typeof raw.isPublic === 'boolean') out.isPublic = raw.isPublic

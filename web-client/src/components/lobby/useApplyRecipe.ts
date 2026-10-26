@@ -205,6 +205,7 @@ function tournamentSettings(settings: RecipeSettings): PendingSettingsUpdate {
     ...(settings.deckFormat !== undefined ? { deckFormat: settings.deckFormat ?? '' } : {}),
     ...(settings.deckSizeMin !== undefined ? { deckSizeMin: settings.deckSizeMin } : {}),
     ...(settings.allowDuplicates !== undefined ? { allowDuplicates: settings.allowDuplicates } : {}),
+    ...(settings.limitedCopyLimit !== undefined ? { limitedCopyLimit: settings.limitedCopyLimit } : {}),
     ...(settings.commanderPreset ? { commanderPreset: settings.commanderPreset } : {}),
     ...(settings.attackMode ? { attackMode: settings.attackMode } : {}),
     ...(settings.randomTeams !== undefined ? { randomTeams: settings.randomTeams } : {}),

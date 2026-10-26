@@ -352,6 +352,8 @@ sealed interface ClientMessage {
         val deckSizeMin: Int? = null,
         /** Commander Draft/Sealed only — singleton toggle (default true = duplicates allowed). */
         val allowDuplicates: Boolean? = null,
+        /** Limited pools only — cap decks at 4 copies of any non-basic card (default false). */
+        val limitedCopyLimit: Boolean? = null,
         /** Commander Draft/Sealed only — "BRAWL" or "COMMANDER". */
         val commanderPreset: String? = null,
         /** Toggle Chaos boosters: each pack pulls from the union of selected sets. */

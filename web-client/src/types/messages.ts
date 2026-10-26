@@ -1675,6 +1675,11 @@ export interface SealedPoolGeneratedMessage {
    * 4-of cap), so adding a card must not consume it from the pool.
    */
   readonly poolPlay?: boolean
+  /**
+   * Per-card copy cap for the deck (basic lands exempt). Absent when the pool's own copy count is
+   * the only limit — Limited's default. Always set under `poolPlay`.
+   */
+  readonly maxCopiesPerCard?: number | null
 }
 
 /**
@@ -1770,6 +1775,11 @@ export interface LobbySettings {
   readonly deckSizeMin: number
   /** Commander Draft/Sealed only — when true, drafted/sealed decks may include duplicates. */
   readonly allowDuplicates: boolean
+  /**
+   * Limited pools only — when true, decks are capped at 4 copies of any non-basic card; when false
+   * (the default), every copy in the pool is playable. Optional only for an older server.
+   */
+  readonly limitedCopyLimit?: boolean
   /**
    * Commander Draft/Sealed only — the host's 1v1 preset ('BRAWL' = 25 life / 16 cmdr damage;
    * 'COMMANDER' = 30/21). A multiplayer table overrides it with 'POD' (40/21) at game start.
@@ -2883,6 +2893,8 @@ export interface UpdateLobbySettingsMessage {
   readonly deckSizeMin?: number
   /** Commander Draft/Sealed only — singleton toggle (default true = duplicates allowed). */
   readonly allowDuplicates?: boolean
+  /** Limited pools only — cap decks at 4 copies of any non-basic card (default false). */
+  readonly limitedCopyLimit?: boolean
   /** Commander Draft/Sealed only — 'BRAWL' or 'COMMANDER'. */
   readonly commanderPreset?: CommanderPreset
   /** Toggle Chaos boosters: each pack pulls from the union of selected sets. */

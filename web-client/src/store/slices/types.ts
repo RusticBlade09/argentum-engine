@@ -613,6 +613,11 @@ export interface DeckBuildingState {
    * usual 4-of cap), so adding a card must not remove it from the pool view.
    */
   poolPlay: boolean
+  /**
+   * Per-card copy cap (basic lands exempt), or null when the pool's own copy count is the only
+   * limit. Sent by the server, which enforces the same cap on submit.
+   */
+  maxCopiesPerCard: number | null
 }
 
 /**
