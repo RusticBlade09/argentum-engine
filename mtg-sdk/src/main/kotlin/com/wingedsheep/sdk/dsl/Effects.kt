@@ -5780,12 +5780,17 @@ object Effects {
      * Grant a keyword to a spell or ability on the stack (e.g., wither, lifelink).
      * Lasts while the spell remains on the stack. Used for "that spell gains X"
      * effects on triggered abilities like Spinerock Tyrant.
+     *
+     * A permanent spell's grant carries onto the permanent it becomes (CR 400.7a) for [duration]:
+     * "whenever you cast an Elf spell, it gains haste until end of turn" (Tyvar Kell's emblem) is
+     * `duration = Duration.EndOfTurn`.
      */
     fun GrantKeywordToSpell(
         keyword: com.wingedsheep.sdk.core.Keyword,
-        target: EffectTarget = EffectTarget.TriggeringEntity
+        target: EffectTarget = EffectTarget.TriggeringEntity,
+        duration: com.wingedsheep.sdk.scripting.Duration = com.wingedsheep.sdk.scripting.Duration.Permanent
     ): Effect =
-        com.wingedsheep.sdk.scripting.effects.GrantKeywordToSpellEffect(keyword.name, target)
+        com.wingedsheep.sdk.scripting.effects.GrantKeywordToSpellEffect(keyword.name, target, duration)
 
     /**
      * Copy target triggered ability. You may choose new targets for the copy.
