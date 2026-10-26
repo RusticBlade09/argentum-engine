@@ -33,6 +33,9 @@ import com.wingedsheep.engine.legalactions.TapForGenericPermanentData
 import com.wingedsheep.engine.mechanics.mana.TapForGeneric
 import com.wingedsheep.engine.legalactions.utils.CostEnumerationUtils
 import com.wingedsheep.sdk.core.CounterType
+import com.wingedsheep.sdk.core.Keyword
+import com.wingedsheep.engine.state.components.stack.SpellOnStackComponent
+import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.sdk.scripting.GameObjectFilter
 import com.wingedsheep.engine.mechanics.stack.SpellCounterer
 import com.wingedsheep.engine.registry.CardRegistry
@@ -146,6 +149,21 @@ class WardCounterEffectExecutor(
     }
 
     companion object {
+        /** "your spell" or "your ability" — ward and Valkmira counter both (CR 702.21a). */
+        private fun countered(state: GameState, spellEntityId: EntityId): String =
+            if (state.getEntity(spellEntityId)?.has<SpellOnStackComponent>() == true) "your spell" else "your ability"
+
+        /**
+         * The label on the payment prompt. The ward keyword's own trigger reads "Ward"; the same
+         * counter-unless-pays printed as an ability ("counter that spell or ability unless its
+         * controller pays {1}" — Valkmira, Protector's Shield) is labelled by its source card, so
+         * the payer isn't told about a ward the permanent doesn't have.
+         */
+        private fun promptSourceName(state: GameState, wardSourceId: EntityId?): String {
+            if (wardSourceId == null || state.projectedState.hasKeyword(wardSourceId, Keyword.WARD)) return "Ward"
+            return state.getEntity(wardSourceId)?.get<CardComponent>()?.name ?: "Ward"
+        }
+
         /**
          * Charge a single ward [cost] against [payingPlayerId], carrying [remainingParts] (the
          * not-yet-paid components of an enclosing [WardCost.Composite]) so the continuation
@@ -283,10 +301,10 @@ class WardCounterEffectExecutor(
             val decision = { decisionId: String -> YesNoDecision(
                 id = decisionId,
                 playerId = payingPlayerId,
-                prompt = "$label or your spell will be countered",
+                prompt = "$label or ${countered(state, spellEntityId)} will be countered",
                 context = DecisionContext(
                     sourceId = wardSourceId,
-                    sourceName = "Ward",
+                    sourceName = promptSourceName(state, wardSourceId),
                     phase = DecisionPhase.RESOLUTION
                 ),
                 yesText = label,
@@ -345,10 +363,11 @@ class WardCounterEffectExecutor(
             val decision = { decisionId: String -> ChooseOptionDecision(
                 id = decisionId,
                 playerId = payingPlayerId,
-                prompt = "Choose one to pay for ward, or your spell will be countered",
+                prompt = if (promptSourceName(state, wardSourceId) == "Ward") "Choose one to pay for ward, or ${countered(state, spellEntityId)} will be countered"
+                    else "Choose one to pay, or ${countered(state, spellEntityId)} will be countered",
                 context = DecisionContext(
                     sourceId = wardSourceId,
-                    sourceName = "Ward",
+                    sourceName = promptSourceName(state, wardSourceId),
                     phase = DecisionPhase.RESOLUTION
                 ),
                 options = labels
@@ -465,9 +484,9 @@ class WardCounterEffectExecutor(
 
             val fodderLabel = filter.description
             val prompt = if (count == 1) {
-                "Sacrifice a $fodderLabel or your spell will be countered"
+                "Sacrifice a $fodderLabel or ${countered(state, spellEntityId)} will be countered"
             } else {
-                "Sacrifice $count ${fodderLabel}s or your spell will be countered"
+                "Sacrifice $count ${fodderLabel}s or ${countered(state, spellEntityId)} will be countered"
             }
 
             val continuation = CounterUnlessSacrificeContinuation(
@@ -484,7 +503,7 @@ class WardCounterEffectExecutor(
                 state = state,
                 playerId = payingPlayerId,
                 sourceId = wardSourceId,
-                sourceName = "Ward",
+                sourceName = promptSourceName(state, wardSourceId),
                 prompt = prompt,
                 options = validPermanents,
                 minSelections = 0,
@@ -550,9 +569,9 @@ class WardCounterEffectExecutor(
                 state = state,
                 playerId = payingPlayerId,
                 sourceId = wardSourceId,
-                sourceName = "Ward",
+                sourceName = promptSourceName(state, wardSourceId),
                 prompt = "Collect evidence $amount (exile cards with total mana value $amount or " +
-                    "greater from your graveyard) or your spell will be countered",
+                    "greater from your graveyard) or ${countered(state, spellEntityId)} will be countered",
                 options = candidates.cards,
                 minSelections = 0,
                 maxSelections = candidates.cards.size,
@@ -600,10 +619,10 @@ class WardCounterEffectExecutor(
             val decision = { decisionId: String -> YesNoDecision(
                 id = decisionId,
                 playerId = payingPlayerId,
-                prompt = "Discard $cardsLabel$randomSuffix or your spell will be countered",
+                prompt = "Discard $cardsLabel$randomSuffix or ${countered(state, spellEntityId)} will be countered",
                 context = DecisionContext(
                     sourceId = wardSourceId,
-                    sourceName = "Ward",
+                    sourceName = promptSourceName(state, wardSourceId),
                     phase = DecisionPhase.RESOLUTION
                 ),
                 yesText = "Discard $cardsLabel$randomSuffix",
@@ -680,10 +699,12 @@ class WardCounterEffectExecutor(
                 WaterbendPermanentChoice(it.entityId, it.name, it.isCreature)
             }
 
+            // "for ward" only when it is ward; a printed counter-unless-pays (Valkmira) just asks.
+            val forWard = if (promptSourceName(state, wardSourceId) == "Ward") " for ward" else ""
             val payPrompt = if (waterbend) {
-                "Pay $manaCost for ward (tap artifacts/creatures to help) or your spell will be countered"
+                "Pay $manaCost$forWard (tap artifacts/creatures to help) or ${countered(state, spellEntityId)} will be countered"
             } else {
-                "Pay $manaCost for ward or your spell will be countered"
+                "Pay $manaCost$forWard or ${countered(state, spellEntityId)} will be countered"
             }
 
             val decision = { decisionId: String -> SelectManaSourcesDecision(
@@ -692,7 +713,7 @@ class WardCounterEffectExecutor(
                 prompt = payPrompt,
                 context = DecisionContext(
                     sourceId = wardSourceId,
-                    sourceName = "Ward",
+                    sourceName = promptSourceName(state, wardSourceId),
                     phase = DecisionPhase.RESOLUTION
                 ),
                 availableSources = sourceOptions,
@@ -741,10 +762,10 @@ class WardCounterEffectExecutor(
             val decision = { decisionId: String -> YesNoDecision(
                 id = decisionId,
                 playerId = payingPlayerId,
-                prompt = "Pay $lifeCost life or your spell will be countered",
+                prompt = "Pay $lifeCost life or ${countered(state, spellEntityId)} will be countered",
                 context = DecisionContext(
                     sourceId = wardSourceId,
-                    sourceName = "Ward",
+                    sourceName = promptSourceName(state, wardSourceId),
                     phase = DecisionPhase.RESOLUTION
                 ),
                 yesText = "Pay $lifeCost life",
