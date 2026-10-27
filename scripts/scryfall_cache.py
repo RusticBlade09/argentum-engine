@@ -35,6 +35,9 @@ def set_cache_path(code: str, root: Path = CACHE_ROOT) -> Path:
     for entry in root.iterdir():
         if entry.name.lower() == f"{code}.json":
             if os.path.isfile(_native_path(entry)):
-                os.rename(_native_path(entry), _native_path(target))
+                try:
+                    os.rename(_native_path(entry), _native_path(target))
+                except FileNotFoundError:
+                    pass  # A concurrent run already migrated it.
             break
     return target
