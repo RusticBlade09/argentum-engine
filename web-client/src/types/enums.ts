@@ -216,6 +216,7 @@ export enum Keyword {
   // Spell mechanics
   STORM = 'STORM',
   FLASHBACK = 'FLASHBACK',
+  BEAM_ME_UP = 'BEAM_ME_UP',
   SPLIT_SECOND = 'SPLIT_SECOND',
   EVOKE = 'EVOKE',
   BESTOW = 'BESTOW',
@@ -375,6 +376,7 @@ export const KeywordDisplayNames: Record<Keyword, string> = {
   [Keyword.EMERGE]: 'Emerge',
   [Keyword.STORM]: 'Storm',
   [Keyword.FLASHBACK]: 'Flashback',
+  [Keyword.BEAM_ME_UP]: 'Beam me up',
   [Keyword.SPLIT_SECOND]: 'Split second',
   [Keyword.EVOKE]: 'Evoke',
   [Keyword.BESTOW]: 'Bestow',
@@ -471,6 +473,7 @@ export const KeywordDisplayNames: Record<Keyword, string> = {
  * These are stored in the projected state's keyword set alongside true keywords.
  */
 export enum AbilityFlag {
+  CANT_BE_BEAMED_UP = 'CANT_BE_BEAMED_UP',
   CANT_BE_BLOCKED = 'CANT_BE_BLOCKED',
   CANT_BE_BLOCKED_BY_MORE_THAN_ONE = 'CANT_BE_BLOCKED_BY_MORE_THAN_ONE',
   DOESNT_UNTAP = 'DOESNT_UNTAP',
@@ -488,6 +491,7 @@ export enum AbilityFlag {
 }
 
 export const AbilityFlagDisplayNames: Record<AbilityFlag, string> = {
+  [AbilityFlag.CANT_BE_BEAMED_UP]: "Can't be beamed up",
   [AbilityFlag.CANT_BE_BLOCKED]: "Can't be blocked",
   [AbilityFlag.CANT_BE_BLOCKED_BY_MORE_THAN_ONE]: "Can't be blocked by more than one creature",
   [AbilityFlag.DOESNT_UNTAP]: "Doesn't untap during your untap step",

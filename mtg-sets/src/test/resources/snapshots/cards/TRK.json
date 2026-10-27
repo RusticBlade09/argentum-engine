@@ -1,0 +1,145 @@
+// Marooned
+{
+    "name": "Marooned",
+    "manaCost": "{U}",
+    "typeLine": "Enchantment — Aura",
+    "oracleText": "Enchant artifact or creature\nWhen this Aura enters, you may pay {3}. If you do, tap enchanted permanent.\nEnchanted permanent doesn't untap during its controller's untap step and can't be beamed up.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Marooned:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.MayPay",
+                        "cost": {
+                            "type": "PayManaCost",
+                            "cost": "{3}"
+                        }
+                    },
+                    "then": {
+                        "type": "TapUntap",
+                        "target": "EnchantedPermanent"
+                    }
+                }
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "GrantKeyword",
+                "keyword": "DOESNT_UNTAP"
+            },
+            {
+                "type": "GrantKeyword",
+                "keyword": "CANT_BE_BEAMED_UP"
+            }
+        ],
+        "auraTarget": {
+            "type": "TargetObject",
+            "filter": {
+                "baseFilter": "creature|artifact"
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "72",
+        "artist": "Joel Chaim Holtzman",
+        "flavorText": "\"Okay, new plan!\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/0/8/0820a78e-e392-423c-9d62-ddfda5cb3f03.jpg?1785981422"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
+// Open Communications
+{
+    "name": "Open Communications",
+    "manaCost": "{U}",
+    "typeLine": "Sorcery",
+    "oracleText": "Draw a card.\nBeam me up {2}{U} (You may cast this card from your graveyard for {2}{U} if you also return a creature you control to its owner's hand. Then exile this spell.)",
+    "keywords": [
+        "BEAM_ME_UP"
+    ],
+    "keywordAbilities": [
+        {
+            "type": "BeamMeUp",
+            "cost": "{2}{U}"
+        }
+    ],
+    "script": {
+        "spellEffect": {
+            "type": "DrawCards",
+            "count": {
+                "type": "Fixed",
+                "amount": 1
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "76",
+        "artist": "David Robert Hovey",
+        "flavorText": "Some gestures are universal.",
+        "imageUri": "https://cards.scryfall.io/normal/front/8/e/8eeec269-13f0-4923-9f13-e995acd73e00.jpg?1786396013"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
+// Scotty, Miracle Worker
+{
+    "name": "Scotty, Miracle Worker",
+    "manaCost": "{1}{U}{U}",
+    "typeLine": "Legendary Creature — Human Artificer",
+    "oracleText": "During your main phase, each card in your graveyard has beam me up. The beam me up cost is equal to that spell's mana cost. Scotty can't be beamed up to cast a spell this way. (Only instant and sorcery spells can be cast this way. You may cast a card from your graveyard for its beam me up cost if you also return another creature you control to its owner's hand. Then exile that spell.)",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 3
+    },
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "ConditionalStaticAbility",
+                "ability": {
+                    "type": "GraveyardCardsHaveCastKeyword",
+                    "keyword": {
+                        "type": "BeamMeUp",
+                        "returnFilter": {
+                            "cardPredicates": [
+                                "IsCreature"
+                            ],
+                            "statePredicates": [
+                                {
+                                    "type": "StateNot",
+                                    "predicate": "IsSource"
+                                }
+                            ]
+                        }
+                    },
+                    "filter": {}
+                },
+                "condition": {
+                    "type": "IsInPhase",
+                    "phases": [
+                        "PRECOMBAT_MAIN",
+                        "POSTCOMBAT_MAIN"
+                    ]
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "79",
+        "rarity": "MYTHIC",
+        "artist": "Sam Kennedy",
+        "imageUri": "https://cards.scryfall.io/normal/front/4/2/42f77f9e-5e56-45ac-aa93-36353c92bca9.jpg?1792758783"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}

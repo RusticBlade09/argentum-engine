@@ -224,6 +224,11 @@ data class CastSpell(
      * out as its own flag for the same reason (CR 118.9a — only one alternative cost per cast).
      */
     val alternativeCostType: AlternativeCostType? = null,
+    /**
+     * The permanent granting the beam me up this cast uses (Scotty), echoed from the legal action;
+     * null for the card's printed beam me up. Read only when [alternativeCostType] is `BEAM_ME_UP`.
+     */
+    val beamMeUpSource: EntityId? = null,
     /** The selected escape cost, echoed from a legal action and checked against current abilities. */
     val escapeAbility: com.wingedsheep.sdk.scripting.KeywordAbility.Escape? = null,
     /**
@@ -279,6 +284,8 @@ data class GraveyardCastRiderSelection(
 enum class AlternativeCostType {
     /** Flashback ([com.wingedsheep.sdk.scripting.KeywordAbility.Flashback]) — graveyard. */
     FLASHBACK,
+    /** Graveyard cast for mana plus returning a creature; exiled on every stack exit. */
+    BEAM_ME_UP,
     /** Harmonize ([com.wingedsheep.sdk.scripting.KeywordAbility.Harmonize], printed or granted) — graveyard. */
     HARMONIZE,
     /**

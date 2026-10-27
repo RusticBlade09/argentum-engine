@@ -1,6 +1,5 @@
 package com.wingedsheep.engine.mechanics
 
-import com.wingedsheep.engine.handlers.PredicateContext
 import com.wingedsheep.engine.handlers.PredicateEvaluator
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
@@ -9,7 +8,6 @@ import com.wingedsheep.sdk.model.CardDefinition
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.GraveyardCardsHaveEscape
 import com.wingedsheep.sdk.scripting.KeywordAbility
-import com.wingedsheep.engine.state.components.identity.faceUpCardDefinition
 
 /** Escape costs available from printed abilities, individual grants, and battlefield statics. */
 object EscapeCasts {
@@ -29,17 +27,13 @@ object EscapeCasts {
             if (grant.entityId == cardId && grant.ability is KeywordAbility.Escape) add(grant.ability)
         }
         val cardComponent = state.getEntity(cardId)?.get<CardComponent>() ?: return@buildList
-        val context = PredicateContext(controllerId = controllerId)
-        for (granterId in state.controlledBattlefield(controllerId)) {
-            val def = state.getEntity(granterId)?.faceUpCardDefinition(cardRegistry) ?: continue
-            for (ability in def.script.staticAbilities) {
-                if (ability !is GraveyardCardsHaveEscape) continue
-                if (ability.duringYourTurnOnly && !state.isActiveTurnFor(controllerId)) continue
-                val cost = ability.cost ?: if (cardDef?.hasNoManaCost == true) continue else cardComponent.manaCost
-                if (predicateEvaluator.matches(state, state.projectedState, cardId, ability.filter, context)) {
-                    add(KeywordAbility.Escape(cost, ability.additionalCost))
-                }
-            }
+        val grants = GraveyardCastGrants.reaching<GraveyardCardsHaveEscape>(
+            state, cardId, controllerId, cardRegistry, predicateEvaluator,
+            filterOf = { it.filter }, yourTurnOnly = { it.duringYourTurnOnly },
+        )
+        for ((_, grant) in grants) {
+            val cost = grant.cost ?: if (cardDef?.hasNoManaCost == true) continue else cardComponent.manaCost
+            add(KeywordAbility.Escape(cost, grant.additionalCost))
         }
     }.distinct()
 

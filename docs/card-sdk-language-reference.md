@@ -12366,39 +12366,35 @@ riders, matching how the engine already treats e.g. City of Brass's damage durin
   and `CastZoneResolver`) match the bare type without unwrapping it — so the grant never applies
   rather than applying conditionally. Teach those read sites to unwrap first;
   `FlashTypeGrants.activeGrant` is the worked example.
-- `GraveyardCardsHaveFlashback(filter, cost = null, duringYourTurnOnly = false)` — a **whole-graveyard
-  flashback grant** (CR 702.34): a continuous static that grants flashback to *every* card in the
-  controller's graveyard matching `filter` (not a single-card grant like `Effects.GrantFlashback` /
-  Archmage's Newt). `cost = null` means "flashback cost equal to that card's mana cost"; pass a
-  `ManaCost` for a fixed cost. `duringYourTurnOnly = true` gates the grant to the controller's turn.
-  A matching card is castable from the graveyard for the flashback cost and is exiled on resolution,
-  exactly like printed flashback — all four read sites (enumeration, cast cost, permission, and the
-  stack resolver's exile-on-resolution clause) route through the shared `FlashbackGrants.effectiveFlashback`
-  resolver, which now also scans the battlefield for this static (matching on the card's
-  zone-independent characteristics, so it resolves the same whether the card is still in the
-  graveyard or already on the stack). Used by Iroh, Grand Lotus: one grant for
-  `InstantOrSorcery.notSubtype(Lesson)` with `cost = null` ("each non-Lesson instant and sorcery card
-  in your graveyard has flashback … equal to that card's mana cost") and one for
-  `InstantOrSorcery.withSubtype(Lesson)` with `cost = {1}` ("each Lesson card in your graveyard has
-  flashback {1}"), both `duringYourTurnOnly = true`.
-  **Gating this with a condition is silently inert today.** `staticAbility { condition = … }`
-  wraps the ability in a `ConditionalStaticAbility`, and `FlashbackGrants` matches the bare type
-  without unwrapping it — so the grant never applies rather than applying conditionally. Teach
-  that read site to unwrap first; `FlashTypeGrants.activeGrant` is the worked example.
-- `GraveyardCardsHaveMayhem(filter, cost = null, duringYourTurnOnly = false)` — the Mayhem (CR 702.187)
-  analogue of `GraveyardCardsHaveFlashback`: a whole-graveyard group grant of the Mayhem keyword to
-  every graveyard card matching `filter`. `cost = null` means "mayhem cost equal to that card's mana
-  cost". Read through the shared `MayhemGrants.effectiveMayhem` resolver (enumerator, cast cost,
-  permission), which now scans the battlefield for this static; the mayhem discarded-this-turn gate
-  still applies, and (unlike flashback) the spell is not exiled on resolution. Used by Green Goblin's
-  "Goblin Formula — Each nonland card in your graveyard has mayhem. The mayhem cost is equal to its
-  mana cost" (`GraveyardCardsHaveMayhem(GameObjectFilter.Nonland)`).
-  **Gating this with a condition is silently inert today.** `staticAbility { condition = … }`
-  wraps the ability in a `ConditionalStaticAbility`, and `MayhemGrants` matches the bare type
-  without unwrapping it — so the grant never applies rather than applying conditionally. Teach
-  that read site to unwrap first; `FlashTypeGrants.activeGrant` is the worked example.
+- `GraveyardCardsHaveCastKeyword(keyword, filter, cost = null, duringYourTurnOnly = false)` — a
+  **whole-graveyard grant of a graveyard-casting keyword**: every card in the controller's graveyard
+  matching `filter` has `keyword` (not a single-card grant like `Effects.GrantFlashback` / Archmage's
+  Newt). `cost = null` means "equal to that card's mana cost"; pass a `ManaCost` for a fixed cost.
+  `duringYourTurnOnly = true` gates the grant to the controller's turn; gate it any other way with
+  `staticAbility { condition = … }`, which every read site resolves against the granter. The filter
+  matches the card's zone-independent characteristics with the granter as the source. All read sites
+  share one battlefield scan (`GraveyardCastGrants`): controlled permanents, live statics (Class
+  levels), skipping face-down granters and ones that lost all abilities. `keyword` is a
+  `GraveyardCastKeyword`, each variant carrying only its own keyword's data:
+  - `GraveyardCastKeyword.Flashback` (CR 702.34) — castable for the flashback cost and exiled as it
+    leaves the stack, exactly like printed flashback; read through `FlashbackGrants.effectiveFlashback`
+    (enumeration, cast cost, permission, exile on resolution). Iroh, Grand Lotus: one grant for
+    `InstantOrSorcery.notSubtype(Lesson)` with `cost = null` and one for `InstantOrSorcery.withSubtype(Lesson)`
+    with `cost = {1}`, both `duringYourTurnOnly = true`; Lier, Disciple of the Drowned:
+    `GraveyardCardsHaveCastKeyword(GraveyardCastKeyword.Flashback, GameObjectFilter.InstantOrSorcery)`.
+  - `GraveyardCastKeyword.Mayhem` (CR 702.187) — read through `MayhemGrants.effectiveMayhem`; the
+    discarded-this-turn gate still applies and the spell is not exiled on resolution. Green Goblin's
+    "Goblin Formula": `GraveyardCardsHaveCastKeyword(GraveyardCastKeyword.Mayhem, GameObjectFilter.Nonland)`.
+  - `GraveyardCastKeyword.BeamMeUp(returnFilter = Creature)` — read through `BeamMeUp.options`; each
+    granter is its own offer beside the card's printed beam me up (see `beamMeUp` in the keywords
+    section). `returnFilter` narrows the creatures that may be returned to pay *this grant's* offers,
+    matched with the granter as the source. Scotty, Miracle Worker: `staticAbility { condition =
+    Conditions.IsYourMainPhase; ability = GraveyardCardsHaveCastKeyword(GraveyardCastKeyword.BeamMeUp(
+    GameObjectFilter.Creature.notSourceItself()), GameObjectFilter.Any) }` — "Scotty can't be beamed up
+    to cast a spell this way" excludes him from his own grant only.
 - `GraveyardCardsHaveEscape(filter, cost = null, additionalCost = null, duringYourTurnOnly = false)` —
-  the Escape (CR 702.138) analogue of `GraveyardCardsHaveFlashback`: every card in your graveyard
+  the Escape (CR 702.138) analogue of `GraveyardCardsHaveCastKeyword` (read through the same
+  `GraveyardCastGrants` scan): every card in your graveyard
   matching `filter` has escape. `cost = null` means "equal to the card's mana cost" (a card with no
   mana cost then can't escape — its escape cost is unpayable); `additionalCost` is the non-mana half.
   `EscapeCasts.availableEscape` enumerates every distinct printed, individual, or group-granted
@@ -14443,7 +14439,7 @@ Blighted Agent, Ichor Rats, Plague Stinger, Skithiryx.
   your graveyard for `cost` instead of its mana cost, then exile it whenever it would leave the stack. No card-side
   wiring: the engine enumerates `CastWithFlashback`, prices it, and exiles it (on resolution or when countered) through the
   shared `FlashbackGrants.effectiveFlashback` resolver (which also reads granted flashback — see `GrantFlashback`
-  and `GraveyardCardsHaveFlashback`). `KeywordAbility.flashback(cost, additionalCost)` bundles a non-mana cost paid
+  and `GraveyardCardsHaveCastKeyword`). `KeywordAbility.flashback(cost, additionalCost)` bundles a non-mana cost paid
   only on the flashback path ("Flashback—{1}{R}, Behold three Elementals"). `KeywordAbility.flashback(cost, condition)`
   is a flashback the card has only **while `condition` holds** — Viral Spawning: "Corrupted — As long as an opponent
   has three or more poison counters and this card is in your graveyard, it has flashback {2}{G}" is
@@ -14454,6 +14450,18 @@ Blighted Agent, Ichor Rats, Plague Stinger, Skithiryx.
   `KeywordAbility.flashback(cost, additionalCost, minimumXValue = 1)` floors the spell's X on the flashback route only —
   "If you cast this spell this way, X can't be 0" (Light Up the Night). The `CastWithFlashback` offer carries `minX`, is
   unaffordable when the X ceiling is below it, and a flashback cast announcing less is rejected; hand casts keep X ≥ 0.
+- `BeamMeUp(cost)` — `beamMeUp("{2}{U}")` / `KeywordAbility.beamMeUp(cost)` (Star Trek; the published
+  Comprehensive Rules predate the set, so the spec is [Wizards' mechanics article](https://magic.wizards.com/en/news/feature/star-trek-mechanics)).
+  An instant or sorcery may be cast from its owner's graveyard at its normal timing for `cost` plus returning a
+  creature its caster controls to its owner's hand; the return is a cost, not a target. The spell keeps its printed
+  mana value and is exiled on every stack exit (resolve, fizzle, counter, return to hand) — `StackExitRider`. No
+  card-side wiring: `BeamMeUp.options` is the single source of offers — the printed ability and each granter
+  (`GraveyardCardsHaveCastKeyword(GraveyardCastKeyword.BeamMeUp(…), …)`, Scotty) is one `CastWithAlternativeCost`
+  action ("Cast X (Beam me up {U} — from Scotty, Miracle Worker)") whose `CastSpell.beamMeUpSource` names the
+  granter (null = printed), with the offer's creature pool as its `BouncePermanent` cost. Only instants and sorceries
+  can be cast this way, even when a grant reaches other cards. **Can't be beamed up** (Marooned) is the projected flag
+  `GrantKeyword(AbilityFlag.CANT_BE_BEAMED_UP.name)`: it removes the permanent from every beam me up return pool and
+  blocks no other return cost or effect.
 - `Harmonize(cost)` — `KeywordAbility.harmonize(cost)` (Tarkir: Dragonstorm). An alternative cost to cast an instant/sorcery **from your graveyard**, like Flashback, then exile it as it resolves. As you cast it you may tap **a single** untapped creature you control to reduce the **generic** portion of the harmonize cost by that creature's (projected) power — a Convoke-style reduction, but one creature paying generic-equal-to-power instead of one mana per creature. No card-side wiring: declare the keyword ability and the engine handles graveyard-cast enumeration (`CastWithHarmonize`), the per-creature reduction (routed through `AlternativePaymentChoice.harmonizeCreature`), and the exile-on-resolution. The chosen creature and its power are surfaced to the client via `LegalAction.harmonizeCreatures` / `hasHarmonize`; the client offers an on-battlefield single-creature tap step (the `harmonize` pipeline phase + `HarmonizeSelector` HUD, mirroring Convoke). **Harmonize {X}** (e.g. Nature's Rhythm `{X}{G}{G}{G}{G}`): the `CastWithHarmonize` action surfaces `hasXCost`/`maxAffordableX` (max X folds in the best single-creature tap reduction) so the client prompts for X. {X} is generic mana, so the tap reduces the mana paid *for X* — `CastCostTotaller.paymentXValue` lowers the X mana once `reduceGeneric` has consumed any printed generic — while the chosen X stamped onto `SpellOnStackComponent.xValue` (and read by the effect, e.g. "mana value X or less") is unchanged. Colored pips are never reduced. **Granting harmonize at runtime:** harmonize can also be granted to a graveyard card that doesn't print it via `Effects.GrantHarmonize(target, cost?, duration)` (Songcrafter Mage). The grant is a `GrantedKeywordAbility` record keyed to the card entity; every harmonize read site consults printed-**or**-granted harmonize through the `HarmonizeGrants.effectiveHarmonize` resolver, so a granted harmonize is castable, reducible, and exiled exactly like a printed one. The grant survives the graveyard → stack move (so exile-on-resolution still fires) and is cleared in the cleanup step.
 - **Tap-for-generic payments (the shared rail: Improvise, Waterbend).** Every mechanic shaped as *"you may tap an untapped permanent you control rather than pay {1} generic"* runs on **one** rail, not a field each. The chosen permanents travel in `AlternativePaymentChoice.tapForGenericPermanents` (a `Set<EntityId>`); the engine applies them through `AlternativePaymentHandler.applyTapForGeneric`, which takes a `TapForGeneric` eligibility value (`rules-engine/.../mechanics/mana/TapForGeneric.kt`) plus an optional cap. Each tap removes {1} of **generic** — never a colored pip, and never more taps than there is generic to pay. Enumeration surfaces it once, as `LegalAction.hasTapForGeneric` / `tapForGenericPermanents` / `tapForGenericAmount` (the cap, null when the bound is just the cost's generic) / `tapForGenericLabel` (the player-facing verb), built by `CostEnumerationUtils.findTapForGenericPermanents(state, playerId, eligibility)` + `canAffordWithTapForGeneric`. The client has one HUD for all of them: the `tapForGeneric` pipeline phase + `TapForGenericSelector`, which reads the label so the bar says "improvise" or "waterbend". **Adding another mechanic of this shape is one `TapForGeneric` entry, not a new payment field, handler branch, or UI.**
   - **"The creatures that convoked it"** (CR 702.51c — a creature tapped to pay for a spell's convoke "convoked" it). `Keyword.CONVOKE` itself needs no wiring; the creatures actually tapped for it are recorded on the spell (`SpellOnStackComponent.convokedCreatures`, each with its battlefield-entry stamp) and carried onto the resolving permanent's cast-choices bag under `ChoiceSlot.CONVOKED_CREATURES`. Two readers: `DynamicAmounts.convokedCreatureCount()` (= `CastChoice(CONVOKED_CREATURES)`; an entity-list slot reads as its size) counts every creature that tapped, **including one that has since left** — Ancient Imperiosaur `EntersWithDynamicCounters(count = convokedCreatureCount() * 2)`, Knight-Errant of Eos's "mana value X or less" (`ManaValueAtMostDynamic`); and `GameObjectFilter.Creature.thatConvokedSource()` (`CardPredicate.ConvokedSource`) matches each one still on the battlefield **as the same object** — a creature that left and returned is a new object (CR 400.7) and doesn't match — Zephyr Singer `ForEachInGroup(GroupFilter(Creature.thatConvokedSource()), AddCounters(FLYING, 1, IterationEntity))`. Reads the source's record, so it works from the permanent's own enters trigger and from the spell while it's still on the stack; a copy of the spell keeps the original's record (CR 707.10). Fails closed in layer projection and in cost calculation.

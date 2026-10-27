@@ -114,6 +114,7 @@ object CastProvenance {
      */
     private fun methodName(type: AlternativeCostType): String = when (type) {
         AlternativeCostType.FLASHBACK -> "flashback"
+        AlternativeCostType.BEAM_ME_UP -> "beam me up"
         AlternativeCostType.HARMONIZE -> "harmonize"
         AlternativeCostType.MAYHEM -> "mayhem"
         AlternativeCostType.ESCAPE -> "escape"
