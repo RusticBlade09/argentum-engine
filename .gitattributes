@@ -1,2 +1,9 @@
+# Commit text files with LF on every platform. A Windows checkout or a script writing CRLF
+# (Python's default text mode there) otherwise turns a one-line change into a whole-file diff.
+# Windows batch files keep their CRLF bytes as committed.
+* text=auto eol=lf
+*.bat -text
+*.cmd -text
+
 # Compiled from :mtg-search by `just search-js`; review the Kotlin, not this.
 web-client/src/generated/** linguist-generated=true -diff
