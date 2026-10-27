@@ -1,8 +1,10 @@
 package com.wingedsheep.engine.scenarios
 
 import com.wingedsheep.engine.core.*
+import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.legalactions.LegalActionEnumerator
 import com.wingedsheep.engine.state.components.battlefield.AttachedToComponent
+import com.wingedsheep.engine.state.components.identity.OwnerComponent
 import com.wingedsheep.engine.state.components.stack.ChosenTarget
 import com.wingedsheep.engine.state.components.stack.SpellOnStackComponent
 import com.wingedsheep.engine.support.GameTestDriver
@@ -13,6 +15,7 @@ import com.wingedsheep.sdk.model.Deck
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.*
 import com.wingedsheep.sdk.scripting.filters.unified.GroupFilter
+import com.wingedsheep.sdk.scripting.targets.EffectTarget
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.collections.shouldContain
@@ -95,6 +98,32 @@ class BeamMeUpTest : FunSpec({
         d.state.getEntity(s)?.get<com.wingedsheep.engine.state.components.identity.CardComponent>()?.manaValue shouldBe 1
         d.bothPass()
         d.getExile(p) shouldContain s
+    }
+    test("returning an opponent-owned creature you control pays the cost into its owner's hand") {
+        val d = driver()
+        val caster = d.activePlayer!!
+        val owner = d.getOpponent(caster)
+        val creature = d.putCreatureOnBattlefield(owner, "Grizzly Bears")
+        val controlChange = d.services.effectExecutorRegistry.execute(
+            d.state,
+            Effects.GainControl(EffectTarget.SpecificEntity(creature)),
+            EffectContext(sourceId = null, controllerId = caster)
+        )
+        controlChange.error shouldBe null
+        d.replaceState(controlChange.state)
+        d.state.projectedState.getController(creature) shouldBe caster
+        d.state.getEntity(creature)?.get<OwnerComponent>()?.playerId shouldBe owner
+
+        val spell = d.putCardInGraveyard(caster, instant.name)
+        d.giveMana(caster, Color.BLUE, 3)
+        offers(d, caster).single().additionalCostInfo?.validBounceTargets.orEmpty() shouldContain creature
+
+        cast(d, caster, spell, listOf(creature)).outcome shouldBe Outcome.Done
+
+        d.getHand(owner) shouldContain creature
+        d.getHand(caster) shouldNotContain creature
+        d.state.getBattlefield() shouldNotContain creature
+        d.state.getEntity(spell)?.get<SpellOnStackComponent>()?.alternativeCost shouldBe AlternativeCostType.BEAM_ME_UP
     }
     test("no creature means no offer and a submitted cast is rejected without moving the spell") {
         val d = driver(); val p = d.activePlayer!!
