@@ -870,6 +870,91 @@
     ]
 }
 
+// Elenda, the Dusk Rose
+{
+    "name": "Elenda, the Dusk Rose",
+    "manaCost": "{2}{W}{B}",
+    "typeLine": "Legendary Creature — Vampire Knight",
+    "oracleText": "Lifelink\nWhenever another creature dies, put a +1/+1 counter on Elenda.\nWhen Elenda dies, create X 1/1 white Vampire creature tokens with lifelink, where X is Elenda's power.",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 1
+    },
+    "keywords": [
+        "LIFELINK"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Elenda, the Dusk Rose:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "filter": "creature",
+                    "from": "Battlefield",
+                    "to": "Graveyard"
+                },
+                "binding": "OTHER",
+                "effect": {
+                    "type": "AddCounters",
+                    "counterType": "PLUS_ONE_PLUS_ONE",
+                    "count": 1,
+                    "target": "Self"
+                }
+            },
+            {
+                "id": "Elenda, the Dusk Rose:2",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "from": "Battlefield",
+                    "to": "Graveyard"
+                },
+                "effect": {
+                    "type": "CreateToken",
+                    "count": {
+                        "type": "EntityProperty",
+                        "entity": "Self",
+                        "numericProperty": "Power"
+                    },
+                    "power": 1,
+                    "toughness": 1,
+                    "colors": [
+                        "WHITE"
+                    ],
+                    "creatureTypes": [
+                        "Vampire"
+                    ],
+                    "keywords": [
+                        "LIFELINK"
+                    ],
+                    "imageUri": "https://cards.scryfall.io/normal/front/0/9/09293ae7-0629-417b-9eda-9bd3f6d8e118.jpg?1783935812"
+                },
+                "descriptionOverride": "When Elenda dies, create X 1/1 white Vampire creature tokens with lifelink, where X is Elenda's power."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "157",
+        "rarity": "MYTHIC",
+        "artist": "Chris Rahn",
+        "flavorText": "Her centuries-long search is ended.",
+        "imageUri": "https://cards.scryfall.io/normal/front/a/5/a52af49b-cfeb-47a8-9ce5-5d35bfa9eb75.jpg?1783935277",
+        "rulings": [
+            {
+                "date": "2018-01-19",
+                "text": "If Elenda dies at the same time as another creature, both of its triggered abilities trigger. However, the first one won't do anything since you can't put a +1/+1 counter on Elenda."
+            },
+            {
+                "date": "2018-01-19",
+                "text": "To determine how many Vampire tokens are created, use Elenda's power as it last existed on the battlefield."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE",
+        "BLACK"
+    ]
+}
+
 // Exultant Skymarcher
 {
     "name": "Exultant Skymarcher",
@@ -3334,6 +3419,109 @@
     },
     "colorIdentityOverride": [
         "GREEN"
+    ]
+}
+
+// Twilight Prophet
+{
+    "name": "Twilight Prophet",
+    "manaCost": "{2}{B}{B}",
+    "typeLine": "Creature — Vampire Cleric",
+    "oracleText": "Flying\nAscend (If you control ten or more permanents, you get the city's blessing for the rest of the game.)\nAt the beginning of your upkeep, if you have the city's blessing, reveal the top card of your library and put it into your hand. Each opponent loses X life and you gain X life, where X is that card's mana value.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 4
+    },
+    "keywords": [
+        "FLYING",
+        "ASCEND"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Twilight Prophet:1",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "UPKEEP"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "TopOfLibrary",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            "storeAs": "gathered0"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "gathered0",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Hand"
+                            },
+                            "revealed": true
+                        },
+                        {
+                            "type": "LoseLife",
+                            "amount": {
+                                "type": "StoredCardManaValue",
+                                "collectionName": "gathered0"
+                            },
+                            "target": {
+                                "type": "PlayerRef",
+                                "player": "EachOpponent"
+                            }
+                        },
+                        {
+                            "type": "GainLife",
+                            "amount": {
+                                "type": "StoredCardManaValue",
+                                "collectionName": "gathered0"
+                            }
+                        }
+                    ]
+                },
+                "interveningIf": "PlayerHasCitysBlessing"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "88",
+        "rarity": "MYTHIC",
+        "artist": "Seb McKinnon",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/d/9da6974f-6753-48ac-98cd-86412cc93726.jpg?1783935305",
+        "rulings": [
+            {
+                "date": "2018-01-19",
+                "text": "If the mana cost of the revealed card includes {X}, X is considered to be 0."
+            },
+            {
+                "date": "2018-01-19",
+                "text": "If the revealed card doesn't have a mana cost (because it's a land card, for example), its mana value is 0."
+            },
+            {
+                "date": "2018-01-19",
+                "text": "In a Two-Headed Giant game, Twilight Prophet's last ability causes the opposing team to lose twice X life and you gain X life."
+            },
+            {
+                "date": "2018-01-19",
+                "text": "Once you have the city's blessing, you have it for the rest of the game, even if you lose control of some or all of your permanents. The city's blessing isn't a permanent itself and can't be removed by any effect."
+            },
+            {
+                "date": "2018-01-19",
+                "text": "Some cards have triggered abilities with an intervening \"if\" clause that checks whether you have the city's blessing. You must already have the city's blessing in order for these abilities to trigger; otherwise they do nothing."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK"
     ]
 }
 

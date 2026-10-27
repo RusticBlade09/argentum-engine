@@ -175,6 +175,7 @@ Families:
 - `CardPredicate.And(predicates: List<CardPredicate>)`
 - `CardPredicate.BasePowerEquals(value: Int)` — **Base** power exactly equal to value — "a creature with base power 1" (Rapid Augmenter, Zinnia, Valley's Voice).
 - `CardPredicate.BaseToughnessEquals(value: Int)` — The toughness sibling of BasePowerEquals — "base toughness 1" (Sword of the Squeak).
+- `CardPredicate.CardTypeEqualsChosen(variableName: String)` — Matches cards with a **card type** equal to a card type chosen earlier in the pipeline and stored in `chosenValuesvariableName` (via com.wingedsheep.sdk.scripting.effects.OptionType.CARD_TYPE).
 - `CardPredicate.CardTypeEqualsChosenComponent(slot: ChoiceSlot)` — Matches cards whose **card type** equals a card type **durably chosen by the source permanent** as it entered — read from that permanent's com.wingedsheep.engine.state.components.battlefield.CastCh…
 - `CardPredicate.ChosenBySource` — Matches the permanent the source **chose as it entered** — "the chosen permanent" of an com.wingedsheep.sdk.scripting.EntersWithChoice`(ChoiceType.CREATURE_ON_BATTLEFIELD)` replacement (Scheming Fe…
 - `CardPredicate.ColoredManaSymbolsAtLeast(colors: List<Color>, min: Int)` — Matches an object whose printed mana cost contains at least min mana symbols of colors — "a noncreature spell with one or more blue mana symbols in its mana cost" (Namor the Sub-Mariner) with the d…
@@ -781,7 +782,7 @@ Families:
 - `CompositeEffect(effects: List<Effect>, stopOnError: Boolean, descriptionOverride: String?, descriptionAmounts: List<DynamicAmount>)` — Multiple effects that happen together.
 - `ConditionalOnCollectionEffect(collection: String, ifNotEmpty: Effect, ifEmpty: Effect?, minSize: Int, countDistinctCardTypes: Boolean, filter: GameObjectFilter)` — Conditionally execute an effect based on the size of a named collection.
 - `ConniveEffect(subject: EffectTarget, body: Effect, replacementsApplied: Boolean, count: DynamicAmount)` — "subject connives" (CR 701.50) — the named keyword action, wrapping the pipeline that carries it out.
-- `ControlCombatDeclarationsThisTurnEffect` — "You choose which creatures attack this turn.
+- `ControlCombatDeclarationsThisTurnEffect(declarations: Set<CombatDeclaration>, declaringPlayers: Player)` — "You choose which creatures attack this turn.
 - `ControlPlayerDuringResolutionEffect(target: EffectTarget, resolvingObject: EffectTarget?)` — Move input authority for target only while the captured stack object resolves.
 - `ConvertCountersToTokensEffect(counterType: CounterType, tokenFactory: CreateTokenEffect)` — "Remove any number of counterType counters from the source.
 - `CopyCardIntoCollectionEffect(source: EffectTarget, storeAs: String)` — Copy a single card referenced by source and store the copy's entity id in the pipeline collection storeAs.
@@ -790,7 +791,7 @@ Families:
 - `CopyEachTargetSpellEffect(keywordsForCopy: List<String>, removeLegendary: Boolean)` — Copy each spell targeted by this effect (CR 707.10).
 - `CopyForEachOtherPossibleTargetEffect(target: EffectTarget, candidates: GameObjectFilter, copier: Player)` — Copy a spell or ability once **for each other object it could target** (CR 707.10d), auto-assigning every copy a distinct one of those objects as its target.
 - `CopyNextSpellCastEffect(copies: Int, spellFilter: GameObjectFilter)` — When you next cast a spell matching spellFilter this turn, copy that spell.
-- `CopyTargetSpellEffect(target: EffectTarget, keywordsForCopy: List<String>, removeLegendary: Boolean, addedTokenKeywords: Set<Keyword>, sacrificeTokenAtStep: Step?, sacrificeTokenOnlyOnControllersTurn: Boolean, copies: DynamicAmount, exceptions: CopyExceptions, tokenStartingLoyalty: DynamicAmount?)`
+- `CopyTargetSpellEffect(target: EffectTarget, keywordsForCopy: List<String>, removeLegendary: Boolean, addedTokenKeywords: Set<Keyword>, sacrificeTokenAtStep: Step?, sacrificeTokenOnlyOnControllersTurn: Boolean, copies: DynamicAmount, exceptions: CopyExceptions, tokenStartingLoyalty: DynamicAmount?, mayChooseNewTargets: Boolean)`
 - `CopyTargetSpellOrAbilityEffect(target: EffectTarget, copies: DynamicAmount)` — Copy target spell **or** ability on the stack, dispatching at resolution on the chosen object's kind: an instant/sorcery spell copies via the spell-copy path; an activated or triggered ability copi…
 - `CopyTargetTriggeredAbilityEffect(target: EffectTarget)` — Copy target triggered ability on the stack.
 - `CounterAllOnStackEffect(spells: Boolean, abilities: Boolean, opponentsOnly: Boolean, storeCountAs: String?)` — Counter every spell and/or ability on the stack matching the controller filter.
@@ -973,6 +974,7 @@ Families:
 - `MoveUntilSourceLeavesEffect(target: EffectTarget, destination: Zone)` — Move an object out of its zone until this source leaves the battlefield.
 - `MustAttackGroupEffect(filter: GroupFilter, defender: MustAttackDefender, duration: Duration)` — "filter attack each combat if able" for duration — Kardur, Doomscourge's "until your next turn, creatures your opponents control attack each combat if able and attack a player other than you if abl…
 - `MustBeBlockedEffect(target: EffectTarget, allCreatures: Boolean)` — Target creature must be blocked this turn.
+- `MustBlockGroupEffect(filter: GroupFilter, duration: Duration)` — All creatures matching a filter block this turn if able — Brutal Hordechief's "creatures your opponents control block this turn if able".
 - `NoteCreatureTypeEffect(storeAs: String, prompt: String?, options: List<String>, secret: Boolean)` — "Note a creature type that hasn't been noted for this <source>." (LTR — Long List of the Ents) Prompts the controller to pick a creature type, with the source's *current* set of already-noted types…
 - `NoteNumberForSourceEffect(amount: DynamicAmount, slot: ChoiceSlot)` — "Note <a number>" for the source permanent — evaluate amount once and write it **durably on the source permanent** in its cast-choices bag under slot, replacing any prior value; read it back later…
 - `OpenLifeBidEffect(onWin: Effect, participant: Player)` — Open life-bidding auction between the caster and another participant.
@@ -1065,7 +1067,7 @@ Families:
 - `SkipCombatPhasesEffect(target: EffectTarget)` — Target player skips their combat phases during their next turn.
 - `SkipNextTurnEffect(target: EffectTarget, count: DynamicAmount)` — Target player skips their next count turns.
 - `SkipStepOrPhaseEffect(part: TurnPart, duration: SkipDuration, target: EffectTarget)` — target skips part for duration: their next one (SkipDuration.NEXT) or every one left this turn (SkipDuration.THIS_TURN).
-- `SkipUntapEffect(target: EffectTarget, affectsCreatures: Boolean, affectsLands: Boolean)` — Target player's creatures and lands don't untap during their next untap step.
+- `SkipUntapEffect(target: EffectTarget, permanents: GameObjectFilter)` — "permanents target player controls don't untap during their next untap step" — Exhaustion (creatures and lands), Mana Vapors (lands), Blinding Beam (creatures), Icebreaker Kraken (artifacts and cre…
 - `StoreCardNameEffect(from: String, storeAs: String)` — Read the name of the first card in a stored collection and store it under storeAs in pipeline `chosenValues`.
 - `StoreNumberEffect(name: String, amount: DynamicAmount)` — Evaluate a DynamicAmount once and store it in pipeline `storedNumbers` under name.
 - `StorePlayerEffect(storeAs: String, player: Player)` — Append the player player resolves to onto the pipeline collection storeAs — the player-side sibling of StoreNumberEffect.
@@ -1189,11 +1191,11 @@ Families:
 - `EventPattern.ControlChangeEvent(direction: ControlChangeDirection, requireOpponent: Boolean)` — When control of a permanent changes, in a given direction relative to the ability's controller (CR 800.4 / 720).
 - `EventPattern.CounterPlacementEvent(counterType: CounterType?, recipient: Recipient)` — When counters would be placed on a permanent.
 - `EventPattern.CounterSpellEvent(counterer: Player)` — When a spell or ability controlled by counterer would counter a spell.
-- `EventPattern.CountersPlacedEvent(counterType: CounterType?, filter: GameObjectFilter, firstTimeEachTurn: Boolean, placedBy: Player?, batch: Boolean, includePlayers: Boolean, recipient: Player?)` — When one or more counters of a specific type are placed on a permanent.
+- `EventPattern.CountersPlacedEvent(counterType: CounterType?, filter: GameObjectFilter, firstTimeEachTurn: Boolean, placedBy: Player?, batch: Boolean, includePlayers: Boolean, recipient: Player?, perCounter: Boolean)` — When one or more counters of a specific type are placed on a permanent.
 - `EventPattern.CountersRemovedEvent(counterType: CounterType?, filter: GameObjectFilter, lastRemoved: Boolean, byDamagePrevention: Boolean, removedBy: Player?)` — When one or more counters of a specific type are **removed** from a permanent — the mirror of CountersPlacedEvent.
 - `EventPattern.CreatureDealtDamageBySourceDiesEvent(sourceFilter: GameObjectFilter?, dyingFilter: GameObjectFilter?)` — Whenever a creature dealt damage this turn by a matching source dies.
 - `EventPattern.CreatureTurnedFaceUpEvent(player: Player, filter: GameObjectFilter)` — When a creature is turned face up.
-- `EventPattern.CreaturesAttackYouEvent(minAttackers: Int, includePlaneswalkersYouControl: Boolean, unblocked: Boolean)` — When one or more creatures attack the trigger's controller (the player).
+- `EventPattern.CreaturesAttackYouEvent(minAttackers: Int, includePlaneswalkersYouControl: Boolean, unblocked: Boolean, attackedPlayer: Player)` — When one or more creatures attack the trigger's controller — or, with attackedPlayer = EnchantedPlayer, the player the source Aura enchants ("whenever enchanted player is attacked").
 - `EventPattern.CreaturesAttackYourOpponentEvent(minAttackers: Int)` — When one or more creatures attack a player who is an opponent of the trigger's controller.
 - `EventPattern.CreaturesYouControlDiedEvent(filter: GameObjectFilter, excludeSelf: Boolean)` — Whenever one or more creatures you control die.
 - `EventPattern.CrewsEvent` — Whenever this creature crews a Vehicle.
@@ -1270,7 +1272,7 @@ Families:
 - `EventPattern.TurnFaceUpEvent` — When a permanent is turned face up.
 - `EventPattern.UntapEvent(filter: GameObjectFilter?, batch: Boolean)` — When a permanent becomes untapped.
 - `EventPattern.VenturedIntoDungeonEvent(player: Player)` — Whenever a player ventures into the dungeon (CR 701.49) — once per venture, whether it entered a dungeon's first room or moved the marker on, and for "venture into Undercity" too.
-- `EventPattern.YouAttackEvent(minAttackers: Int, attackerFilter: GameObjectFilter?, player: Player, perAttackedPlayer: Boolean)` — When you attack with at least minAttackers creatures.
+- `EventPattern.YouAttackEvent(minAttackers: Int, attackerFilter: GameObjectFilter?, player: Player, attackedPlayer: Player?)` — When you attack with at least minAttackers creatures.
 - `EventPattern.ZoneChangeEvent(filter: GameObjectFilter, from: Zone?, to: Zone?, excludeTo: Zone?, excludeSacrifice: Boolean, requireCraftMaterial: Boolean)` — When an object changes zones.
 
 ## FeasibilityCheck
@@ -1457,6 +1459,7 @@ Families:
 
 ## Player
 
+- `Player.ActivePlayer` — The active player — the player whose turn it is (CR 102.1), read when the effect resolves.
 - `Player.ActivePlayerFirst` — All players in APNAP order (active player first, then turn order)
 - `Player.AnOpponent` — A genuinely non-targeted "an opponent" — used only where the printed text has a single opponent act without targeting them (a chooser: "an opponent chooses a creature type", "choose ...
 - `Player.Any` — Any player (for matching/filtering)
@@ -1509,6 +1512,7 @@ Families:
 
 - `ProtectionScope.ActivatedAbilities` — From activated abilities — only the targeting leg applies, since an ability never deals damage, blocks, or enchants on its own (its *source* does).
 - `ProtectionScope.CardType(cardType: String)` — Protection from a card type — "from creatures".
+- `ProtectionScope.ChosenCardType(slot: ChoiceSlot)` — Protection from the card type the **granting permanent chose as it entered** — "As Serra's Emissary enters, choose a card type.
 - `ProtectionScope.Color(color: Color)` — Protection / hexproof from a single color.
 - `ProtectionScope.Colors(colors: Set<Color>)` — Protection from multiple colors — "from white and from blue".
 - `ProtectionScope.EachOpponent` — Protection from each of the controller's opponents (Rule 702.16e).
@@ -1574,7 +1578,7 @@ Families:
 - `OptionalEffectDiscardDestination(destination: CardDestination.ToZone, appliesTo: EventPattern.DiscardEvent)` — Optional destination replacement for a discard caused by a resolving effect, never a cost.
 - `OptionalSkipTurnWith(effect: Effect, appliesTo: EventPattern.TurnBeginEvent, restrictions: List<Condition>)` — Replace a turn with nothing, then perform effect first in the next turn that actually occurs.
 - `PermanentsEnterTapped(appliesTo: EventPattern, condition: Condition?)` — "Permanents matching appliesTo enter the battlefield tapped" — the global/group counterpart of the self-only EntersTapped.
-- `PreventDamage(amount: Int?, restrictions: List<Condition>, appliesTo: EventPattern, onPrevented: Effect?)` — Prevent damage.
+- `PreventDamage(amount: Int?, restrictions: List<Condition>, appliesTo: EventPattern, onPrevented: Effect?, half: Boolean, roundUp: Boolean)` — Prevent damage.
 - `PreventDamageByRemovingCounter(counterType: CounterType, removalAmount: CounterRemovalAmount, requiresCounter: Boolean, appliesTo: EventPattern, onRemoved: Effect?)` — Prevent damage that would be dealt to this permanent and remove one counter of counterType from it — the printed twin of the shield counter's prevention half (CR 122.1c).
 - `PreventDamagePerCounter(counterType: CounterType, appliesTo: EventPattern.DamageEvent)` — Remove a counter from the damaged permanent for each point of matching damage and prevent that point.
 - `PreventDraw(appliesTo: EventPattern)` — Prevent drawing (with optional replacement).

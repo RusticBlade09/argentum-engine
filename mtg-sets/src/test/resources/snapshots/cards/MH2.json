@@ -903,6 +903,98 @@
     ]
 }
 
+// Damn
+{
+    "name": "Damn",
+    "manaCost": "{B}{B}",
+    "typeLine": "Sorcery",
+    "oracleText": "Destroy target creature. A creature destroyed this way can't be regenerated.\nOverload {2}{W}{W} (You may cast this spell for its overload cost. If you do, change \"target\" in its text to \"each.\")",
+    "keywords": [
+        "OVERLOAD"
+    ],
+    "keywordAbilities": [
+        {
+            "type": "Overload",
+            "cost": "{2}{W}{W}"
+        }
+    ],
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "CantBeRegenerated",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                {
+                    "type": "MoveToZone",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "destination": "Graveyard",
+                    "byDestruction": true
+                }
+            ]
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": "creature"
+                },
+                "id": "t0"
+            }
+        ],
+        "overloadSpellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "GatherCards",
+                    "source": {
+                        "type": "BattlefieldMatching",
+                        "filter": "creature"
+                    },
+                    "storeAs": "destroyAll_gathered"
+                },
+                {
+                    "type": "MoveCollection",
+                    "from": "destroyAll_gathered",
+                    "destination": {
+                        "type": "ToZone",
+                        "zone": "Graveyard"
+                    },
+                    "moveType": "Destroy",
+                    "noRegenerate": true
+                }
+            ]
+        }
+    },
+    "metadata": {
+        "collectorNumber": "80",
+        "rarity": "RARE",
+        "artist": "Lucas Graciano",
+        "imageUri": "https://cards.scryfall.io/normal/front/e/f/efeae088-9ac5-4d2f-a15c-d8675a471ac5.jpg?1783926863",
+        "rulings": [
+            {
+                "date": "2024-01-12",
+                "text": "Because a spell with overload doesn't target when its overload cost is paid, it may affect permanents with hexproof or with protection from the appropriate color."
+            },
+            {
+                "date": "2024-01-12",
+                "text": "If you are instructed to cast a spell with overload \"without paying its mana cost,\" you can't choose to pay its overload cost instead."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE",
+        "BLACK"
+    ]
+}
+
 // Darkmoss Bridge
 {
     "name": "Darkmoss Bridge",
@@ -3640,6 +3732,115 @@
     },
     "colorIdentityOverride": [
         "GREEN"
+    ]
+}
+
+// Serra's Emissary
+{
+    "name": "Serra's Emissary",
+    "manaCost": "{4}{W}{W}{W}",
+    "typeLine": "Creature — Angel",
+    "oracleText": "Flying\nAs this creature enters, choose a card type.\nYou and creatures you control have protection from the chosen card type.",
+    "creatureStats": {
+        "power": 7,
+        "toughness": 7
+    },
+    "keywords": [
+        "FLYING"
+    ],
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "GrantProtectionFromToGroup",
+                "scope": {
+                    "type": "ProtectionScope.ChosenCardType",
+                    "slot": "MODE"
+                },
+                "filter": {
+                    "baseFilter": "creature ctrl:you"
+                }
+            },
+            {
+                "type": "GrantProtectionToController",
+                "scope": {
+                    "type": "ProtectionScope.ChosenCardType",
+                    "slot": "MODE"
+                }
+            }
+        ],
+        "replacementEffects": [
+            {
+                "type": "EntersWithChoice",
+                "choiceType": "MODE",
+                "modeOptions": [
+                    {
+                        "id": "Artifact",
+                        "label": "Artifact",
+                        "description": "You and creatures you control have protection from artifacts."
+                    },
+                    {
+                        "id": "Battle",
+                        "label": "Battle",
+                        "description": "You and creatures you control have protection from battles."
+                    },
+                    {
+                        "id": "Creature",
+                        "label": "Creature",
+                        "description": "You and creatures you control have protection from creatures."
+                    },
+                    {
+                        "id": "Enchantment",
+                        "label": "Enchantment",
+                        "description": "You and creatures you control have protection from enchantments."
+                    },
+                    {
+                        "id": "Instant",
+                        "label": "Instant",
+                        "description": "You and creatures you control have protection from instants."
+                    },
+                    {
+                        "id": "Kindred",
+                        "label": "Kindred",
+                        "description": "You and creatures you control have protection from Kindred cards."
+                    },
+                    {
+                        "id": "Land",
+                        "label": "Land",
+                        "description": "You and creatures you control have protection from lands."
+                    },
+                    {
+                        "id": "Planeswalker",
+                        "label": "Planeswalker",
+                        "description": "You and creatures you control have protection from planeswalkers."
+                    },
+                    {
+                        "id": "Sorcery",
+                        "label": "Sorcery",
+                        "description": "You and creatures you control have protection from sorceries."
+                    }
+                ]
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "30",
+        "rarity": "MYTHIC",
+        "artist": "Nils Hamm",
+        "flavorText": "Where swords fail, faith transcends.",
+        "imageUri": "https://cards.scryfall.io/normal/front/b/6/b6534049-3045-4546-b1e8-e5b1b0df5f56.jpg?1783926884",
+        "rulings": [
+            {
+                "date": "2021-06-18",
+                "text": "You may choose any card type. The ones that may appear in a normal game of Magic are artifact, battle, creature, enchantment, instant, kindred, land, planeswalker, and sorcery. Supertypes such as snow and basic may not be chosen. Subtypes such as Angel, Aura, and Forest also may not be chosen."
+            },
+            {
+                "date": "2021-06-18",
+                "text": "The card type choice is a replacement effect, not a triggered ability. It doesn't use the stack and can't be responded to. Notably, if you choose instant, your opponent can't try to cast an instant on the Emissary before it has protection."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE"
     ]
 }
 

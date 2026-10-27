@@ -1296,6 +1296,11 @@ data class SelectFromCollectionEffect(
      * forced). Used by reveal-then-discard flows where the caster is picking from
      * another player's zone — auto-selecting the one eligible card feels abrupt
      * and players want to see and confirm the pick.
+     *
+     * The engine already behaves as if this were set whenever which cards are eligible
+     * depends on cards some player can't see (a search, a filtered look at a hand or
+     * library): every player sees whether a question is pending, so it is never skipped
+     * on hidden cards (#3340). Cards need this only for public pools.
      */
     val alwaysPrompt: Boolean = false
 ) : Effect {
@@ -1553,6 +1558,14 @@ enum class OptionType {
     /** Choose from the five basic land types (Plains, Island, Swamp, Mountain, Forest) */
     BASIC_LAND_TYPE,
     /**
+     * Choose a card type (CR 205.2a) — the types listed in
+     * [com.wingedsheep.sdk.core.CardType.CHOOSABLE_TYPE_NAMES]. Pair the stored type with
+     * [com.wingedsheep.sdk.scripting.predicates.CardPredicate.CardTypeEqualsChosen] to match cards
+     * by it ("choose a card type, then reveal … put all cards of the chosen type" — Alrund, God of
+     * the Cosmos).
+     */
+    CARD_TYPE,
+    /**
      * Name a card. Options are every card name the engine knows about (the registry),
      * sorted alphabetically, so the player searches/filters a list rather than typing
      * free text. Pair the stored name with [com.wingedsheep.sdk.scripting.predicates.CardPredicate.NameEqualsChosen]
@@ -1594,6 +1607,7 @@ data class ChooseOptionEffect(
             OptionType.CREATURE_TYPE -> "a creature type"
             OptionType.COLOR -> "a color"
             OptionType.BASIC_LAND_TYPE -> "a basic land type"
+            OptionType.CARD_TYPE -> "a card type"
             OptionType.CARD_NAME -> when (cardNamePool) {
                 CardNamePool.ANY -> "a card name"
                 CardNamePool.NONLAND -> "a nonland card name"

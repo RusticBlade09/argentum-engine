@@ -451,6 +451,7 @@ class PredicateEvaluator(
             // Not frozen on the snapshot, so unknown. A predicate the snapshot *can* answer
             // belongs above; one it can't stays here, which keeps Not from inverting a guess.
             is CardPredicate.AbilitySourceMatches,
+            is CardPredicate.CardTypeEqualsChosen,
             is CardPredicate.CardTypeEqualsChosenComponent,
             is CardPredicate.ColoredManaSymbolsAtLeast,
             is CardPredicate.DoesNotShareCreatureTypeWithPermanentYouControl,
@@ -1475,6 +1476,14 @@ class PredicateEvaluator(
                     ?.get<CastChoicesComponent>()?.chosen?.get(predicate.slot)
                     as? ChoiceValue.TextChoice)?.text ?: return false
                 card.name.equals(chosenName, ignoreCase = true)
+            }
+
+            // Pipeline-variable card-type reference (Alrund): the type chosen earlier in this resolution.
+            is CardPredicate.CardTypeEqualsChosen -> {
+                val chosenType = context?.chosenValues?.get(predicate.variableName) ?: return false
+                // Projected types (plus off-battlefield grants), so a card made a creature by an
+                // effect counts; supertypes in the set can't equal a chosen card-type name.
+                types.any { it.equals(chosenType, ignoreCase = true) }
             }
 
             // Source-component card-type reference: the card type durably chosen by the source
@@ -2835,6 +2844,10 @@ class PredicateEvaluator(
             is CardPredicate.NameEqualsChosen -> {
                 val chosenName = context?.chosenValues?.get(predicate.variableName)
                 chosenName != null && record.name.equals(chosenName, ignoreCase = true)
+            }
+            is CardPredicate.CardTypeEqualsChosen -> {
+                val chosenType = context?.chosenValues?.get(predicate.variableName)
+                chosenType != null && typeLine.cardTypes.any { it.displayName.equals(chosenType, ignoreCase = true) }
             }
             CardPredicate.NameNotSharedWithControlledRoom -> false
             is CardPredicate.OriginallyPrintedInSet -> false

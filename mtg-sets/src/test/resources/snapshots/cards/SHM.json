@@ -399,6 +399,75 @@
     }
 }
 
+// Blowfly Infestation
+{
+    "name": "Blowfly Infestation",
+    "manaCost": "{2}{B}",
+    "typeLine": "Enchantment",
+    "oracleText": "Whenever a creature dies, if it had a -1/-1 counter on it, put a -1/-1 counter on target creature.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Blowfly Infestation:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "filter": {
+                        "cardPredicates": [
+                            "IsCreature"
+                        ],
+                        "statePredicates": [
+                            {
+                                "type": "HasCounter",
+                                "counterType": "MINUS_ONE_MINUS_ONE"
+                            }
+                        ]
+                    },
+                    "from": "Battlefield",
+                    "to": "Graveyard"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "AddCounters",
+                    "counterType": "MINUS_ONE_MINUS_ONE",
+                    "count": 1,
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": "creature"
+                    },
+                    "id": "t0"
+                },
+                "descriptionOverride": "Whenever a creature dies, if it had a -1/-1 counter on it, put a -1/-1 counter on target creature."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "58",
+        "rarity": "UNCOMMON",
+        "artist": "Drew Tucker",
+        "flavorText": "When the giant Tollek Worldslayer fell, a corruption erupted from his corpse to carry on his name.",
+        "imageUri": "https://cards.scryfall.io/normal/front/a/e/ae027b38-a6cc-41f7-8f0d-9d1402b46517.jpg?1783942756",
+        "rulings": [
+            {
+                "date": "2008-05-01",
+                "text": "When Blowfly Infestation's ability resolves, it will put a single -1/-1 counter on the targeted creature. It doesn't matter how many -1/-1 counters were on the creature that went to a graveyard as long as it had at least one on it."
+            },
+            {
+                "date": "2008-05-01",
+                "text": "This ability is mandatory. If you're the only player who controls any creatures when this ability triggers, you must target one of them."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
 // Boartusk Liege
 {
     "name": "Boartusk Liege",
@@ -999,6 +1068,51 @@
         "artist": "Trevor Hairsine",
         "flavorText": "Gyara Spearhurler would have been renowned for her deadly accuracy, if it weren't for her deadly accuracy.",
         "imageUri": "https://cards.scryfall.io/normal/front/a/5/a567b570-81e4-4068-929c-9ce406fe7474.jpg?1783942749"
+    }
+}
+
+// Flourishing Defenses
+{
+    "name": "Flourishing Defenses",
+    "manaCost": "{4}{G}",
+    "typeLine": "Enchantment",
+    "oracleText": "Whenever a -1/-1 counter is put on a creature, you may create a 1/1 green Elf Warrior creature token.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Flourishing Defenses:1",
+                "trigger": {
+                    "type": "CountersPlacedEvent",
+                    "counterType": "MINUS_ONE_MINUS_ONE",
+                    "filter": "creature",
+                    "perCounter": true
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Gated",
+                    "gate": "Gate.MayDecide",
+                    "then": {
+                        "type": "CreateToken",
+                        "power": 1,
+                        "toughness": 1,
+                        "colors": [
+                            "GREEN"
+                        ],
+                        "creatureTypes": [
+                            "Elf",
+                            "Warrior"
+                        ]
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "114",
+        "rarity": "UNCOMMON",
+        "artist": "Dan Murayama Scott",
+        "flavorText": "Many horrors take the bait of brave elf volunteers walking alone, only to fall to the blades of rescuers lurking nearby.",
+        "imageUri": "https://cards.scryfall.io/normal/front/6/2/6223f5d6-83f1-454e-9cd5-aba157850430.jpg?1783942743"
     }
 }
 

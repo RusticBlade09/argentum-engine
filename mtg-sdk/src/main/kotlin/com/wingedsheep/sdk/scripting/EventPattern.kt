@@ -1179,14 +1179,17 @@ sealed interface EventPattern : TextReplaceable<EventPattern> {
      * (Argent Dais) is spelled, since only the active player (team) declares attackers;
      * [Player.EachOpponent] is "whenever an opponent attacks with …". Once per declaration.
      *
-     * [perAttackedPlayer] is the "… attack **a player**" form (CR 508.3e): "whenever you attack a
+     * [attackedPlayer] set is the "… attack **a player**" form (CR 508.3e): "whenever you attack a
      * player" (Echoing Assault), "whenever one or more Halflings you control attack a player"
      * (Meriadoc Brandybuck). Only attackers declared against a *player* count — not a planeswalker
      * or battle — and [minAttackers] / [attackerFilter] are counted per attacked player. It fires
      * once for each player attacked that way, binding that player as the triggering player
-     * ("that player", `Player.TriggeringPlayer`), per the cards' rulings.
+     * ("that player", `Player.TriggeringPlayer`), per the cards' rulings. [attackedPlayer] scopes
+     * which attacked players count, relative to the trigger's controller: [Player.Each] is any
+     * player, [Player.EachOpponent] is "whenever a player attacks **one of your opponents**"
+     * (Breena, the Demagogue — where "that attacking player" is then `Player.ActivePlayer`).
      *
-     * Without [perAttackedPlayer], a battlefield firing captures the declared attackers it counted
+     * Without [attackedPlayer] (null), a battlefield firing captures the declared attackers it counted
      * as its trigger-captured collection, so "create that many …" (Rabble Rousing) reads how many
      * creatures you attacked with, even after one leaves combat.
      */
@@ -1196,14 +1199,16 @@ sealed interface EventPattern : TextReplaceable<EventPattern> {
         val minAttackers: Int = 1,
         val attackerFilter: GameObjectFilter? = null,
         val player: Player = Player.You,
-        val perAttackedPlayer: Boolean = false
+        val attackedPlayer: Player? = null
     ) : EventPattern {
         override val description: String = buildString {
             val count = if (minAttackers <= 1) "one or more " else "$minAttackers or more "
             val attackers = attackerFilter?.description ?: "creatures"
+            val defender = if (attackedPlayer == Player.EachOpponent) "one of your opponents" else "a player"
             when {
-                perAttackedPlayer && attackerFilter == null && minAttackers <= 1 -> append("you attack a player")
-                perAttackedPlayer -> append(count).append(attackers).append(" you control attack a player")
+                attackedPlayer != null && attackerFilter == null && minAttackers <= 1 ->
+                    append(if (player == Player.You) "you attack " else "a player attacks ").append(defender)
+                attackedPlayer != null -> append(count).append(attackers).append(if (player == Player.You) " you control" else "").append(" attack $defender")
                 player == Player.Each -> append(count).append(attackers).append(" attack")
                 player == Player.EachOpponent -> append("an opponent attacks with ").append(count).append(attackers)
                 else -> append("you attack with ").append(count).append(attackers)
@@ -1212,7 +1217,8 @@ sealed interface EventPattern : TextReplaceable<EventPattern> {
     }
 
     /**
-     * When one or more creatures attack the trigger's controller (the player).
+     * When one or more creatures attack the trigger's controller — or, with [attackedPlayer] =
+     * EnchantedPlayer, the player the source Aura enchants ("whenever enchanted player is attacked").
      * Defender side of [YouAttackEvent]: fires once per [com.wingedsheep.engine.core.AttackersDeclaredEvent]
      * when at least [minAttackers] declared attackers have the trigger's controller as their defender.
      *
@@ -1232,15 +1238,35 @@ sealed interface EventPattern : TextReplaceable<EventPattern> {
      * counts only the attackers with unblocked status then (CR 509.1h). In multiplayer each
      * defending player declares in turn, so it fires once, on the declaration that completes the
      * controller's team. The controller of those attackers is the triggering player ("that player").
+     *
+     * [attackedPlayer] names whose attack it watches when that isn't the controller's own:
+     * [Player.EnchantedPlayer] is "whenever **enchanted player** is attacked" (the Curse of
+     * Opulence cycle, CR 303.4 enchant player) — the trigger still belongs to the Curse's
+     * controller, but only attackers declared against the player the Curse enchants count. It
+     * resolves to nothing, and never fires, while the source isn't attached to a player.
      */
     @SerialName("CreaturesAttackYouEvent")
     @Serializable
     data class CreaturesAttackYouEvent(
         val minAttackers: Int = 1,
         val includePlaneswalkersYouControl: Boolean = false,
-        val unblocked: Boolean = false
+        val unblocked: Boolean = false,
+        val attackedPlayer: Player = Player.You
     ) : EventPattern {
+        init {
+            require(attackedPlayer == Player.You || attackedPlayer == Player.EnchantedPlayer) {
+                "CreaturesAttackYouEvent: attackedPlayer supports You and EnchantedPlayer, not $attackedPlayer"
+            }
+            require(attackedPlayer == Player.You || (!includePlaneswalkersYouControl && !unblocked)) {
+                "CreaturesAttackYouEvent: includePlaneswalkersYouControl and unblocked are only supported for attackedPlayer = You"
+            }
+        }
+
         override val description: String = buildString {
+            if (attackedPlayer == Player.EnchantedPlayer) {
+                append(if (minAttackers <= 1) "enchanted player is attacked" else "$minAttackers or more creatures attack enchanted player")
+                return@buildString
+            }
             append(if (minAttackers <= 1) "one or more creatures attack" else "$minAttackers or more creatures attack")
             append(if (includePlaneswalkersYouControl) " you and/or planeswalkers you control" else " you")
             if (unblocked) append(" and aren't blocked")
@@ -2740,24 +2766,38 @@ sealed interface EventPattern : TextReplaceable<EventPattern> {
          * defaults. Distinct from [placedBy], which names who *put* the counters: an opponent's
          * effect giving you energy still fires a `recipient = Player.You` trigger.
          */
-        val recipient: Player? = null
+        val recipient: Player? = null,
+        /**
+         * The *per-counter* template "Whenever **a** -1/-1 counter is put on a creature"
+         * (Flourishing Defenses) — the ability triggers once for **each counter** placed, not once
+         * per recipient: a creature entering with two -1/-1 counters triggers it twice. Each
+         * firing carries a counter count of 1. Applied after the per-recipient fold
+         * (`TriggerDetector.expandPerCounterTriggers`), so a recipient's simultaneous placements
+         * are summed first and then fanned out. Not combinable with [batch] or [firstTimeEachTurn].
+         */
+        val perCounter: Boolean = false
     ) : EventPattern {
         init {
             require(recipient == null || (filter == GameObjectFilter.Any && !includePlayers)) {
                 "CountersPlacedEvent.recipient names a player recipient; filter and includePlayers describe permanents"
             }
+            require(!(perCounter && (batch || firstTimeEachTurn))) {
+                "CountersPlacedEvent.perCounter fires once per counter; batch and firstTimeEachTurn fire at most once"
+            }
         }
 
         override val description: String = buildString {
             val typeLabel = counterType?.let { "${it.printed} " } ?: ""
+            // "a -1/-1 counter" for the per-counter template, "one or more -1/-1 counters" otherwise.
+            val counters = if (perCounter) "a ${typeLabel}counter" else "one or more ${typeLabel}counters"
             if (recipient != null) {
-                append("${recipient.description} get one or more ${typeLabel}counters")
+                append("${recipient.description} get $counters")
                 return@buildString
             }
             if (placedBy != null) {
-                append("${placedBy.description} put one or more ${typeLabel}counters on ")
+                append("${placedBy.description} put $counters on ")
             } else {
-                append("one or more ${typeLabel}counters are placed on ")
+                append(if (perCounter) "$counters is put on " else "$counters are placed on ")
             }
             // Batch wording names the recipients in the plural ("… on one or more Heroes you
             // control"); the per-permanent wording names a single one ("… on a creature you

@@ -79,6 +79,7 @@ import com.wingedsheep.sdk.scripting.effects.MarkMustBlockThisTurnEffect
 import com.wingedsheep.sdk.scripting.effects.RemoveSuspectedEffect
 import com.wingedsheep.sdk.scripting.effects.SuspectEffect
 import com.wingedsheep.sdk.scripting.effects.CantBlockGroupEffect
+import com.wingedsheep.sdk.scripting.effects.MustBlockGroupEffect
 import com.wingedsheep.sdk.scripting.effects.CantBeBlockedGroupEffect
 import com.wingedsheep.sdk.scripting.effects.CantActivateLoyaltyAbilitiesEffect
 import com.wingedsheep.sdk.scripting.effects.CantCastSpellsEffect
@@ -3645,6 +3646,14 @@ object Effects {
         CreatePredefinedTokenEffect("Treasure", count, controller, tapped = tapped, imageUri = imageUri)
 
     /**
+     * Create Gold tokens — an artifact with "Sacrifice this token: Add one mana of any color."
+     * (`PredefinedTokens.Gold`; Curse of Opulence). [controller] redirects them, as on
+     * [CreateTreasure]; inside `ForEachPlayer` the visited player creates them.
+     */
+    fun CreateGold(count: Int = 1, controller: EffectTarget? = null): Effect =
+        CreatePredefinedTokenEffect("Gold", count, controller)
+
+    /**
      * Create a dynamic number of Treasure tokens — the count is evaluated at resolution
      * time. Used for cards like Goldvein Hydra ("create a number of tapped Treasure tokens
      * equal to its power") where the amount depends on game state.
@@ -5744,6 +5753,9 @@ object Effects {
      * [copies] makes more than one independent copy, each retargetable on its own (CR 707.10c) —
      * "copy it for each other instant and sorcery spell you've cast before it this turn"
      * (Thousand-Year Storm). A count of zero or less makes no copies.
+     *
+     * `mayChooseNewTargets = false` is the bare "copy that spell" with no retarget clause — each
+     * copy keeps the original's targets and modes (CR 707.10), no decision (Reflections of Littjara).
      */
     fun CopyTargetSpell(
         target: EffectTarget,
@@ -5753,7 +5765,8 @@ object Effects {
         sacrificeTokenAtStep: com.wingedsheep.sdk.core.Step? = null,
         sacrificeTokenOnlyOnControllersTurn: Boolean = false,
         copies: DynamicAmount = DynamicAmount.Fixed(1),
-        exceptions: com.wingedsheep.sdk.scripting.effects.CopyExceptions = com.wingedsheep.sdk.scripting.effects.CopyExceptions.None
+        exceptions: com.wingedsheep.sdk.scripting.effects.CopyExceptions = com.wingedsheep.sdk.scripting.effects.CopyExceptions.None,
+        mayChooseNewTargets: Boolean = true
     ): Effect =
         CopyTargetSpellEffect(
             target,
@@ -5763,7 +5776,8 @@ object Effects {
             sacrificeTokenAtStep,
             sacrificeTokenOnlyOnControllersTurn,
             copies,
-            exceptions
+            exceptions,
+            mayChooseNewTargets = mayChooseNewTargets
         )
 
     /**
@@ -6192,6 +6206,15 @@ object Effects {
         CantBlockGroupEffect(filter, duration)
 
     /**
+     * "[Filter] block this turn if able." — a floating group requirement that also binds creatures
+     * matching [filter] later in the turn (Rule 611.2c). Brutal Hordechief:
+     * `MustBlockGroup(GroupFilter.AllCreaturesOpponentsControl)`. [MarkMustBlockThisTurn] is the
+     * per-object sibling. See [MustBlockGroupEffect].
+     */
+    fun MustBlockGroup(filter: GroupFilter, duration: Duration = Duration.EndOfTurn): Effect =
+        MustBlockGroupEffect(filter, duration)
+
+    /**
      * "[Filter] can't be blocked this turn." — a floating group restriction that also covers
      * creatures matching [filter] later in the turn (Rule 611.2c). Jace, Arcane Strategist's −7.
      */
@@ -6431,11 +6454,15 @@ object Effects {
     ): Effect = SkipNextTurnEffect(target, count)
 
     /**
-     * [target] player's creatures and/or lands don't untap during their next untap step
-     * (Exhaustion, Blinding Beam).
+     * [permanents] [target] player controls don't untap during their next untap step — creatures
+     * and lands by default (Exhaustion); `GameObjectFilter.Land` for Mana Vapors,
+     * `Artifact or Creature` for Icebreaker Kraken. Matched against what they control at that step.
      */
-    fun SkipUntap(target: EffectTarget, affectsCreatures: Boolean = true, affectsLands: Boolean = true): Effect =
-        com.wingedsheep.sdk.scripting.effects.SkipUntapEffect(target, affectsCreatures, affectsLands)
+    fun SkipUntap(
+        target: EffectTarget,
+        permanents: com.wingedsheep.sdk.scripting.GameObjectFilter =
+            com.wingedsheep.sdk.scripting.GameObjectFilter.Creature or com.wingedsheep.sdk.scripting.GameObjectFilter.Land
+    ): Effect = com.wingedsheep.sdk.scripting.effects.SkipUntapEffect(target, permanents)
 
     /** [target] player skips their combat phases during their next turn (False Peace). */
     fun SkipCombatPhases(target: EffectTarget): Effect = com.wingedsheep.sdk.scripting.effects.SkipCombatPhasesEffect(target)
@@ -6557,7 +6584,19 @@ object Effects {
      * `castOnlyIf(Conditions.BeforeAttackersDeclared)` for the card's timing line.
      */
     fun ChooseAttackersAndBlockersThisTurn(): Effect =
-        com.wingedsheep.sdk.scripting.effects.ControlCombatDeclarationsThisTurnEffect
+        com.wingedsheep.sdk.scripting.effects.ControlCombatDeclarationsThisTurnEffect()
+
+    /**
+     * "You choose how [creatures controlled by [players]] block this turn" — only the block
+     * declarations those players owe move to the controller (Brutal Hordechief:
+     * `ChooseBlockersThisTurn(Player.EachOpponent)`, usually after `MustBlockGroup`).
+     * See [com.wingedsheep.sdk.scripting.effects.ControlCombatDeclarationsThisTurnEffect].
+     */
+    fun ChooseBlockersThisTurn(players: Player = Player.Each): Effect =
+        com.wingedsheep.sdk.scripting.effects.ControlCombatDeclarationsThisTurnEffect(
+            declarations = setOf(com.wingedsheep.sdk.scripting.effects.CombatDeclaration.BLOCKERS),
+            declaringPlayers = players
+        )
 
     /**
      * Grant a flat damage bonus to a player's sources this turn.

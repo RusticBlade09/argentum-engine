@@ -17,21 +17,22 @@ import { attackTargetsFor, canAttackTarget } from '@/utils/attackTargets'
 import { getWebSocket } from '../shared'
 
 /**
- * The seat a combat declaration should be tagged with. Normally the connection's own seat;
- * in single-client hotseat the one connection declares for whichever seat the server is
- * asking — the acting seat recorded from the legal action, falling back to the active
- * player for attackers / the (2-player) defending player for blockers.
+ * The seat a combat declaration should be tagged with: the acting seat recorded from the
+ * server's legal action whenever there is one. Without it, the connection's own seat — or, in
+ * single-client hotseat / a hijack, the active player for attackers and the (2-player)
+ * defending player for blockers.
  */
 function combatActingSeat(
   combatState: { mode: string; actingSeat: EntityId | null },
   connectionSeat: EntityId,
   gameState: ClientGameState | null,
 ): EntityId {
-  // A Mindslaver-style hijack also drives another seat's combat: this connection declares
-  // for the controlled opponent, not for itself. Same routing as hotseat — use the
-  // server-recorded acting seat / active player rather than our own connection seat.
-  if (!gameState?.hotseat && !gameState?.youAreHijacking) return connectionSeat
+  // The seat the server's legal action names owns the declaration. It differs from this
+  // connection's seat whenever we declare for someone else: hotseat, a Mindslaver-style
+  // hijack, or a declaration the server routed to us (Master Warcraft, Brutal Hordechief —
+  // we choose how an opponent's creatures block, but the blocks are still theirs).
   if (combatState.actingSeat) return combatState.actingSeat
+  if (!gameState?.hotseat && !gameState?.youAreHijacking) return connectionSeat
   if (combatState.mode === 'declareAttackers') return gameState.activePlayerId
   return (
     gameState.combat?.defendingPlayerId ??

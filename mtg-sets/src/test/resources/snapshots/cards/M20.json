@@ -262,6 +262,56 @@
     ]
 }
 
+// Audacious Thief
+{
+    "name": "Audacious Thief",
+    "manaCost": "{2}{B}",
+    "typeLine": "Creature — Human Rogue",
+    "oracleText": "Whenever this creature attacks, you draw a card and you lose 1 life.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 2
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Audacious Thief:1",
+                "trigger": "AttackEvent",
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            }
+                        },
+                        {
+                            "type": "LoseLife",
+                            "amount": {
+                                "type": "Fixed",
+                                "amount": 1
+                            },
+                            "target": "Controller"
+                        }
+                    ]
+                },
+                "descriptionOverride": "Whenever this creature attacks, you draw a card and you lose 1 life."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "84",
+        "artist": "Dmitry Burmak",
+        "flavorText": "\"Skill, imagination, smarts: none of it matters unless you have the nerve to use it.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/e/1/e1ff5e66-4718-43c3-8a58-1a0a8e788f83.jpg?1783933000"
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
 // Bag of Holding
 {
     "name": "Bag of Holding",
@@ -1831,6 +1881,158 @@
     ]
 }
 
+// Kaalia, Zenith Seeker
+{
+    "name": "Kaalia, Zenith Seeker",
+    "manaCost": "{R}{W}{B}",
+    "typeLine": "Legendary Creature — Human Cleric",
+    "oracleText": "Flying, vigilance\nWhen Kaalia enters, look at the top six cards of your library. You may reveal an Angel card, a Demon card, and/or a Dragon card from among them and put them into your hand. Put the rest on the bottom of your library in a random order.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 3
+    },
+    "keywords": [
+        "FLYING",
+        "VIGILANCE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Kaalia, Zenith Seeker:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "TopOfLibrary",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 6
+                                }
+                            },
+                            "storeAs": "gathered0"
+                        },
+                        {
+                            "type": "SelectFromCollection",
+                            "from": "gathered0",
+                            "selection": {
+                                "type": "ChooseUpTo",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            "filter": "Angel",
+                            "storeSelected": "selected1",
+                            "storeRemainder": "remainder1",
+                            "prompt": "You may reveal an Angel card to put into your hand",
+                            "selectedLabel": "Put in hand",
+                            "remainderLabel": "Leave",
+                            "showAllCards": true
+                        },
+                        {
+                            "type": "SelectFromCollection",
+                            "from": "remainder1",
+                            "selection": {
+                                "type": "ChooseUpTo",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            "filter": "Demon",
+                            "storeSelected": "selected2",
+                            "storeRemainder": "remainder2",
+                            "prompt": "You may reveal a Demon card to put into your hand",
+                            "selectedLabel": "Put in hand",
+                            "remainderLabel": "Leave",
+                            "showAllCards": true
+                        },
+                        {
+                            "type": "SelectFromCollection",
+                            "from": "remainder2",
+                            "selection": {
+                                "type": "ChooseUpTo",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            "filter": "Dragon",
+                            "storeSelected": "selected3",
+                            "storeRemainder": "remainder3",
+                            "prompt": "You may reveal a Dragon card to put into your hand",
+                            "selectedLabel": "Put in hand",
+                            "remainderLabel": "Put on bottom",
+                            "showAllCards": true
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "selected1",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Hand"
+                            },
+                            "revealed": true
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "selected2",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Hand"
+                            },
+                            "revealed": true
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "selected3",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Hand"
+                            },
+                            "revealed": true
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "remainder3",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Library",
+                                "placement": "Bottom"
+                            },
+                            "order": "Random"
+                        }
+                    ]
+                },
+                "descriptionOverride": "When Kaalia enters, look at the top six cards of your library. You may reveal an Angel card, a Demon card, and/or a Dragon card from among them and put them into your hand. Put the rest on the bottom of your library in a random order."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "210",
+        "rarity": "MYTHIC",
+        "artist": "Yongjae Choi",
+        "imageUri": "https://cards.scryfall.io/normal/front/1/f/1f400655-f495-4b21-ab9e-57fe4d845d45.jpg?1783932951",
+        "rulings": [
+            {
+                "date": "2019-07-12",
+                "text": "You can put up to three cards into your hand this way: one Angel card, one Demon card, and/or one Dragon card. If a card has more than one of these types, you choose which type it counts as."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "RED",
+        "WHITE",
+        "BLACK"
+    ]
+}
+
 // Kethis, the Hidden Hand
 {
     "name": "Kethis, the Hidden Hand",
@@ -2625,6 +2827,66 @@
     ]
 }
 
+// Sephara, Sky's Blade
+{
+    "name": "Sephara, Sky's Blade",
+    "manaCost": "{4}{W}{W}{W}",
+    "typeLine": "Legendary Creature — Angel",
+    "oracleText": "You may pay {W} and tap four untapped creatures you control with flying rather than pay this spell's mana cost.\nFlying, lifelink\nOther creatures you control with flying have indestructible. (Damage and effects that say \"destroy\" don't destroy them.)",
+    "creatureStats": {
+        "power": 7,
+        "toughness": 7
+    },
+    "keywords": [
+        "FLYING",
+        "LIFELINK"
+    ],
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "GrantKeyword",
+                "keyword": "INDESTRUCTIBLE",
+                "filter": {
+                    "baseFilter": "creature kw:flying ctrl:you",
+                    "excludeSelf": true
+                }
+            }
+        ],
+        "selfAlternativeCost": {
+            "manaCost": "{W}",
+            "additionalCosts": [
+                {
+                    "type": "AdditionalAtom",
+                    "atom": {
+                        "type": "AtomTapPermanents",
+                        "count": 4,
+                        "filter": "creature kw:flying"
+                    }
+                }
+            ]
+        }
+    },
+    "metadata": {
+        "collectorNumber": "36",
+        "rarity": "RARE",
+        "artist": "Livia Prima",
+        "imageUri": "https://cards.scryfall.io/normal/front/b/c/bc95881b-8fbf-4d82-b631-5e4404ccc28a.jpg?1783933020",
+        "rulings": [
+            {
+                "date": "2019-07-12",
+                "text": "To pay Sephara's alternative cost, you may tap any untapped creatures you control with flying, including ones you haven't controlled continuously since the beginning of your most recent turn."
+            },
+            {
+                "date": "2019-07-12",
+                "text": "Because damage remains marked on a creature until it's removed as the turn ends, lethal damage dealt to other creatures you control with flying may cause them to be destroyed if Sephara leaves the battlefield during that turn."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
 // Silverback Shaman
 {
     "name": "Silverback Shaman",
@@ -2665,6 +2927,65 @@
     },
     "colorIdentityOverride": [
         "GREEN"
+    ]
+}
+
+// Skyknight Vanguard
+{
+    "name": "Skyknight Vanguard",
+    "manaCost": "{R}{W}",
+    "typeLine": "Creature — Human Knight",
+    "oracleText": "Flying\nWhenever this creature attacks, create a 1/1 white Soldier creature token that's tapped and attacking.",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 2
+    },
+    "keywords": [
+        "FLYING"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Skyknight Vanguard:1",
+                "trigger": "AttackEvent",
+                "effect": {
+                    "type": "CreateToken",
+                    "power": 1,
+                    "toughness": 1,
+                    "colors": [
+                        "WHITE"
+                    ],
+                    "creatureTypes": [
+                        "Soldier"
+                    ],
+                    "imageUri": "https://cards.scryfall.io/normal/front/a/4/a491d9da-a58d-4423-b565-c5a99ef63132.jpg?1783932857",
+                    "tapped": true,
+                    "attacking": true,
+                    "attackDefender": "CONTROLLER_CHOOSES"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "218",
+        "rarity": "UNCOMMON",
+        "artist": "Bayard Wu",
+        "flavorText": "\"Jump! NOW!\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/4/549634d8-1c33-401b-841d-a79ef4374dd1.jpg?1783932947",
+        "rulings": [
+            {
+                "date": "2019-07-12",
+                "text": "You choose which player or planeswalker the token is attacking. It doesn't have to be attacking the same player or planeswalker that Skyknight Vanguard is attacking."
+            },
+            {
+                "date": "2019-07-12",
+                "text": "Although the token is an attacking creature, it was never declared as an attacking creature. This means that abilities that trigger whenever a creature attacks won't trigger when the token enters the battlefield attacking."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "RED",
+        "WHITE"
     ]
 }
 
@@ -3004,6 +3325,110 @@
     },
     "colorIdentityOverride": [
         "WHITE"
+    ]
+}
+
+// Vilis, Broker of Blood
+{
+    "name": "Vilis, Broker of Blood",
+    "manaCost": "{5}{B}{B}{B}",
+    "typeLine": "Legendary Creature — Demon",
+    "oracleText": "Flying\n{B}, Pay 2 life: Target creature gets -1/-1 until end of turn.\nWhenever you lose life, draw that many cards. (Damage causes loss of life.)",
+    "creatureStats": {
+        "power": 8,
+        "toughness": 8
+    },
+    "keywords": [
+        "FLYING"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Vilis, Broker of Blood:2",
+                "trigger": "LifeLossEvent",
+                "binding": "ANY",
+                "effect": {
+                    "type": "DrawCards",
+                    "count": {
+                        "type": "ContextProperty",
+                        "key": "TRIGGER_LIFE_LOST"
+                    }
+                },
+                "descriptionOverride": "Whenever you lose life, draw that many cards."
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Vilis, Broker of Blood:1",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{B}"
+                            }
+                        },
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomPayLife",
+                                "amount": {
+                                    "type": "Fixed",
+                                    "amount": 2
+                                }
+                            }
+                        }
+                    ]
+                },
+                "effect": {
+                    "type": "ModifyStats",
+                    "powerModifier": {
+                        "type": "Fixed",
+                        "amount": -1
+                    },
+                    "toughnessModifier": {
+                        "type": "Fixed",
+                        "amount": -1
+                    },
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "creature"
+                        },
+                        "id": "t0"
+                    }
+                ],
+                "descriptionOverride": "{B}, Pay 2 life: Target creature gets -1/-1 until end of turn."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "122",
+        "rarity": "RARE",
+        "artist": "Tyler Jacobson",
+        "flavorText": "\"You can sign, or you can spend your life imagining what might have been yours.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/e/c/ecdf2bd9-87b9-470a-ad2e-0ebf98560f87.jpg?1783932985",
+        "rulings": [
+            {
+                "date": "2019-07-12",
+                "text": "A player loses life if they pay life."
+            },
+            {
+                "date": "2019-07-12",
+                "text": "If you pay life to cast a spell or activate an ability, you don't draw cards until after you've finished casting that spell or activating that ability. You draw those cards before that spell or ability resolves, but after targets are chosen for it."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK"
     ]
 }
 

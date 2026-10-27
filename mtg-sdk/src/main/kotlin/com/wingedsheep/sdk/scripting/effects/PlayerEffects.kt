@@ -31,24 +31,34 @@ data class SkipCombatPhasesEffect(
 }
 
 /**
- * Target player's creatures and lands don't untap during their next untap step.
- * Used for cards like Exhaustion.
+ * "[permanents] [target] player controls don't untap during their next untap step" — Exhaustion
+ * (creatures and lands), Mana Vapors (lands), Blinding Beam (creatures), Icebreaker Kraken
+ * (artifacts and creatures).
+ *
+ * [permanents] is matched at that untap step against what the player controls *then*, not against
+ * what they controlled when this resolved (Icebreaker Kraken ruling, 2021-02-05): a creature they
+ * gain control of in between doesn't untap either. The controller gate lives in [target]; the
+ * filter names only the kind of permanent.
  */
 @SerialName("SkipUntap")
 @Serializable
 data class SkipUntapEffect(
     val target: EffectTarget = EffectTarget.PlayerRef(Player.TargetOpponent),
-    val affectsCreatures: Boolean = true,
-    val affectsLands: Boolean = true
+    val permanents: GameObjectFilter = GameObjectFilter.Creature or GameObjectFilter.Land
 ) : Effect {
-    override val description: String = buildString {
-        val affectedTypes = listOfNotNull(
-            if (affectsCreatures) "Creatures" else null,
-            if (affectsLands) "lands" else null
-        ).joinToString(" and ")
-        append("$affectedTypes ${target.description} controls don't untap during their next untap step")
-    }
+    override val description: String =
+        "${describeSkippedPermanents(permanents).replaceFirstChar { it.uppercase() }} ${target.description} " +
+            "controls don't untap during their next untap step"
 }
+
+/**
+ * The plural noun phrase for a "don't untap" filter, read as Oracle prints it: every listed type is
+ * held back, so the alternatives join with "and" ("creatures and lands"), not the "or" a selection
+ * filter would use.
+ */
+fun describeSkippedPermanents(permanents: GameObjectFilter): String =
+    com.wingedsheep.sdk.scripting.util.pluralNounPhrase(permanents.description)
+        .replace(", or ", ", and ").replace(" or ", " and ")
 
 /**
  * Target player skips their next draw step.
@@ -582,22 +592,72 @@ data class HijackNextTurnEffect(
 }
 
 /**
+ * A combat declaration a [ControlCombatDeclarationsThisTurnEffect] can hand to another player:
+ * the active player's attack declaration (CR 508.1) or a defending player's block declaration
+ * (CR 509.1).
+ */
+@Serializable
+enum class CombatDeclaration {
+    ATTACKERS,
+    BLOCKERS
+}
+
+/**
  * "You choose which creatures attack this turn. You choose which creatures block this turn and how
- * those creatures block." (Master Warcraft.)
+ * those creatures block." (Master Warcraft, the default) — or, narrowed by [declarations] and
+ * [declaringPlayers], "you choose how [creatures your opponents control] block" (Brutal Hordechief:
+ * `declarations = {BLOCKERS}`, `declaringPlayers = Player.EachOpponent`).
  *
- * For the rest of the turn the ability's controller makes every attack declaration and every block
- * declaration, for every player, in every combat phase. Only the *declarations* move — unlike
+ * For the rest of the turn the ability's controller makes each of [declarations] owed by one of
+ * [declaringPlayers], in every combat phase. Only the *declarations* move — unlike
  * [HijackNextTurnEffect] (Mindslaver), no other decision, no priority and no hidden information
  * changes hands. The chosen attackers and blockers must still be legal under the normal rules for
- * the players who control them (ruling), and they stay those players' creatures.
+ * the players who control them (ruling), and they stay those players' creatures — including
+ * creatures that weren't on the battlefield when the effect began (Brutal Hordechief ruling).
  *
- * If two such effects apply in one turn, the one created last wins.
+ * [declaringPlayers] is resolved to concrete players when the effect resolves. If several such
+ * effects cover the same player's declaration in one turn, the one created last wins (Brutal
+ * Hordechief ruling: the last ability to resolve decides for the players it covers).
+ *
+ * @property declarations Which declarations the controller takes over.
+ * @property declaringPlayers Whose declarations: [Player.Each], [Player.EachOpponent],
+ *   [Player.EachOtherPlayer] or [Player.You].
  */
 @SerialName("ControlCombatDeclarationsThisTurn")
 @Serializable
-data object ControlCombatDeclarationsThisTurnEffect : Effect {
-    override val description: String =
-        "You choose which creatures attack this turn. You choose which creatures block this turn and how those creatures block"
+data class ControlCombatDeclarationsThisTurnEffect(
+    val declarations: Set<CombatDeclaration> = setOf(CombatDeclaration.ATTACKERS, CombatDeclaration.BLOCKERS),
+    val declaringPlayers: Player = Player.Each
+) : Effect {
+    init {
+        require(declarations.isNotEmpty()) { "ControlCombatDeclarationsThisTurnEffect needs a declaration" }
+        require(declaringPlayers in SUPPORTED_PLAYERS) {
+            "ControlCombatDeclarationsThisTurnEffect can't take over the declarations of $declaringPlayers"
+        }
+    }
+
+    override val description: String = when {
+        declaringPlayers == Player.Each && declarations.size == 2 ->
+            "You choose which creatures attack this turn. You choose which creatures block this turn and how those creatures block"
+        else -> {
+            val whose = when (declaringPlayers) {
+                Player.EachOpponent -> "creatures your opponents control"
+                Player.EachOtherPlayer -> "creatures other players control"
+                Player.You -> "creatures you control"
+                else -> "creatures"
+            }
+            declarations.sorted().joinToString(". ") {
+                when (it) {
+                    CombatDeclaration.ATTACKERS -> "You choose which $whose attack this turn"
+                    CombatDeclaration.BLOCKERS -> "You choose how $whose block this turn"
+                }
+            }
+        }
+    }
+
+    private companion object {
+        val SUPPORTED_PLAYERS = setOf(Player.Each, Player.EachOpponent, Player.EachOtherPlayer, Player.You)
+    }
 }
 
 /**

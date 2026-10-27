@@ -484,7 +484,9 @@ class ObjectTriggerSubject internal constructor(
      * ([Player.You]); [firstTimeEachTurn] is "for the first time this turn" (Stalwart Successor);
      * [batch] is the "on one or more <permanents>" template (CR 603.2c) — see
      * [CountersPlacedEvent.batch]; [orPlayer] widens the recipient to "a permanent **or player**"
-     * (All Will Be One) — see [CountersPlacedEvent.includePlayers].
+     * (All Will Be One) — see [CountersPlacedEvent.includePlayers]; [perCounter] is "whenever **a**
+     * [type] counter is put on" — once per counter (Flourishing Defenses), see
+     * [CountersPlacedEvent.perCounter].
      */
     fun getsCounters(
         type: CounterType? = null,
@@ -492,6 +494,7 @@ class ObjectTriggerSubject internal constructor(
         firstTimeEachTurn: Boolean = false,
         batch: Boolean = false,
         orPlayer: Boolean = false,
+        perCounter: Boolean = false,
     ): TriggerSpec = spec(
         CountersPlacedEvent(
             counterType = type,
@@ -500,6 +503,7 @@ class ObjectTriggerSubject internal constructor(
             placedBy = by,
             batch = batch,
             includePlayers = orPlayer,
+            perCounter = perCounter,
         )
     )
 
@@ -1016,16 +1020,26 @@ class PlayerTriggerSubject internal constructor(private val player: Player) {
     }
 
     /**
-     * "attack **a player** [with one or more [with]]" — [Triggers.you] only (CR 508.3e). Fires once
-     * per player attacked by at least [minAttackers] matching creatures, binding that player as
-     * `Player.TriggeringPlayer` ("that player"); attackers aimed at a planeswalker or battle don't
-     * count. "Whenever you attack a player" (Echoing Assault), "whenever one or more Halflings you
-     * control attack a player" (Meriadoc Brandybuck).
+     * "attack **a player** [with one or more [with]]" — [Triggers.you] or [Triggers.anyPlayer]
+     * (CR 508.3e). Fires once per player attacked by at least [minAttackers] matching creatures,
+     * binding that player as `Player.TriggeringPlayer` ("that player"); attackers aimed at a
+     * planeswalker or battle don't count. [attacked] scopes which attacked players count, relative
+     * to the trigger's controller. "Whenever you attack a player" (Echoing Assault), "whenever one
+     * or more Halflings you control attack a player" (Meriadoc Brandybuck); "whenever a player
+     * attacks one of your opponents" is `Triggers.anyPlayer.attacksAPlayer(attacked =
+     * Player.EachOpponent)`, its attacking player `Player.ActivePlayer` (Breena, the Demagogue).
      */
-    fun attacksAPlayer(with: GameObjectFilter? = null, minAttackers: Int = 1): TriggerSpec {
-        only("attacksAPlayer", Player.You)
+    fun attacksAPlayer(
+        with: GameObjectFilter? = null,
+        minAttackers: Int = 1,
+        attacked: Player = Player.Each
+    ): TriggerSpec {
+        only("attacksAPlayer", Player.You, Player.Each)
+        require(attacked in setOf(Player.Each, Player.EachOpponent, Player.EachOtherPlayer)) {
+            "Triggers.<player>.attacksAPlayer(attacked) supports Each, EachOpponent, EachOtherPlayer, not $attacked"
+        }
         return spec(
-            YouAttackEvent(minAttackers = minAttackers, attackerFilter = with, player = player, perAttackedPlayer = true)
+            YouAttackEvent(minAttackers = minAttackers, attackerFilter = with, player = player, attackedPlayer = attacked)
         )
     }
 
@@ -1035,6 +1049,8 @@ class PlayerTriggerSubject internal constructor(private val player: Player) {
      * your opponents are attacked" ([Triggers.anOpponent]). Once per combat. [unblocked] is
      * "whenever one or more creatures attack you and aren't blocked" ([Triggers.you]; Coveted
      * Jewel) — it fires after blockers instead, and binds the attacking player as "that player".
+     * `Triggers.player(Player.EnchantedPlayer).isAttacked()` is "whenever enchanted player is
+     * attacked" on a Curse (Curse of Opulence); the attacking player is the triggering player.
      */
     fun isAttacked(minAttackers: Int = 1, includePlaneswalkers: Boolean = false, unblocked: Boolean = false): TriggerSpec = when (player) {
         Player.You -> spec(
@@ -1049,7 +1065,12 @@ class PlayerTriggerSubject internal constructor(private val player: Player) {
             require(!unblocked) { "unblocked is only supported for Triggers.you" }
             spec(CreaturesAttackYourOpponentEvent(minAttackers = minAttackers))
         }
-        else -> throw IllegalArgumentException("Triggers.<player>.isAttacked() supports you and anOpponent, not $player")
+        Player.EnchantedPlayer -> {
+            require(!includePlaneswalkers) { "includePlaneswalkers is only supported for Triggers.you" }
+            require(!unblocked) { "unblocked is only supported for Triggers.you" }
+            spec(CreaturesAttackYouEvent(minAttackers = minAttackers, attackedPlayer = Player.EnchantedPlayer))
+        }
+        else -> throw IllegalArgumentException("Triggers.<player>.isAttacked() supports you, anOpponent and player(EnchantedPlayer), not $player")
     }
 
     /**
