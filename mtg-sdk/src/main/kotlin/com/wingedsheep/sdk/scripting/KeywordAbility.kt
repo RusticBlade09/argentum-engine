@@ -118,6 +118,9 @@ sealed interface KeywordAbility {
             // Monocolored exists for hexproof (CR 105.2a); protection from monocolored has no
             // engine reading, so it fails here rather than printing text nothing enforces.
             require(scope != ProtectionScope.Monocolored) { "Protection from monocolored is not supported" }
+            // A chosen card type is read off the permanent that grants it — a static grant, not a
+            // printed keyword (GrantProtectionFromToGroup / GrantProtectionToController).
+            require(scope !is ProtectionScope.ChosenCardType) { "Protection from the chosen card type is a granted static" }
         }
 
         override val keyword: Keyword? = when (scope) {
@@ -132,6 +135,7 @@ sealed interface KeywordAbility {
             is ProtectionScope.Multicolored -> "Protection from multicolored"
             is ProtectionScope.Monocolored -> "Protection from monocolored"
             is ProtectionScope.CardType -> "Protection from ${scope.cardType.lowercase()}"
+            is ProtectionScope.ChosenCardType -> "Protection from the chosen card type"
             is ProtectionScope.Subtype -> "Protection from ${scope.subtype}${scope.cardType?.let { " ${it.lowercase()}s" } ?: "s"}"
             is ProtectionScope.Supertype -> "Protection from ${scope.supertype.lowercase()}${scope.cardType?.let { " ${it.lowercase()}s" } ?: ""}"
             is ProtectionScope.Everything -> "Protection from everything"
@@ -162,6 +166,10 @@ sealed interface KeywordAbility {
     @SerialName("Hexproof")
     @Serializable
     data class Hexproof(val scope: ProtectionScope) : KeywordAbility {
+        init {
+            require(scope !is ProtectionScope.ChosenCardType) { "Hexproof from the chosen card type is not supported" }
+        }
+
         override val description: String = when (scope) {
             is ProtectionScope.Color -> "Hexproof from ${scope.color.displayName.lowercase()}"
             is ProtectionScope.Colors -> "Hexproof from " +
@@ -170,6 +178,7 @@ sealed interface KeywordAbility {
             is ProtectionScope.Multicolored -> "Hexproof from multicolored"
             is ProtectionScope.Monocolored -> "Hexproof from monocolored"
             is ProtectionScope.CardType -> "Hexproof from ${scope.cardType.lowercase()}"
+            is ProtectionScope.ChosenCardType -> "Hexproof from the chosen card type"
             is ProtectionScope.Subtype -> "Hexproof from ${scope.subtype}${scope.cardType?.let { " ${it.lowercase()}s" } ?: "s"}"
             is ProtectionScope.Supertype -> "Hexproof from ${scope.supertype.lowercase()}${scope.cardType?.let { " ${it.lowercase()}s" } ?: ""}"
             is ProtectionScope.Everything -> "Hexproof from everything"
