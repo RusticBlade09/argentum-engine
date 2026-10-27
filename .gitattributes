@@ -1,2 +1,6 @@
+# Normalize detected text to LF in Git; checkout line endings follow Git settings.
+# Binary files are left unchanged. No per-developer configuration is required.
+* text=auto
+
 # Compiled from :mtg-search by `just search-js`; review the Kotlin, not this.
 web-client/src/generated/** linguist-generated=true -diff
