@@ -125,6 +125,17 @@ internal class AttackPhaseManager(
             return ExecutionResult.error(state, coAttackerValidation)
         }
 
+        // "Can only attack alone" (Master of Cruelties, CR 506.5 / 508.1c), and the attack
+        // requirements a declaration obeying it may leave unobeyed (CR 508.1d).
+        val loneOnly = LoneAttackers.of(state, getValidAttackers(state, attackingPlayer) + attackers.keys, cardRegistry, projected).toSet()
+        LoneAttackers.violator(attackers.keys, loneOnly)?.let { violator ->
+            val name = state.getEntity(violator)?.get<CardComponent>()?.name ?: "Creature"
+            return ExecutionResult.error(state, "$name can only attack alone")
+        }
+        val excused = if (loneOnly.isEmpty()) emptySet() else LoneAttackers.excusedRequirements(
+            attackers.keys, requiredAttackers(state, attackingPlayer), loneOnly
+        )
+
         // Check attacker-count caps — global (Dueling Grounds — "No more than one creature can
         // attack each combat") and per-defender (Tomik, Orzhov Lawmage). Both apply to the whole
         // declared attacker set, not per creature.
@@ -134,19 +145,19 @@ internal class AttackPhaseManager(
         }
 
         // Check must-attack requirements (Taunt)
-        val mustAttackValidation = validateMustAttackRequirements(state, attackingPlayer, attackers)
+        val mustAttackValidation = validateMustAttackRequirements(state, attackingPlayer, attackers, excused)
         if (mustAttackValidation != null) {
             return ExecutionResult.error(state, mustAttackValidation)
         }
 
         // Check must-attack-this-turn requirements (Walking Desecration)
-        val mustAttackThisTurnValidation = validateMustAttackThisTurnRequirements(state, attackingPlayer, attackers)
+        val mustAttackThisTurnValidation = validateMustAttackThisTurnRequirements(state, attackingPlayer, attackers, excused)
         if (mustAttackThisTurnValidation != null) {
             return ExecutionResult.error(state, mustAttackThisTurnValidation)
         }
 
         // Check projected must-attack requirements (Grand Melee)
-        val projectedMustAttackValidation = validateProjectedMustAttackRequirements(state, attackingPlayer, attackers)
+        val projectedMustAttackValidation = validateProjectedMustAttackRequirements(state, attackingPlayer, attackers, excused)
         if (projectedMustAttackValidation != null) {
             return ExecutionResult.error(state, projectedMustAttackValidation)
         }
@@ -161,14 +172,14 @@ internal class AttackPhaseManager(
 
         // Check requirements naming the player to attack (Public Enemy)
         val directedValidation = validateDirectedMustAttackRequirements(
-            state, attackingPlayer, attackers, projected, opponents
+            state, attackingPlayer, attackers, projected, opponents, excused
         )
         if (directedValidation != null) {
             return ExecutionResult.error(state, directedValidation)
         }
 
         // Check goaded requirements (CR 701.15b–c)
-        val goadValidation = validateGoadedRequirements(state, attackingPlayer, attackers, projected, opponents)
+        val goadValidation = validateGoadedRequirements(state, attackingPlayer, attackers, projected, opponents, excused)
         if (goadValidation != null) {
             return ExecutionResult.error(state, goadValidation)
         }
@@ -889,7 +900,8 @@ internal class AttackPhaseManager(
     private fun validateMustAttackRequirements(
         state: GameState,
         attackingPlayer: EntityId,
-        attackers: Map<EntityId, EntityId>
+        attackers: Map<EntityId, EntityId>,
+        excused: Set<EntityId>
     ): String? {
         // Taunt marks the player it was aimed at; in a shared team turn the team's one combined
         // attack (CR 805.10b) has to satisfy a requirement placed on either head.
@@ -905,7 +917,7 @@ internal class AttackPhaseManager(
         val validAttackers = getValidAttackers(state, attackingPlayer)
 
         for (attackerId in validAttackers) {
-            if (attackerId !in attackers.keys) {
+            if (attackerId !in attackers.keys && attackerId !in excused) {
                 val cardName = state.getEntity(attackerId)?.get<CardComponent>()?.name ?: "Creature"
                 return "$cardName must attack this turn (Taunt)"
             }
@@ -928,7 +940,8 @@ internal class AttackPhaseManager(
     private fun validateMustAttackThisTurnRequirements(
         state: GameState,
         attackingPlayer: EntityId,
-        attackers: Map<EntityId, EntityId>
+        attackers: Map<EntityId, EntityId>,
+        excused: Set<EntityId>
     ): String? {
         val validAttackers = getValidAttackers(state, attackingPlayer)
 
@@ -936,7 +949,7 @@ internal class AttackPhaseManager(
             val container = state.getEntity(attackerId) ?: continue
             if (!hasMarkedAttackRequirement(container)) continue
 
-            if (attackerId !in attackers.keys) {
+            if (attackerId !in attackers.keys && attackerId !in excused) {
                 val cardName = container.get<CardComponent>()?.name ?: "Creature"
                 return "$cardName must attack this turn"
             }
@@ -965,10 +978,12 @@ internal class AttackPhaseManager(
         attackingPlayer: EntityId,
         attackers: Map<EntityId, EntityId>,
         projected: ProjectedState,
-        opponents: List<EntityId>
+        opponents: List<EntityId>,
+        excused: Set<EntityId>
     ): String? {
         for ((attackerId, bound) in boundAttackDefenders(state, attackingPlayer, projected, opponents)) {
             if (attackers[attackerId] in bound) continue
+            if (attackerId !in attackers && attackerId in excused) continue
             val cardName = state.getEntity(attackerId)?.get<CardComponent>()?.name ?: "Creature"
             val playerName = bound.singleOrNull()?.let { state.getEntity(it)?.get<PlayerComponent>()?.name }
                 ?: "the player it's required to attack"
@@ -1049,7 +1064,8 @@ internal class AttackPhaseManager(
         attackingPlayer: EntityId,
         attackers: Map<EntityId, EntityId>,
         projected: ProjectedState,
-        opponents: List<EntityId>
+        opponents: List<EntityId>,
+        excused: Set<EntityId>
     ): String? {
         val validAttackers = getValidAttackers(state, attackingPlayer)
         val goadRules = GoadRules(state, cardRegistry, predicateEvaluator)
@@ -1058,7 +1074,7 @@ internal class AttackPhaseManager(
             val goaderIds = goadRules.goadersOf(attackerId)
             val cardName = state.getEntity(attackerId)?.get<CardComponent>()?.name ?: "Creature"
 
-            if (goaderIds.isNotEmpty() && attackerId !in attackers.keys) {
+            if (goaderIds.isNotEmpty() && attackerId !in attackers.keys && attackerId !in excused) {
                 return "$cardName is goaded and must attack this combat if able"
             }
 
@@ -1268,14 +1284,15 @@ internal class AttackPhaseManager(
     private fun validateProjectedMustAttackRequirements(
         state: GameState,
         attackingPlayer: EntityId,
-        attackers: Map<EntityId, EntityId>
+        attackers: Map<EntityId, EntityId>,
+        excused: Set<EntityId>
     ): String? {
         val validAttackers = getValidAttackers(state, attackingPlayer)
 
         for (attackerId in validAttackers) {
             if (!mustAttackThisCombat(state, attackerId)) continue
 
-            if (attackerId !in attackers.keys) {
+            if (attackerId !in attackers.keys && attackerId !in excused) {
                 val cardName = state.getEntity(attackerId)?.get<CardComponent>()?.name ?: "Creature"
                 return "$cardName must attack this combat if able"
             }
@@ -1305,46 +1322,65 @@ internal class AttackPhaseManager(
     /**
      * Get creatures that must attack this combat (for UI pre-selection).
      * Includes creatures required by MustAttackPlayerComponent, MustAttackThisTurnComponent,
-     * and projected mustAttack (e.g., from static MustAttack ability like Valley Dasher).
+     * and projected mustAttack (e.g., from static MustAttack ability like Valley Dasher) — only
+     * those every declaration obeying the most requirements attacks with, so a creature that can
+     * only attack alone is listed only when nothing else is required, and is never locked in
+     * beside one ([LoneAttackers.mandatory]).
      */
     fun getMandatoryAttackers(state: GameState, attackingPlayer: EntityId): List<EntityId> {
+        val required = requiredAttackers(state, attackingPlayer)
+        if (required.isEmpty()) return emptyList()
+        return LoneAttackers.mandatory(required, LoneAttackers.of(state, required.keys, cardRegistry).toSet())
+    }
+
+    /**
+     * Every creature some attack requirement names, before [LoneAttackers] weighs them against
+     * "can only attack alone" (CR 508.1d) — see [getMandatoryAttackers].
+     */
+    private fun requiredAttackers(state: GameState, attackingPlayer: EntityId): Map<EntityId, Int> {
         val validAttackers = getValidAttackers(state, attackingPlayer)
-        val mandatory = mutableSetOf<EntityId>()
+        // Creature → how many "attacks if able" requirements it carries (CR 508.1d counts
+        // requirements, not creatures).
+        val mandatory = linkedMapOf<EntityId, Int>()
+        fun require(attackerId: EntityId, count: Int = 1) {
+            mandatory[attackerId] = (mandatory[attackerId] ?: 0) + count
+        }
 
         // 1. MustAttackPlayerComponent (Taunt effect) — all valid attackers must attack
         val mustAttackPlayer = state.getEntity(attackingPlayer)?.get<MustAttackPlayerComponent>()
         if (mustAttackPlayer != null && mustAttackPlayer.activeThisTurn) {
-            mandatory.addAll(validAttackers)
+            validAttackers.forEach { require(it) }
         }
 
         // 2. A requirement marked on the creature (Walking Desecration, Sizzling Soloist)
         for (attackerId in validAttackers) {
             val container = state.getEntity(attackerId) ?: continue
             if (hasMarkedAttackRequirement(container)) {
-                mandatory.add(attackerId)
+                require(attackerId)
             }
         }
 
         // 3. Projected mustAttack (static ability like Valley Dasher, Grand Melee) or a granted
         // entity-scoped MustAttack (Carnage's reanimated target), which never reaches projection.
+        // Projection folds every such static into one flag, so they weigh as one requirement.
         for (attackerId in validAttackers) {
             if (mustAttackThisCombat(state, attackerId)) {
-                mandatory.add(attackerId)
+                require(attackerId)
             }
         }
 
-        // 4. Goaded (CR 701.15b) — a resolved goad designation or a Goaded static
+        // 4. Goaded (CR 701.15b) — a resolved goad designation or a Goaded static; each goader
+        // adds its own requirement (CR 701.15c)
         val goadRules = GoadRules(state, cardRegistry, predicateEvaluator)
         for (attackerId in validAttackers) {
-            if (goadRules.isGoaded(attackerId)) {
-                mandatory.add(attackerId)
-            }
+            val goaders = goadRules.goadersOf(attackerId).size
+            if (goaders > 0) require(attackerId, goaders)
         }
 
         // 5. A requirement naming the player to attack (Public Enemy), where it binds
-        mandatory.addAll(boundAttackDefenders(state, attackingPlayer, goadRules = goadRules).keys)
+        boundAttackDefenders(state, attackingPlayer, goadRules = goadRules).keys.forEach { require(it) }
 
-        return mandatory.toList()
+        return mandatory
     }
 
     // =========================================================================

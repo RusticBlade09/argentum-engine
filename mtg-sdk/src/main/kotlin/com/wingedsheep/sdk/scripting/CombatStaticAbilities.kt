@@ -498,6 +498,36 @@ data class CantAttackUnlessCoAttacker(
 }
 
 /**
+ * "This creature can only attack alone" (Master of Cruelties): a declaration that has this
+ * creature attacking along with any other creature is illegal (CR 508.1c). "Attacks alone" means
+ * it is the only creature declared as an attacker (CR 506.5), so a creature put onto the
+ * battlefield attacking afterwards changes nothing.
+ *
+ * The inverse of [CantAttackUnlessCoAttacker] with the bare `Creature` filter. Like that one it
+ * depends on the whole declared attacker set, so it is checked against the declaration, and it
+ * weighs into CR 508.1d: when the creature, or the others, are required to attack, the declaration
+ * that obeys more requirements wins — another creature that must attack does, and this one stays
+ * home (the card's ruling).
+ *
+ * Like that one, the engine reads it with [filter] scoped to the creature itself — printed on
+ * it, or on a token through its granted static abilities. A face-down creature or one that has
+ * lost its abilities is unrestricted.
+ *
+ * @property filter What this ability applies to.
+ */
+@SerialName("CanOnlyAttackAlone")
+@Serializable
+data class CanOnlyAttackAlone(
+    val filter: GroupFilter = GroupFilter.source()
+) : StaticAbility {
+    override val description: String = "This creature can only attack alone"
+    override fun applyTextReplacement(replacer: TextReplacer): StaticAbility {
+        val newFilter = filter.applyTextReplacement(replacer)
+        return if (newFilter !== filter) copy(filter = newFilter) else this
+    }
+}
+
+/**
  * This creature can't block unless a condition is met.
  * Checked at block declaration time when the attacking player is known.
  *
