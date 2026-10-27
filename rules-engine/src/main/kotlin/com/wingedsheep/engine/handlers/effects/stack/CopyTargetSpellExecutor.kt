@@ -19,7 +19,8 @@ import kotlin.reflect.KClass
 
 /**
  * Executor for CopyTargetSpellEffect.
- * Copies a targeted spell on the stack, allowing the controller to choose new targets.
+ * Copies a targeted spell on the stack, allowing the controller to choose new targets unless
+ * [CopyTargetSpellEffect.mayChooseNewTargets] is false.
  *
  * Reads the targeted spell's effect and target requirements from its components on the stack,
  * then creates [CopyTargetSpellEffect.copies] copies (one by default). If the original spell has
@@ -51,11 +52,23 @@ class CopyTargetSpellExecutor(
         // matching prior spells means no copies at all — the ability still resolved.
         // A copy-count replacement ("copy it that many times plus an additional time") resizes the
         // instruction once, before any copy exists; zero copies stays zero.
+        val baseCount = dynamicAmountEvaluator.evaluate(state, effect.copies, context)
         val copyCount = KeywordActionAmountModifier.copySpell(
-            state, context.controllerId, spellEntityId,
-            dynamicAmountEvaluator.evaluate(state, effect.copies, context), targetFinder.predicateEvaluator
+            state, context.controllerId, spellEntityId, baseCount, targetFinder.predicateEvaluator
         )
         if (copyCount <= 0) return EffectResult.success(state)
+        // A bare "copy that spell" keeps its targets, but the extra copies a copy-count
+        // replacement adds come with that replacement's own "you may choose new targets for the
+        // additional copy" (Twinning Staff), so they take the retargetable path afterwards.
+        val addedCount = copyCount - baseCount
+        if (!effect.mayChooseNewTargets && baseCount > 0 && addedCount > 0) {
+            val kept = copySpellTimes(state, effect, context, spellEntityId, baseCount)
+            if (kept.outcome !is Outcome.Done) return kept
+            val added = copySpellTimes(
+                kept.state, effect.copy(mayChooseNewTargets = true), context, spellEntityId, addedCount
+            )
+            return added.copy(events = kept.events + added.events)
+        }
         return copySpellTimes(state, effect, context, spellEntityId, copyCount)
     }
 
@@ -113,6 +126,17 @@ class CopyTargetSpellExecutor(
                 startingLoyalty = tokenStartingLoyalty
             )
         } else null
+
+        // Bare "copy that spell" (no "you may choose new targets"): copies keep the original's
+        // targets and modes verbatim (CR 707.10), so there is nothing to decide.
+        if (!effect.mayChooseNewTargets) {
+            return EffectResult.from(
+                putInheritedCopies(
+                    state, spellEntityId, context.controllerId, copyCount,
+                    effect.keywordsForCopy.toSet(), effect.removeLegendary, tokenRiders, exceptions
+                )
+            )
+        }
 
         // Propagate modal info from the source spell (700.2g — copies keep the
         // same chosen modes). Targets inherit by default; a future enhancement
