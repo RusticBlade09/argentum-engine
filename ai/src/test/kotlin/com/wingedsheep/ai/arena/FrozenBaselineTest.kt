@@ -174,6 +174,8 @@ class FrozenBaselineTest : FunSpec({
          * loses the two passes it used to open with in that step, where a pass was the only legal
          * action. Seat 1 still wins on turn 20 at life -8 / 16.
          */
-        private const val GOLDEN_HASH = "1f2cad605b93ae18"
+        // Beam me up adds beamMeUpAbility=0 to every CastSpell's recorded text. Stripping that
+        // field reproduces 1f2cad605b93ae18 exactly; the winner, 20 turns and -8/16 life are unchanged.
+        private const val GOLDEN_HASH = "73919b281506d48a"
     }
 }

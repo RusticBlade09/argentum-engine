@@ -94,6 +94,10 @@ class CastAdditionalCosts(
                 costCalculator.findAlternativeCastingCosts(state, action.playerId, cardDef)
                     .firstOrNull()?.let { addAll(it.additionalCosts) }
             }
+            if (action.alternativeCostType == AlternativeCostType.BEAM_ME_UP) {
+                com.wingedsheep.engine.mechanics.BeamMeUp.selected(state, action, cardRegistry, predicateEvaluator)
+                    ?.let { add(com.wingedsheep.sdk.dsl.Costs.additional.ReturnToHand(com.wingedsheep.sdk.scripting.GameObjectFilter.Creature)) }
+            }
             // Flashback's bundled additional cost (e.g., Behold three Elementals)
             if (action.altAllows(AlternativeCostType.FLASHBACK) &&
                 zoneResolver.hasFlashbackPermission(state, action.playerId, action.cardId)

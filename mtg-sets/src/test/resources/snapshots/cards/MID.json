@@ -10833,7 +10833,7 @@
                 "filter": {}
             },
             {
-                "type": "GraveyardCardsHaveFlashback",
+                "type": "GraveyardCardsHaveCastKeyword",
                 "filter": "instant|sorcery"
             }
         ]

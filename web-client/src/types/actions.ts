@@ -135,6 +135,7 @@ export interface CastSpellAction {
    */
   readonly alternativeCostType?: string
   /** Server-selected escape cost; echoed unchanged with the cast action. */
+  readonly beamMeUpAbility?: number
   readonly escapeAbility?: { readonly cost: unknown; readonly additionalCost?: unknown } | null
   /**
    * Which optional additional cost this cast declares (the server's `ChoiceSlot` name — "KICKED"

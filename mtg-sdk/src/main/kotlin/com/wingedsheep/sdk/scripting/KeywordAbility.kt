@@ -661,6 +661,19 @@ sealed interface KeywordAbility {
     }
 
     // =========================================================================
+    /**
+     * Cast an instant or sorcery from your graveyard for [cost] and returning a creature you
+     * control to its owner's hand. Exile it whenever it leaves the stack.
+     * [Flashback] can bundle a return cost, but cannot identify beaming for prohibitions;
+     * [WebSlinging] returns a tapped creature and grants no graveyard permission or exile rider.
+     */
+    @SerialName("BeamMeUp")
+    @Serializable
+    data class BeamMeUp(val cost: ManaCost) : KeywordAbility {
+        override val keyword: Keyword = Keyword.BEAM_ME_UP
+        override val description: String = "Beam me up $cost"
+    }
+
     // Harmonize
     // =========================================================================
 
@@ -1639,9 +1652,10 @@ sealed interface KeywordAbility {
         fun flashback(cost: String, condition: Condition): KeywordAbility =
             Flashback(ManaCost.parse(cost), condition = condition)
 
-        /**
-         * Create Harmonize with mana cost from string (e.g., "Harmonize {5}{R}{R}").
-         */
+        /** Create Beam me up with its mana portion; the engine also requires a creature return. */
+        fun beamMeUp(cost: String): KeywordAbility = BeamMeUp(ManaCost.parse(cost))
+
+        /** Create Harmonize with mana cost from string (e.g., "Harmonize {5}{R}{R}"). */
         fun harmonize(cost: String): KeywordAbility = Harmonize(ManaCost.parse(cost))
 
         /**

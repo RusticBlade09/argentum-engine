@@ -120,11 +120,11 @@ Ability word for triggers when a land you control enters; the individual card su
 
 Cards: Captain Michael Burnham, Cleveland Booker, Empath, Dal R'El, Augment Orphan, Exploratory Mission, Jake Sisko, War Correspondent, Planetary Patrol, Saurian Explorer, Syndicate Liquidators, Xindi Surveyors
 
-### - [ ] Beam me up and beaming restrictions (8 cards)
+### - [x] Beam me up and beaming restrictions (8 cards)
 
 Cast an instant or sorcery from your graveyard for its beam-me-up mana cost plus returning a creature you control to hand, then exile the spell. Scotty grants it with timing and source exclusions; Marooned prohibits returning the enchanted object this way.
 
-**Engine support:** ❌ Missing the graveyard alternative-casting mode, return-creature cost integration, grant and prohibition. Flashback/Harmonize provide related infrastructure but do not implement this mechanic.
+**Engine support:** ✅ `beamMeUp(cost)`, graveyard alternative casting with a return-creature cost and exile on every stack exit. `GraveyardCardsHaveCastKeyword` supports conditional grants and source-relative return filters (Scotty); `CantBeBeamedUp` supplies the projected prohibition (Marooned). Open Communications is the first implemented example.
 
 Cards: Adversary by Algorithm, Energize, Final Frontier, Marooned, Open Communications, Pure Energy, Scotty, Miracle Worker, There's Coffee in that Nebula
 

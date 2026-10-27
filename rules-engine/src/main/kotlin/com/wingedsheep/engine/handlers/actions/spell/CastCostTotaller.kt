@@ -476,6 +476,11 @@ internal class CastCostTotaller(
     private val alternativeBases: List<Pair<AlternativeCostType, AlternativeBaseQuery.() -> ManaCost?>> = listOf(
         // Flashback — printed, granted per-entity by Archmage's Newt, or granted to the whole
         // graveyard by a battlefield static (Iroh, Grand Lotus).
+        AlternativeCostType.BEAM_ME_UP to {
+            com.wingedsheep.engine.mechanics.BeamMeUp.selected(state, action, cardRegistry, predicateEvaluator)
+                ?.takeIf { zoneResolver.hasBeamMeUpPermission(state, playerId, cardId) }
+                ?.let { priced(it.cost) }
+        },
         AlternativeCostType.FLASHBACK to {
             FlashbackGrants.effectiveFlashback(state, cardId, cardDef, playerId, cardRegistry, predicateEvaluator)
                 ?.takeIf { zoneResolver.hasFlashbackPermission(state, playerId, cardId) }
@@ -710,7 +715,7 @@ internal class CastCostTotaller(
 
     private companion object {
         val GRAVEYARD_ROUTES = setOf(
-            AlternativeCostType.FLASHBACK, AlternativeCostType.HARMONIZE, AlternativeCostType.MAYHEM,
+            AlternativeCostType.BEAM_ME_UP, AlternativeCostType.FLASHBACK, AlternativeCostType.HARMONIZE, AlternativeCostType.MAYHEM,
             AlternativeCostType.ESCAPE, AlternativeCostType.DISTURB,
         )
     }

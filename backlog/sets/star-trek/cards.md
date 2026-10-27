@@ -2,8 +2,7 @@
 
 **Set Size:** 236 cards
 **Release Date:** November 13, 2026
-**Implemented:** 0 / 236
-
+**Implemented:** 1 / 236
 > Preview snapshot from October 26, 2026. Scryfall currently marks every TRK printing as `booster: false`, so all cards appear under Extras. Refresh the bootstrap as previews and booster classifications change; this is not the final set size.
 
 | Section    | Total | Done |
@@ -155,7 +154,7 @@
 - [ ] Munitions Enthusiast
 - [ ] Nyota Uhura, Communications
 - [ ] Obsidian Order Operative
-- [ ] Open Communications
+- [x] Open Communications
 - [ ] Organic Avulsion Unit
 - [ ] Orion
 - [ ] Overflow Submatrix

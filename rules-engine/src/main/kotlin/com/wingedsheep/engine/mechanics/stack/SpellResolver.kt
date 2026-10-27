@@ -200,7 +200,8 @@ internal class SpellResolver(
         // graveyard. A spell cast *with* flashback is exiled even if a conditional flashback's
         // condition has since lapsed (Viral Spawning), so the recorded alternative cost counts too.
         val flashbackExile = spellComponent.castFromZone == Zone.GRAVEYARD &&
-            (spellComponent.alternativeCost == AlternativeCostType.FLASHBACK ||
+            (spellComponent.alternativeCost == AlternativeCostType.BEAM_ME_UP ||
+                spellComponent.alternativeCost == AlternativeCostType.FLASHBACK ||
                 FlashbackGrants.effectiveFlashback(
                 state, spellId, cardDef, spellComponent.casterId, cardRegistry, predicateEvaluator
             ) != null ||

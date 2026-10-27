@@ -1313,6 +1313,7 @@ Families:
 - `KeywordAbility.Affinity(forType: CardType)` — Affinity for a card type.
 - `KeywordAbility.AffinityForSubtype(forSubtype: Subtype)` — Affinity for a creature subtype.
 - `KeywordAbility.BandsWithOther(supertype: Supertype?, subtype: Subtype?, name: String?)` — "Bands with other quality" (CR 702.22b) — the special form of banding Legends printed.
+- `KeywordAbility.BeamMeUp(cost: ManaCost)` — Cast an instant or sorcery from your graveyard for cost and returning a creature you control to its owner's hand.
 - `KeywordAbility.Bestow(cost: ManaCost, additionalCost: AdditionalCost?)`
 - `KeywordAbility.Blitz(cost: ManaCost, additionalCost: AdditionalCost?)` — Blitz with a mana cost and an optional bundled non-mana cost (CR 702.152, Streets of New Capenna).
 - `KeywordAbility.Casualty(threshold: Int?, copyExceptions: CopyExceptions, copyStartingLoyalty: DynamicAmount?)` — Casualty N (CR 702.153).
@@ -1812,6 +1813,7 @@ Families:
 - `CantAttackYou(filter: GroupFilter, coversPlaneswalkers: Boolean)` — The affected permanents can't attack **you** — and, with coversPlaneswalkers, planeswalkers you control — but stay free to attack anyone else (CR 508.1c).
 - `CantBeAttackedBy(attackerFilter: GameObjectFilter)` — Creatures matching attackerFilter can't attack the controller of this permanent — the general defender-side attack restriction (CR 508.1c).
 - `CantBeAttackedWhileAttached` — The source permanent can't be chosen as an attack defender while it is attached to another permanent.
+- `CantBeBeamedUp(filter: GroupFilter)` — Permanents matching filter cannot be returned to pay beam me up costs (Marooned).
 - `CantBeBlocked(filter: GroupFilter)` — This creature can't be blocked.
 - `CantBeBlockedBy(blockerFilter: GameObjectFilter, filter: GroupFilter)` — This creature can't be blocked by creatures matching the filter.
 - `CantBeBlockedByCreaturesWithLessPower(filter: GroupFilter)` — This creature can't be blocked by creatures with power less than this creature's power.
@@ -1899,10 +1901,9 @@ Families:
 - `GrantWard(cost: WardCost, filter: GroupFilter)` — Grants ward (with a configurable cost) to a filtered set of permanents.
 - `GrantWarpToCardsInHand(filter: GameObjectFilter, cost: ManaCost)` — Grants warp (CR 702.185) to cards in the granter's controller's hand that match filter.
 - `GrantWebSlingingToSpells(cost: ManaCost, spellFilter: GameObjectFilter)` — Grants **web-slinging cost** (CR 702.188) to spells the controller casts that match spellFilter.
+- `GraveyardCardsHaveCastKeyword(filter: GameObjectFilter, cost: ManaCost?, duringYourTurnOnly: Boolean, keyword: Keyword, condition: Condition?, returnFilter: GameObjectFilter)` — Grant a mana-bearing graveyard casting keyword to matching cards.
 - `GraveyardCardsHaveDredge(filter: GameObjectFilter, amount: Int)` — "filter cards in your graveyard have dredge amount." A whole-graveyard grant of dredge (CR 702.52) to every card in the controller's graveyard matching filter — The Necrobloom's "Land cards in your…
-- `GraveyardCardsHaveEscape(filter: GameObjectFilter, cost: ManaCost?, additionalCost: AdditionalCost?, duringYourTurnOnly: Boolean)` — "Each filter card in your graveyard has escape." The Escape (CR 702.138) analogue of GraveyardCardsHaveFlashback — a whole-graveyard group grant of KeywordAbility.Escape, read through `EscapeCasts.…
-- `GraveyardCardsHaveFlashback(filter: GameObjectFilter, cost: ManaCost?, duringYourTurnOnly: Boolean)` — A continuous grant of flashback (CR 702.34) to *every* card in the controller's graveyard that matches filter — a whole-graveyard group grant, not a single-card grant like com.wingedsheep.sdk.scrip…
-- `GraveyardCardsHaveMayhem(filter: GameObjectFilter, cost: ManaCost?, duringYourTurnOnly: Boolean)` — "Each filter card in your graveyard has mayhem cost." The Mayhem analogue of GraveyardCardsHaveFlashback — a whole-graveyard group grant of the Mayhem keyword ability (CR 702.187), read through `Ma…
+- `GraveyardCardsHaveEscape(filter: GameObjectFilter, cost: ManaCost?, additionalCost: AdditionalCost?, duringYourTurnOnly: Boolean)` — "Each filter card in your graveyard has escape." The Escape (CR 702.138) analogue of GraveyardCardsHaveCastKeyword — a whole-graveyard group grant of KeywordAbility.Escape, read through `EscapeCast…
 - `GraveyardCreaturesHaveSneak(cost: ManaCost)` — "Creature cards in your graveyard have sneak cost.
 - `HasAbilitiesOfChosenLinkedExiledCard(grantActivated: Boolean, grantTriggered: Boolean)` — Grants the source permanent the **activated and/or triggered abilities of the single card it most recently *chose*** from its linked-exile pile — the "last chosen card" of a choose-from-your-exile…
 - `HasAllActivatedAbilitiesOfCards(donors: DonorCards, cardFilter: GameObjectFilter, receivedBy: GroupFilter, oncePerTurnEach: Boolean)` — Grants the permanents matching receivedBy **all activated abilities of the cards in the donors pool that match cardFilter** — the single primitive behind "exiled with this" (linked-exile) grants, "…

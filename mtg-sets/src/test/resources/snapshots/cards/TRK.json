@@ -1,0 +1,31 @@
+// Open Communications
+{
+    "name": "Open Communications",
+    "manaCost": "{U}",
+    "typeLine": "Sorcery",
+    "oracleText": "Draw a card.\nBeam me up {2}{U} (You may cast this card from your graveyard for {2}{U} if you also return a creature you control to its owner's hand. Then exile this spell.)",
+    "keywords": [
+        "BEAM_ME_UP"
+    ],
+    "keywordAbilities": [
+        {
+            "type": "BeamMeUp",
+            "cost": "{2}{U}"
+        }
+    ],
+    "script": {
+        "spellEffect": {
+            "type": "DrawCards",
+            "count": {
+                "type": "Fixed",
+                "amount": 1
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "76",
+        "artist": "David Robert Hovey",
+        "flavorText": "Some gestures are universal.",
+        "imageUri": "https://cards.scryfall.io/normal/front/8/e/8eeec269-13f0-4923-9f13-e995acd73e00.jpg?1786396013"
+    }
+}

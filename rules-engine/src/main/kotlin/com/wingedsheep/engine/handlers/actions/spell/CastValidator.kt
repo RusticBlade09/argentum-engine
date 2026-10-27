@@ -149,6 +149,7 @@ internal enum class CastSourceRoute {
     SELF_ZONE_PERMISSION,
     PERMANENT_FROM_GRAVEYARD,
     FLASHBACK,
+    BEAM_ME_UP,
     HARMONIZE,
     MAYHEM,
     ESCAPE,
@@ -295,6 +296,10 @@ internal class CastValidator(
             CastSourceRoute.SELF_ZONE_PERMISSION to { zoneResolver.hasMayCastSelfFromZonePermission(state, playerId, cardId, action) },
             CastSourceRoute.PERMANENT_FROM_GRAVEYARD to {
                 zoneResolver.hasMayPlayPermanentFromGraveyardPermission(state, playerId, cardId, cardComponent)
+            },
+            CastSourceRoute.BEAM_ME_UP to {
+                action.useAlternativeCost && action.alternativeCostType == AlternativeCostType.BEAM_ME_UP &&
+                    zoneResolver.hasBeamMeUpPermission(state, playerId, cardId)
             },
             CastSourceRoute.FLASHBACK to { zoneResolver.hasFlashbackPermission(state, playerId, cardId) },
             // Harmonize (e.g., Channeled Dragonfire) — cast from graveyard for its harmonize cost;
@@ -642,6 +647,14 @@ internal class CastValidator(
 
     private fun validateAnnouncements(state: GameState, action: CastSpell, cardDef: CardDefinition?): String? {
         if (cardDef == null) return null
+        if (action.alternativeCostType == AlternativeCostType.BEAM_ME_UP) {
+            val beam = com.wingedsheep.engine.mechanics.BeamMeUp.selected(state, action, cardRegistry, predicateEvaluator)
+                ?: return "This beam me up ability is not available"
+            val returned = action.additionalCostPayment?.bouncedPermanents.orEmpty()
+            if (returned.size != 1 || returned.single() !in beam.creatures) {
+                return "Return one creature you control that can be beamed up"
+            }
+        }
         if (cardDef.script.castRestrictions.isNotEmpty()) {
             legality.castRestrictionsFailure(state, action.playerId, cardDef.script.castRestrictions)?.let { return it }
         }

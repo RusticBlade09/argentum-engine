@@ -143,7 +143,7 @@ import com.wingedsheep.sdk.scripting.GrantTriggeredAbility
 import com.wingedsheep.sdk.scripting.GrantWarpToCardsInHand
 import com.wingedsheep.sdk.scripting.GrantEmergeToOwnSpells
 import com.wingedsheep.sdk.scripting.GrantMiracleToCardsInHand
-import com.wingedsheep.sdk.scripting.GraveyardCardsHaveFlashback
+import com.wingedsheep.sdk.scripting.GraveyardCardsHaveCastKeyword
 import com.wingedsheep.sdk.scripting.LookAtFaceDownCreatures
 import com.wingedsheep.sdk.scripting.LookAtTopOfLibrary
 import com.wingedsheep.sdk.scripting.MayCastFromGraveyard
@@ -1080,6 +1080,12 @@ class StaticAbilityHandler(
                     affectsFilter = convertGroupFilter(ability.filter)
                 )
             }
+            is com.wingedsheep.sdk.scripting.CantBeBeamedUp -> {
+                ContinuousEffectData(
+                    modification = Modification.GrantKeyword(com.wingedsheep.sdk.core.AbilityFlag.CANT_BE_BEAMED_UP.name),
+                    affectsFilter = convertGroupFilter(ability.filter)
+                )
+            }
             is CantBeSacrificed -> {
                 ContinuousEffectData(
                     modification = Modification.GrantKeyword(com.wingedsheep.sdk.core.AbilityFlag.CANT_BE_SACRIFICED.name),
@@ -1270,8 +1276,7 @@ class StaticAbilityHandler(
             is GrantEmergeToOwnSpells,
             is GrantMiracleToCardsInHand,
             is MayCastFromGraveyard,
-            is GraveyardCardsHaveFlashback,
-            is com.wingedsheep.sdk.scripting.GraveyardCardsHaveMayhem,
+            is GraveyardCardsHaveCastKeyword,
             is com.wingedsheep.sdk.scripting.GraveyardCardsHaveEscape,
             is com.wingedsheep.sdk.scripting.GraveyardCreaturesHaveSneak,
             is MayCastSelfFromZones,

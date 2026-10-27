@@ -6014,8 +6014,9 @@
                     }
                 },
                 {
-                    "type": "GraveyardCardsHaveMayhem",
-                    "filter": "nonland"
+                    "type": "GraveyardCardsHaveCastKeyword",
+                    "filter": "nonland",
+                    "keyword": "MAYHEM"
                 }
             ]
         },

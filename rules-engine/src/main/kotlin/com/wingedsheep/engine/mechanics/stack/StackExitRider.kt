@@ -32,7 +32,7 @@ object StackExitRider {
         container.get<AfterResolveDestinationComponent>()?.takeIf { it.everyStackExit }?.let { return it.zone }
         val spell = container.get<SpellOnStackComponent>() ?: return null
         return Zone.EXILE.takeIf {
-            spell.castFromZone == Zone.GRAVEYARD && spell.alternativeCost == AlternativeCostType.FLASHBACK
+            spell.castFromZone == Zone.GRAVEYARD && spell.alternativeCost in setOf(AlternativeCostType.FLASHBACK, AlternativeCostType.BEAM_ME_UP)
         }
     }
 

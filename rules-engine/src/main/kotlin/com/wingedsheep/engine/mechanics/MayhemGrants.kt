@@ -7,7 +7,7 @@ import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.sdk.model.CardDefinition
 import com.wingedsheep.sdk.model.EntityId
-import com.wingedsheep.sdk.scripting.GraveyardCardsHaveMayhem
+import com.wingedsheep.sdk.scripting.GraveyardCardsHaveCastKeyword
 import com.wingedsheep.sdk.scripting.KeywordAbility
 import com.wingedsheep.engine.state.components.identity.faceUpCardDefinition
 
@@ -53,7 +53,7 @@ object MayhemGrants {
     }
 
     /**
-     * Scan [controllerId]'s battlefield for a [GraveyardCardsHaveMayhem] static whose filter matches
+     * Scan [controllerId]'s battlefield for a [GraveyardCardsHaveCastKeyword] static whose filter matches
      * [cardId] (during their turn, if the grant requires it), synthesizing a [KeywordAbility.Mayhem]
      * carrying the granted cost — the grant's fixed cost, or the card's own mana cost when the grant
      * leaves it null ("equal to that card's mana cost"). Mirrors `FlashbackGrants.groupGrantFlashback`.
@@ -70,7 +70,13 @@ object MayhemGrants {
         for (granterId in state.controlledBattlefield(controllerId)) {
             val def = state.getEntity(granterId)?.faceUpCardDefinition(cardRegistry) ?: continue
             for (ability in def.script.staticAbilities) {
-                if (ability !is GraveyardCardsHaveMayhem) continue
+                if (ability !is GraveyardCardsHaveCastKeyword || ability.keyword != com.wingedsheep.sdk.core.Keyword.MAYHEM) continue
+                val condition = ability.condition
+                if (condition != null && !predicateEvaluator.conditions.evaluate(
+                        state, condition, com.wingedsheep.engine.handlers.EffectContext(
+                            sourceId = granterId, controllerId = controllerId
+                        )
+                    )) continue
                 if (ability.duringYourTurnOnly && !state.isActiveTurnFor(controllerId)) continue
                 if (predicateEvaluator.matches(state, state.projectedState, cardId, ability.filter, context)) {
                     return KeywordAbility.Mayhem(ability.cost ?: cardComponent.manaCost)

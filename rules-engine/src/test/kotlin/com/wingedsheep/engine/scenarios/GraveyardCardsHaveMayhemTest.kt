@@ -12,13 +12,13 @@ import com.wingedsheep.sdk.dsl.card
 import com.wingedsheep.sdk.model.Deck
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.GameObjectFilter
-import com.wingedsheep.sdk.scripting.GraveyardCardsHaveMayhem
+import com.wingedsheep.sdk.scripting.GraveyardCardsHaveCastKeyword
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 
 /**
- * `GraveyardCardsHaveMayhem` — the whole-graveyard Mayhem group grant behind Green Goblin's "Goblin
+ * `GraveyardCardsHaveCastKeyword` — the whole-graveyard Mayhem group grant behind Green Goblin's "Goblin
  * Formula — Each nonland card in your graveyard has mayhem. The mayhem cost is equal to its mana
  * cost." Pins that a battlefield static grants Mayhem to matching graveyard cards (still gated on the
  * discarded-this-turn requirement), routed through `MayhemGrants.effectiveMayhem`.
@@ -29,7 +29,7 @@ class GraveyardCardsHaveMayhemTest : FunSpec({
     val goblinFormula = card("Goblin Formula Test") {
         manaCost = "{2}"
         typeLine = "Enchantment"
-        staticAbility { ability = GraveyardCardsHaveMayhem(filter = GameObjectFilter.Nonland) }
+        staticAbility { ability = GraveyardCardsHaveCastKeyword(keyword = com.wingedsheep.sdk.core.Keyword.MAYHEM, filter = GameObjectFilter.Nonland) }
     }
 
     fun createDriver(): GameTestDriver {

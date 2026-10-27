@@ -792,81 +792,40 @@ enum class CastThisWayExile {
 }
 
 /**
- * A continuous grant of flashback (CR 702.34) to *every* card in the controller's graveyard that
- * matches [filter] — a whole-graveyard group grant, not a single-card grant like
- * [com.wingedsheep.sdk.scripting.effects.GrantFlashbackEffect] (Archmage's Newt). While the
- * granting permanent is on the battlefield (and, if [duringYourTurnOnly], during its controller's
- * turn), each matching graveyard card may be cast for its flashback cost and is exiled on
- * resolution, exactly as if it had printed flashback.
- *
- * The flashback cost is [cost] when set, otherwise the card's own mana cost (`null` = "equal to
- * that card's mana cost").
- *
- * Used for Iroh, Grand Lotus:
- *  - `GraveyardCardsHaveFlashback(InstantOrSorcery.notSubtype(Lesson), duringYourTurnOnly = true)`
- *    — "During your turn, each non-Lesson instant and sorcery card in your graveyard has flashback.
- *    The flashback cost is equal to that card's mana cost."
- *  - `GraveyardCardsHaveFlashback(InstantOrSorcery.withSubtype(Lesson), cost = {1}, duringYourTurnOnly = true)`
- *    — "During your turn, each Lesson card in your graveyard has flashback {1}."
- *
- * Read by [com.wingedsheep.engine.mechanics.FlashbackGrants], the single source of truth every
- * flashback read site routes through (enumeration, cast cost, permission, and exile-on-resolution),
- * so a group-granted flashback behaves identically to a printed one.
- *
- * @property filter Which graveyard cards gain flashback (matched against the card's characteristics).
- * @property cost The granted flashback cost, or null for "equal to that card's mana cost".
- * @property duringYourTurnOnly If true, the grant is active only during the controller's turn.
+ * Grant a mana-bearing graveyard casting keyword to matching cards. Replaces the identical
+ * flashback and mayhem grant types with a keyword axis; beam me up uses the same grant contract.
+ * A null [cost] uses each card's mana cost. [condition] gates the grant, not normal spell timing.
+ * [returnFilter] is matched relative to the granting permanent when paying beam me up, allowing
+ * Scotty's exclusion without making that permanent globally unable to be beamed up.
  */
-@SerialName("GraveyardCardsHaveFlashback")
+@SerialName("GraveyardCardsHaveCastKeyword")
 @Serializable
-data class GraveyardCardsHaveFlashback(
+data class GraveyardCardsHaveCastKeyword(
     val filter: GameObjectFilter,
     val cost: ManaCost? = null,
-    val duringYourTurnOnly: Boolean = false
+    val duringYourTurnOnly: Boolean = false,
+    val keyword: Keyword = Keyword.FLASHBACK,
+    val condition: Condition? = null,
+    val returnFilter: GameObjectFilter = GameObjectFilter.Creature
 ) : StaticAbility {
+    init {
+        require(keyword in setOf(Keyword.FLASHBACK, Keyword.MAYHEM, Keyword.BEAM_ME_UP))
+    }
     override val description: String = buildString {
         if (duringYourTurnOnly) append("During your turn, e") else append("E")
-        append("ach ${filter.description} card in your graveyard has flashback")
+        append("ach "+filter.description+" card in your graveyard has "+keyword.displayName.lowercase())
         if (cost != null) append(" $cost")
     }
-    override fun applyTextReplacement(replacer: TextReplacer): StaticAbility {
-        val newFilter = filter.applyTextReplacement(replacer)
-        return if (newFilter !== filter) copy(filter = newFilter) else this
-    }
-}
-
-/**
- * "Each [filter] card in your graveyard has mayhem [cost]." The Mayhem analogue of
- * [GraveyardCardsHaveFlashback] — a whole-graveyard group grant of the Mayhem keyword ability
- * (CR 702.187), read through `MayhemGrants.effectiveMayhem` alongside the discarded-this-turn gate.
- * Green Goblin's "Goblin Formula — Each nonland card in your graveyard has mayhem. The mayhem cost
- * is equal to its mana cost."
- *
- * @property filter Which graveyard cards gain mayhem (matched against the card's characteristics).
- * @property cost The granted mayhem cost, or null for "equal to that card's mana cost".
- * @property duringYourTurnOnly If true, the grant is active only during the controller's turn.
- */
-@SerialName("GraveyardCardsHaveMayhem")
-@Serializable
-data class GraveyardCardsHaveMayhem(
-    val filter: GameObjectFilter,
-    val cost: ManaCost? = null,
-    val duringYourTurnOnly: Boolean = false
-) : StaticAbility {
-    override val description: String = buildString {
-        if (duringYourTurnOnly) append("During your turn, e") else append("E")
-        append("ach ${filter.description} card in your graveyard has mayhem")
-        if (cost != null) append(" $cost")
-    }
-    override fun applyTextReplacement(replacer: TextReplacer): StaticAbility {
-        val newFilter = filter.applyTextReplacement(replacer)
-        return if (newFilter !== filter) copy(filter = newFilter) else this
-    }
+    override fun applyTextReplacement(replacer: TextReplacer): StaticAbility = copy(
+        filter = filter.applyTextReplacement(replacer),
+        returnFilter = returnFilter.applyTextReplacement(replacer),
+        condition = condition?.applyTextReplacement(replacer)
+    )
 }
 
 /**
  * "Each [filter] card in your graveyard has escape." The Escape (CR 702.138) analogue of
- * [GraveyardCardsHaveFlashback] — a whole-graveyard group grant of [KeywordAbility.Escape], read
+ * [GraveyardCardsHaveCastKeyword] — a whole-graveyard group grant of [KeywordAbility.Escape], read
  * through `EscapeCasts.effectiveEscape` (enumerator, zone permission, cost totaller, additional-cost
  * collector) so a granted escape behaves exactly like a printed one: the escaped spell is not
  * exiled on resolution, and a permanent spell enters the battlefield as usual.
@@ -875,7 +834,7 @@ data class GraveyardCardsHaveMayhem(
  * the card's mana cost plus exile three other cards from your graveyard" —
  * `GraveyardCardsHaveEscape(Nonland, additionalCost = Costs.additional.ExileOtherCards(3))`.
  *
- * A separate type rather than a keyword axis on [GraveyardCardsHaveFlashback]: escape carries a
+ * A separate type rather than a keyword axis on [GraveyardCardsHaveCastKeyword]: escape carries a
  * non-mana half ([additionalCost]) and neither exiles on resolution (flashback does) nor is gated on
  * a discard this turn (mayhem is), so one shared type would fork its meaning on every engine read.
  *

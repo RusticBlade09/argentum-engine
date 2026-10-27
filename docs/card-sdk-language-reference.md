@@ -12264,7 +12264,7 @@ riders, matching how the engine already treats e.g. City of Brass's damage durin
   and `CastZoneResolver`) match the bare type without unwrapping it — so the grant never applies
   rather than applying conditionally. Teach those read sites to unwrap first;
   `FlashTypeGrants.activeGrant` is the worked example.
-- `GraveyardCardsHaveFlashback(filter, cost = null, duringYourTurnOnly = false)` — a **whole-graveyard
+- `GraveyardCardsHaveCastKeyword(filter, cost = null, duringYourTurnOnly = false)` — a **whole-graveyard
   flashback grant** (CR 702.34): a continuous static that grants flashback to *every* card in the
   controller's graveyard matching `filter` (not a single-card grant like `Effects.GrantFlashback` /
   Archmage's Newt). `cost = null` means "flashback cost equal to that card's mana cost"; pass a
@@ -12283,20 +12283,20 @@ riders, matching how the engine already treats e.g. City of Brass's damage durin
   wraps the ability in a `ConditionalStaticAbility`, and `FlashbackGrants` matches the bare type
   without unwrapping it — so the grant never applies rather than applying conditionally. Teach
   that read site to unwrap first; `FlashTypeGrants.activeGrant` is the worked example.
-- `GraveyardCardsHaveMayhem(filter, cost = null, duringYourTurnOnly = false)` — the Mayhem (CR 702.187)
-  analogue of `GraveyardCardsHaveFlashback`: a whole-graveyard group grant of the Mayhem keyword to
+- `GraveyardCardsHaveCastKeyword(filter, cost = null, duringYourTurnOnly = false, keyword = Keyword.MAYHEM)` — the Mayhem (CR 702.187)
+  analogue of `GraveyardCardsHaveCastKeyword`: a whole-graveyard group grant of the Mayhem keyword to
   every graveyard card matching `filter`. `cost = null` means "mayhem cost equal to that card's mana
   cost". Read through the shared `MayhemGrants.effectiveMayhem` resolver (enumerator, cast cost,
   permission), which now scans the battlefield for this static; the mayhem discarded-this-turn gate
   still applies, and (unlike flashback) the spell is not exiled on resolution. Used by Green Goblin's
   "Goblin Formula — Each nonland card in your graveyard has mayhem. The mayhem cost is equal to its
-  mana cost" (`GraveyardCardsHaveMayhem(GameObjectFilter.Nonland)`).
+  mana cost" (`GraveyardCardsHaveCastKeyword(GameObjectFilter.Nonland, keyword = Keyword.MAYHEM)`).
   **Gating this with a condition is silently inert today.** `staticAbility { condition = … }`
   wraps the ability in a `ConditionalStaticAbility`, and `MayhemGrants` matches the bare type
   without unwrapping it — so the grant never applies rather than applying conditionally. Teach
   that read site to unwrap first; `FlashTypeGrants.activeGrant` is the worked example.
 - `GraveyardCardsHaveEscape(filter, cost = null, additionalCost = null, duringYourTurnOnly = false)` —
-  the Escape (CR 702.138) analogue of `GraveyardCardsHaveFlashback`: every card in your graveyard
+  the Escape (CR 702.138) analogue of `GraveyardCardsHaveCastKeyword`: every card in your graveyard
   matching `filter` has escape. `cost = null` means "equal to the card's mana cost" (a card with no
   mana cost then can't escape — its escape cost is unpayable); `additionalCost` is the non-mana half.
   `EscapeCasts.availableEscape` enumerates every distinct printed, individual, or group-granted
@@ -14327,7 +14327,7 @@ Blighted Agent, Ichor Rats, Plague Stinger, Skithiryx.
   your graveyard for `cost` instead of its mana cost, then exile it whenever it would leave the stack. No card-side
   wiring: the engine enumerates `CastWithFlashback`, prices it, and exiles it (on resolution or when countered) through the
   shared `FlashbackGrants.effectiveFlashback` resolver (which also reads granted flashback — see `GrantFlashback`
-  and `GraveyardCardsHaveFlashback`). `KeywordAbility.flashback(cost, additionalCost)` bundles a non-mana cost paid
+  and `GraveyardCardsHaveCastKeyword`). `KeywordAbility.flashback(cost, additionalCost)` bundles a non-mana cost paid
   only on the flashback path ("Flashback—{1}{R}, Behold three Elementals"). `KeywordAbility.flashback(cost, condition)`
   is a flashback the card has only **while `condition` holds** — Viral Spawning: "Corrupted — As long as an opponent
   has three or more poison counters and this card is in your graveyard, it has flashback {2}{G}" is
@@ -20254,3 +20254,11 @@ controller with `storePlayer()` and compares each ranked bidder using
 `Conditions.PlayerIs(Player.You, originalController.asPlayers)`, so a later control change does
 not change which player earns the counters. `ChooseNumberThen` remains the public, single
 chooser combinator, and `SelectFromCollection` remains ordinary collection selection.
+
+### Beam me up (TRK)
+
+- `beamMeUp("{2}{U}")` / `KeywordAbility.beamMeUp("{2}{U}")` — an instant or sorcery may be cast from its controller's graveyard at its normal timing, paying this mana cost and returning one creature they control to its owner's hand. The return is a cost, not a target or a resolution effect. The spell keeps its printed mana value and is exiled on every stack exit, including countering, fizzles and returning to hand. Hand casts use the ordinary mana cost and destination.
+- `GraveyardCardsHaveCastKeyword(filter, cost = null, duringYourTurnOnly = false, keyword = Keyword.BEAM_ME_UP, condition = null, returnFilter = GameObjectFilter.Creature)` — shared continuous grant for flashback, mayhem and beam me up, replacing the former `GraveyardCardsHaveFlashback` and `GraveyardCardsHaveMayhem` types. Null cost uses the card's mana cost; the condition only gates the grant. Scotty uses `condition = Conditions.IsYourMainPhase` and `returnFilter = GameObjectFilter.Creature.notSourceItself()`. The return filter is relative to each grant source; multiple grants and a printed ability are independent casting offers. Beam me up grants still only cast instants and sorceries.
+- `CantBeBeamedUp(filter = GroupFilter.attachedCreature())` — projected `AbilityFlag.CANT_BE_BEAMED_UP` restriction. Blocks returning affected creatures for any beam-me-up cost; does not block other return costs or effects. Marooned uses this alongside its untap restriction.
+
+The preview mechanic is specified by [Wizards' mechanics article](https://magic.wizards.com/en/news/feature/star-trek-mechanics); the published Comprehensive Rules currently predate TRK.

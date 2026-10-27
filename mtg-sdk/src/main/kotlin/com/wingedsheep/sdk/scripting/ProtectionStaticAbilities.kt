@@ -328,6 +328,23 @@ data class CantBeSacrificed(
 }
 
 /**
+ * Permanents matching [filter] cannot be returned to pay beam me up costs (Marooned).
+ * [CantBeSacrificed] prevents sacrifice, not returning; [PreventActivatedAbilities] prevents
+ * activation, not paying a spell's cost. Projected so attachment and ability removal apply.
+ */
+@SerialName("CantBeBeamedUp")
+@Serializable
+data class CantBeBeamedUp(
+    val filter: GroupFilter = GroupFilter.attachedCreature()
+) : StaticAbility {
+    override val description: String = "${filter.description} can't be beamed up"
+    override fun applyTextReplacement(replacer: TextReplacer): StaticAbility {
+        val newFilter = filter.applyTextReplacement(replacer)
+        return if (newFilter !== filter) copy(filter = newFilter) else this
+    }
+}
+
+/**
  * You have shroud. (You can't be the target of spells or abilities.)
  * Grants shroud to the permanent's controller (player-level shroud).
  * Used for True Believer.

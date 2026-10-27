@@ -63,6 +63,7 @@ enum class AbilityFlag(val displayName: String) {
 
     // ── Sacrifice restriction flags ─────────────────────────────
     CANT_BE_SACRIFICED("Can't be sacrificed"),
+    CANT_BE_BEAMED_UP("Can't be beamed up"),
 
     // ── State-based action exemptions ───────────────────────────
     /**

@@ -217,6 +217,9 @@ enum class Keyword(val displayName: String) {
     STORM("Storm"),
     FLASHBACK("Flashback"),
 
+    /** Graveyard alternative cost: mana and returning a creature; exile on every stack exit. */
+    BEAM_ME_UP("Beam me up"),
+
     /**
      * Split second (CR 702.61, Time Spiral). "As long as this spell is on the stack, players can't
      * cast other spells or activate abilities that aren't mana abilities."

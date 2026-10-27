@@ -11103,7 +11103,7 @@
         ],
         "staticAbilities": [
             {
-                "type": "GraveyardCardsHaveFlashback",
+                "type": "GraveyardCardsHaveCastKeyword",
                 "filter": {
                     "cardPredicates": [
                         {
@@ -11122,7 +11122,7 @@
                 "duringYourTurnOnly": true
             },
             {
-                "type": "GraveyardCardsHaveFlashback",
+                "type": "GraveyardCardsHaveCastKeyword",
                 "filter": "instant|sorcery Lesson",
                 "cost": "{1}",
                 "duringYourTurnOnly": true

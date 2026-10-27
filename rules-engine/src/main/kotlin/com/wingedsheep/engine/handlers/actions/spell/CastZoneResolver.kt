@@ -536,6 +536,10 @@ class CastZoneResolver(
      * granted at runtime (Archmage's Newt) — allowing it to be cast from the graveyard for its
      * flashback cost (and exiled on resolution).
      */
+    fun hasBeamMeUpPermission(state: GameState, playerId: EntityId, cardId: EntityId): Boolean =
+        cardId in state.getGraveyard(playerId) &&
+            com.wingedsheep.engine.mechanics.BeamMeUp.options(state, cardId, playerId, cardRegistry, predicateEvaluator).isNotEmpty()
+
     fun hasFlashbackPermission(
         state: GameState,
         playerId: EntityId,

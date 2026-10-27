@@ -108,6 +108,7 @@ class CastFromZoneEnumerator(
         enumerateGraveyardPermanents(context, result)
         enumerateGraveyardCreaturesWithForage(context, result)
         enumerateFlashback(context, result)
+        enumerateBeamMeUp(context, result)
         enumerateAftermath(context, result)
         enumerateHarmonize(context, result)
         enumerateMayhem(context, result)
@@ -1647,6 +1648,70 @@ class CastFromZoneEnumerator(
                         sourceZone = "GRAVEYARD"
                     )
                 )
+            }
+        }
+    }
+
+    /** Beam me up adds a return cost and no timing permission of its own. */
+    private fun enumerateBeamMeUp(context: EnumerationContext, result: MutableList<LegalAction>) {
+        val state = context.state
+        val playerId = context.playerId
+        for (cardId in state.getGraveyard(playerId)) {
+            val card = state.getEntity(cardId)?.get<CardComponent>() ?: continue
+            val definition = context.cardRegistry.getCard(card.cardDefinitionId) ?: continue
+            if (!card.typeLine.isInstant && !context.canPlaySorcerySpeed &&
+                Keyword.FLASH !in definition.keywords &&
+                !context.castPermissionUtils.hasGrantedFlash(state, cardId, playerId)) continue
+            if (!context.legality.castRestrictionsMet(state, playerId, definition.script.castRestrictions)) continue
+            val offers = com.wingedsheep.engine.mechanics.BeamMeUp.options(
+                state, cardId, playerId, context.cardRegistry, context.predicateEvaluator
+            )
+            for ((index, beam) in offers.withIndex()) {
+                if (beam.creatures.isEmpty()) continue
+                val pricing = context.costCalculator.priceByTargets(
+                    state, definition, playerId, cardId, baseCost = beam.cost,
+                    withTable = !context.skipAutoTapPreview, fromZone = Zone.GRAVEYARD
+                )
+                val mana = pricing.min
+                val spellContext = spellPaymentContextFor(card, colors = state.projectedState.colorSetOf(cardId),
+                    isFromHand = false, isFromGraveyard = true)
+                val (otherCosts, canPayOtherCosts) = presentOwedCosts(context, cardId, definition.script.additionalCosts)
+                val bounce = AdditionalCostData(
+                    description = "a creature you control to return to its owner's hand",
+                    costType = "BouncePermanent", validBounceTargets = beam.creatures, bounceCount = 1
+                )
+                val costInfo = otherCosts?.copy(alsoRequired = otherCosts.alsoRequired + bounce) ?: bounce
+                val requirements = definition.script.targetRequirements
+                val targets = context.targetUtils.buildTargetInfos(state, playerId, requirements, cardId, TargetingSourceType.SPELL)
+                if (!context.targetUtils.allRequirementsSatisfied(targets)) continue
+                val affordable = !context.cantCastSpell(cardId) && canPayOtherCosts && context.manaSolver.canPay(
+                    state, playerId, mana, precomputedSources = context.availableManaSources, spellContext = spellContext
+                )
+                val maxX = if (mana.hasX) context.costCalculator.maxAffordableX(
+                    state, definition, playerId, cardId,
+                    payable = context.manaSolver.getAvailableManaCount(state, playerId,
+                        precomputedSources = context.availableManaSources) - mana.cmc,
+                    xCount = mana.xCount, fromZone = Zone.GRAVEYARD
+                ) else null
+                result.add(LegalAction(
+                    actionType = "CastWithAlternativeCost",
+                    description = "Cast "+card.name+" (Beam me up)",
+                    action = CastSpell(playerId, cardId, useAlternativeCost = true,
+                        alternativeCostType = AlternativeCostType.BEAM_ME_UP, beamMeUpAbility = index),
+                    affordable = affordable,
+                    validTargets = targets.firstOrNull()?.validTargets,
+                    requiresTargets = requirements.isNotEmpty(),
+                    targetCount = targets.firstOrNull()?.maxTargets ?: 1,
+                    minTargets = requirements.firstOrNull()?.effectiveMinCount ?: 1,
+                    targetDescription = requirements.firstOrNull()?.description,
+                    targetRequirements = targets.surfacedRequirements(),
+                    manaCostString = mana.toString(), manaCostByTargetCount = pricing.byCountStrings(),
+                    hasXCost = mana.hasX, maxAffordableX = maxX,
+                    additionalCostInfo = costInfo, sourceZone = "GRAVEYARD",
+                    autoTapPreview = if (context.skipAutoTapPreview || !affordable) null else context.manaSolver.solve(
+                        state, playerId, mana, precomputedSources = context.availableManaSources, spellContext = spellContext
+                    )?.sources?.map { it.entityId }
+                ))
             }
         }
     }
