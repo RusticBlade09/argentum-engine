@@ -1,5 +1,8 @@
 package com.wingedsheep.engine.handlers.actions.spell
 
+import com.wingedsheep.sdk.scripting.GameObjectFilter
+import com.wingedsheep.sdk.dsl.Costs
+import com.wingedsheep.engine.mechanics.BeamMeUp
 import com.wingedsheep.engine.core.AlternativeCostType
 import com.wingedsheep.engine.core.CastSpell
 import com.wingedsheep.engine.handlers.PredicateEvaluator
@@ -93,6 +96,13 @@ class CastAdditionalCosts(
             if (action.altAllows(AlternativeCostType.GRANTED)) {
                 costCalculator.findAlternativeCastingCosts(state, action.playerId, cardDef)
                     .firstOrNull()?.let { addAll(it.additionalCosts) }
+            }
+            // Beam me up's non-mana half: return a creature. Which creatures qualify (the offer's
+            // pool) is checked in CastValidator.validateAlternativeCostSelections.
+            if (action.alternativeCostType == AlternativeCostType.BEAM_ME_UP &&
+                BeamMeUp.selected(state, action, cardRegistry, predicateEvaluator) != null
+            ) {
+                add(Costs.additional.ReturnToHand(GameObjectFilter.Creature))
             }
             // Flashback's bundled additional cost (e.g., Behold three Elementals)
             if (action.altAllows(AlternativeCostType.FLASHBACK) &&

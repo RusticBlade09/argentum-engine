@@ -1,0 +1,255 @@
+# Star Trek (TRK) - Card Checklist
+
+**Set Size:** 236 cards
+**Release Date:** November 13, 2026
+**Implemented:** 3 / 236
+> Preview snapshot from October 26, 2026. Scryfall currently marks every TRK printing as `booster: false`, so all cards appear under Extras. Refresh the bootstrap as previews and booster classifications change; this is not the final set size.
+
+| Section    | Total | Done |
+|------------|-------|------|
+| Extras     | 236   | 3    |
+
+> Verify status anytime with `scripts/card-status --set TRK` (and `--list`). That command's count is authoritative — keep this file's `Implemented:` line in sync (`just fix-backlog`) as boxes are checked. The set's mechanics are catalogued in [`mechanics.md`](mechanics.md).
+
+---
+
+### Extras
+
+> Not in boosters — starter decks, promos, bonus sheets. Counted separately by `scripts/card-status`.
+
+- [ ] 70,000 Light-Years from Home
+- [ ] A Good Day to Die
+- [ ] Adversary by Algorithm
+- [ ] All Good Things...
+- [ ] Amok Time
+- [ ] Andoria
+- [ ] Antagonist Incorporator
+- [ ] Anthropological Mission
+- [ ] Armus, Skin of Evil
+- [ ] Assault Drone
+- [ ] Assembly Specialist
+- [ ] Automated Warfare System
+- [ ] Bajor
+- [ ] Bat'leth
+- [ ] Battle-Scarred Survivalist
+- [ ] Beckett Mariner, Impetuous Ensign
+- [ ] Blastoneuron
+- [ ] Blood Crypt
+- [ ] Borg Cube
+- [ ] Brad Boimler, Eager Ensign
+- [ ] Branching Timeline
+- [ ] Breeding Pool
+- [ ] Cantankerous Captain
+- [ ] Captain Benjamin Sisko
+- [ ] Captain James T. Kirk
+- [ ] Captain Jean-Luc Picard
+- [ ] Captain Jonathan Archer
+- [ ] Captain Kathryn Janeway
+- [ ] Captain Michael Burnham
+- [ ] Captain Pike, Fullness of Time
+- [ ] Captain's Tutelage
+- [ ] Cardassia Prime
+- [ ] Cetacean Ops
+- [ ] Cha'DIch Investigator
+- [ ] Cleveland Booker, Empath
+- [ ] Cloistered Telepath
+- [ ] Cold-Blooded Crew
+- [ ] Collective Drone
+- [ ] Command Decision
+- [ ] Command Subadjunct
+- [ ] Commander Raffi Musiker
+- [ ] Common Goal
+- [ ] Conquest Mission
+- [ ] Consider the Prime Directive
+- [ ] Constable Odo
+- [ ] Crystalline Entity
+- [ ] Cybernetic Specialist
+- [ ] D'Ghor Bloodletter
+- [ ] D'Vana Tendi, Optimistic Ensign
+- [ ] D-7 Battle Cruiser
+- [ ] DOT-7 Repair Squad
+- [ ] Dahar Master
+- [ ] Dal R'El, Augment Orphan
+- [ ] Daniels, Temporal Agent
+- [ ] Data, New Life
+- [ ] Dathon and Picard at El-Adrel
+- [ ] Deanna Troi, Psychic Counsel
+- [ ] Death Is Irrelevant
+- [ ] Deep Space 9
+- [ ] Deep Space Scan
+- [ ] Dominion Saboteur
+- [ ] Dominion Supervisor
+- [ ] Dr. Beverly Crusher
+- [ ] Dr. Joseph M'Benga
+- [ ] Dr. McCoy, Surly Surgeon
+- [ ] Earth, Sector 001
+- [ ] Eject the Warp Core
+- [ ] Elim Garak, Simple Tailor
+- [ ] Emergency Medical Hologram
+- [ ] Energize
+- [ ] Engineered Explosives
+- [ ] Ensign Pavel Chekov
+- [ ] Erica Ortegas, Plucky Pilot
+- [ ] Excalbian Gamemaster
+- [ ] Exploratory Mission
+- [ ] Federation Field Medic
+- [ ] Federation Outpost
+- [ ] Federation Probe
+- [ ] Ferenginar
+- [ ] Final Frontier
+- [ ] First Contact
+- [ ] Forest
+- [ ] Free Borg Revolutionaries
+- [ ] General Chang, Cold Warrior
+- [ ] Georgiou, Terran Emperor
+- [ ] Godless Shrine
+- [ ] Gowron, Eager for Battle
+- [ ] Grand Nagus Zek
+- [ ] Gray and Adira, Forever Joined
+- [ ] Guidance Failure
+- [ ] H.M.S. Bounty, Unlikely Timeship
+- [ ] Hallowed Fountain
+- [ ] He's Dead, Jim
+- [ ] Hemmer, Fixing What Is Broken
+- [ ] Highly Illogical
+- [ ] Hit It!
+- [ ] Hive Mind Coprocessor
+- [ ] Hologram Stalker
+- [ ] Horta
+- [ ] Hoshi Sato, Exolinguist
+- [ ] Humpback Whales
+- [ ] I'm a Doctor, Not a . . .
+- [ ] Impossible Choice
+- [ ] In the Pale Moonlight
+- [ ] Infinite Diversity
+- [ ] Interstellar Effigy
+- [ ] Island
+- [ ] Jadzia Dax, Living Legacy
+- [ ] Jake Sisko, War Correspondent
+- [ ] Jett Reno, Problem Solver
+- [ ] Kai Winn, Faithless Leader
+- [ ] Khaaaaaaaaaaaannn!
+- [ ] Khan, Despot by Design
+- [ ] Khan, Vengeful Heart
+- [ ] Kira Nerys, Firebrand
+- [ ] Kirk, Commanding Officer
+- [ ] Kobayashi Maru Scenario
+- [ ] L'Rell, Fierce Visionary
+- [ ] La'An Noonien-Singh, Security
+- [ ] Lieutenant Commander Data
+- [ ] Live Long and Prosper
+- [ ] Locutus, the One Who Speaks
+- [ ] Lore, Positronic Provocateur
+- [ ] Lt. Cmdr. Geordi La Forge
+- [ ] Lwaxana Troi, Charming Guest
+- [ ] Make It So
+- [ ] Malfunctioning Holodeck
+- [x] Marooned
+- [ ] Miles O'Brien, Transporter Ops
+- [ ] Mirror Universe Intrusion
+- [ ] Moopsy
+- [ ] Mountain
+- [ ] Mr. Spock, Science Officer
+- [ ] Mugato
+- [ ] Munitions Enthusiast
+- [ ] Nyota Uhura, Communications
+- [ ] Obsidian Order Operative
+- [x] Open Communications
+- [ ] Organic Avulsion Unit
+- [ ] Orion
+- [ ] Overflow Submatrix
+- [ ] Overgrown Tomb
+- [ ] Pah-Wraith
+- [ ] Peace in Our Time
+- [ ] Perils of the Past
+- [ ] Pet Sehlat
+- [ ] Phlox, Unorthodox Doctor
+- [ ] Picard, Leading by Example
+- [ ] Plains
+- [ ] Planetary Bombardment
+- [ ] Planetary Patrol
+- [ ] Plasma Cascade
+- [ ] Primary Unimatrix Adjunct
+- [ ] Pure Energy
+- [ ] Q, Stacking the Deck
+- [ ] Qo'noS
+- [ ] Quark's Bar
+- [ ] Quark, Humble Proprietor
+- [ ] Ravenous Cosmozoan
+- [ ] Reckless Impulse
+- [ ] Relentless Drednok
+- [ ] Replicator
+- [ ] Resistance Is Futile
+- [ ] Risa
+- [ ] Rogue Artificial Intelligence
+- [ ] Romulan Bird-of-Prey
+- [ ] Romulus
+- [ ] Rules of Acquisition
+- [ ] Rutherford, Upgraded Ensign
+- [ ] Saavik, Stoic Student
+- [ ] Sacred Foundry
+- [ ] Salt Vampire
+- [ ] Saurian Explorer
+- [x] Scotty, Miracle Worker
+- [ ] Set Phasers to . . .
+- [ ] Seven of Nine
+- [ ] Seven of Nine, Unassimilated
+- [ ] Shields Up!
+- [ ] Shuttle Ace
+- [ ] Silicate Surveyor
+- [ ] Spatial Anomaly
+- [ ] Spock, Always Your Friend
+- [ ] Starfleet Academy
+- [ ] Steam Vents
+- [ ] Stomping Ground
+- [ ] Storied Veteran
+- [ ] Subcommander T'Pol
+- [ ] Subspace Anomaly
+- [ ] Support Mission
+- [ ] Suurok-Class Science Vessel
+- [ ] Swamp
+- [ ] Sylvia Tilly, Joy of Discovery
+- [ ] Syndicate Liquidators
+- [ ] Tactical Officer
+- [ ] Tea, Earl Grey, Hot
+- [ ] Tell Me What You See
+- [ ] Temple Garden
+- [ ] Temporal Conqueror
+- [ ] Test of Conviction
+- [ ] Test of Courage
+- [ ] Test of Loyalty
+- [ ] Test of Priorities
+- [ ] The Caretaker
+- [ ] The City on the Edge of Forever
+- [ ] The Doctor, EMH
+- [ ] The Duras Sisters
+- [ ] The Holodeck
+- [ ] The Inner Light
+- [ ] The Traveler
+- [ ] The Unicomplex
+- [ ] The Wrath of Khan
+- [ ] There's Coffee in that Nebula
+- [ ] Those Old Scientists
+- [ ] Tricorder
+- [ ] Troubling Tribbles
+- [ ] Type-2 Phaser
+- [ ] U.S.S. Discovery, at Black Alert
+- [ ] U.S.S. Enterprise-A, Free Spirit
+- [ ] U.S.S. Enterprise-D, Galaxy-Class
+- [ ] U.S.S. Reliant, From Hell's Heart
+- [ ] Una Chin-Riley, Number One
+- [ ] Unexplored Territory
+- [ ] V'Ger, the Intruder
+- [ ] Vash, Freelance Archaeologist
+- [ ] Vexing Drone
+- [ ] Vulcan
+- [ ] Warp Core
+- [ ] Watery Grave
+- [ ] Will Riker, First in the Field
+- [ ] Worf, Honor-Bound Warrior
+- [ ] Worf, Intelligence Contractor
+- [ ] Xenobotanist
+- [ ] Xindi Surveyors
+- [ ] Year of Hell
+- [ ] Zefram Cochrane, Warp Pioneer
+- [ ] Zero, Incorporeal Sensate

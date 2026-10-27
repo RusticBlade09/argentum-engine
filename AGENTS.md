@@ -190,6 +190,11 @@ These are the ones that have actually caused bugs here.
 
 `just --list` is the self-documenting index (groups: build, dev, e2e, env, ai).
 
+**Native Windows:** see [`docs/windows-development.md`](docs/windows-development.md) for observed
+PowerShell/Git Bash launcher issues, sandbox access failures, the `test-class` workaround, and
+verification caveats. If `gradle-locked` reports missing `shlock`, its semaphore is inactive;
+coordinate builds manually and never overlap test runs in the same checkout.
+
 **Always run heavy builds through `just`, never raw `./gradlew`.** Parallel agents each spawn their own
 daemons and thrash the box into watchdog timeouts; the `just` recipes limit the machine to two concurrent
 builds through a machine-global semaphore. The `verify` skill covers which gate to run for which change

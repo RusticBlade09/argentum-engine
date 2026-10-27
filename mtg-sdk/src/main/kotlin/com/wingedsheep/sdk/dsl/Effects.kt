@@ -2701,13 +2701,15 @@ object Effects {
      * "Distribute X +1/+1 counters among any number of target creatures you control"
      * (Grove's Bounty) — pass `DynamicAmount.XValue` and declare the targets with
      * `TargetObject(unlimited = true, dynamicMaxCount = DynamicAmount.XValue)`.
+     * Pass `upTo = true` for "distribute **up to** N counters" (Lathiel, the Bounteous Dawn).
      */
     fun DistributeCountersAmongTargets(
         totalCounters: DynamicAmount,
         counterType: CounterType = CounterType.PLUS_ONE_PLUS_ONE,
         minPerTarget: Int = 1,
+        upTo: Boolean = false,
     ): Effect =
-        com.wingedsheep.sdk.scripting.effects.DistributeCountersAmongTargetsEffect(totalCounters, counterType, minPerTarget)
+        com.wingedsheep.sdk.scripting.effects.DistributeCountersAmongTargetsEffect(totalCounters, counterType, minPerTarget, upTo)
 
     /**
      * Distribute [totalCounters] new counters among permanents matching [filter], chosen at
@@ -6289,6 +6291,13 @@ object Effects {
     /** Mark a creature as required to attack this turn if able. */
     fun MarkMustAttackThisTurn(target: EffectTarget): Effect =
         MarkMustAttackEffect(target)
+
+    /**
+     * "[target] attacks [defender] this turn if able" — the requirement names the player to attack
+     * (encore's token copies, CR 702.141a). Bound only while the creature could attack that player.
+     */
+    fun MarkMustAttackThisTurn(target: EffectTarget, defender: EffectTarget): Effect =
+        MarkMustAttackEffect(target, MustAttackWindow.ThisTurn, defender)
 
     /**
      * "That creature attacks during its controller's next combat phase if able" (Sizzling

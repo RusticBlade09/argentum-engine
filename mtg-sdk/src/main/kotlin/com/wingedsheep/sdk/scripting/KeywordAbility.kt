@@ -670,6 +670,27 @@ sealed interface KeywordAbility {
     }
 
     // =========================================================================
+    // Beam me up
+    // =========================================================================
+
+    /**
+     * Beam me up [cost] (Star Trek): "You may cast this card from your graveyard for [cost] if you
+     * also return a creature you control to its owner's hand. Then exile this spell." Only instants
+     * and sorceries can be cast this way. The return is a cost, and the spell is exiled whenever it
+     * leaves the stack.
+     *
+     * A keyword of its own rather than a [Flashback] with a bundled return cost: "can't be beamed
+     * up" (Marooned) must tell a beam-me-up return apart from every other return cost.
+     * [WebSlinging] returns a tapped creature, from hand, with no exile rider.
+     */
+    @SerialName("BeamMeUp")
+    @Serializable
+    data class BeamMeUp(val cost: ManaCost) : KeywordAbility {
+        override val keyword: Keyword = Keyword.BEAM_ME_UP
+        override val description: String = "Beam me up $cost"
+    }
+
+    // =========================================================================
     // Harmonize
     // =========================================================================
 
@@ -1648,9 +1669,10 @@ sealed interface KeywordAbility {
         fun flashback(cost: String, condition: Condition): KeywordAbility =
             Flashback(ManaCost.parse(cost), condition = condition)
 
-        /**
-         * Create Harmonize with mana cost from string (e.g., "Harmonize {5}{R}{R}").
-         */
+        /** Create Beam me up with its mana portion; the engine also requires a creature return. */
+        fun beamMeUp(cost: String): KeywordAbility = BeamMeUp(ManaCost.parse(cost))
+
+        /** Create Harmonize with mana cost from string (e.g., "Harmonize {5}{R}{R}"). */
         fun harmonize(cost: String): KeywordAbility = Harmonize(ManaCost.parse(cost))
 
         /**

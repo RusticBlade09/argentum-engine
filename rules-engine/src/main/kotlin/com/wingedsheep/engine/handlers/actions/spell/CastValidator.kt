@@ -1,5 +1,6 @@
 package com.wingedsheep.engine.handlers.actions.spell
 
+import com.wingedsheep.engine.mechanics.BeamMeUp
 import com.wingedsheep.engine.handlers.effects.AnnouncedDivision
 import com.wingedsheep.engine.state.LifePaymentPurpose
 
@@ -149,6 +150,7 @@ internal enum class CastSourceRoute {
     SELF_ZONE_PERMISSION,
     PERMANENT_FROM_GRAVEYARD,
     FLASHBACK,
+    BEAM_ME_UP,
     HARMONIZE,
     MAYHEM,
     ESCAPE,
@@ -295,6 +297,10 @@ internal class CastValidator(
             CastSourceRoute.SELF_ZONE_PERMISSION to { zoneResolver.hasMayCastSelfFromZonePermission(state, playerId, cardId, action) },
             CastSourceRoute.PERMANENT_FROM_GRAVEYARD to {
                 zoneResolver.hasMayPlayPermanentFromGraveyardPermission(state, playerId, cardId, cardComponent)
+            },
+            CastSourceRoute.BEAM_ME_UP to {
+                action.useAlternativeCost && action.alternativeCostType == AlternativeCostType.BEAM_ME_UP &&
+                    BeamMeUp.selected(state, action, cardRegistry, predicateEvaluator) != null
             },
             CastSourceRoute.FLASHBACK to { zoneResolver.hasFlashbackPermission(state, playerId, cardId) },
             // Harmonize (e.g., Channeled Dragonfire) — cast from graveyard for its harmonize cost;
@@ -587,6 +593,18 @@ internal class CastValidator(
             }
             if (bounced.first() !in SneakWindow.unblockedAttackers(state, action.playerId)) {
                 return "The chosen creature is not an unblocked attacker you control"
+            }
+        }
+
+        // Beam me up: the player returns exactly one creature from the chosen offer's pool — a
+        // creature they control that isn't flagged CANT_BE_BEAMED_UP (Marooned) and passes the
+        // granter's return filter (Scotty can't be returned for his own grant).
+        if (action.useAlternativeCost && action.alternativeCostType == AlternativeCostType.BEAM_ME_UP) {
+            val beam = BeamMeUp.selected(state, action, cardRegistry, predicateEvaluator)
+                ?: return "This beam me up ability is not available"
+            val returned = action.additionalCostPayment?.bouncedPermanents.orEmpty()
+            if (returned.size != 1 || returned.single() !in beam.creatures) {
+                return "Return one creature you control that can be beamed up"
             }
         }
 

@@ -217,6 +217,9 @@ enum class Keyword(val displayName: String) {
     STORM("Storm"),
     FLASHBACK("Flashback"),
 
+    /** Graveyard alternative cost: mana and returning a creature; exile on every stack exit. */
+    BEAM_ME_UP("Beam me up"),
+
     /**
      * Split second (CR 702.61, Time Spiral). "As long as this spell is on the stack, players can't
      * cast other spells or activate abilities that aren't mana abilities."
@@ -630,6 +633,19 @@ enum class Keyword(val displayName: String) {
      * [com.wingedsheep.sdk.dsl.CardBuilder]; the keyword itself is display-only.
      */
     UNEARTH("Unearth"),
+
+    /**
+     * Encore [cost] (CR 702.141, Commander Legends). "[Cost], Exile this card from your graveyard:
+     * For each opponent, create a token that's a copy of this card that attacks that opponent this
+     * turn if able. The tokens gain haste. Sacrifice them at the beginning of the next end step.
+     * Activate only as a sorcery."
+     *
+     * Like [EMBALM], a graveyard-activated ability composed of existing primitives — a per-opponent
+     * token copy, a permanent haste grant, a player-directed must-attack mark and a delayed
+     * sacrifice. Wired in one call via the `encore(cost)` helper on
+     * [com.wingedsheep.sdk.dsl.CardBuilder]; the keyword itself is display-only.
+     */
+    ENCORE("Encore"),
 
     /**
      * Ascend (Ixalan, CR 702.131). On a permanent spell, means "When this permanent
