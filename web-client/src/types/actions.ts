@@ -134,8 +134,9 @@ export interface CastSpellAction {
    * "SELF_ALTERNATIVE", "MIRACLE"). Used by the action menu to identify the impending cast option.
    */
   readonly alternativeCostType?: string
+  /** Server-selected beam me up granter (null = the card's printed ability); echoed unchanged. */
+  readonly beamMeUpSource?: EntityId | null
   /** Server-selected escape cost; echoed unchanged with the cast action. */
-  readonly beamMeUpAbility?: number
   readonly escapeAbility?: { readonly cost: unknown; readonly additionalCost?: unknown } | null
   /**
    * Which optional additional cost this cast declares (the server's `ChoiceSlot` name — "KICKED"

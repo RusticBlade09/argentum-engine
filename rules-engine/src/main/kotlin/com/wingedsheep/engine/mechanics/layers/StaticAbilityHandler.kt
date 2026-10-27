@@ -1086,12 +1086,6 @@ class StaticAbilityHandler(
                     affectsFilter = convertGroupFilter(ability.filter)
                 )
             }
-            is com.wingedsheep.sdk.scripting.CantBeBeamedUp -> {
-                ContinuousEffectData(
-                    modification = Modification.GrantKeyword(com.wingedsheep.sdk.core.AbilityFlag.CANT_BE_BEAMED_UP.name),
-                    affectsFilter = convertGroupFilter(ability.filter)
-                )
-            }
             is CantBeSacrificed -> {
                 ContinuousEffectData(
                     modification = Modification.GrantKeyword(com.wingedsheep.sdk.core.AbilityFlag.CANT_BE_SACRIFICED.name),

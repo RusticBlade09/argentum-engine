@@ -5,8 +5,17 @@ import com.wingedsheep.sdk.dsl.beamMeUp
 import com.wingedsheep.sdk.dsl.card
 import com.wingedsheep.sdk.model.Rarity
 
+/**
+ * Open Communications
+ * {U}
+ * Sorcery
+ * Draw a card.
+ * Beam me up {2}{U} (You may cast this card from your graveyard for {2}{U} if you also return a
+ * creature you control to its owner's hand. Then exile this spell.)
+ */
 val OpenCommunications = card("Open Communications") {
     manaCost = "{U}"
+    colorIdentity = "U"
     typeLine = "Sorcery"
     oracleText = "Draw a card.\nBeam me up {2}{U} (You may cast this card from your graveyard for {2}{U} " +
         "if you also return a creature you control to its owner's hand. Then exile this spell.)"

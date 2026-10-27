@@ -792,35 +792,89 @@ enum class CastThisWayExile {
 }
 
 /**
- * Grant a mana-bearing graveyard casting keyword to matching cards. Replaces the identical
- * flashback and mayhem grant types with a keyword axis; beam me up uses the same grant contract.
- * A null [cost] uses each card's mana cost. [condition] gates the grant, not normal spell timing.
- * [returnFilter] is matched relative to the granting permanent when paying beam me up, allowing
- * Scotty's exclusion without making that permanent globally unable to be beamed up.
+ * The graveyard-casting keyword a [GraveyardCardsHaveCastKeyword] grants. Each variant carries only
+ * the data its own keyword reads, so a field never means something for one keyword and nothing for
+ * another.
+ */
+@Serializable
+sealed interface GraveyardCastKeyword {
+    val keyword: Keyword
+
+    fun applyTextReplacement(replacer: TextReplacer): GraveyardCastKeyword = this
+
+    /** Flashback (CR 702.34), read through `FlashbackGrants`; the spell is exiled as it leaves the stack. */
+    @SerialName("Flashback")
+    @Serializable
+    data object Flashback : GraveyardCastKeyword {
+        override val keyword: Keyword get() = Keyword.FLASHBACK
+    }
+
+    /** Mayhem (CR 702.187), read through `MayhemGrants` alongside its discarded-this-turn gate. */
+    @SerialName("Mayhem")
+    @Serializable
+    data object Mayhem : GraveyardCastKeyword {
+        override val keyword: Keyword get() = Keyword.MAYHEM
+    }
+
+    /**
+     * Beam me up (TRK), read through `BeamMeUp.options`. [returnFilter] narrows which creature may be
+     * returned to pay a cost *this grant* offers, matched with the granter as the source — Scotty's
+     * "Scotty can't be beamed up to cast a spell this way" is `Creature.notSourceItself()`, which
+     * still lets Scotty be returned for a printed beam me up.
+     */
+    @SerialName("BeamMeUp")
+    @Serializable
+    data class BeamMeUp(val returnFilter: GameObjectFilter = GameObjectFilter.Creature) : GraveyardCastKeyword {
+        override val keyword: Keyword get() = Keyword.BEAM_ME_UP
+
+        override fun applyTextReplacement(replacer: TextReplacer): GraveyardCastKeyword {
+            val newFilter = returnFilter.applyTextReplacement(replacer)
+            return if (newFilter !== returnFilter) copy(returnFilter = newFilter) else this
+        }
+    }
+}
+
+/**
+ * "Each [filter] card in your graveyard has [keyword] [cost]." A whole-graveyard group grant of a
+ * graveyard-casting keyword, not a single-card grant like
+ * [com.wingedsheep.sdk.scripting.effects.GrantFlashbackEffect] (Archmage's Newt): while the granter
+ * is on the battlefield, each matching card may be cast exactly as if it had the keyword printed.
+ * A null [cost] means "equal to that card's mana cost".
+ *
+ * Gate the grant with `staticAbility { condition = … }` (Scotty's "during your main phase"); every
+ * read site resolves the wrapper against the granter. [duringYourTurnOnly] is the shared shorthand
+ * the escape and may-cast-from-graveyard grants also carry.
+ *
+ * - Lier, Disciple of the Drowned: `GraveyardCardsHaveCastKeyword(Flashback, InstantOrSorcery)`
+ * - Iroh, Grand Lotus: `GraveyardCardsHaveCastKeyword(Flashback, …withSubtype(LESSON), cost = {1}, duringYourTurnOnly = true)`
+ * - Green Goblin: `GraveyardCardsHaveCastKeyword(Mayhem, Nonland)`
+ * - Scotty, Miracle Worker: `GraveyardCardsHaveCastKeyword(BeamMeUp(Creature.notSourceItself()), Any)`
+ *
+ * @property keyword Which keyword the matching cards have, with that keyword's own data.
+ * @property filter Which graveyard cards gain it (matched against the card's characteristics).
+ * @property cost The granted cost, or null for "equal to that card's mana cost".
+ * @property duringYourTurnOnly If true, the grant is active only during the controller's turn.
  */
 @SerialName("GraveyardCardsHaveCastKeyword")
 @Serializable
 data class GraveyardCardsHaveCastKeyword(
+    val keyword: GraveyardCastKeyword,
     val filter: GameObjectFilter,
     val cost: ManaCost? = null,
     val duringYourTurnOnly: Boolean = false,
-    val keyword: Keyword = Keyword.FLASHBACK,
-    val condition: Condition? = null,
-    val returnFilter: GameObjectFilter = GameObjectFilter.Creature
 ) : StaticAbility {
-    init {
-        require(keyword in setOf(Keyword.FLASHBACK, Keyword.MAYHEM, Keyword.BEAM_ME_UP))
-    }
     override val description: String = buildString {
         if (duringYourTurnOnly) append("During your turn, e") else append("E")
-        append("ach "+filter.description+" card in your graveyard has "+keyword.displayName.lowercase())
+        val cards = filter.description.let { if (it.endsWith("card")) it else "$it card" }
+        append("ach $cards in your graveyard has ${keyword.keyword.displayName.lowercase()}")
         if (cost != null) append(" $cost")
     }
-    override fun applyTextReplacement(replacer: TextReplacer): StaticAbility = copy(
-        filter = filter.applyTextReplacement(replacer),
-        returnFilter = returnFilter.applyTextReplacement(replacer),
-        condition = condition?.applyTextReplacement(replacer)
-    )
+
+    override fun applyTextReplacement(replacer: TextReplacer): StaticAbility {
+        val newKeyword = keyword.applyTextReplacement(replacer)
+        val newFilter = filter.applyTextReplacement(replacer)
+        return if (newKeyword !== keyword || newFilter !== filter) copy(keyword = newKeyword, filter = newFilter) else this
+    }
 }
 
 /**

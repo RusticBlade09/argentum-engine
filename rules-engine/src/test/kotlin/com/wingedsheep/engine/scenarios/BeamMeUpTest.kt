@@ -51,17 +51,24 @@ class BeamMeUpTest : FunSpec({
         power = 2
         toughness = 2
         staticAbility {
+            condition = Conditions.IsYourMainPhase
             ability = GraveyardCardsHaveCastKeyword(
-                filter = GameObjectFilter.Any, keyword = Keyword.BEAM_ME_UP,
-                condition = Conditions.IsYourMainPhase,
-                returnFilter = GameObjectFilter.Creature.notSourceItself()
+                GraveyardCastKeyword.BeamMeUp(returnFilter = GameObjectFilter.Creature.notSourceItself()),
+                GameObjectFilter.Any,
             )
         }
     }
     val lock = card("Beam Test Lock") {
         manaCost = "{U}"
         typeLine = "Enchantment — Aura"
-        staticAbility { ability = CantBeBeamedUp(GroupFilter.attachedCreature()) }
+        staticAbility { ability = GrantKeyword(AbilityFlag.CANT_BE_BEAMED_UP.name, GroupFilter.attachedCreature()) }
+    }
+    val flashbackAndBeam = card("Beam Test Flashback") {
+        manaCost = "{U}"
+        typeLine = "Sorcery"
+        keywordAbility(KeywordAbility.flashback("{U}"))
+        beamMeUp("{U}")
+        spell { effect = Effects.GainLife(1) }
     }
     val counter = card("Beam Test Counter") {
         manaCost = "{U}"
@@ -74,15 +81,15 @@ class BeamMeUpTest : FunSpec({
         spell { target(com.wingedsheep.sdk.scripting.filters.unified.TargetFilter.SpellOnStack); effect = Effects.ReturnSpellToOwnersHand() }
     }
     fun driver(): GameTestDriver = GameTestDriver().also {
-        it.registerCards(TestCards.all + listOf(instant, sorcery, targeted, granter, lock, counter, remand))
+        it.registerCards(TestCards.all + listOf(instant, sorcery, targeted, granter, lock, flashbackAndBeam, counter, remand))
         it.initMirrorMatch(Deck.of("Island" to 40), skipMulligans = true, startingPlayer = 0)
         it.passPriorityUntil(Step.PRECOMBAT_MAIN)
     }
     fun offers(d: GameTestDriver, player: EntityId) = LegalActionEnumerator.create(d.cardRegistry)
         .enumerate(d.state, player).filter { (it.action as? CastSpell)?.alternativeCostType == AlternativeCostType.BEAM_ME_UP }
-    fun cast(d: GameTestDriver, player: EntityId, spell: EntityId, creatures: List<EntityId>, index: Int = 0, targets: List<ChosenTarget> = emptyList()) =
+    fun cast(d: GameTestDriver, player: EntityId, spell: EntityId, creatures: List<EntityId>, source: EntityId? = null, targets: List<ChosenTarget> = emptyList()) =
         d.submit(CastSpell(player, spell, useAlternativeCost = true, alternativeCostType = AlternativeCostType.BEAM_ME_UP,
-            beamMeUpAbility = index, additionalCostPayment = AdditionalCostPayment(bouncedPermanents = creatures),
+            beamMeUpSource = source, additionalCostPayment = AdditionalCostPayment(bouncedPermanents = creatures),
             paymentStrategy = PaymentStrategy.FromPool, targets = targets))
 
     test("returns an untapped summoning sick creature as a cost and exiles after resolution") {
@@ -190,7 +197,8 @@ class BeamMeUpTest : FunSpec({
         (offer.action as CastSpell).cardId shouldBe spell
         offer.additionalCostInfo?.validBounceTargets.orEmpty() shouldContain c
         offer.additionalCostInfo?.validBounceTargets.orEmpty() shouldNotContain source
-        cast(d, p, spell, listOf(source), targets = listOf(ChosenTarget.Player(p))).outcome.shouldBeInstanceOf<Outcome.Rejected>()
+        cast(d, p, spell, listOf(source), source = source, targets = listOf(ChosenTarget.Player(p))).outcome.shouldBeInstanceOf<Outcome.Rejected>()
+        cast(d, p, spell, listOf(c), source = source, targets = listOf(ChosenTarget.Player(p))).outcome shouldBe Outcome.Done
     }
     test("a second grant permits returning the first source and exposes independent offers") {
         val d = driver(); val p = d.activePlayer!!
@@ -233,7 +241,7 @@ class BeamMeUpTest : FunSpec({
     }
     test("Scotty grant is inactive outside its controllers main phases but printed beam me up remains") {
         val d = driver(); val p = d.activePlayer!!
-        d.putCreatureOnBattlefield(p, granter.name)
+        val source = d.putCreatureOnBattlefield(p, granter.name)
         val creature = d.putCreatureOnBattlefield(p, "Grizzly Bears")
         val granted = d.putCardInGraveyard(p, "Lightning Bolt")
         val printed = d.putCardInGraveyard(p, instant.name)
@@ -242,7 +250,24 @@ class BeamMeUpTest : FunSpec({
         val ids = offers(d, p).map { (it.action as CastSpell).cardId }
         ids shouldContain printed
         ids shouldNotContain granted
-        cast(d, p, granted, listOf(creature), targets = listOf(ChosenTarget.Player(p))).outcome.shouldBeInstanceOf<Outcome.Rejected>()
+        cast(d, p, granted, listOf(creature), source = source, targets = listOf(ChosenTarget.Player(p))).outcome.shouldBeInstanceOf<Outcome.Rejected>()
+    }
+    test("granted offers name their granter so they read apart from the printed one") {
+        val d = driver(); val p = d.activePlayer!!
+        val source = d.putCreatureOnBattlefield(p, granter.name)
+        d.putCreatureOnBattlefield(p, "Grizzly Bears")
+        d.putCardInGraveyard(p, sorcery.name); d.giveMana(p, Color.BLUE, 1)
+        val byOffer = offers(d, p).associate { (it.action as CastSpell).beamMeUpSource to it.description }
+        byOffer[null] shouldBe "Cast Beam Test Sorcery (Beam me up {U})"
+        byOffer[source] shouldBe "Cast Beam Test Sorcery (Beam me up {U} — from Beam Test Granter)"
+    }
+    test("an alternative cast that names no cost never pays beam me up without the return") {
+        val d = driver(); val p = d.activePlayer!!
+        val creature = d.putCreatureOnBattlefield(p, "Grizzly Bears")
+        val spell = d.putCardInGraveyard(p, flashbackAndBeam.name); d.giveMana(p, Color.BLUE, 1)
+        d.submit(CastSpell(p, spell, useAlternativeCost = true, paymentStrategy = PaymentStrategy.FromPool)).outcome shouldBe Outcome.Done
+        d.state.getEntity(spell)?.get<SpellOnStackComponent>()?.alternativeCost shouldBe AlternativeCostType.FLASHBACK
+        d.getPermanents(p) shouldContain creature
     }
     test("insufficient mana rejects the cast without returning a creature") {
         val d = driver(); val p = d.activePlayer!!

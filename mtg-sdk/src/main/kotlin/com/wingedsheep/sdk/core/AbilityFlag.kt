@@ -63,6 +63,13 @@ enum class AbilityFlag(val displayName: String) {
 
     // ── Sacrifice restriction flags ─────────────────────────────
     CANT_BE_SACRIFICED("Can't be sacrificed"),
+
+    // ── Cost-payment restriction flags ──────────────────────────
+    /**
+     * Can't be returned to its owner's hand to pay a beam me up cost (Marooned). Read by
+     * `BeamMeUp.options` when it builds each offer's return pool; other return costs and bounce
+     * effects ignore it.
+     */
     CANT_BE_BEAMED_UP("Can't be beamed up"),
 
     // ── State-based action exemptions ───────────────────────────

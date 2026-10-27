@@ -5,6 +5,7 @@ import com.wingedsheep.sdk.model.Rarity
 import com.wingedsheep.sdk.scripting.GameObjectFilter
 import com.wingedsheep.sdk.scripting.GrantCantBeCountered
 import com.wingedsheep.sdk.scripting.GraveyardCardsHaveCastKeyword
+import com.wingedsheep.sdk.scripting.GraveyardCastKeyword
 
 /**
  * Lier, Disciple of the Drowned
@@ -34,7 +35,7 @@ val LierDiscipleOfTheDrowned = card("Lier, Disciple of the Drowned") {
     }
 
     staticAbility {
-        ability = GraveyardCardsHaveCastKeyword(filter = GameObjectFilter.InstantOrSorcery)
+        ability = GraveyardCardsHaveCastKeyword(GraveyardCastKeyword.Flashback, GameObjectFilter.InstantOrSorcery)
     }
 
     metadata {

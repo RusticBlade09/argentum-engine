@@ -5,10 +5,13 @@
     "lifeTotal": 20,
     "hand": ["Open Communications"],
     "battlefield": [
-      {"name": "Island"}, {"name": "Island"}, {"name": "Island"},
-      {"name": "Grizzly Bears"}, {"name": "Llanowar Elves", "tapped": true}
+      {"name": "Island"}, {"name": "Island"}, {"name": "Island"}, {"name": "Mountain"},
+      {"name": "Scotty, Miracle Worker"},
+      {"name": "Grizzly Bears"},
+      {"name": "Llanowar Elves", "tapped": true},
+      {"name": "Marooned", "attachedTo": "Llanowar Elves"}
     ],
-    "graveyard": ["Open Communications"],
+    "graveyard": ["Open Communications", "Lightning Bolt"],
     "library": ["Island", "Island", "Island", "Island"]
   },
   "player2": {

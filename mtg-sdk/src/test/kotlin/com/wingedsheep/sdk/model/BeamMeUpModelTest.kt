@@ -1,7 +1,6 @@
 package com.wingedsheep.sdk.model
 
 import com.wingedsheep.sdk.core.Keyword
-import com.wingedsheep.sdk.dsl.Conditions
 import com.wingedsheep.sdk.scripting.*
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -15,16 +14,12 @@ class BeamMeUpModelTest : FunSpec({
         Json.decodeFromString<KeywordAbility>(Json.encodeToString(ability)) shouldBe ability
         ability.keyword shouldBe Keyword.BEAM_ME_UP
     }
-    test("a conditional grant with source exclusion round trips") {
+    test("a beam me up grant with a source-relative return filter round trips") {
         val grant: StaticAbility = GraveyardCardsHaveCastKeyword(
-            filter = GameObjectFilter.Any, keyword = Keyword.BEAM_ME_UP,
-            condition = Conditions.IsYourMainPhase,
-            returnFilter = GameObjectFilter.Creature.notSourceItself()
+            GraveyardCastKeyword.BeamMeUp(returnFilter = GameObjectFilter.Creature.notSourceItself()),
+            GameObjectFilter.Any,
         )
         Json.decodeFromString<StaticAbility>(Json.encodeToString(grant)) shouldBe grant
-    }
-    test("beaming prohibition round trips") {
-        val ability: StaticAbility = CantBeBeamedUp()
-        Json.decodeFromString<StaticAbility>(Json.encodeToString(ability)) shouldBe ability
+        grant.description shouldBe "Each card in your graveyard has beam me up"
     }
 })

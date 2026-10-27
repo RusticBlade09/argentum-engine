@@ -20,7 +20,8 @@ mechanics are described from Scryfall's reminder text, with no invented rule num
 
 Scaffold decisions: standalone expansion, no block; all five basics are printed, so no fallback;
 limited remains enabled by default, with `incomplete = true` keeping the set out of the default picker.
-No card implementations or reprint registrations are added by this backlog.
+The backlog was created alongside the beam me up engine support and its first cards (Open Communications,
+Scotty, Miracle Worker and Marooned).
 
 ## Mechanics and themes, largest card groups first
 
@@ -42,7 +43,7 @@ Cards: A Good Day to Die, All Good Things..., Amok Time, Automated Warfare Syste
 
 ### - [x] Play and cast from other zones (32 cards)
 
-Grant access to exiled cards, the library top, the graveyard or cards outside the game, with printed timing and cost limits. Beam me up is separately blocked.
+Grant access to exiled cards, the library top, the graveyard or cards outside the game, with printed timing and cost limits. Beam me up has its own section below.
 
 **Engine support:** ✅ `GrantMayPlayFromExile`, top-library play statics and cast permissions provide the general infrastructure; evaluate each card's restrictions when authoring.
 
@@ -124,7 +125,7 @@ Cards: Captain Michael Burnham, Cleveland Booker, Empath, Dal R'El, Augment Orph
 
 Cast an instant or sorcery from your graveyard for its beam-me-up mana cost plus returning a creature you control to hand, then exile the spell. Scotty grants it with timing and source exclusions; Marooned prohibits returning the enchanted object this way.
 
-**Engine support:** ✅ `beamMeUp(cost)`, graveyard alternative casting with a return-creature cost and exile on every stack exit. `GraveyardCardsHaveCastKeyword` supports conditional grants and source-relative return filters (Scotty); `CantBeBeamedUp` supplies the projected prohibition (Marooned). Open Communications is the first implemented example.
+**Engine support:** ✅ `beamMeUp(cost)`: graveyard alternative casting with a return-creature cost and exile on every stack exit. Grants are `GraveyardCardsHaveCastKeyword(GraveyardCastKeyword.BeamMeUp(returnFilter), filter)`, gated with `staticAbility { condition = … }` (Scotty); "can't be beamed up" is `GrantKeyword(AbilityFlag.CANT_BE_BEAMED_UP.name)` (Marooned). Implemented: Open Communications, Scotty, Miracle Worker, Marooned.
 
 Cards: Adversary by Algorithm, Energize, Final Frontier, Marooned, Open Communications, Pure Energy, Scotty, Miracle Worker, There's Coffee in that Nebula
 

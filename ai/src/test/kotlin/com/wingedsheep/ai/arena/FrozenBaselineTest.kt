@@ -173,9 +173,12 @@ class FrozenBaselineTest : FunSpec({
          * receives priority in the untap step (CR 502.4). An engine change, not a V0 one: the stream
          * loses the two passes it used to open with in that step, where a pass was the only legal
          * action. Seat 1 still wins on turn 20 at life -8 / 16.
+         *
+         * Re-blessed 2026-10-27 for beam me up adding `CastSpell.beamMeUpSource`, which only changes
+         * the recorded action text. **`LEGACY_V0` did not move.** With `", beamMeUpSource=null"`
+         * stripped from the recorded action text, this branch reproduces the previous golden
+         * `1f2cad605b93ae18` exactly. Seat 1 still wins on turn 20 at life -8 / 16.
          */
-        // Beam me up adds beamMeUpAbility=0 to every CastSpell's recorded text. Stripping that
-        // field reproduces 1f2cad605b93ae18 exactly; the winner, 20 turns and -8/16 life are unchanged.
-        private const val GOLDEN_HASH = "73919b281506d48a"
+        private const val GOLDEN_HASH = "94e1186d5a2372f8"
     }
 }

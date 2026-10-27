@@ -13,6 +13,7 @@ import com.wingedsheep.sdk.model.Deck
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.GameObjectFilter
 import com.wingedsheep.sdk.scripting.GraveyardCardsHaveCastKeyword
+import com.wingedsheep.sdk.scripting.GraveyardCastKeyword
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
@@ -29,7 +30,7 @@ class GraveyardCardsHaveMayhemTest : FunSpec({
     val goblinFormula = card("Goblin Formula Test") {
         manaCost = "{2}"
         typeLine = "Enchantment"
-        staticAbility { ability = GraveyardCardsHaveCastKeyword(keyword = com.wingedsheep.sdk.core.Keyword.MAYHEM, filter = GameObjectFilter.Nonland) }
+        staticAbility { ability = GraveyardCardsHaveCastKeyword(GraveyardCastKeyword.Mayhem, GameObjectFilter.Nonland) }
     }
 
     fun createDriver(): GameTestDriver {

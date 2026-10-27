@@ -7,6 +7,7 @@ import com.wingedsheep.sdk.dsl.firebending
 import com.wingedsheep.sdk.model.Rarity
 import com.wingedsheep.sdk.scripting.GameObjectFilter
 import com.wingedsheep.sdk.scripting.GraveyardCardsHaveCastKeyword
+import com.wingedsheep.sdk.scripting.GraveyardCastKeyword
 
 /**
  * Iroh, Grand Lotus
@@ -42,6 +43,7 @@ val IrohGrandLotus = card("Iroh, Grand Lotus") {
     //  The flashback cost is equal to that card's mana cost." (cost = null -> the card's mana cost.)
     staticAbility {
         ability = GraveyardCardsHaveCastKeyword(
+            keyword = GraveyardCastKeyword.Flashback,
             filter = GameObjectFilter.InstantOrSorcery.notSubtype(Subtype.LESSON),
             duringYourTurnOnly = true,
         )
@@ -50,6 +52,7 @@ val IrohGrandLotus = card("Iroh, Grand Lotus") {
     // "During your turn, each Lesson card in your graveyard has flashback {1}."
     staticAbility {
         ability = GraveyardCardsHaveCastKeyword(
+            keyword = GraveyardCastKeyword.Flashback,
             filter = GameObjectFilter.InstantOrSorcery.withSubtype(Subtype.LESSON),
             cost = ManaCost.parse("{1}"),
             duringYourTurnOnly = true,

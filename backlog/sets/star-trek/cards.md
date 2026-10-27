@@ -2,12 +2,12 @@
 
 **Set Size:** 236 cards
 **Release Date:** November 13, 2026
-**Implemented:** 1 / 236
+**Implemented:** 3 / 236
 > Preview snapshot from October 26, 2026. Scryfall currently marks every TRK printing as `booster: false`, so all cards appear under Extras. Refresh the bootstrap as previews and booster classifications change; this is not the final set size.
 
 | Section    | Total | Done |
 |------------|-------|------|
-| Extras     | 236   | 0    |
+| Extras     | 236   | 3    |
 
 > Verify status anytime with `scripts/card-status --set TRK` (and `--list`). That command's count is authoritative — keep this file's `Implemented:` line in sync (`just fix-backlog`) as boxes are checked. The set's mechanics are catalogued in [`mechanics.md`](mechanics.md).
 
@@ -144,7 +144,7 @@
 - [ ] Lwaxana Troi, Charming Guest
 - [ ] Make It So
 - [ ] Malfunctioning Holodeck
-- [ ] Marooned
+- [x] Marooned
 - [ ] Miles O'Brien, Transporter Ops
 - [ ] Mirror Universe Intrusion
 - [ ] Moopsy
@@ -190,7 +190,7 @@
 - [ ] Sacred Foundry
 - [ ] Salt Vampire
 - [ ] Saurian Explorer
-- [ ] Scotty, Miracle Worker
+- [x] Scotty, Miracle Worker
 - [ ] Set Phasers to . . .
 - [ ] Seven of Nine
 - [ ] Seven of Nine, Unassimilated

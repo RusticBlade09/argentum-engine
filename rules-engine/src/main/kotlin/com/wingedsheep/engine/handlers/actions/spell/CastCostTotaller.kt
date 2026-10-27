@@ -1,5 +1,6 @@
 package com.wingedsheep.engine.handlers.actions.spell
 
+import com.wingedsheep.engine.mechanics.BeamMeUp
 import com.wingedsheep.engine.mechanics.cost.spell.AnyNumberForCostReductionCostKind
 import com.wingedsheep.engine.core.AlternativeCostType
 import com.wingedsheep.engine.handlers.PredicateContext
@@ -476,15 +477,17 @@ internal class CastCostTotaller(
     private val alternativeBases: List<Pair<AlternativeCostType, AlternativeBaseQuery.() -> ManaCost?>> = listOf(
         // Flashback — printed, granted per-entity by Archmage's Newt, or granted to the whole
         // graveyard by a battlefield static (Iroh, Grand Lotus).
-        AlternativeCostType.BEAM_ME_UP to {
-            com.wingedsheep.engine.mechanics.BeamMeUp.selected(state, action, cardRegistry, predicateEvaluator)
-                ?.takeIf { zoneResolver.hasBeamMeUpPermission(state, playerId, cardId) }
-                ?.let { priced(it.cost) }
-        },
         AlternativeCostType.FLASHBACK to {
             FlashbackGrants.effectiveFlashback(state, cardId, cardDef, playerId, cardRegistry, predicateEvaluator)
                 ?.takeIf { zoneResolver.hasFlashbackPermission(state, playerId, cardId) }
                 ?.let { priced(it.cost) }
+        },
+        // Beam me up — explicit choice only: its creature return is owed only on a cast that names
+        // BEAM_ME_UP, so an untyped alternative cast must never be priced at the beam cost.
+        AlternativeCostType.BEAM_ME_UP to {
+            if (action.alternativeCostType == AlternativeCostType.BEAM_ME_UP) {
+                BeamMeUp.selected(state, action, cardRegistry, predicateEvaluator)?.let { priced(it.cost) }
+            } else null
         },
         // Harmonize — printed or granted at runtime (Songcrafter Mage). The per-creature power
         // reduction is applied afterward via alternativePayment.

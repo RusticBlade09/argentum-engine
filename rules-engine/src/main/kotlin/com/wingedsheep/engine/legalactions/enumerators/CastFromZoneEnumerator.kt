@@ -1,5 +1,6 @@
 package com.wingedsheep.engine.legalactions.enumerators
 
+import com.wingedsheep.engine.mechanics.BeamMeUp
 import com.wingedsheep.engine.state.LifePaymentPurpose
 
 import com.wingedsheep.engine.state.components.battlefield.liveStaticAbilities
@@ -1652,7 +1653,11 @@ class CastFromZoneEnumerator(
         }
     }
 
-    /** Beam me up adds a return cost and no timing permission of its own. */
+    /**
+     * Beam me up: one action per offer (the card's printed ability, and each granter such as
+     * Scotty), each owing its mana cost plus returning a creature from that offer's pool. It grants
+     * no timing permission of its own, so the spell's normal timing (or a flash grant) applies.
+     */
     private fun enumerateBeamMeUp(context: EnumerationContext, result: MutableList<LegalAction>) {
         val state = context.state
         val playerId = context.playerId
@@ -1663,10 +1668,8 @@ class CastFromZoneEnumerator(
                 Keyword.FLASH !in definition.keywords &&
                 !context.castPermissionUtils.hasGrantedFlash(state, cardId, playerId)) continue
             if (!context.legality.castRestrictionsMet(state, playerId, definition.script.castRestrictions)) continue
-            val offers = com.wingedsheep.engine.mechanics.BeamMeUp.options(
-                state, cardId, playerId, context.cardRegistry, context.predicateEvaluator
-            )
-            for ((index, beam) in offers.withIndex()) {
+            val offers = BeamMeUp.options(state, cardId, playerId, context.cardRegistry, context.predicateEvaluator)
+            for (beam in offers) {
                 if (beam.creatures.isEmpty()) continue
                 val pricing = context.costCalculator.priceByTargets(
                     state, definition, playerId, cardId, baseCost = beam.cost,
@@ -1695,9 +1698,9 @@ class CastFromZoneEnumerator(
                 ) else null
                 result.add(LegalAction(
                     actionType = "CastWithAlternativeCost",
-                    description = "Cast "+card.name+" (Beam me up)",
+                    description = "Cast ${card.name} (Beam me up ${beam.cost}${beamSourceSuffix(state, beam)})",
                     action = CastSpell(playerId, cardId, useAlternativeCost = true,
-                        alternativeCostType = AlternativeCostType.BEAM_ME_UP, beamMeUpAbility = index),
+                        alternativeCostType = AlternativeCostType.BEAM_ME_UP, beamMeUpSource = beam.sourceId),
                     affordable = affordable,
                     validTargets = targets.firstOrNull()?.validTargets,
                     requiresTargets = requirements.isNotEmpty(),
@@ -1715,6 +1718,10 @@ class CastFromZoneEnumerator(
             }
         }
     }
+
+    /** Names the granter on a granted offer, so it reads apart from the card's printed one. */
+    private fun beamSourceSuffix(state: GameState, beam: BeamMeUp.Offer): String =
+        beam.sourceId?.let { state.getEntity(it)?.get<CardComponent>()?.name }?.let { " — from $it" }.orEmpty()
 
     // =========================================================================
     // Mayhem (cards in graveyard with the Mayhem keyword, discarded this turn)

@@ -1,5 +1,6 @@
 package com.wingedsheep.engine.handlers.actions.spell
 
+import com.wingedsheep.engine.mechanics.BeamMeUp
 import com.wingedsheep.engine.handlers.effects.AnnouncedDivision
 import com.wingedsheep.engine.state.LifePaymentPurpose
 
@@ -299,7 +300,7 @@ internal class CastValidator(
             },
             CastSourceRoute.BEAM_ME_UP to {
                 action.useAlternativeCost && action.alternativeCostType == AlternativeCostType.BEAM_ME_UP &&
-                    zoneResolver.hasBeamMeUpPermission(state, playerId, cardId)
+                    BeamMeUp.selected(state, action, cardRegistry, predicateEvaluator) != null
             },
             CastSourceRoute.FLASHBACK to { zoneResolver.hasFlashbackPermission(state, playerId, cardId) },
             // Harmonize (e.g., Channeled Dragonfire) — cast from graveyard for its harmonize cost;
@@ -595,6 +596,18 @@ internal class CastValidator(
             }
         }
 
+        // Beam me up: the player returns exactly one creature from the chosen offer's pool — a
+        // creature they control that isn't flagged CANT_BE_BEAMED_UP (Marooned) and passes the
+        // granter's return filter (Scotty can't be returned for his own grant).
+        if (action.useAlternativeCost && action.alternativeCostType == AlternativeCostType.BEAM_ME_UP) {
+            val beam = BeamMeUp.selected(state, action, cardRegistry, predicateEvaluator)
+                ?: return "This beam me up ability is not available"
+            val returned = action.additionalCostPayment?.bouncedPermanents.orEmpty()
+            if (returned.size != 1 || returned.single() !in beam.creatures) {
+                return "Return one creature you control that can be beamed up"
+            }
+        }
+
         // Web-slinging (CR 702.188a): the player must return exactly one tapped creature they
         // control to its owner's hand as the non-mana portion of the alternative cost. Timing is the
         // spell's normal timing — web-slinging grants no extra permission.
@@ -647,14 +660,6 @@ internal class CastValidator(
 
     private fun validateAnnouncements(state: GameState, action: CastSpell, cardDef: CardDefinition?): String? {
         if (cardDef == null) return null
-        if (action.alternativeCostType == AlternativeCostType.BEAM_ME_UP) {
-            val beam = com.wingedsheep.engine.mechanics.BeamMeUp.selected(state, action, cardRegistry, predicateEvaluator)
-                ?: return "This beam me up ability is not available"
-            val returned = action.additionalCostPayment?.bouncedPermanents.orEmpty()
-            if (returned.size != 1 || returned.single() !in beam.creatures) {
-                return "Return one creature you control that can be beamed up"
-            }
-        }
         if (cardDef.script.castRestrictions.isNotEmpty()) {
             legality.castRestrictionsFailure(state, action.playerId, cardDef.script.castRestrictions)?.let { return it }
         }

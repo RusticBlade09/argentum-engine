@@ -224,8 +224,11 @@ data class CastSpell(
      * out as its own flag for the same reason (CR 118.9a — only one alternative cost per cast).
      */
     val alternativeCostType: AlternativeCostType? = null,
-    /** Index of the printed or granted beam-me-up ability echoed from the legal action. */
-    val beamMeUpAbility: Int = 0,
+    /**
+     * The permanent granting the beam me up this cast uses (Scotty), echoed from the legal action;
+     * null for the card's printed beam me up. Read only when [alternativeCostType] is `BEAM_ME_UP`.
+     */
+    val beamMeUpSource: EntityId? = null,
     /** The selected escape cost, echoed from a legal action and checked against current abilities. */
     val escapeAbility: com.wingedsheep.sdk.scripting.KeywordAbility.Escape? = null,
     /**

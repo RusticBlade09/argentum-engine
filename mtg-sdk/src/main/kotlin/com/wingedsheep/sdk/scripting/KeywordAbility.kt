@@ -670,11 +670,18 @@ sealed interface KeywordAbility {
     }
 
     // =========================================================================
+    // Beam me up
+    // =========================================================================
+
     /**
-     * Cast an instant or sorcery from your graveyard for [cost] and returning a creature you
-     * control to its owner's hand. Exile it whenever it leaves the stack.
-     * [Flashback] can bundle a return cost, but cannot identify beaming for prohibitions;
-     * [WebSlinging] returns a tapped creature and grants no graveyard permission or exile rider.
+     * Beam me up [cost] (Star Trek): "You may cast this card from your graveyard for [cost] if you
+     * also return a creature you control to its owner's hand. Then exile this spell." Only instants
+     * and sorceries can be cast this way. The return is a cost, and the spell is exiled whenever it
+     * leaves the stack.
+     *
+     * A keyword of its own rather than a [Flashback] with a bundled return cost: "can't be beamed
+     * up" (Marooned) must tell a beam-me-up return apart from every other return cost.
+     * [WebSlinging] returns a tapped creature, from hand, with no exile rider.
      */
     @SerialName("BeamMeUp")
     @Serializable
@@ -683,6 +690,7 @@ sealed interface KeywordAbility {
         override val description: String = "Beam me up $cost"
     }
 
+    // =========================================================================
     // Harmonize
     // =========================================================================
 
