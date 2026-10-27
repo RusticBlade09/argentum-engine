@@ -128,9 +128,9 @@ to be a Windows-specific defect in the command tool.
 - **Choose text encoding explicitly.** A Python edit using its Windows default encoding
   corrupted existing UTF-8 punctuation in comments. Specify `encoding="utf-8"` for both
   reads and writes. Windows text writes also produce CRLF; the repository's
-  [`.gitattributes`](../.gitattributes) (`* text=auto eol=lf`) normalizes text files back to
-  LF when they are staged, so CRLF in the working tree no longer turns into whole-file
-  diffs. Windows batch files (`*.bat`, `*.cmd`) are exempt and keep their CRLF bytes.
+  [`.gitattributes`](../.gitattributes) (`* text=auto`) normalizes text files to LF when
+  they are staged, so CRLF in the working tree no longer turns into whole-file diffs.
+  Scripts run through a shebang or `just` are pinned to LF on checkout, batch files to CRLF.
 
 ### Conflux cache and coverage regeneration
 
@@ -148,9 +148,9 @@ advises avoiding reserved names even with an extension.)
 
 Both causes are now fixed in the scripts:
 
-- **Safe cache names.** [`scripts/scryfall_set_cache.py`](../scripts/scryfall_set_cache.py)
-  names every set's cache `set-<code>.json` (`set-con.json`) for both writer and reader.
-  An existing bare `<code>.json` cache is still read until that set is next refreshed.
+- **Safe cache names.** [`scripts/scryfall_cache.py`](../scripts/scryfall_cache.py)
+  names every set's cache `set-<code>.json` (`set-con.json`) for every reader and writer,
+  and renames an existing bare `<code>.json` cache on first access.
 - **No silent drops.** A catalogued set with no cache entry keeps its previously published
   entry in both coverage files, and the generator reports it ("kept the published totals
   of N set(s) with no cache entry"). Refresh that set's cache to update it.

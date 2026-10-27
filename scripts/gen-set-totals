@@ -61,12 +61,13 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from card_exclusions import load_exclusions, load_reasons
-from scryfall_set_cache import CACHE_ROOT, existing_set_cache
 from set_dirs import iter_set_dirs
+from scryfall_cache import set_cache_path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUTPUT = REPO_ROOT / "game-server/src/main/resources/coverage/set-totals.json"
 PRODUCTS_OUTPUT = REPO_ROOT / "game-server/src/main/resources/coverage/set-products.json"
+CACHE_ROOT = Path.home() / ".cache" / "scryfall"
 CACHE_SCHEMA_VERSION = 9
 # Scryfall's oracle_cards bulk (downloaded by `just assay corpus`). Only read for print orientation,
 # which the per-set cache doesn't carry; missing file = no card flagged landscape.
@@ -164,8 +165,8 @@ def load_published(path: Path, empty):
 
 
 def load_cache(code: str) -> dict | None:
-    path = existing_set_cache(code)
-    if path is None:
+    path = set_cache_path(code, CACHE_ROOT)
+    if not path.is_file():
         return None
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -236,7 +237,7 @@ def main() -> int:
 
     if args.refresh:
         missing = [code for code, _ in sets
-                   if existing_set_cache(code) is None
+                   if not set_cache_path(code, CACHE_ROOT).is_file()
                    or is_stale(load_cache(code) or {})]
         if missing:
             print(f"note: {len(missing)} set(s) missing/stale in cache: {' '.join(missing)}", file=sys.stderr)
