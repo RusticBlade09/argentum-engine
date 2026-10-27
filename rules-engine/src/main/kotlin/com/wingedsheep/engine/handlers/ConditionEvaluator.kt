@@ -359,6 +359,7 @@ class ConditionEvaluator(
             is SourceIsBlockingOrBlockedBySubtype,
             SourceIsModified,
             is com.wingedsheep.sdk.scripting.conditions.SourceDealtDamageToPlayerThisTurn,
+            is com.wingedsheep.sdk.scripting.conditions.SourceAttackedPlayerThisTurn,
             SourceIsRingBearer,
             SourcePlottedOnPriorTurn,
             SourceReturnedAsEnchantment,
@@ -597,6 +598,24 @@ class ConditionEvaluator(
                     state.getEntity(sourceId)
                         ?.get<com.wingedsheep.engine.state.components.battlefield.DealtDamageToThisGameComponent>()
                         ?.dealtDamageToOnTurn(playerId, state.turnNumber) == true
+            }
+
+            // The source's per-turn attack record. On the battlefield it must describe the current
+            // object (CR 400.7); off it, the record re-attached as the source left is its last
+            // known information (CR 608.2h) and is dropped on any further zone change.
+            is com.wingedsheep.sdk.scripting.conditions.SourceAttackedPlayerThisTurn -> {
+                val playerId = resolvePlayer(state, condition.player, ctx)
+                val sourceId = ctx.sourceId
+                val record = sourceId?.let { state.getEntity(it) }
+                    ?.get<com.wingedsheep.engine.state.components.combat.TimesAttackedThisTurnComponent>()
+                val attacked = when {
+                    record == null || sourceId == null -> emptySet()
+                    sourceId in state.getBattlefield() ->
+                        record.attackedPlayersFor(state.turnNumber, state.objectRef(sourceId))
+                    record.turnNumber == state.turnNumber -> record.attackedPlayerIds
+                    else -> emptySet()
+                }
+                playerId != null && playerId in attacked
             }
 
             is SourceIsBlockingOrBlockedBySubtype -> evaluateSourceIsBlockingOrBlockedBySubtypeCtx(state, condition, ctx)

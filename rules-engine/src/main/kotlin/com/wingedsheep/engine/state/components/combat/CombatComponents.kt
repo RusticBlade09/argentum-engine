@@ -112,16 +112,30 @@ data object AttackedThisCombatComponent : Component
  * attacking was never declared and is never stamped. Backs
  * [com.wingedsheep.sdk.scripting.values.EntityNumericProperty.TimesAttackedThisTurn]
  * (Moraug, Fury of Akoum).
+ *
+ * [attackedPlayerIds] are the players this creature was declared attacking directly this turn,
+ * unioned across combats — a planeswalker or battle defender adds nobody. Backs
+ * [com.wingedsheep.sdk.scripting.conditions.SourceAttackedPlayerThisTurn] (Angel of Destiny).
+ * When the creature leaves the battlefield the component is re-attached to the card as last known
+ * information (CR 608.2h) for abilities that outlive it, and dropped on its next zone change.
  */
 @Serializable
 data class TimesAttackedThisTurnComponent(
     val turnNumber: Int,
     val count: Int,
-    val attackerObject: com.wingedsheep.engine.state.ObjectRef?
+    val attackerObject: com.wingedsheep.engine.state.ObjectRef?,
+    val attackedPlayerIds: Set<EntityId> = emptySet()
 ) : Component {
+    private fun describes(turn: Int, current: com.wingedsheep.engine.state.ObjectRef?): Boolean =
+        turnNumber == turn && attackerObject == current
+
     /** This tally's count if it still describes [current] on [turn], else 0. */
     fun countFor(turn: Int, current: com.wingedsheep.engine.state.ObjectRef?): Int =
-        if (turnNumber == turn && attackerObject == current) count else 0
+        if (describes(turn, current)) count else 0
+
+    /** The players attacked directly if this tally still describes [current] on [turn], else none. */
+    fun attackedPlayersFor(turn: Int, current: com.wingedsheep.engine.state.ObjectRef?): Set<EntityId> =
+        if (describes(turn, current)) attackedPlayerIds else emptySet()
 }
 
 /**
