@@ -127,11 +127,38 @@ to be a Windows-specific defect in the command tool.
   disable the test or silently mark the full gate as passed.
 - **Choose text encoding explicitly.** A Python edit using its Windows default encoding
   corrupted existing UTF-8 punctuation in comments. Specify `encoding="utf-8"` for both
-  reads and writes, and preserve existing line endings. Windows text writes also produced
-  CRLF-only diff churn. For an intentional CRLF file,
-  `git -c core.whitespace=cr-at-eol diff --check` distinguishes line-ending carriage returns
-  from other trailing whitespace; it does not fix a noisy diff or justify rewriting
-  unrelated files.
+  reads and writes. Windows text writes also produce CRLF; the repository's
+  [`.gitattributes`](../.gitattributes) (`* text=auto`) normalizes text files to LF when
+  they are staged, so CRLF in the working tree no longer turns into whole-file diffs.
+  Scripts run through a shebang or `just` are pinned to LF on checkout, batch files to CRLF.
+
+### Conflux cache and coverage regeneration
+
+During the October 27, 2026 TRK update, `scripts/gen-set-totals` dropped Conflux (`CON`)
+and its 145 cards from `game-server/src/main/resources/coverage/set-totals.json`.
+Both that generator and `scripts/card-status` then cached each set as
+`~/.cache/scryfall/<code>.json`, so Conflux's cache was `con.json` — a reserved device
+name. On this Windows build (10.0.19045), native Python 3.13 reported
+`os.path.isreserved(...) == True`; `Path.write_text(...)` returned without error, but no
+file was created. The generator skipped the set with no cache and rewrote the whole
+output without it. (Node could create an ordinary `con.json`; the failure is specific to
+the API/runtime, but
+[Microsoft's filename guidance](https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file)
+advises avoiding reserved names even with an extension.)
+
+Both causes are now fixed in the scripts:
+
+- **Safe cache names.** [`scripts/scryfall_cache.py`](../scripts/scryfall_cache.py)
+  names every set's cache `set-<code>.json` (`set-con.json`) for every reader and writer,
+  and renames an existing bare `<code>.json` cache on first access.
+- **No silent drops.** A catalogued set with no cache entry keeps its previously published
+  entry in both coverage files, and the generator reports it ("kept the published totals
+  of N set(s) with no cache entry"). Refresh that set's cache to update it.
+
+The string `"CON"` inside JSON is harmless and remains the set's code. When reviewing a
+regeneration, compare set codes and card data rather than line counts:
+`card-status --refresh` refreshes every selected set (all by default), and `gen-set-totals`
+rewrites every cached set.
 
 These notes document observed limitations. They do not waive the verification requirements
 or the rule against changing someone else's in-flight work.
