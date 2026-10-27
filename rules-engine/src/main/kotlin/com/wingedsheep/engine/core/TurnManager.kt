@@ -597,6 +597,7 @@ class TurnManager(
         // redirect below, so an inserted upkeep step (Obeka) on a turn past the floor ends them too.
         if (currentStep == Step.UPKEEP) {
             state = cleanupPhaseManager.expireEndOfYourNextUpkeepEffects(state, activePlayer)
+            state = ControlHistory.endUpkeep(state, state.sharedTurnTeam(activePlayer))
         }
 
         // Leaving an inserted additional upkeep step (Obeka, Splitter of Seconds). Per CR 500.10
@@ -668,7 +669,8 @@ class TurnManager(
                     StepChangedEvent(Step.UPKEEP)
                 )
 
-                redirectedState = redirectedState.withPriority(activePlayer)
+                redirectedState = ControlHistory.beginUpkeep(redirectedState, redirectedState.sharedTurnTeam(activePlayer))
+                    .withPriority(activePlayer)
                 return ExecutionResult.success(redirectedState, events)
             }
         }
@@ -793,6 +795,7 @@ class TurnManager(
                 // beginning of their upkeep (before upkeep triggers resolve, so a re-applying
                 // upkeep trigger like Erhnam Djinn's re-grants afterward). Xenic Poltergeist's
                 // dynamic animate reverts here.
+                newState = ControlHistory.beginUpkeep(newState, newState.sharedTurnTeam(activePlayer))
                 newState = cleanupPhaseManager.expireUntilYourNextUpkeepEffects(newState, activePlayer)
                 newState = newState.withPriority(activePlayer)
             }
