@@ -133,5 +133,45 @@ to be a Windows-specific defect in the command tool.
   from other trailing whitespace; it does not fix a noisy diff or justify rewriting
   unrelated files.
 
+### Conflux cache (`con.json`) and coverage regeneration
+
+During the October 27, 2026 TRK update, `scripts/gen-set-totals` dropped Conflux (`CON`)
+and its 145 cards from `game-server/src/main/resources/coverage/set-totals.json`.
+Both that generator and `scripts/card-status` use `~/.cache/scryfall/con.json` for
+Conflux. The generator skips sets whose cache is not a regular file, then replaces the
+entire output; a missing cache can therefore remove an already-published set.
+
+The filename behavior depends on the API/runtime. On this Windows build (10.0.19045):
+
+- Node successfully created, listed and read an ordinary `con.json` in a temporary folder.
+- Native Python 3.13 reported `os.path.isreserved(...) == True`. A
+  `Path.write_text(..., encoding="utf-8")` call returned, but `Path.is_file()` was false
+  and the directory remained empty. A separate read attempt stalled and was interrupted.
+  This reproduces how the Python cache writer can appear to succeed without leaving a
+  cache file for the generator.
+
+Thus, saying that Windows can never store a file named `con.json` is too broad; successfully
+creating it with another tool also does not prove the Python scripts can use it.
+[Microsoft's filename guidance](https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file)
+advises avoiding reserved device names even when followed by an extension. The string
+`"CON"` inside JSON is harmless and must remain the set's code.
+
+When reviewing a regeneration:
+
+1. Compare set codes and card data, not just line counts. `card-status --refresh` refreshes
+   every selected set (all by default), and `gen-set-totals` rewrites all cached sets.
+2. If Conflux disappeared, restore its complete object from the last known-good Git version
+   into `set-totals.json`, preserving other intended updates and the release-date ordering.
+   This restores the page's data but does not repair the cache writer.
+3. Preserve UTF-8 and LF in both coverage JSON files. Python's default Windows text writes
+   can convert the whole file to CRLF. Use `newline="\n"` when writing LF output.
+   `git diff --ignore-space-at-eol --histogram` helps distinguish content changes from
+   line-ending churn and misleading matches between repetitive JSON entries.
+
+A durable fix would give cache files a safe prefix (for example `set-con.json`) consistently
+across readers and writers, migrate existing caches, and prevent regeneration from silently
+dropping existing sets when cache entries are missing. These script changes are not implemented
+by this documentation update.
+
 These notes document observed limitations. They do not waive the verification requirements
 or the rule against changing someone else's in-flight work.
