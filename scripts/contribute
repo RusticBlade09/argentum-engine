@@ -587,7 +587,13 @@ def main() -> int:
         go = input(f"  {accent('❯')} {bold('Start building?')} {dim('(Y/n)')} ").strip().lower()
     except EOFError:
         go = "n"
-    cmd = [str(SCRIPTS / "card-loop"), str(target["path"]), model_arg] + (["--local"] if local else [])
+    flags = [model_arg] + (["--local"] if local else [])
+    if os.name == "nt":
+        # Let just invoke the Bash recipe; Windows cannot exec the script's shebang. The recipe pastes
+        # its arguments in unquoted, so pass the repo-relative path to keep spaces in the repo path out.
+        cmd = ["just", "card-loop", target["path"].relative_to(repo).as_posix()] + flags
+    else:
+        cmd = [str(SCRIPTS / "card-loop"), str(target["path"])] + flags
     if go and not go.startswith("y"):
         shown = " ".join(f"'{a}'" if " " in a else a for a in cmd).replace(str(SCRIPTS) + "/", "scripts/")
         out(f"\n  No problem. To start later:\n     {accent(shown)}\n")
@@ -595,9 +601,7 @@ def main() -> int:
     out()
     os.chdir(repo)
     if os.name == "nt":
-        # Let just invoke the Bash recipe; Windows cannot exec the script's shebang.
-        return subprocess.call(["just", "card-loop", target["path"].as_posix(), model_arg]
-                               + (["--local"] if local else []))
+        return subprocess.call(cmd)
     os.execv(cmd[0], cmd)
 
 
