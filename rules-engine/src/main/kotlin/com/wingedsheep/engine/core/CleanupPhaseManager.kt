@@ -72,7 +72,7 @@ import com.wingedsheep.engine.state.components.player.CardsLeftGraveyardThisTurn
 import com.wingedsheep.engine.state.components.player.PermanentsPutIntoHandFromBattlefieldThisTurnComponent
 import com.wingedsheep.engine.state.components.player.CreatureCardsPutIntoGraveyardThisTurnComponent
 import com.wingedsheep.engine.state.components.player.CardsPutIntoGraveyardThisTurnComponent
-import com.wingedsheep.engine.state.components.player.CardsPutIntoGraveyardFromLibraryThisTurnComponent
+import com.wingedsheep.engine.state.components.player.CardsPutIntoGraveyardByOriginThisTurnComponent
 import com.wingedsheep.engine.state.components.player.LandDropsComponent
 import com.wingedsheep.engine.state.components.player.PermanentsEnteredUnderControlThisTurnComponent
 import com.wingedsheep.engine.state.components.player.LifeGainedAmountThisTurnComponent
@@ -107,6 +107,7 @@ import com.wingedsheep.engine.state.components.player.OpponentCreaturesExiledThi
 import com.wingedsheep.engine.state.components.player.PlayerEffectRemoval
 import com.wingedsheep.engine.state.components.player.MayCastCreaturesFromGraveyardWithForageComponent
 import com.wingedsheep.engine.state.components.player.PlayerHexproofComponent
+import com.wingedsheep.engine.state.components.player.PlayerHexproofFromComponent
 import com.wingedsheep.engine.state.components.player.PlayerShroudComponent
 import com.wingedsheep.engine.state.components.player.SpellsCantBeCounteredComponent
 import com.wingedsheep.engine.state.components.player.PlayerTurnHijackedComponent
@@ -858,6 +859,12 @@ class CleanupPhaseManager(
                 if (hexproof?.removeOn == PlayerEffectRemoval.EndOfTurn) {
                     result = result.without<PlayerHexproofComponent>()
                 }
+                val hexproofFrom = result.get<PlayerHexproofFromComponent>()
+                if (hexproofFrom != null && hexproofFrom.grants.any { it.removeOn == PlayerEffectRemoval.EndOfTurn }) {
+                    val lasting = hexproofFrom.grants.filter { it.removeOn != PlayerEffectRemoval.EndOfTurn }
+                    result = if (lasting.isEmpty()) result.without<PlayerHexproofFromComponent>()
+                        else result.with(PlayerHexproofFromComponent(lasting))
+                }
                 val protection = result.get<PlayerProtectionComponent>()
                 if (protection?.removeOn == PlayerEffectRemoval.EndOfTurn) {
                     result = result.without<PlayerProtectionComponent>()
@@ -974,8 +981,8 @@ class CleanupPhaseManager(
                 if (result.has<CreatureCardsPutIntoGraveyardThisTurnComponent>()) {
                     result = result.without<CreatureCardsPutIntoGraveyardThisTurnComponent>()
                 }
-                if (result.has<CardsPutIntoGraveyardFromLibraryThisTurnComponent>()) {
-                    result = result.without<CardsPutIntoGraveyardFromLibraryThisTurnComponent>()
+                if (result.has<CardsPutIntoGraveyardByOriginThisTurnComponent>()) {
+                    result = result.without<CardsPutIntoGraveyardByOriginThisTurnComponent>()
                 }
                 if (result.has<CardsPutIntoGraveyardThisTurnComponent>()) {
                     result = result.without<CardsPutIntoGraveyardThisTurnComponent>()
@@ -1269,10 +1276,11 @@ class CleanupPhaseManager(
         }
 
         // 7a. Expire granted static abilities (e.g. Full Steam Ahead's "can't be blocked by
-        // more than one creature") with EndOfTurn duration.
+        // more than one creature") with EndOfTurn duration, and one-shot NextUse grants never
+        // used (Chainer, Nightmare Adept's "cast a creature spell from your graveyard this turn").
         if (newState.grantedStaticAbilities.isNotEmpty()) {
             val remainingGrants = newState.grantedStaticAbilities.filter { grant ->
-                grant.duration !is Duration.EndOfTurn
+                grant.duration !is Duration.EndOfTurn && grant.duration !is Duration.NextUse
             }
             newState = newState.copy(grantedStaticAbilities = remainingGrants)
         }

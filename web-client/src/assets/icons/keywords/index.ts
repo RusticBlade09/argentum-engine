@@ -139,6 +139,8 @@ export const counterManaClass: Record<string, string> = {
   BLIGHT: 'counter-skull',
   COIN: 'counter-charge',
   FLOOD: 'counter-flood',
+  FUSE: 'counter-charge',
+  LUCK: 'counter-charge',
   CHORUS: 'counter-charge',
   DREAM: 'counter-charge',
   QUEST: 'counter-lore',

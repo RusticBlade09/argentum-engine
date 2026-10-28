@@ -1057,7 +1057,15 @@ object Conditions {
      * Journey.
      */
     val AnyEnteredOrWasCastFromExile: ConditionInterface =
-        com.wingedsheep.sdk.scripting.conditions.AnyEnteredOrWasCastFromExile
+        com.wingedsheep.sdk.scripting.conditions.AnyEnteredOrWasCastFrom(Zone.EXILE)
+
+    /**
+     * "If one or more of them entered from a graveyard or was cast from a graveyard" — the
+     * graveyard twin of [AnyEnteredOrWasCastFromExile], same batch capture and timing. Kotis,
+     * Sibsig Champion.
+     */
+    val AnyEnteredOrWasCastFromGraveyard: ConditionInterface =
+        com.wingedsheep.sdk.scripting.conditions.AnyEnteredOrWasCastFrom(Zone.GRAVEYARD)
 
     /**
      * If this permanent was cast from your hand.
@@ -2682,7 +2690,15 @@ object Conditions {
      * The Sibsig Ceremony).
      */
     val TriggeringEntityWasCast: ConditionInterface =
-        com.wingedsheep.sdk.scripting.conditions.TriggeringEntityWasCast
+        com.wingedsheep.sdk.scripting.conditions.TriggeringEntityWasCast()
+
+    /**
+     * If you cast the triggering entity from [zone] — `TriggeringEntityWasCastFrom(Zone.HAND)` is
+     * "if you cast it from your hand". Negate it for "if you didn't cast it from your hand"
+     * (Chainer, Nightmare Adept), which also holds when the permanent wasn't cast at all.
+     */
+    fun TriggeringEntityWasCastFrom(zone: Zone): ConditionInterface =
+        com.wingedsheep.sdk.scripting.conditions.TriggeringEntityWasCast(zone = zone)
 
     /**
      * Intervening-if: "if no mana was spent to cast it" about the triggering spell (Boromir, Warden

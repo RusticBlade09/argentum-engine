@@ -481,7 +481,10 @@ class CastSpellEnumerator(
             val evokeAbility = cardDef.keywordAbilities.filterIsInstance<KeywordAbility.Evoke>().firstOrNull()
             val canAffordEvoke = if (evokeAbility != null) {
                 val evokeMana = context.costCalculator.calculateMinPossibleCost(state, cardDef, playerId, cardId, baseCost = evokeAbility.cost)
-                context.manaSolver.canPay(state, playerId, evokeMana, precomputedSources = cachedSources)
+                context.manaSolver.canPay(state, playerId, evokeMana, precomputedSources = cachedSources) &&
+                    evokeAbility.additionalCost.let { cost ->
+                        cost == null || canPayAdditionalCostForAlternative(context, state, playerId, cardId, cost)
+                    }
             } else false
 
             // Check impending cost (alternative cost from Impending keyword)
@@ -819,11 +822,19 @@ class CastSpellEnumerator(
                     context.manaSolver.solve(state, playerId, evokeMana, precomputedSources = cachedSources)
                         ?.sources?.map { it.entityId }
                 }
+                val evokeExtra = evokeAbility.additionalCost
                 SelfAltCostResult(
                     manaCostString = evokeMana.toString(),
                     manaCostByTargetCount = evokeManaPricing.byCountStrings(),
                     autoTapPreview = evokePreview,
-                    additionalCostInfo = null
+                    additionalCostInfo = evokeExtra?.let { additionalCostInfoForAlternative(context, state, playerId, cardId, it) },
+                    // A purely non-mana evoke cost names the cost ("exile a green card from your
+                    // hand") rather than a meaningless "{0}".
+                    label = when {
+                        evokeExtra == null -> evokeMana.toString()
+                        evokeMana.cmc == 0 && !evokeMana.hasX -> evokeExtra.description.replaceFirstChar { it.lowercaseChar() }
+                        else -> "$evokeMana, ${evokeExtra.description.replaceFirstChar { it.lowercaseChar() }}"
+                    },
                 )
             } else null
 
@@ -1171,10 +1182,11 @@ class CastSpellEnumerator(
                         if (evokeCostResult != null) {
                             result.add(LegalAction(
                                 actionType = "CastWithAlternativeCost",
-                                description = "Evoke ${cardComponent.name} (${evokeCostResult.manaCostString})",
+                                description = "Evoke ${cardComponent.name} (${evokeCostResult.label})",
                                 action = CastSpell(playerId, cardId, targets = listOf(autoSelectedTarget), useAlternativeCost = true, alternativeCostType = AlternativeCostType.EVOKE),
                                 manaCostString = evokeCostResult.manaCostString,
                                 manaCostByTargetCount = evokeCostResult.manaCostByTargetCount,
+                                additionalCostInfo = evokeCostResult.additionalCostInfo,
                                 autoTapPreview = evokeCostResult.autoTapPreview
                             ))
                         }
@@ -1310,7 +1322,7 @@ class CastSpellEnumerator(
                         if (evokeCostResult != null) {
                             result.add(LegalAction(
                                 actionType = "CastWithAlternativeCost",
-                                description = "Evoke ${cardComponent.name} (${evokeCostResult.manaCostString})",
+                                description = "Evoke ${cardComponent.name} (${evokeCostResult.label})",
                                 action = CastSpell(playerId, cardId, useAlternativeCost = true, alternativeCostType = AlternativeCostType.EVOKE),
                                 validTargets = firstReqInfo.validTargets,
                                 requiresTargets = true,
@@ -1325,6 +1337,7 @@ class CastSpellEnumerator(
                                 xConstrainsTargetCountExactly = firstReqInfo.xConstrainsCountExactly,
                                 manaCostString = evokeCostResult.manaCostString,
                                 manaCostByTargetCount = evokeCostResult.manaCostByTargetCount,
+                                additionalCostInfo = evokeCostResult.additionalCostInfo,
                                 autoTapPreview = evokeCostResult.autoTapPreview
                             ))
                         }
@@ -1447,10 +1460,11 @@ class CastSpellEnumerator(
                 if (evokeCostResult != null) {
                     result.add(LegalAction(
                         actionType = "CastWithAlternativeCost",
-                        description = "Evoke ${cardComponent.name} (${evokeCostResult.manaCostString})",
+                        description = "Evoke ${cardComponent.name} (${evokeCostResult.label})",
                         action = CastSpell(playerId, cardId, useAlternativeCost = true, alternativeCostType = AlternativeCostType.EVOKE),
                         manaCostString = evokeCostResult.manaCostString,
                         manaCostByTargetCount = evokeCostResult.manaCostByTargetCount,
+                        additionalCostInfo = evokeCostResult.additionalCostInfo,
                         autoTapPreview = evokeCostResult.autoTapPreview
                     ))
                 }
@@ -1512,7 +1526,7 @@ class CastSpellEnumerator(
                 context,
                 applySpellWaterbendMetadata(
                     context,
-                    expandSacrificeDefinedX(context, expandChoiceAdditionalCosts(context, result))
+                    priceDivisionByX(context, expandSacrificeDefinedX(context, expandChoiceAdditionalCosts(context, result)))
                 )
             )
         )
@@ -1701,6 +1715,41 @@ class CastSpellEnumerator(
             }
         }
         return out
+    }
+
+    /**
+     * Post-process: a spell with `{X}` in its mana cost whose announced division reads that X —
+     * "X damage divided as you choose among up to two target creatures and/or planeswalkers. If X
+     * is 6 or more, … twice X damage divided … instead" (Shatterskull Smashing). The caster
+     * announces X before choosing targets and dividing (CR 601.2b, 601.2d), so no single total can
+     * be offered up front: each offer carries [LegalAction.totalDamageByX], the total for every X
+     * from its `minX` to its `maxAffordableX`, and the client divides the entry for the X it chose.
+     * A total that doesn't move with X (Meteor Swarm's 8) gets no table. The validator evaluates
+     * the same amount with the announced X ([CastValidator]).
+     */
+    private fun priceDivisionByX(
+        context: EnumerationContext,
+        actions: List<LegalAction>
+    ): List<LegalAction> = actions.map { la ->
+        val cs = la.action as? CastSpell
+        val maxX = la.maxAffordableX
+        if (cs == null || !la.hasXCost || !la.requiresDamageDistribution || maxX == null || cs.xValue != null) {
+            return@map la
+        }
+        val cardDef = context.state.getEntity(cs.cardId)?.get<CardComponent>()?.name
+            ?.let { context.cardRegistry.getCard(it) } ?: return@map la
+        val script = CastCharacteristics.scriptForCast(cardDef, cs)
+        val spellEffect = script.kickerSpellEffect?.takeIf { cs.declaredCostSlot != null } ?: script.spellEffect
+        val division = AnnouncedDivision.ofSpell(spellEffect) ?: return@map la
+        val byX = (la.minX..maxX).associateWith { x ->
+            AnnouncedDivision.total(
+                context.state, division,
+                com.wingedsheep.engine.handlers.EffectContext(sourceId = cs.cardId, controllerId = cs.playerId, xValue = x),
+                context.predicateEvaluator.amounts,
+                script.castTimeCaptures
+            )
+        }
+        if (byX.values.distinct().size <= 1) la else la.copy(totalDamageByX = byX)
     }
 
     /**
@@ -2048,7 +2097,7 @@ class CastSpellEnumerator(
             if (context.cantCastSpell(cardId)) continue
 
             val cardDef = context.cardRegistry.getCard(cardComponent.name) ?: continue
-            val spellSubtypes = cardDef.typeLine.subtypes.map { it.value }
+            val spellSubtypes = cardDef.characteristicTypeLine.subtypes.map { it.value }
             if (spellSubtypes.isEmpty()) continue
 
             // Splice grants no timing permission of its own — the spell is cast at its normal timing.

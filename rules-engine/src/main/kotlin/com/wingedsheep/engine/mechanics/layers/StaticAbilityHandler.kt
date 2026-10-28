@@ -301,7 +301,12 @@ class StaticAbilityHandler(
         // the static abilities of every currently-unlocked face (CR 709.5). Routing through
         // RoomFaceStatics is what lets a Room face's continuous statics project once its door is
         // unlocked; the component is re-baked on later unlocks by RoomDoorUnlocker.
-        val allStaticAbilities = RoomFaceStatics.activeStaticAbilities(container, cardDefinition) +
+        // A printed "[this] is also a [subtype]" is a CDA already folded into the entity's own type
+        // line ([CardDefinition.selfDefinedSubtypes], CR 604.3), so it isn't projected again as a
+        // timestamped layer-4 effect — CDAs apply before every other effect in their layer.
+        val foldedCdas = cardDefinition.selfDefinedSubtypes
+        val allStaticAbilities = RoomFaceStatics.activeStaticAbilities(container, cardDefinition)
+            .filterNot { it is GrantSubtype && it.filter == GroupFilter.source() && com.wingedsheep.sdk.core.Subtype(it.subtype) in foldedCdas } +
             container.get<CardComponent>()?.copyStaticAbilities.orEmpty() +
             printedBandsWithOther(cardDefinition)
 
@@ -656,7 +661,7 @@ class StaticAbilityHandler(
     /**
      * Convert SetLandTypesForGroup to two continuous effects, realizing CR 305.7 for a whole
      * group of lands (Blood Moon / Magus of the Moon / Zhao's "nonbasic lands are Mountains").
-     * - Layer 4 (TYPE): SetBasicLandTypes replaces the old basic land subtypes with the new ones.
+     * - Layer 4 (TYPE): SetBasicLandTypes replaces every old land type (CR 205.3i) with the new ones.
      * - Layer 6 (ABILITY): RemoveAllAbilities strips the lands' printed abilities. The new type's
      *   intrinsic mana ability (Mountain → "{T}: Add {R}") is derived from the projected subtypes
      *   by IntrinsicManaAbilities and survives the ability suppression, so the lands still tap for
@@ -737,15 +742,15 @@ class StaticAbilityHandler(
                 modification = Modification.GrantStaticAbility(ability),
                 affectsFilter = AffectsFilter.Self,
             )
-            // Read at cleanup from the holder's projected statics (MaximumHandSize), so the
-            // printed, resolved-effect and GrantStaticAbility routes all meet in Layer 6.
             // Read at the counter-placement chokepoint from the holder's projected statics
             // (ReplacementEffectUtils.applyCounterPlacementModifiers).
             is com.wingedsheep.sdk.scripting.MaxCounters -> ContinuousEffectData(
                 modification = Modification.GrantStaticAbility(ability),
                 affectsFilter = AffectsFilter.Self,
             )
-            is NoMaximumHandSize -> ContinuousEffectData(
+            // Read at cleanup from the holder's projected statics (MaximumHandSize), so the
+            // printed, resolved-effect and GrantStaticAbility routes all meet in Layer 6.
+            is NoMaximumHandSize, is com.wingedsheep.sdk.scripting.ModifyMaximumHandSize -> ContinuousEffectData(
                 modification = Modification.GrantStaticAbility(ability),
                 affectsFilter = AffectsFilter.Self,
             )
@@ -1289,6 +1294,7 @@ class StaticAbilityHandler(
             is GrantWarpToCardsInHand,
             is GrantEmergeToOwnSpells,
             is GrantMiracleToCardsInHand,
+            is com.wingedsheep.sdk.scripting.GrantCyclingToCardsInHand,
             is MayCastFromGraveyard,
             is GraveyardCardsHaveCastKeyword,
             is com.wingedsheep.sdk.scripting.GraveyardCardsHaveEscape,
@@ -1549,6 +1555,7 @@ class StaticAbilityHandler(
             is com.wingedsheep.sdk.scripting.EntersWithRevealCounters,
             is com.wingedsheep.sdk.scripting.EntersWithExileCounters,
             is com.wingedsheep.sdk.scripting.OnEnterRun,
+            is com.wingedsheep.sdk.scripting.EntersOnlyIfPaid,
             // Transform-time: read off the new face by flipDfcInPlace as it turns over (CR 712.20).
             is com.wingedsheep.sdk.scripting.AttachToPlayerAsTransforms,
             is com.wingedsheep.sdk.scripting.BecomesCopyAsTransforms -> false

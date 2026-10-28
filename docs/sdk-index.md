@@ -351,7 +351,7 @@ Families:
 - `AllConditions(conditions: List<Condition>)` — Condition: All of the sub-conditions must be met (AND)
 - `AnotherPermanentWithSameNameAsTarget(targetIndex: Int)` — Condition: "if another permanent with the same name as target is on the battlefield".
 - `AnyCondition(conditions: List<Condition>)` — Condition: Any of the sub-conditions must be met (OR)
-- `AnyEnteredOrWasCastFromExile` — Condition: "if one or more of them entered from exile or was cast from exile." The batch-enters, any-of counterpart of com.wingedsheep.sdk.scripting.conditions.TriggeringEntityEnteredOrWasCastFromG…
+- `AnyEnteredOrWasCastFrom(zone: Zone)` — Condition: "if one or more of them entered from zone or was cast from zone." The batch-enters, any-of counterpart of com.wingedsheep.sdk.scripting.conditions.TriggeringEntityEnteredOrWasCastFromGra…
 - `AnyPlayerDealtCombatDamageThisTurnAtLeast(amount: Int)` — Condition: "a player was dealt amount or more combat damage this turn" — true when ANY single player (existential, including you) has accumulated at least amount combat damage this turn.
 - `BeforeFirstCombatStepThisTurn(step: Step)` — Condition: "before attackers are declared" / "before blockers are declared" this turn — the game hasn't yet reached step of the turn's *first* combat phase (Master Warcraft's and Rapid Fire's rulin…
 - `BlightWasPaid` — Condition: "If this spell's blight additional cost was paid" Used for Lorwyn Eclipsed cards (e.g., Cinder Strike) where the effect changes based on whether the optional Blight additional cost was a…
@@ -440,7 +440,7 @@ Families:
 - `TriggeringEntityHadCounters` — Condition: "if it had counters on it" (intervening-if for dies/leaves triggers).
 - `TriggeringEntityHadMinusOneMinusOneCounter` — Condition: "if it had a -1/-1 counter on it" (intervening-if for dies/leaves triggers).
 - `TriggeringEntityWas(filter: GameObjectFilter)` — Condition: "if it was filter" — an intervening-if for dies/leaves triggers that matches the triggering permanent's **last-known** type line (CR 603.10, 608.2h): the projected card types and subtype…
-- `TriggeringEntityWasCast` — Condition: "if you cast it" referring to the *triggering* entity (not the ability's source).
+- `TriggeringEntityWasCast(zone: Zone?)` — Condition: "if you cast it" referring to the *triggering* entity (not the ability's source).
 - `TriggeringEntityWasHistoric` — Condition: "if it was historic" (legendary, artifact, or Saga).
 - `TriggeringEntityWasNotPutByThisSource` — Condition: "if it wasn't put onto the battlefield with this ability".
 - `TriggeringSpellCastWithoutPayingMana` — Condition: "if no mana was spent to cast it" — about the TRIGGERING spell (the triggering-entity counterpart of NoManaSpentToCast, which reads the ability source's own cast record).
@@ -605,7 +605,7 @@ Families:
 - `Duration.EndOfTurn` — Effect lasts until end of turn.
 - `Duration.EndOfYourNextTurn` — Effect lasts through the *whole* of your next turn, ending during that turn's cleanup step (CR 514.2, the same moment an "until end of turn" effect ends) — "until the end of your next turn".
 - `Duration.EndOfYourNextUpkeep` — Effect lasts until the end of your next upkeep step — it outlives the upkeep it was created in (and every other player's turn) and ends as your following upkeep step ends, so it is still in force w…
-- `Duration.NextUse(sourceDescription: String)` — Effect is consumed the first time its replacement effect is applied or end of turn if not consumed.
+- `Duration.NextUse(sourceDescription: String)` — Effect is consumed the first time it is used, or ends at end of turn if not consumed: the first time its replacement effect is applied, or — on a granted `MayCastFromGraveyard` — the first graveyar…
 - `Duration.Permanent` — Effect is permanent (static abilities, auras while attached).
 - `Duration.UntilAffectedOwnersNextTurn` — Effect lasts until the beginning of the affected card's **owner's** next turn — "until that player's next turn" where "that player" is the player whose hand the card went to (Firestorm Phoenix).
 - `Duration.UntilAfterAffectedControllersNextUntap(count: Int)` — Effect lasts through the affected entity's controller's next count untap steps, then expires.
@@ -904,7 +904,7 @@ Families:
 - `GrantDamageBonusEffect(bonusAmount: Int, sourceFilter: GameObjectFilter, target: EffectTarget, duration: Duration)` — Grant a flat damage bonus to a player's sources for the specified duration.
 - `GrantEmbalmEffect(target: EffectTarget, cost: ManaCost?, duration: Duration)` — Grant Embalm (CR 702.128) to a target creature card in a graveyard.
 - `GrantEscapeEffect(target: EffectTarget, cost: ManaCost?, additionalCost: AdditionalCost?, duration: Duration)` — Grant Escape (CR 702.138) to a target card in a graveyard.
-- `GrantEvasionKeywordEffect(keyword: Keyword, target: EffectTarget, duration: Duration)` — Grant a protection-style evasion keyword (shroud or hexproof) to a target entity for the specified duration.
+- `GrantEvasionKeywordEffect(keyword: Keyword, target: EffectTarget, duration: Duration, from: ProtectionScope?)` — Grant a protection-style evasion keyword (shroud or hexproof) to a target entity for the specified duration.
 - `GrantExileOnLeaveEffect(target: EffectTarget)` — Mark a permanent so that if it would leave the battlefield, it is exiled instead.
 - `GrantFlashToSpellsEffect(target: EffectTarget, spellFilter: GameObjectFilter, duration: Duration)` — target may cast spells matching spellFilter as though they had flash, for duration.
 - `GrantFlashbackEffect(target: EffectTarget, cost: ManaCost?, duration: Duration)` — Grant Flashback (CR 702.34) to a target instant or sorcery card in a graveyard.
@@ -1113,6 +1113,7 @@ Families:
 - `EffectTarget.ControllerOfDamageSource` — CONTROLLER OF DAMAGE SOURCE: the controller of the source dealing the damage.
 - `EffectTarget.ControllerOfPipelineTarget(collectionName: String, index: Int)` — CONTROLLER OF PIPELINE TARGET: Refers to the controller of an entity stored in a pipeline collection.
 - `EffectTarget.ControllerOfTriggeringEntity` — CONTROLLER OF TRIGGERING ENTITY: Refers to the controller/owner of the entity that caused the trigger to fire.
+- `EffectTarget.DamageRecipient` — DAMAGE RECIPIENT: the permanent that was dealt the damage of a deals-damage trigger — "that planeswalker" in "whenever a creature you control deals combat damage to a planeswalker, destroy that pla…
 - `EffectTarget.DamageSource` — DAMAGE SOURCE: the object that dealt the damage of a deals-damage trigger — "it" in "whenever equipped creature deals combat damage to a player, you may sacrifice it" (Ogre-Head Helm).
 - `EffectTarget.DiscardedAsCost(index: Int)` — DISCARDED AS COST: a card discarded to pay this spell's additional cost (`Costs.additional.DiscardCards(...)`) or this activated ability's cost (`Costs.Discard(...)`), by index.
 - `EffectTarget.EachDamagedBySourceThisGame` — MULTI-ENTITY REFERENCE: every **opponent and planeswalker the effect's source has dealt damage to this game** — The Fallen's "each opponent and planeswalker it has dealt damage to this game".
@@ -1340,7 +1341,7 @@ Families:
 - `KeywordAbility.Dredge(amount: Int)` — Optional draw replacement from the graveyard (Comprehensive Rules 702.52).
 - `KeywordAbility.Emerge(cost: ManaCost, from: GameObjectFilter?)` — Emerge cost (CR 702.119, Eldritch Moon).
 - `KeywordAbility.Escape(cost: ManaCost, additionalCost: AdditionalCost?)` — Escape (CR 702.138, Theros Beyond Death).
-- `KeywordAbility.Evoke(cost: ManaCost)` — Evoke with a mana cost.
+- `KeywordAbility.Evoke(cost: ManaCost, additionalCost: AdditionalCost?)` — Evoke (CR 702.74).
 - `KeywordAbility.Flashback(cost: ManaCost, additionalCost: AdditionalCost?, condition: Condition?, minimumXValue: Int)` — Flashback with a mana cost and an optional additional cost.
 - `KeywordAbility.Foretell(cost: ManaCost)` — Foretell (CR 702.143, Kaldheim).
 - `KeywordAbility.Gift(kind: GiftKind)` — Gift a kind (CR 702.174, Bloomburrow).
@@ -1559,6 +1560,7 @@ Families:
 - `DamageCantBePrevented(appliesTo: EventPattern)` — Damage can't be prevented.
 - `DoubleDamage(restrictions: List<Condition>, appliesTo: EventPattern, multiplier: Int)` — Double damage dealt.
 - `EntersAsCopy(optional: Boolean, copyFilter: GameObjectFilter, copyFromZone: Zone, filterByTotalManaSpent: Boolean, additionalSubtypes: List<String>, additionalColors: Set<Color>, additionalKeywords: List<Keyword>, nameOverride: String?, powerOverride: Int?, toughnessOverride: Int?, exileCopiedCard: Boolean, tappedIfCopied: Boolean, entersWithCounters: CopyEntryCounters?, exceptions: CopyExceptions, duration: Duration, copyOf: EffectTarget?, appliesTo: EventPattern)` — Enter the battlefield as a copy of a card or permanent.
+- `EntersOnlyIfPaid(cost: PayCost, appliesTo: EventPattern)` — Pay-or-graveyard self-replacement on this card's own entry (Mox Diamond).
 - `EntersTapped(unlessCondition: Condition?, payLifeCost: Int?, appliesTo: EventPattern)`
 - `EntersUntapped(appliesTo: EventPattern)` — "Permanents matching appliesTo enter the battlefield untapped" — the inverse of EntersTapped.
 - `EntersWithChoice(choiceType: ChoiceType, chooser: Player, allowedCreatureTypes: List<String>?, modeOptions: List<ModeOption>, minValue: Int, maxValue: Int, cardNamePool: CardNamePool, lookAtOpponentHand: Boolean, excludedColors: Set<Color>, permanentFilter: GameObjectFilter?, mayChooseNothing: Boolean, appliesTo: EventPattern)` — As this permanent enters, make a choice.
@@ -1870,7 +1872,7 @@ Families:
 - `ExtraOnceOnlyActivations(kind: OnceOnlyAbilityKind, extraActivations: Int?, condition: Condition?)` — The controller may activate kind abilities more times than the keyword's "Activate this ability only once" allows — i.e. the com.wingedsheep.sdk.scripting.ActivationRestriction.Once memory that `is…
 - `FlipAdditionalCoins(coinsPerFlip: Int)` — Each coin the controller would flip is replaced by coinsPerFlip coins, all but one of which the controller ignores — Krark's Thumb's "If you would flip a coin, instead flip two coins and ignore one…
 - `FreeFirstEquipEachTurn` — The controller may pay {0} rather than the equip cost of the first equip ability they activate each turn (Kíli the Resourceful; Forge Anew narrows the usable timing to its controller's turns).
-- `GainActivatedAbilitiesOfPermanents(grantedTo: GroupFilter, sourceFilter: GameObjectFilter, includeManaAbilities: Boolean, includeLoyaltyAbilities: Boolean, spendAsThoughAnyColor: Boolean)` — Permanents matching grantedTo gain copies of the activated abilities of every permanent matching sourceFilter (CR 113.7; the copy uses the gaining permanent as its source, so "this permanent" / `Sa…
+- `GainActivatedAbilitiesOfPermanents(grantedTo: GroupFilter, sourceFilter: GameObjectFilter, abilities: CopiedAbilities, spendAsThoughAnyColor: Boolean)` — Permanents matching grantedTo gain copies of the activated abilities of every permanent matching sourceFilter (CR 113.7; the copy uses the gaining permanent as its source, so "this permanent" / `Sa…
 - `GainKeywordsOfCards(keywords: List<Keyword>, families: Set<KeywordFamily>, cards: KeywordCardPool, filter: GroupFilter)` — "As long as a creature card with flying is in a graveyard, this creature has flying.
 - `Goaded(filter: GroupFilter)` — The affected creatures are goaded for as long as this ability applies (CR 701.15b): each attacks each combat if able and attacks a player other than its goader if able.
 - `GrantActivatedAbility(ability: ActivatedAbility, filter: GroupFilter, recipientZone: Zone)` — Grants an activated ability to a filtered set of objects in recipientZone.
@@ -1884,6 +1886,7 @@ Families:
 - `GrantChosenColor(filter: GroupFilter)` — Adds the chosen color (resolved from the source's `CastChoicesComponent`) to the target.
 - `GrantChosenSubtype(filter: GroupFilter, includeControlledSpells: Boolean, includeOwnedCardsOutsideBattlefield: Boolean)` — Grants the creature type chosen as the source entered (resolved from the source's `CastChoicesComponent`) to a group, in addition to their other types.
 - `GrantColor(color: Color, filter: GroupFilter)` — Adds a color to the target permanent.
+- `GrantCyclingToCardsInHand(filter: GameObjectFilter, cost: ManaCost)` — Grants cycling (CR 702.29) to cards in the granter's controller's hand that match filter.
 - `GrantDynamicStats(filter: GroupFilter, powerBonus: DynamicAmount, toughnessBonus: DynamicAmount)` — Grants dynamic power/toughness bonus based on a variable amount.
 - `GrantEmergeToOwnSpells(spellFilter: GameObjectFilter)` — Grants emerge (CR 702.119) to spells the granter's controller casts that match spellFilter, with an emerge cost equal to **each spell's own mana cost** — Herigast, Erupting Nullkite: "Each creature…
 - `GrantFlashToSpellType(filter: GameObjectFilter, controllerOnly: Boolean, nthOfTypePerTurn: Int?)` — Grants flash to spells matching a filter.
@@ -1938,6 +1941,7 @@ Families:
 - `MayPlayCardsFromExile(filter: GameObjectFilter, condition: Condition?, withAnyManaType: Boolean, withAnyManaColor: Boolean, oncePerTurn: Boolean, spendAsAnyColor: ManaSpentAsAnyColor?)` — You may play cards in exile matching filter — "play", so lands and spells alike (CR 601.3: a permission from an effect is what lets a player cast a card from a zone other than their hand).
 - `MayPlayLandsFromGraveyard` — You may play lands from your graveyard.
 - `MayPlayPermanentsFromGraveyard` — During each of your turns, you may play a land and cast a permanent spell of each permanent type from your graveyard.
+- `ModifyMaximumHandSize(player: Player, amount: DynamicAmount)` — Raise or lower the maximum hand size of a scoped set of players by a dynamic amount while the holder is on the battlefield and has the ability — "Each opponent's maximum hand size is reduced by sev…
 - `ModifySpecialActionCost(action: SpecialActionKind, modification: CostModification)` — Static ability that modifies the cost of a **special action** (CR 116.2) — plotting a card, unlocking a door, foretelling a card.
 - `ModifySpellCost(target: SpellCostTarget, modification: CostModification, gating: CostGating, optionalLifePayment: Int?)` — Unified static ability that modifies spell or morph-activation costs.
 - `ModifyStats(powerBonus: Int, toughnessBonus: Int, filter: GroupFilter)` — Modifies power/toughness on a filtered set of permanents.

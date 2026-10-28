@@ -644,6 +644,52 @@ data class OnEnterRun(
 }
 
 /**
+ * Pay-or-graveyard self-replacement on this card's own entry (Mox Diamond).
+ *
+ * Printed as "If this would enter, you may [cost] instead. If you do, put it onto the battlefield.
+ * If you don't, put it into its owner's graveyard." Unpaid, the card **never enters**: it goes from
+ * wherever it was (the stack, a hand, exile, a library) to its owner's graveyard — or stays in the
+ * graveyard it was being returned from — so no enters or leaves trigger and no as-enters choice
+ * happens. Paid, the cost is paid first and the card then enters normally. With nothing to pay
+ * with, nothing is asked and it goes to the graveyard. The payment is always optional ("you may").
+ *
+ * Read off the card as it would exist on the battlefield (CR 614.12), so a permanent entering as a
+ * copy of Mox Diamond is asked too. Asked on every entry path that can meet it — a resolving spell,
+ * an effect putting it onto the battlefield, a duration return ("until this leaves the
+ * battlefield") — except a land being *played*, an open gap no printed card with this replacement
+ * reaches today.
+ *
+ * Not [OnEnterRun]: that runs *after* the permanent is already on the battlefield, so "if you
+ * don't" could only make it leave again — firing enters and leaves triggers that never happen.
+ * Not [EntersTapped] with `payLifeCost`: that pays to change *how* it enters (untapped), never
+ * *whether*, and only in life.
+ *
+ * @param cost what the controller may pay instead of the plain entry, from the shared [PayCost]
+ *   vocabulary (`Costs.pay.Discard(GameObjectFilter.Land)`).
+ */
+@SerialName("EntersOnlyIfPaid")
+@Serializable
+data class EntersOnlyIfPaid(
+    val cost: com.wingedsheep.sdk.scripting.costs.PayCost,
+    override val appliesTo: EventPattern = EventPattern.ZoneChangeEvent(
+        filter = GameObjectFilter.Any,
+        to = Zone.BATTLEFIELD
+    )
+) : ReplacementEffect {
+    override val description: String =
+        "If this permanent would enter, you may ${cost.description} instead. If you do, put it onto " +
+            "the battlefield. If you don't, put it into its owner's graveyard"
+
+    override fun applyTextReplacement(replacer: TextReplacer): ReplacementEffect {
+        val newCost = cost.applyTextReplacement(replacer)
+        val newAppliesTo = appliesTo.applyTextReplacement(replacer)
+        return if (newCost !== cost || newAppliesTo !== appliesTo)
+            copy(cost = newCost, appliesTo = newAppliesTo)
+        else this
+    }
+}
+
+/**
  * "As this permanent transforms into [this face], attach it to a player." — the as-transforms
  * replacement of a transforming card's **Aura** face that enchants a player (Curse of Leeches).
  * CR 712.20: an "As [this permanent] transforms …" ability of the face it transforms into is applied

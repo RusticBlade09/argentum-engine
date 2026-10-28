@@ -18,6 +18,7 @@ import com.wingedsheep.engine.handlers.actions.ActionHandler
 import com.wingedsheep.engine.handlers.effects.ZoneTransitionService
 import com.wingedsheep.engine.handlers.effects.drawing.DrawCardsExecutor
 import com.wingedsheep.engine.mechanics.mana.ManaAbilitySideEffectExecutor
+import com.wingedsheep.engine.mechanics.CyclingGrants
 import com.wingedsheep.engine.mechanics.mana.ManaPool
 import com.wingedsheep.sdk.scripting.effects.Effect
 import com.wingedsheep.engine.mechanics.mana.ManaSolver
@@ -32,7 +33,7 @@ import com.wingedsheep.engine.state.components.player.ManaPoolComponent
 import com.wingedsheep.sdk.core.Color
 import com.wingedsheep.sdk.core.ManaCost
 import com.wingedsheep.sdk.core.Zone
-import com.wingedsheep.sdk.scripting.KeywordAbility
+import com.wingedsheep.sdk.model.CardDefinition
 import com.wingedsheep.sdk.scripting.PreventCycling
 import kotlin.reflect.KClass
 import com.wingedsheep.engine.core.Outcome
@@ -87,8 +88,7 @@ class CycleCardHandler(
         val cardDef = cardRegistry.getCard(cardComponent.cardDefinitionId)
             ?: return "Card definition not found"
 
-        val cyclingAbility = cardDef.keywordAbilities.filterIsInstance<KeywordAbility.Cycling>()
-            .firstOrNull { it.searchFilter == null }
+        val cyclingAbility = cyclingOption(state, action, cardDef)
             ?: return "This card doesn't have cycling"
 
         // The action is client-supplied: a negative X would underflow the cost substitution.
@@ -125,8 +125,7 @@ class CycleCardHandler(
         val cardDef = cardRegistry.getCard(cardComponent.cardDefinitionId)
             ?: return ExecutionResult.error(state, "Card definition not found")
 
-        val cyclingAbility = cardDef.keywordAbilities.filterIsInstance<KeywordAbility.Cycling>()
-            .firstOrNull { it.searchFilter == null }
+        val cyclingAbility = cyclingOption(state, action, cardDef)
             ?: return ExecutionResult.error(state, "This card doesn't have cycling")
 
         // ---------------------------------------------------------------------
@@ -307,6 +306,15 @@ class CycleCardHandler(
         // Cycling doesn't change priority
         return ExecutionResult.success(currentState, events)
     }
+
+    /** The printed or granted cycling ability [action] names (`CycleCard.grantedBy`). */
+    private fun cyclingOption(
+        state: GameState,
+        action: CycleCard,
+        cardDef: CardDefinition
+    ): CyclingGrants.CyclingOption? = CyclingGrants.chosenOption(
+        state, action.cardId, cardDef, action.playerId, action.grantedBy, cardRegistry, zones.predicateEvaluator
+    )
 
     /**
      * [cost] after the board's activated-ability cost reductions — cycling is an activated ability

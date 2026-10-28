@@ -163,6 +163,12 @@ class MoveToZoneEffectExecutor(
             com.wingedsheep.engine.handlers.effects.copy.EffectCopyEntry.prepare(
                 state, effect, context, mapOf(targetId to controllerId), cardRegistry, zones.predicateEvaluator
             )?.let { return it }
+            // "If this would enter, you may [pay] instead" (EntersOnlyIfPaid) — asked once the entry
+            // copy is settled (CR 614.12: of the card as it would exist on the battlefield), and
+            // before anything else, since it decides whether the card enters at all.
+            com.wingedsheep.engine.handlers.effects.EffectEntryPayments.prepare(
+                state, effect, context, mapOf(targetId to controllerId), cardRegistry, zones.predicateEvaluator
+            )?.let { return it }
         }
 
         if (effect.destination == Zone.BATTLEFIELD && effect.faceDown == null) {
@@ -208,6 +214,7 @@ class MoveToZoneEffectExecutor(
             .copy(lookBackGrants = context.lookBackGrants[targetId], entryCopy = context.entryCopies[targetId], auraHostId = context.entryAuraHosts[targetId],
                 entryChoices = context.entryChoices[targetId]?.values.orEmpty(),
                 grantedRiotModes = context.entryChoices[targetId]?.riotModes.orEmpty(),
+                paidToEnter = com.wingedsheep.engine.handlers.effects.EffectEntryPayments.paid(context, targetId),
                 entryCounters = suppliedCounters.takeIf { effect.destination == Zone.BATTLEFIELD }.orEmpty(),
                 entryCounterSourceId = context.sourceId,
                 entryCounterEffectControllerId = context.controllerId,

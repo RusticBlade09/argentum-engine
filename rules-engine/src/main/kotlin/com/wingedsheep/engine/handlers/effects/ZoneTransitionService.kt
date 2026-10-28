@@ -61,7 +61,7 @@ import com.wingedsheep.engine.state.components.player.PermanentLeftBattlefieldTh
 import com.wingedsheep.engine.state.components.player.CreatureLeftBattlefieldThisTurnComponent
 import com.wingedsheep.engine.state.components.player.PermanentsSacrificedThisTurnComponent
 import com.wingedsheep.engine.state.components.player.CreatureCardsPutIntoGraveyardThisTurnComponent
-import com.wingedsheep.engine.state.components.player.CardsPutIntoGraveyardFromLibraryThisTurnComponent
+import com.wingedsheep.engine.state.components.player.CardsPutIntoGraveyardByOriginThisTurnComponent
 import com.wingedsheep.engine.state.components.player.CardsPutIntoGraveyardThisTurnComponent
 import com.wingedsheep.engine.state.components.player.PlayerDescendedThisTurnComponent
 import com.wingedsheep.engine.state.components.player.SacrificedArtifactThisTurnComponent
@@ -98,6 +98,11 @@ data class ZoneEntryOptions(
     val entryCopy: com.wingedsheep.engine.handlers.effects.copy.EntryCopyChoice? = null,
     /** "As this enters, choose …" answers made before the move ([EffectEntryChoices]). */
     val entryChoices: Map<com.wingedsheep.sdk.scripting.ChoiceSlot, com.wingedsheep.engine.state.components.battlefield.ChoiceValue> = emptyMap(),
+    /**
+     * The entrant's [com.wingedsheep.sdk.scripting.EntersOnlyIfPaid] cost was paid before the move
+     * ([EntryPayment]). Without it such a card goes to its owner's graveyard instead of entering.
+     */
+    val paidToEnter: Boolean = false,
     /**
      * The counter-or-haste answers for each instance of Riot a battlefield lord *grants* the entrant
      * ([EffectEntryChoices], CR 702.136b), applied as it arrives — a granted permanent has none of
@@ -405,6 +410,24 @@ class ZoneTransitionService(
             )
         ) {
             return ZoneTransitionResult(state, emptyList(), redirectResult, actualDestination = fromZone)
+        }
+
+        // "If this would enter, you may [pay] instead. If you don't, put it into its owner's
+        // graveyard" (EntersOnlyIfPaid). Every mover that can meet it asks before the move and
+        // passes the answer (EntryPayment); a card arriving here unpaid was declined or couldn't
+        // pay, so it never enters and goes to the graveyard — through this same service, so a
+        // graveyard replacement (Rest in Peace) still applies. A card already in the graveyard
+        // stays put: it never left, so no replacement can exile it. Read off the card as it would
+        // enter (CR 614.12), copy included. A face-down entry has no abilities (CR 708.2) and a
+        // battlefield-to-battlefield move is not an entry.
+        if (actualDestZone == Zone.BATTLEFIELD && fromZone != Zone.BATTLEFIELD &&
+            !options.paidToEnter && !options.faceDown &&
+            EntryPayment.enteringCost(state, entityId, options.entryCopy, cardRegistry, predicateEvaluator) != null
+        ) {
+            if (fromZone == Zone.GRAVEYARD) {
+                return ZoneTransitionResult(state, emptyList(), redirectResult, actualDestination = Zone.GRAVEYARD)
+            }
+            return moveToZone(state, entityId, Zone.GRAVEYARD, ZoneEntryOptions(), currentZoneKey)
         }
 
         // A card-intrinsic redirect into the library shuffles the card in rather than placing it on
@@ -2042,8 +2065,8 @@ class ZoneTransitionService(
          *  - creature cards, [CreatureCardsPutIntoGraveyardThisTurnComponent] (Macabre Reconstruction).
          *  - every card, by id, [CardsPutIntoGraveyardThisTurnComponent] (Crawling Sensation's
          *    first-time gate; its size is "cards put into their graveyard from anywhere", Fraying Sanity).
-         *  - library → graveyard moves, [CardsPutIntoGraveyardFromLibraryThisTurnComponent]
-         *    (Cruel Calculations).
+         *  - the count per origin zone, [CardsPutIntoGraveyardByOriginThisTurnComponent] (Cruel
+         *    Calculations reads library, Welcome the Dead hand + library).
          *
          * All keyed on the owner — "your graveyard" is the owner's — and turn history: the card need
          * not still be there.
@@ -2081,11 +2104,10 @@ class ZoneTransitionService(
                     )
                 )
             }
-            if (fromZone == Zone.LIBRARY) bump { p ->
+            bump { p ->
                 p.with(
-                    CardsPutIntoGraveyardFromLibraryThisTurnComponent(
-                        (p.get<CardsPutIntoGraveyardFromLibraryThisTurnComponent>()?.count ?: 0) + 1
-                    )
+                    (p.get<CardsPutIntoGraveyardByOriginThisTurnComponent>()
+                        ?: CardsPutIntoGraveyardByOriginThisTurnComponent()).plus(fromZone)
                 )
             }
             return newState
