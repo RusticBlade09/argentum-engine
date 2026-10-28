@@ -28,6 +28,7 @@ class LRellFierceVisionaryScenarioTest : FunSpec({
         card.typeLine.subtypes.map { it.value }.toSet() shouldBe setOf("Klingon", "Warrior")
         driver.state.projectedState.getPower(token) shouldBe 2
         driver.state.projectedState.getToughness(token) shouldBe 1
+        driver.state.projectedState.getColors(token) shouldBe setOf("RED")
         driver.state.projectedState.getKeywords(token).contains(Keyword.HASTE.name) shouldBe true
 
         driver.passPriorityUntil(Step.END)

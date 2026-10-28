@@ -2,7 +2,7 @@
 
 **Set Size:** 254 cards
 **Release Date:** November 13, 2026
-**Implemented:** 75 / 254
+**Implemented:** 73 / 254
 > Preview snapshot from October 28, 2026. Scryfall currently marks every TRK printing as `booster: false`, so all cards appear under Extras. Refresh the bootstrap as previews and booster classifications change; this is not the final set size.
 
 | Section    | Total | Done |
@@ -28,7 +28,7 @@
 - [ ] Anthropological Mission
 - [ ] Armus, Skin of Evil
 - [x] Assault Drone
-- [x] Assembly Specialist
+- [ ] Assembly Specialist
 - [ ] Automated Warfare System
 - [x] Bajor
 - [x] Bat'leth
@@ -151,7 +151,7 @@
 - [ ] Lore, Positronic Provocateur
 - [ ] Lt. Cmdr. Geordi La Forge
 - [ ] Lwaxana Troi, Charming Guest
-- [x] Make It So
+- [ ] Make It So
 - [x] Malfunctioning Holodeck
 - [x] Marooned
 - [ ] Miles O'Brien, Transporter Ops

@@ -21,13 +21,13 @@ import com.wingedsheep.sdk.model.Rarity
  * Enchantment
  *
  * Creatures you control have haste.
- * When this enchantment enters, look at the top five cards of your library. Put a land card from among them onto the battlefield tapped and the rest into your graveyard.
+ * When this enchantment enters, reveal the top five cards of your library. Put a land card from among them onto the battlefield tapped and the rest into your graveyard.
  */
 val HitIt = card("Hit It!") {
     manaCost = "{1}{R}{G}"
     typeLine = "Enchantment"
     colorIdentity = "GR"
-    oracleText = "Creatures you control have haste.\nWhen this enchantment enters, look at the top five cards of your library. Put a land card from among them onto the battlefield tapped and the rest into your graveyard."
+    oracleText = "Creatures you control have haste.\nWhen this enchantment enters, reveal the top five cards of your library. Put a land card from among them onto the battlefield tapped and the rest into your graveyard."
     staticAbility {
         ability = GrantKeyword(Keyword.HASTE, GroupFilter.AllCreaturesYouControl)
     }
@@ -38,6 +38,7 @@ val HitIt = card("Hit It!") {
             filter = GameObjectFilter.Land,
             prompt = "Put a land card from among them onto the battlefield tapped",
             selection = SelectionMode.ChooseExactly(DynamicAmount.Fixed(1)),
+            revealed = true,
             keepDestination = CardDestination.ToZone(Zone.BATTLEFIELD, placement = ZonePlacement.Tapped),
             restDestination = CardDestination.ToZone(Zone.GRAVEYARD),
             restOrder = CardOrder.Preserve
