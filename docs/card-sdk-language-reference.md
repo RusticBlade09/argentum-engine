@@ -3346,6 +3346,16 @@ wrappers: Word of Command composes it inside `WithManaAbilitySources` and
   the condition fails — so a pump that wears off, a re-tap, or a re-acquired source never
   re-grabs the creature.
 - `ExchangeControlEffect(target1, target2)` — swap control of two permanents.
+- `ExchangeTextBoxesEffect(first, second)` (facade `Effects.ExchangeTextBoxes(first, second)`) — exchange the
+  text boxes of two permanents (CR 612.5, 701.12h): each one's rules text — abilities, keywords, oracle text —
+  becomes the other's previous rules text; names, mana costs, colors, types and power/toughness stay put.
+  Indefinite: the side that leaves the battlefield is a new object with its own text (CR 400.7), the other keeps
+  what it got. Not a copiable value (CR 707.2) — a copy of an exchanged permanent copies its own text, and a copy
+  effect applied later keeps the exchanged text on top. Nothing happens unless both resolve to different
+  face-up permanents on the battlefield (face-down sides aren't supported yet — offer only `faceUp()` creatures).
+  Deadpool, Trading Card's "As Deadpool enters, you may exchange his text box and another creature's" is the
+  `then` of an `EntersWithChoice(CREATURE_ON_BATTLEFIELD, …)`: `ExchangeTextBoxes(EffectTarget.Self,
+  EffectTarget.ChosenCreature)`.
 - `ChangeOwnershipEffect(card = ContextTarget(0), newOwner = Controller)` (facade `Effects.ChangeOwnership(card, newOwner)`) —
   `newOwner` becomes the **owner** of `card` (CR 407.3), the one thing only the ante cards do: Darkpact's "You
   own target card in the ante", Bronze Tablet's "that player owns this card and you own the other exiled card"
@@ -18037,7 +18047,12 @@ chosenSubtypeKey = "chosenPlaneswalkerType"))`,
 you control"; `permanentFilter` widens or narrows the pool (matched from the entering permanent's controller's
 view, never the entering object itself) and `mayChooseNothing = true` lets the chooser pick nothing ("you may choose" —
 the permanent then enters with no choice recorded). Scheming Fence: `EntersWithChoice(CREATURE_ON_BATTLEFIELD,
-permanentFilter = GameObjectFilter.NonlandPermanent, mayChooseNothing = true)`,
+permanentFilter = GameObjectFilter.NonlandPermanent, mayChooseNothing = true)`. Its `then` is the rest of the
+replacement — an effect run with the pick as `EffectTarget.ChosenCreature` once the permanent is on the battlefield,
+before state-based actions and trigger detection (so the entry's own enter abilities see the result), skipped when
+nothing was chosen. Deadpool, Trading Card: `EntersWithChoice(CREATURE_ON_BATTLEFIELD, permanentFilter =
+Creature.faceUp(), mayChooseNothing = true, then = Effects.ExchangeTextBoxes(EffectTarget.Self,
+EffectTarget.ChosenCreature))`,
 `ChoiceType.BASIC_LAND_TYPE` writes `ChosenLandTypeComponent` (read by
 `SetEnchantedLandTypeFromChosen` and `GrantLandwalkOfChosenType`), and
 `ChoiceType.OPPONENT` writes an entity-id choice into the `CastChoicesComponent` under

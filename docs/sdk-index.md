@@ -852,6 +852,7 @@ Families:
 - `ExchangeControlEffect(target1: EffectTarget, target2: EffectTarget)` — Exchange control of two target creatures.
 - `ExchangeLifeAndStatEffect(target: EffectTarget, stat: CreatureStat, player: EffectTarget)` — Exchange a player's life total with a creature's power or toughness (CR 701.12g).
 - `ExchangeLifeTotalsEffect(target: EffectTarget, drawEqualToLifeLost: Boolean)` — Exchange the controller's life total with target player's (CR 701.12c): each player gains or loses the life needed to reach the other's former total.
+- `ExchangeTextBoxesEffect(first: EffectTarget, second: EffectTarget)` — Exchange the text boxes of two permanents (CR 701.12h, 612.5): the rules text of each becomes the previous rules text of the other.
 - `ExileAndGrantOwnerPlayPermissionEffect(target: EffectTarget, opponentCostIncrease: Int)` — Exile a target and let its owner play it for as long as it remains exiled.
 - `ExileAndReturnTransformedEffect(target: EffectTarget, returnAs: ReturnFace)` — Exile a double-faced permanent, then return it to the battlefield as a **new object** on the chosen face under its owner's control (FIN "Dominant" / eikon transform).
 - `ExileFromTopRepeatingEffect(matchFilter: GameObjectFilter, repeatIfManaValueAtLeast: Int, damagePerCard: Int)` — Repeatedly exile cards from the top of a player's library until a card matching matchFilter is found, then put that card into the player's hand.
@@ -1563,7 +1564,7 @@ Families:
 - `EntersOnlyIfPaid(cost: PayCost, appliesTo: EventPattern)` — Pay-or-graveyard self-replacement on this card's own entry (Mox Diamond).
 - `EntersTapped(unlessCondition: Condition?, payLifeCost: Int?, appliesTo: EventPattern)`
 - `EntersUntapped(appliesTo: EventPattern)` — "Permanents matching appliesTo enter the battlefield untapped" — the inverse of EntersTapped.
-- `EntersWithChoice(choiceType: ChoiceType, chooser: Player, allowedCreatureTypes: List<String>?, modeOptions: List<ModeOption>, minValue: Int, maxValue: Int, cardNamePool: CardNamePool, lookAtOpponentHand: Boolean, excludedColors: Set<Color>, permanentFilter: GameObjectFilter?, mayChooseNothing: Boolean, appliesTo: EventPattern)` — As this permanent enters, make a choice.
+- `EntersWithChoice(choiceType: ChoiceType, chooser: Player, allowedCreatureTypes: List<String>?, modeOptions: List<ModeOption>, minValue: Int, maxValue: Int, cardNamePool: CardNamePool, lookAtOpponentHand: Boolean, excludedColors: Set<Color>, permanentFilter: GameObjectFilter?, mayChooseNothing: Boolean, then: Effect?, appliesTo: EventPattern)` — As this permanent enters, make a choice.
 - `EntersWithCounters(counterType: CounterType, count: Int, selfOnly: Boolean, condition: Condition?, otherOnly: Boolean, appliesTo: EventPattern)` — Permanent/creature enters with counters.
 - `EntersWithDevour(multiplier: Int, sacrificeFilter: GameObjectFilter, counterType: CounterType, variant: String, appliesTo: EventPattern)` — Devour (CR 702.82) and its variants.
 - `EntersWithDynamicCounters(counterType: CounterType, count: DynamicAmount, otherOnly: Boolean, appliesTo: EventPattern, activeZones: Set<Zone>)` — Permanent/creature enters with a dynamic number of counters.
