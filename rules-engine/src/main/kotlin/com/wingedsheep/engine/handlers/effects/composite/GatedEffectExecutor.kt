@@ -11,6 +11,7 @@ import com.wingedsheep.engine.handlers.effects.EffectExecutor
 import com.wingedsheep.engine.handlers.effects.SourceReferenceText
 import com.wingedsheep.engine.handlers.effects.TargetResolutionUtils
 import com.wingedsheep.engine.handlers.effects.TargetResolutionUtils.toEntityId
+import com.wingedsheep.engine.handlers.effects.library.LibrarySearchRestrictions
 import com.wingedsheep.engine.handlers.costs.CollectEvidenceResolver
 import com.wingedsheep.engine.legalactions.utils.CostEnumerationUtils
 import com.wingedsheep.engine.mechanics.mana.CostCalculator
@@ -179,18 +180,30 @@ class GatedEffectExecutor(
                     return EffectResult.success(state)
                 }
             }
-            // "You may search your library … then shuffle" while the player can't search libraries
-            // (Shadow of Doubt): they can't choose to search, so nothing happens — not even the
-            // shuffle (the card's first ruling). Only a may whose action *leads* with the search is
-            // skipped; a search nested behind another optional action ("you may sacrifice …. If you
-            // do, search …") keeps its prompt, and the blocked search inside simply finds nothing.
+            // "You may search your library … then shuffle" while the player can't make that search
+            // (Shadow of Doubt, Ashiok, Dream Render): they can't choose to search, so nothing
+            // happens — not even the shuffle (both cards' rulings). Only a may whose action *leads*
+            // with the search is skipped; a search nested behind another optional action ("you may
+            // sacrifice …. If you do, search …") keeps its prompt, and the blocked search inside
+            // simply finds nothing.
             val leadingSearch = leadingSearch(effect.then)
             val searcher = leadingSearch?.let {
                 TargetResolutionUtils.resolvePlayerRef(it.searcher, context, state) ?: context.controllerId
             }
-            if (searcher != null &&
-                state.getEntity(searcher)
-                    ?.has<com.wingedsheep.engine.state.components.player.CantSearchLibrariesComponent>() == true
+            // A search that also reads a hand or graveyard ("search your graveyard and/or library")
+            // can still be chosen for those zones; its gather drops only the forbidden library.
+            if (searcher != null && leadingSearch != null &&
+                LibrarySearchRestrictions.readsOnlyLibraries(leadingSearch.source) &&
+                LibrarySearchRestrictions.isSearchForbidden(
+                    state, searcher, context.effectControllerId ?: context.controllerId,
+                    LibrarySearchRestrictions.searchedLibraryOwners(leadingSearch.source) { player ->
+                        when (player) {
+                            is Player.Each -> state.turnOrder
+                            is Player.EachOpponent -> state.getOpponents(context.controllerId)
+                            else -> TargetResolutionUtils.resolvePlayerRef(player, context, state)?.let { listOf(it) }
+                        }
+                    }
+                )
             ) {
                 return effect.otherwise
                     ?.let { effectExecutor(state, it, context) }
@@ -1162,7 +1175,6 @@ class GatedEffectExecutor(
         }
     }
 
-    /** True when [effect]'s first step is a library search (a `GatherCardsEffect(search = true)`). */
     /** The search gather [effect] leads with, if it leads with one (its searcher is who is asked). */
     private fun leadingSearch(effect: Effect): com.wingedsheep.sdk.scripting.effects.GatherCardsEffect? = when (effect) {
         is com.wingedsheep.sdk.scripting.effects.GatherCardsEffect -> effect.takeIf { it.search }
