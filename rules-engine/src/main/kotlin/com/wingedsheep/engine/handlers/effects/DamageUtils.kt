@@ -1588,10 +1588,13 @@ object DamageUtils {
     }
 
     /**
-     * Check if life gain is prevented for a player by any PreventLifeGain replacement effect
-     * on the battlefield (e.g., Sulfuric Vortex, Erebos).
+     * Whether [playerId] gains no life from a gain right now — a lock on the player or a
+     * PreventLifeGain replacement on the battlefield (Sulfuric Vortex, Erebos). With [prohibitionsOnly] the question
+     * is narrower — *can't* they gain life — so a "gains no life instead" replacement (Sulfuric
+     * Vortex, `PreventLifeGain.replacesOnly`) doesn't count: a player may still be named to gain
+     * life to pay a cost under it (CR 119.7; Invigorate ruling, 2020-08-07).
      */
-    fun isLifeGainPrevented(state: GameState, playerId: EntityId): Boolean {
+    fun isLifeGainPrevented(state: GameState, playerId: EntityId, prohibitionsOnly: Boolean = false): Boolean {
         // Durable, source-independent lock conferred directly on the player
         // (LockLifeGainEffect — Screaming Nemesis). CR 810.9g: where the life total is the team's,
         // "that player can't gain life" means no player on their team can — a lock on either head
@@ -1606,6 +1609,7 @@ object DamageUtils {
         }
         for (active in com.wingedsheep.engine.replacement.ActiveReplacements.all(state)) {
             val effect = active.effect as? PreventLifeGain ?: continue
+            if (prohibitionsOnly && effect.replacesOnly) continue
             if (!active.granted && (state.projectedState.hasLostAllAbilities(active.sourceId) ||
                 state.projectedState.isFaceDown(active.sourceId))) continue
             val lifeGainEvent = effect.appliesTo as? com.wingedsheep.sdk.scripting.EventPattern.LifeGainEvent ?: continue
