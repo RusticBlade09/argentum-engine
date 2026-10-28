@@ -5,7 +5,6 @@ import com.wingedsheep.sdk.dsl.Triggers
 import com.wingedsheep.sdk.core.CounterType
 import com.wingedsheep.sdk.scripting.ModifyStats
 import com.wingedsheep.sdk.scripting.filters.unified.TargetFilter
-import com.wingedsheep.sdk.scripting.targets.TargetObject
 import com.wingedsheep.sdk.dsl.card
 import com.wingedsheep.sdk.model.Rarity
 
@@ -24,7 +23,7 @@ val Type2Phaser = card("Type-2 Phaser") {
     oracleText = "When this Equipment enters, tap target creature an opponent controls and put a stun counter on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)\nEquipped creature gets +3/+0.\nEquip {3} ({3}: Attach to target creature you control. Equip only as a sorcery.)"
     triggeredAbility {
         trigger = Triggers.self.enters()
-        val creature = target(TargetObject(filter = TargetFilter.Creature.opponentControls(), id = "target"))
+        val creature = target(TargetFilter.Creature.opponentControls())
         effect = Effects.Tap(creature) then Effects.AddCounters(CounterType.STUN, 1, creature)
     }
     equipAbility("{3}")

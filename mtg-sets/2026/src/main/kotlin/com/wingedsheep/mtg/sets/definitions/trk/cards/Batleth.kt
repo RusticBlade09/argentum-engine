@@ -4,7 +4,6 @@ import com.wingedsheep.sdk.dsl.Effects
 import com.wingedsheep.sdk.dsl.Triggers
 import com.wingedsheep.sdk.scripting.ModifyStats
 import com.wingedsheep.sdk.scripting.filters.unified.TargetFilter
-import com.wingedsheep.sdk.scripting.targets.TargetObject
 import com.wingedsheep.sdk.dsl.card
 import com.wingedsheep.sdk.model.Rarity
 
@@ -24,7 +23,7 @@ val Batleth = card("Bat'leth") {
     oracleText = "When this Equipment enters, target creature an opponent controls gets -2/-2 until end of turn.\nEquipped creature gets +2/+0.\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)"
     triggeredAbility {
         trigger = Triggers.self.enters()
-        val creature = target(TargetObject(filter = TargetFilter.Creature.opponentControls(), id = "target"))
+        val creature = target(TargetFilter.Creature.opponentControls())
         effect = Effects.ModifyStats(-2, -2, creature)
     }
     equipAbility("{2}")

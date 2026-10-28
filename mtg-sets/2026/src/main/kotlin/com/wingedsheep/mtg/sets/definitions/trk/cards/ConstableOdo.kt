@@ -5,7 +5,6 @@ import com.wingedsheep.sdk.dsl.Effects
 import com.wingedsheep.sdk.dsl.Triggers
 import com.wingedsheep.sdk.dsl.mode
 import com.wingedsheep.sdk.scripting.filters.unified.TargetFilter
-import com.wingedsheep.sdk.scripting.targets.TargetObject
 import com.wingedsheep.sdk.dsl.card
 import com.wingedsheep.sdk.model.Rarity
 
@@ -30,7 +29,7 @@ val ConstableOdo = card("Constable Odo") {
         trigger = Triggers.self.enters()
         effect = Effects.Modal(listOf(
             mode("Tap an opponent's creature and put two stun counters on it") {
-                val creature = target(TargetObject(filter = TargetFilter.Creature.opponentControls(), id = "target"))
+                val creature = target(TargetFilter.Creature.opponentControls())
                 effect = Effects.Tap(creature) then Effects.AddCounters(CounterType.STUN, 2, creature)
             },
             mode("Investigate twice") { effect = Effects.Investigate(2) }

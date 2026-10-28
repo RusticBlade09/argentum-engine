@@ -3,7 +3,6 @@ package com.wingedsheep.mtg.sets.definitions.trk.cards
 import com.wingedsheep.sdk.dsl.Costs
 import com.wingedsheep.sdk.dsl.Effects
 import com.wingedsheep.sdk.scripting.filters.unified.TargetFilter
-import com.wingedsheep.sdk.scripting.targets.TargetObject
 import com.wingedsheep.sdk.dsl.card
 import com.wingedsheep.sdk.model.Rarity
 
@@ -25,7 +24,7 @@ val DVanaTendiOptimisticEnsign = card("D'Vana Tendi, Optimistic Ensign") {
     toughness = 4
     activatedAbility {
         cost = Costs.Tap
-        val permanent = target(TargetObject(filter = TargetFilter.Permanent.other(), id = "target"))
+        val permanent = target(TargetFilter.Permanent.other())
         effect = Effects.Untap(permanent)
     }
     activatedAbility {

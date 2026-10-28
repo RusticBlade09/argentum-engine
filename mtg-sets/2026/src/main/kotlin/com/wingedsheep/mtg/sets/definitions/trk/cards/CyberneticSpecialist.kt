@@ -4,7 +4,6 @@ import com.wingedsheep.sdk.dsl.Costs
 import com.wingedsheep.sdk.dsl.Effects
 import com.wingedsheep.sdk.dsl.Triggers
 import com.wingedsheep.sdk.scripting.filters.unified.TargetFilter
-import com.wingedsheep.sdk.scripting.targets.TargetObject
 import com.wingedsheep.sdk.dsl.card
 import com.wingedsheep.sdk.model.Rarity
 
@@ -29,7 +28,7 @@ val CyberneticSpecialist = card("Cybernetic Specialist") {
     }
     activatedAbility {
         cost = Costs.Composite(Costs.Mana("{1}"), Costs.Tap)
-        val card = target(TargetObject(filter = TargetFilter.CardInGraveyard.ownedByYou(), id = "target"))
+        val card = target(TargetFilter.CardInGraveyard.ownedByYou())
         effect = Effects.PutOnBottomOfLibrary(card)
     }
     metadata {

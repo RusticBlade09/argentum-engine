@@ -4,7 +4,7 @@ import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.dsl.Patterns
 import com.wingedsheep.sdk.dsl.Triggers
-import com.wingedsheep.sdk.scripting.values.DynamicAmount
+import com.wingedsheep.sdk.dsl.DynamicAmounts
 import com.wingedsheep.sdk.scripting.GameObjectFilter
 import com.wingedsheep.sdk.scripting.GrantKeyword
 import com.wingedsheep.sdk.scripting.effects.CardDestination
@@ -34,10 +34,10 @@ val HitIt = card("Hit It!") {
     triggeredAbility {
         trigger = Triggers.self.enters()
         effect = Patterns.Library.lookAtTopAndTakeMatching(
-            count = DynamicAmount.Fixed(5),
+            count = DynamicAmounts.fixed(5),
             filter = GameObjectFilter.Land,
             prompt = "Put a land card from among them onto the battlefield tapped",
-            selection = SelectionMode.ChooseExactly(DynamicAmount.Fixed(1)),
+            selection = SelectionMode.ChooseExactly(DynamicAmounts.fixed(1)),
             revealed = true,
             keepDestination = CardDestination.ToZone(Zone.BATTLEFIELD, placement = ZonePlacement.Tapped),
             restDestination = CardDestination.ToZone(Zone.GRAVEYARD),
