@@ -1,0 +1,36 @@
+{
+    "name": "Horta",
+    "manaCost": "{4}{R}{R}",
+    "typeLine": "Creature � Elemental",
+    "oracleText": "Trample\nBasic landcycling {2} ({2}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)",
+    "creatureStats": {
+        "power": 7,
+        "toughness": 6
+    },
+    "keywords": [
+        "TRAMPLE"
+    ],
+    "keywordAbilities": [
+        {
+            "type": "Simple",
+            "keyword": "TRAMPLE"
+        },
+        {
+            "type": "Cycling",
+            "cost": "{2}",
+            "searchFilter": {
+                "cardPredicates": [
+                    {
+                        "type": "IsBasicLand"
+                    }
+                ]
+            },
+            "displayPrefix": "Basic landcycling"
+        }
+    ],
+    "oracleId": "e8ac0742-15f5-4cf0-888f-f1c2c97fc144",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/a/b/abf44662-62ad-47fb-9cfe-6bed47133de5.jpg?1785981533"
+    }
+}

@@ -1,0 +1,19 @@
+{
+    "name": "Stomping Ground",
+    "manaCost": "",
+    "typeLine": "Land � Mountain Forest",
+    "oracleText": "({T}: Add {R} or {G}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped.",
+    "script": {
+        "replacementEffects": [
+            {
+                "type": "EntersTapped",
+                "payLifeCost": 2
+            }
+        ]
+    },
+    "oracleId": "16052b52-ade1-406f-a06b-ce7ea607fb63",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/1/e/1ee8255a-44f6-4faa-9843-15432bf751ea.jpg?1784065855"
+    }
+}

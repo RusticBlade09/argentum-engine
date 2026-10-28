@@ -1,0 +1,83 @@
+{
+    "name": "Constable Odo",
+    "manaCost": "{3}{W/U}{W/U}",
+    "typeLine": "Legendary Creature � Shapeshifter Detective",
+    "oracleText": "When Constable Odo enters, choose one �\n� Tap target creature an opponent controls. Put two stun counters on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)\n� Investigate twice. (To investigate, create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+    "creatureStats": {
+        "power": 4,
+        "toughness": 3
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Constable Odo:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Modal",
+                    "modes": [
+                        {
+                            "effect": {
+                                "type": "Composite",
+                                "effects": [
+                                    {
+                                        "type": "TapUntap",
+                                        "target": {
+                                            "type": "BoundVariable",
+                                            "name": "target"
+                                        }
+                                    },
+                                    {
+                                        "type": "AddCounters",
+                                        "counterType": "STUN",
+                                        "count": 2,
+                                        "target": {
+                                            "type": "BoundVariable",
+                                            "name": "target"
+                                        }
+                                    }
+                                ]
+                            },
+                            "targetRequirements": [
+                                {
+                                    "type": "TargetObject",
+                                    "filter": {
+                                        "baseFilter": {
+                                            "cardPredicates": [
+                                                {
+                                                    "type": "IsCreature"
+                                                }
+                                            ],
+                                            "controllerPredicate": {
+                                                "type": "ControlledByOpponent"
+                                            }
+                                        }
+                                    },
+                                    "id": "target"
+                                }
+                            ],
+                            "description": "Tap target. Put 2 stun counters on target"
+                        },
+                        {
+                            "effect": {
+                                "type": "Investigate",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 2
+                                }
+                            },
+                            "description": "Investigate twice"
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "oracleId": "74b58f31-7634-4b51-a900-6fbfccfb3cd2",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/3/d/3df582e4-3bfb-4413-9b39-898f33a5c1fd.jpg?1792508297"
+    }
+}

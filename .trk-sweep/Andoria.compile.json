@@ -1,0 +1,64 @@
+{
+    "name": "Andoria",
+    "manaCost": "",
+    "typeLine": "Land � Planet",
+    "oracleText": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {U} or {R}.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Andoria:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "GainLife",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                }
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Andoria:2",
+                "cost": {
+                    "type": "CostTap"
+                },
+                "effect": {
+                    "type": "AddMana",
+                    "color": "BLUE"
+                },
+                "timing": {
+                    "type": "ManaAbility"
+                },
+                "isManaAbility": true
+            },
+            {
+                "id": "Andoria:3",
+                "cost": {
+                    "type": "CostTap"
+                },
+                "effect": {
+                    "type": "AddMana",
+                    "color": "RED"
+                },
+                "timing": {
+                    "type": "ManaAbility"
+                },
+                "isManaAbility": true
+            }
+        ],
+        "replacementEffects": [
+            {
+                "type": "EntersTapped"
+            }
+        ]
+    },
+    "oracleId": "79134f5e-94db-4a40-ba75-2569b839cf35",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/0/e/0e9e72ef-3e34-4d19-aec0-b5e1ba84d244.jpg?1792632926"
+    }
+}

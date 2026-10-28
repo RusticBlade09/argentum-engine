@@ -1,0 +1,45 @@
+{
+    "name": "Xindi Surveyors",
+    "manaCost": "{2}{G}",
+    "typeLine": "Creature � Xindi Scientist",
+    "oracleText": "Landfall � Whenever a land you control enters, put a +1/+1 counter on this creature.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 2
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Xindi Surveyors:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "filter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsLand"
+                            }
+                        ],
+                        "controllerPredicate": {
+                            "type": "ControlledByYou"
+                        }
+                    },
+                    "to": "Battlefield"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "AddCounters",
+                    "counterType": "PLUS_ONE_PLUS_ONE",
+                    "count": 1,
+                    "target": {
+                        "type": "Self"
+                    }
+                }
+            }
+        ]
+    },
+    "oracleId": "5fdff691-686d-4ce0-bd12-eea676a648b4",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/8/0/803608aa-ae69-45d2-ae48-f1688d2a6a0d.jpg?1786005515"
+    }
+}

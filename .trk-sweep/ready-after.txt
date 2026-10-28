@@ -1,0 +1,5 @@
+TRK — Star Trek
+  179 missing: 0 Assay-ready, 161 declined, 18 absent from the ledger
+  declines: LINE_DECLINED 161
+
+  nothing Assay-ready — this set's tail is grammar work, not authoring work.

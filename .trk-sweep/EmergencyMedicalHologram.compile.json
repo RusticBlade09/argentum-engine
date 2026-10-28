@@ -1,0 +1,60 @@
+{
+    "name": "Emergency Medical Hologram",
+    "manaCost": "{W}",
+    "typeLine": "Artifact Creature � Illusion Doctor",
+    "oracleText": "When this creature enters, put a +1/+1 counter on target creature. You gain 1 life.",
+    "creatureStats": {
+        "power": 0,
+        "toughness": 1
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Emergency Medical Hologram:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "AddCounters",
+                            "counterType": "PLUS_ONE_PLUS_ONE",
+                            "count": 1,
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "target"
+                            }
+                        },
+                        {
+                            "type": "GainLife",
+                            "amount": {
+                                "type": "Fixed",
+                                "amount": 1
+                            }
+                        }
+                    ]
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                {
+                                    "type": "IsCreature"
+                                }
+                            ]
+                        }
+                    },
+                    "id": "target"
+                }
+            }
+        ]
+    },
+    "oracleId": "8170dcbb-9879-414c-819d-ea2658ff770c",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/d/d/dda6f965-cbdf-4dbc-b0b1-00c27e32f5f2.jpg?1786005719"
+    }
+}

@@ -1,0 +1,4400 @@
+Argentum Assay — differential (spellEffect, targetRequirements, triggeredAbilities, stateTriggeredAbilities, activatedAbilities, staticAbilities, replacementEffects, auraTarget, castRestrictions, additionalCosts, cantBeCountered, conditionalFlash, keywords, equipCost, defined P/T)
+==============================================================================
+
+  Hand-written cards                 17788
+    compared                         8042
+    not yet covered by the grammar   8723
+    script slot not modelled yet     135
+    lines do not fold into one card  97
+    multi-face (out of scope)        563
+    no Scryfall Oracle entry         2
+    Oracle text differs from golden  226
+    golden would not decode          0
+
+  Confirmed — models agree           7943   987.7‰ (98.8%)
+  DIVERGENT — read every one         99
+
+DIVERGENCES — each is a parser bug, a card bug, or a fold. Classify all of them.
+------------------------------------------------------------------------------
+  City of Brass  [ARN]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "TapEvent"
+            },
+            "effect": {
+                "type": "DealDamage",
+                "amount": {
+                    "type": "Fixed",
+                    "amount": 1
+                },
+                "target": {
+                    "type": "PlayerRef",
+                    "player": {
+                        "type": "You"
+                    }
+                }
+            }
+        }
+    ],
+    "activatedAbilities": [
+        {
+            "id": "activated",
+            "cost": {
+                "type": "CostTap"
+            },
+            "effect": {
+                "type": "AddManaOfChoice"
+            },
+            "timing": {
+                "type": "ManaAbility"
+            },
+            "isManaAbility": true
+        }
+    ]
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "City of Brass:1",
+            "trigger": {
+                "type": "TapEvent"
+            },
+            "effect": {
+                "type": "DealDamage",
+                "amount": {
+                    "type": "Fixed",
+                    "amount": 1
+                },
+                "target": {
+                    "type": "Controller"
+                }
+            }
+        }
+    ],
+    "activatedAbilities": [
+        {
+            "id": "City of Brass:2",
+            "cost": {
+                "type": "CostTap"
+            },
+            "effect": {
+                "type": "AddManaOfChoice"
+            },
+            "timing": {
+                "type": "ManaAbility"
+            },
+            "isManaAbility": true
+        }
+    ]
+}
+  Dand?n  [ARN]
+    script from text:      {
+    "stateTriggeredAbilities": [
+        {
+            "id": "state trigger",
+            "condition": {
+                "type": "Exists",
+                "player": {
+                    "type": "You"
+                },
+                "zone": "Battlefield",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsLand"
+                        },
+                        {
+                            "type": "HasSubtype",
+                            "subtype": "Island"
+                        }
+                    ]
+                },
+                "negate": true
+            },
+            "effect": {
+                "type": "SacrificeSelf"
+            }
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "CantAttackUnless",
+            "condition": {
+                "type": "Exists",
+                "player": {
+                    "type": "DefendingPlayer"
+                },
+                "zone": "Battlefield",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsLand"
+                        },
+                        {
+                            "type": "HasSubtype",
+                            "subtype": "Island"
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "stateTriggeredAbilities": [
+        {
+            "id": "Dand?n:1",
+            "condition": {
+                "type": "Exists",
+                "player": {
+                    "type": "You"
+                },
+                "zone": "Battlefield",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsLand"
+                        },
+                        {
+                            "type": "HasSubtype",
+                            "subtype": "Island"
+                        }
+                    ]
+                },
+                "negate": true
+            },
+            "effect": {
+                "type": "SacrificeTarget",
+                "target": {
+                    "type": "Self"
+                }
+            },
+            "descriptionOverride": "When you control no Islands, sacrifice this creature"
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "CantAttackUnless",
+            "condition": {
+                "type": "Exists",
+                "player": {
+                    "type": "DefendingPlayer"
+                },
+                "zone": "Battlefield",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsLand"
+                        },
+                        {
+                            "type": "HasSubtype",
+                            "subtype": "Island"
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}
+  Island Fish Jasconius  [ARN]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "StepEvent",
+                "step": "UPKEEP"
+            },
+            "binding": "ANY",
+            "effect": {
+                "type": "Gated",
+                "gate": {
+                    "type": "Gate.MayPay",
+                    "cost": {
+                        "type": "PayManaCost",
+                        "cost": "{U}{U}{U}"
+                    }
+                },
+                "then": {
+                    "type": "TapUntap",
+                    "target": {
+                        "type": "Self"
+                    },
+                    "tap": false
+                }
+            }
+        }
+    ],
+    "stateTriggeredAbilities": [
+        {
+            "id": "state trigger",
+            "condition": {
+                "type": "Exists",
+                "player": {
+                    "type": "You"
+                },
+                "zone": "Battlefield",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsLand"
+                        },
+                        {
+                            "type": "HasSubtype",
+                            "subtype": "Island"
+                        }
+                    ]
+                },
+                "negate": true
+            },
+            "effect": {
+                "type": "SacrificeSelf"
+            }
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "CantAttackUnless",
+            "condition": {
+                "type": "Exists",
+                "player": {
+                    "type": "DefendingPlayer"
+                },
+                "zone": "Battlefield",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsLand"
+                        },
+                        {
+                            "type": "HasSubtype",
+                            "subtype": "Island"
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "Island Fish Jasconius:1",
+            "trigger": {
+                "type": "StepEvent",
+                "step": "UPKEEP"
+            },
+            "binding": "ANY",
+            "effect": {
+                "type": "Gated",
+                "gate": {
+                    "type": "Gate.MayPay",
+                    "cost": {
+                        "type": "PayManaCost",
+                        "cost": "{U}{U}{U}"
+                    }
+                },
+                "then": {
+                    "type": "TapUntap",
+                    "target": {
+                        "type": "Self"
+                    },
+                    "tap": false
+                }
+            }
+        }
+    ],
+    "stateTriggeredAbilities": [
+        {
+            "id": "Island Fish Jasconius:2",
+            "condition": {
+                "type": "Exists",
+                "player": {
+                    "type": "You"
+                },
+                "zone": "Battlefield",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsLand"
+                        },
+                        {
+                            "type": "HasSubtype",
+                            "subtype": "Island"
+                        }
+                    ]
+                },
+                "negate": true
+            },
+            "effect": {
+                "type": "SacrificeTarget",
+                "target": {
+                    "type": "Self"
+                }
+            },
+            "descriptionOverride": "When you control no Islands, sacrifice this creature"
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "CantAttackUnless",
+            "condition": {
+                "type": "Exists",
+                "player": {
+                    "type": "DefendingPlayer"
+                },
+                "zone": "Battlefield",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsLand"
+                        },
+                        {
+                            "type": "HasSubtype",
+                            "subtype": "Island"
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}
+  Juz?m Djinn  [ARN]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "StepEvent",
+                "step": "UPKEEP"
+            },
+            "binding": "ANY",
+            "effect": {
+                "type": "DealDamage",
+                "amount": {
+                    "type": "Fixed",
+                    "amount": 1
+                },
+                "target": {
+                    "type": "PlayerRef",
+                    "player": {
+                        "type": "You"
+                    }
+                }
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "Juz?m Djinn:1",
+            "trigger": {
+                "type": "StepEvent",
+                "step": "UPKEEP"
+            },
+            "binding": "ANY",
+            "effect": {
+                "type": "DealDamage",
+                "amount": {
+                    "type": "Fixed",
+                    "amount": 1
+                },
+                "target": {
+                    "type": "Controller"
+                }
+            }
+        }
+    ]
+}
+  Serendib Efreet  [ARN]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "StepEvent",
+                "step": "UPKEEP"
+            },
+            "binding": "ANY",
+            "effect": {
+                "type": "DealDamage",
+                "amount": {
+                    "type": "Fixed",
+                    "amount": 1
+                },
+                "target": {
+                    "type": "PlayerRef",
+                    "player": {
+                        "type": "You"
+                    }
+                }
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "Serendib Efreet:1",
+            "trigger": {
+                "type": "StepEvent",
+                "step": "UPKEEP"
+            },
+            "binding": "ANY",
+            "effect": {
+                "type": "DealDamage",
+                "amount": {
+                    "type": "Fixed",
+                    "amount": 1
+                },
+                "target": {
+                    "type": "Controller"
+                }
+            }
+        }
+    ]
+}
+  Devout Chaplain  [AVR]
+    script from text:      {
+    "activatedAbilities": [
+        {
+            "id": "activated",
+            "cost": {
+                "type": "CostComposite",
+                "costs": [
+                    {
+                        "type": "CostTap"
+                    },
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomTapPermanents",
+                            "count": 2,
+                            "filter": {
+                                "cardPredicates": [
+                                    {
+                                        "type": "IsPermanent"
+                                    },
+                                    {
+                                        "type": "HasSubtype",
+                                        "subtype": "Human"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "effect": {
+                "type": "MoveToZone",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "target"
+                },
+                "destination": "Exile"
+            },
+            "targetRequirements": [
+                {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                {
+                                    "type": "Or",
+                                    "predicates": [
+                                        {
+                                            "type": "IsArtifact"
+                                        },
+                                        {
+                                            "type": "IsEnchantment"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    "id": "target"
+                }
+            ]
+        }
+    ]
+}
+    script on the card:    {
+    "activatedAbilities": [
+        {
+            "id": "Devout Chaplain:1",
+            "cost": {
+                "type": "CostComposite",
+                "costs": [
+                    {
+                        "type": "CostTap"
+                    },
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomTapPermanents",
+                            "count": 2,
+                            "filter": {
+                                "cardPredicates": [
+                                    {
+                                        "type": "IsPermanent"
+                                    },
+                                    {
+                                        "type": "HasSubtype",
+                                        "subtype": "Human"
+                                    }
+                                ]
+                            },
+                            "excludeSelf": true
+                        }
+                    }
+                ]
+            },
+            "effect": {
+                "type": "MoveToZone",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "t0"
+                },
+                "destination": "Exile"
+            },
+            "targetRequirements": [
+                {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                {
+                                    "type": "Or",
+                                    "predicates": [
+                                        {
+                                            "type": "IsArtifact"
+                                        },
+                                        {
+                                            "type": "IsEnchantment"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    "id": "t0"
+                }
+            ]
+        }
+    ]
+}
+  Lost Jitte  [BIG]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "DealsDamageEvent",
+                "damageType": {
+                    "type": "DamageCombat"
+                }
+            },
+            "binding": "ATTACHED",
+            "effect": {
+                "type": "AddCounters",
+                "counterType": "CHARGE",
+                "count": 1,
+                "target": {
+                    "type": "Self"
+                }
+            }
+        }
+    ],
+    "activatedAbilities": [
+        {
+            "id": "activated",
+            "cost": {
+                "type": "CostAtomWrapper",
+                "atom": {
+                    "type": "AtomRemoveCounters",
+                    "counterType": "CHARGE",
+                    "self": true
+                }
+            },
+            "effect": {
+                "type": "Modal",
+                "modes": [
+                    {
+                        "effect": {
+                            "type": "TapUntap",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "target"
+                            },
+                            "tap": false
+                        },
+                        "targetRequirements": [
+                            {
+                                "type": "TargetObject",
+                                "filter": {
+                                    "baseFilter": {
+                                        "cardPredicates": [
+                                            {
+                                                "type": "IsLand"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "id": "target"
+                            }
+                        ],
+                        "description": "Untap target"
+                    },
+                    {
+                        "effect": {
+                            "type": "CantBlockTargetCreatures",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "target"
+                            }
+                        },
+                        "targetRequirements": [
+                            {
+                                "type": "TargetObject",
+                                "filter": {
+                                    "baseFilter": {
+                                        "cardPredicates": [
+                                            {
+                                                "type": "IsCreature"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "id": "target"
+                            }
+                        ],
+                        "description": "target can't block this turn"
+                    },
+                    {
+                        "effect": {
+                            "type": "AddCounters",
+                            "counterType": "PLUS_ONE_PLUS_ONE",
+                            "count": 1,
+                            "target": {
+                                "type": "EnchantedCreature"
+                            }
+                        },
+                        "description": "Put a +1/+1 counter on enchanted creature"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "equip",
+            "cost": {
+                "type": "CostAtomWrapper",
+                "atom": {
+                    "type": "AtomMana",
+                    "cost": "{1}"
+                }
+            },
+            "effect": {
+                "type": "AttachEquipment",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "creature you control"
+                }
+            },
+            "targetRequirements": [
+                {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                {
+                                    "type": "IsCreature"
+                                }
+                            ],
+                            "controllerPredicate": {
+                                "type": "ControlledByYou"
+                            }
+                        }
+                    },
+                    "id": "creature you control"
+                }
+            ],
+            "timing": {
+                "type": "SorcerySpeed"
+            },
+            "isEquipAbility": true
+        }
+    ]
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "Lost Jitte:1",
+            "trigger": {
+                "type": "DealsDamageEvent",
+                "damageType": {
+                    "type": "DamageCombat"
+                }
+            },
+            "binding": "ATTACHED",
+            "effect": {
+                "type": "AddCounters",
+                "counterType": "CHARGE",
+                "count": 1,
+                "target": {
+                    "type": "Self"
+                }
+            }
+        }
+    ],
+    "activatedAbilities": [
+        {
+            "id": "Lost Jitte:2",
+            "cost": {
+                "type": "CostAtomWrapper",
+                "atom": {
+                    "type": "AtomRemoveCounters",
+                    "counterType": "CHARGE",
+                    "self": true
+                }
+            },
+            "effect": {
+                "type": "Modal",
+                "modes": [
+                    {
+                        "effect": {
+                            "type": "TapUntap",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            },
+                            "tap": false
+                        },
+                        "targetRequirements": [
+                            {
+                                "type": "TargetObject",
+                                "filter": {
+                                    "baseFilter": {
+                                        "cardPredicates": [
+                                            {
+                                                "type": "IsLand"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "id": "t0"
+                            }
+                        ],
+                        "description": "Untap target land"
+                    },
+                    {
+                        "effect": {
+                            "type": "CantBlockTargetCreatures",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t1"
+                            }
+                        },
+                        "targetRequirements": [
+                            {
+                                "type": "TargetObject",
+                                "filter": {
+                                    "baseFilter": {
+                                        "cardPredicates": [
+                                            {
+                                                "type": "IsCreature"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "id": "t1"
+                            }
+                        ],
+                        "description": "Target creature can't block this turn"
+                    },
+                    {
+                        "effect": {
+                            "type": "AddCounters",
+                            "counterType": "PLUS_ONE_PLUS_ONE",
+                            "count": 1,
+                            "target": {
+                                "type": "EquippedCreature"
+                            }
+                        },
+                        "description": "Put a +1/+1 counter on equipped creature"
+                    }
+                ],
+                "countsAsModalSpell": false
+            },
+            "descriptionOverride": "Remove a charge counter from Lost Jitte: Choose one — Untap target land; Target creature can't block this turn; or Put a +1/+1 counter on equipped creature."
+        },
+        {
+            "id": "Lost Jitte:3",
+            "cost": {
+                "type": "CostAtomWrapper",
+                "atom": {
+                    "type": "AtomMana",
+                    "cost": "{1}"
+                }
+            },
+            "effect": {
+                "type": "AttachEquipment",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "creature you control"
+                }
+            },
+            "targetRequirements": [
+                {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                {
+                                    "type": "IsCreature"
+                                }
+                            ],
+                            "controllerPredicate": {
+                                "type": "ControlledByYou"
+                            }
+                        }
+                    },
+                    "id": "creature you control"
+                }
+            ],
+            "timing": {
+                "type": "SorcerySpeed"
+            },
+            "isEquipAbility": true
+        }
+    ]
+}
+  Calamitous Tide  [BLB]
+    script from text:      {
+    "spellEffect": {
+        "type": "Composite",
+        "effects": [
+            {
+                "type": "ForEach",
+                "space": {
+                    "type": "IterationSpace.Targets"
+                },
+                "body": {
+                    "type": "MoveToZone",
+                    "target": {
+                        "type": "ContextTarget",
+                        "index": 0
+                    },
+                    "destination": "Hand"
+                }
+            },
+            {
+                "type": "DrawCards",
+                "count": {
+                    "type": "Fixed",
+                    "amount": 2
+                }
+            },
+            {
+                "type": "Composite",
+                "effects": [
+                    {
+                        "type": "GatherCards",
+                        "source": {
+                            "type": "FromZone",
+                            "zone": "Hand"
+                        },
+                        "storeAs": "hand"
+                    },
+                    {
+                        "type": "SelectFromCollection",
+                        "from": "hand",
+                        "selection": {
+                            "type": "ChooseExactly",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            }
+                        },
+                        "storeSelected": "discarded",
+                        "prompt": "Choose 1 card to discard"
+                    },
+                    {
+                        "type": "MoveCollection",
+                        "from": "discarded",
+                        "destination": {
+                            "type": "ToZone",
+                            "zone": "Graveyard"
+                        },
+                        "moveType": "Discard"
+                    }
+                ]
+            }
+        ]
+    },
+    "targetRequirements": [
+        {
+            "type": "TargetObject",
+            "count": 2,
+            "optional": true,
+            "filter": {
+                "baseFilter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsCreature"
+                        }
+                    ]
+                }
+            },
+            "id": "target"
+        }
+    ]
+}
+    script on the card:    {
+    "spellEffect": {
+        "type": "Composite",
+        "effects": [
+            {
+                "type": "MoveToZone",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "t0[0]"
+                },
+                "destination": "Hand"
+            },
+            {
+                "type": "MoveToZone",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "t0[1]"
+                },
+                "destination": "Hand"
+            },
+            {
+                "type": "Composite",
+                "effects": [
+                    {
+                        "type": "DrawCards",
+                        "count": {
+                            "type": "Fixed",
+                            "amount": 2
+                        }
+                    },
+                    {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "GatherCards",
+                                "source": {
+                                    "type": "FromZone",
+                                    "zone": "Hand"
+                                },
+                                "storeAs": "hand"
+                            },
+                            {
+                                "type": "SelectFromCollection",
+                                "from": "hand",
+                                "selection": {
+                                    "type": "ChooseExactly",
+                                    "count": {
+                                        "type": "Fixed",
+                                        "amount": 1
+                                    }
+                                },
+                                "storeSelected": "discarded",
+                                "prompt": "Choose 1 card to discard"
+                            },
+                            {
+                                "type": "MoveCollection",
+                                "from": "discarded",
+                                "destination": {
+                                    "type": "ToZone",
+                                    "zone": "Graveyard"
+                                },
+                                "moveType": "Discard"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    "targetRequirements": [
+        {
+            "type": "TargetObject",
+            "count": 2,
+            "optional": true,
+            "filter": {
+                "baseFilter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsCreature"
+                        }
+                    ]
+                }
+            },
+            "id": "t0"
+        }
+    ]
+}
+  Pearl of Wisdom  [BLB]
+    script from text:      {
+    "spellEffect": {
+        "type": "DrawCards",
+        "count": {
+            "type": "Fixed",
+            "amount": 2
+        }
+    },
+    "staticAbilities": [
+        {
+            "type": "ModifySpellCost",
+            "target": {
+                "type": "SelfCast"
+            },
+            "modification": {
+                "type": "ReduceGeneric",
+                "amount": 1
+            },
+            "gating": {
+                "type": "OnlyIf",
+                "condition": {
+                    "type": "Exists",
+                    "player": {
+                        "type": "You"
+                    },
+                    "zone": "Battlefield",
+                    "filter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsPermanent"
+                            },
+                            {
+                                "type": "HasSubtype",
+                                "subtype": "Otter"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "spellEffect": {
+        "type": "DrawCards",
+        "count": {
+            "type": "Fixed",
+            "amount": 2
+        }
+    },
+    "staticAbilities": [
+        {
+            "type": "ModifySpellCost",
+            "target": {
+                "type": "SelfCast"
+            },
+            "modification": {
+                "type": "ReduceGenericBy",
+                "source": {
+                    "type": "FixedIfControlFilter",
+                    "amount": 1,
+                    "filter": {
+                        "cardPredicates": [
+                            {
+                                "type": "HasSubtype",
+                                "subtype": "Otter"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}
+  Breya, Etherium Shaper  [C16]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "to": "Battlefield"
+            },
+            "effect": {
+                "type": "CreateToken",
+                "count": {
+                    "type": "Fixed",
+                    "amount": 2
+                },
+                "power": 1,
+                "toughness": 1,
+                "colors": [
+                    "BLUE"
+                ],
+                "creatureTypes": [
+                    "Thopter"
+                ],
+                "keywords": [
+                    "FLYING"
+                ],
+                "artifactToken": true
+            }
+        }
+    ],
+    "activatedAbilities": [
+        {
+            "id": "activated",
+            "cost": {
+                "type": "CostComposite",
+                "costs": [
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomMana",
+                            "cost": "{2}"
+                        }
+                    },
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomSacrifice",
+                            "filter": {
+                                "cardPredicates": [
+                                    {
+                                        "type": "IsArtifact"
+                                    }
+                                ]
+                            },
+                            "count": 2
+                        }
+                    }
+                ]
+            },
+            "effect": {
+                "type": "Modal",
+                "modes": [
+                    {
+                        "effect": {
+                            "type": "DealDamage",
+                            "amount": {
+                                "type": "Fixed",
+                                "amount": 3
+                            },
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "target"
+                            }
+                        },
+                        "targetRequirements": [
+                            {
+                                "type": "TargetPlayerOrPlaneswalker",
+                                "id": "target"
+                            }
+                        ],
+                        "description": "Deal 3 damage to target"
+                    },
+                    {
+                        "effect": {
+                            "type": "ModifyStats",
+                            "powerModifier": {
+                                "type": "Fixed",
+                                "amount": -4
+                            },
+                            "toughnessModifier": {
+                                "type": "Fixed",
+                                "amount": -4
+                            },
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "target"
+                            }
+                        },
+                        "targetRequirements": [
+                            {
+                                "type": "TargetObject",
+                                "filter": {
+                                    "baseFilter": {
+                                        "cardPredicates": [
+                                            {
+                                                "type": "IsCreature"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "id": "target"
+                            }
+                        ],
+                        "description": "target gets -4/-4 until end of turn"
+                    },
+                    {
+                        "effect": {
+                            "type": "GainLife",
+                            "amount": {
+                                "type": "Fixed",
+                                "amount": 5
+                            }
+                        },
+                        "description": "You gain 5 life"
+                    }
+                ]
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "Breya, Etherium Shaper:1",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "to": "Battlefield"
+            },
+            "effect": {
+                "type": "CreateToken",
+                "count": {
+                    "type": "Fixed",
+                    "amount": 2
+                },
+                "power": 1,
+                "toughness": 1,
+                "colors": [
+                    "BLUE"
+                ],
+                "creatureTypes": [
+                    "Thopter"
+                ],
+                "keywords": [
+                    "FLYING"
+                ],
+                "imageUri": "https://cards.scryfall.io/normal/front/6/c/6c9a9020-2bf0-4bdd-94a2-545304226a53.jpg?1783937013",
+                "artifactToken": true
+            }
+        }
+    ],
+    "activatedAbilities": [
+        {
+            "id": "Breya, Etherium Shaper:2",
+            "cost": {
+                "type": "CostComposite",
+                "costs": [
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomMana",
+                            "cost": "{2}"
+                        }
+                    },
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomSacrifice",
+                            "filter": {
+                                "cardPredicates": [
+                                    {
+                                        "type": "IsArtifact"
+                                    }
+                                ]
+                            },
+                            "count": 2
+                        }
+                    }
+                ]
+            },
+            "effect": {
+                "type": "Modal",
+                "modes": [
+                    {
+                        "effect": {
+                            "type": "DealDamage",
+                            "amount": {
+                                "type": "Fixed",
+                                "amount": 3
+                            },
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        },
+                        "targetRequirements": [
+                            {
+                                "type": "TargetPlayerOrPlaneswalker",
+                                "id": "t0"
+                            }
+                        ],
+                        "description": "Breya deals 3 damage to target player or planeswalker"
+                    },
+                    {
+                        "effect": {
+                            "type": "ModifyStats",
+                            "powerModifier": {
+                                "type": "Fixed",
+                                "amount": -4
+                            },
+                            "toughnessModifier": {
+                                "type": "Fixed",
+                                "amount": -4
+                            },
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t1"
+                            }
+                        },
+                        "targetRequirements": [
+                            {
+                                "type": "TargetObject",
+                                "filter": {
+                                    "baseFilter": {
+                                        "cardPredicates": [
+                                            {
+                                                "type": "IsCreature"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "id": "t1"
+                            }
+                        ],
+                        "description": "Target creature gets -4/-4 until end of turn"
+                    },
+                    {
+                        "effect": {
+                            "type": "GainLife",
+                            "amount": {
+                                "type": "Fixed",
+                                "amount": 5
+                            }
+                        },
+                        "description": "You gain 5 life"
+                    }
+                ],
+                "countsAsModalSpell": false
+            },
+            "descriptionOverride": "{2}, Sacrifice two artifacts: Choose one — Breya deals 3 damage to target player or planeswalker; or target creature gets -4/-4 until end of turn; or you gain 5 life."
+        }
+    ]
+}
+  Patron of the Vein  [C17]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "to": "Battlefield"
+            },
+            "effect": {
+                "type": "MoveToZone",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "target"
+                },
+                "destination": "Graveyard",
+                "byDestruction": true
+            },
+            "targetRequirement": {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsCreature"
+                            }
+                        ],
+                        "controllerPredicate": {
+                            "type": "ControlledByOpponent"
+                        }
+                    }
+                },
+                "id": "target"
+            }
+        },
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsCreature"
+                        }
+                    ],
+                    "controllerPredicate": {
+                        "type": "ControlledByOpponent"
+                    }
+                },
+                "from": "Battlefield",
+                "to": "Graveyard"
+            },
+            "binding": "ANY",
+            "effect": {
+                "type": "Composite",
+                "effects": [
+                    {
+                        "type": "MoveToZone",
+                        "target": {
+                            "type": "TriggeringEntity"
+                        },
+                        "destination": "Exile"
+                    },
+                    {
+                        "type": "ForEach",
+                        "space": {
+                            "type": "IterationSpace.Group",
+                            "filter": {
+                                "baseFilter": {
+                                    "cardPredicates": [
+                                        {
+                                            "type": "IsPermanent"
+                                        },
+                                        {
+                                            "type": "HasSubtype",
+                                            "subtype": "Vampire"
+                                        }
+                                    ],
+                                    "controllerPredicate": {
+                                        "type": "ControlledByYou"
+                                    }
+                                }
+                            }
+                        },
+                        "body": {
+                            "type": "AddCounters",
+                            "counterType": "PLUS_ONE_PLUS_ONE",
+                            "count": 1,
+                            "target": {
+                                "type": "IterationEntity"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "Patron of the Vein:1",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "to": "Battlefield"
+            },
+            "effect": {
+                "type": "MoveToZone",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "t0"
+                },
+                "destination": "Graveyard",
+                "byDestruction": true
+            },
+            "targetRequirement": {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsCreature"
+                            }
+                        ],
+                        "controllerPredicate": {
+                            "type": "ControlledByOpponent"
+                        }
+                    }
+                },
+                "id": "t0"
+            },
+            "descriptionOverride": "When this creature enters, destroy target creature an opponent controls."
+        },
+        {
+            "id": "Patron of the Vein:2",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsCreature"
+                        }
+                    ],
+                    "controllerPredicate": {
+                        "type": "ControlledByOpponent"
+                    }
+                },
+                "from": "Battlefield",
+                "to": "Graveyard"
+            },
+            "binding": "ANY",
+            "effect": {
+                "type": "Composite",
+                "effects": [
+                    {
+                        "type": "MoveToZone",
+                        "target": {
+                            "type": "TriggeringEntity"
+                        },
+                        "destination": "Exile",
+                        "fromZone": "Graveyard"
+                    },
+                    {
+                        "type": "ForEach",
+                        "space": {
+                            "type": "IterationSpace.Group",
+                            "filter": {
+                                "baseFilter": {
+                                    "cardPredicates": [
+                                        {
+                                            "type": "IsPermanent"
+                                        },
+                                        {
+                                            "type": "HasSubtype",
+                                            "subtype": "Vampire"
+                                        }
+                                    ],
+                                    "controllerPredicate": {
+                                        "type": "ControlledByYou"
+                                    }
+                                }
+                            }
+                        },
+                        "body": {
+                            "type": "AddCounters",
+                            "counterType": "PLUS_ONE_PLUS_ONE",
+                            "count": 1,
+                            "target": {
+                                "type": "IterationEntity"
+                            }
+                        }
+                    }
+                ]
+            },
+            "descriptionOverride": "Whenever a creature an opponent controls dies, exile it and put a +1/+1 counter on each Vampire you control."
+        }
+    ]
+}
+  Dune Drifter  [DFT]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "to": "Battlefield"
+            },
+            "effect": {
+                "type": "MoveToZone",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "target"
+                },
+                "destination": "Battlefield",
+                "fromZone": "Graveyard"
+            },
+            "targetRequirement": {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            {
+                                "type": "Or",
+                                "predicates": [
+                                    {
+                                        "type": "IsArtifact"
+                                    },
+                                    {
+                                        "type": "IsCreature"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "CompareNumericProperty",
+                                "property": "MANA_VALUE",
+                                "operator": "LTE",
+                                "amount": {
+                                    "type": "XValue"
+                                }
+                            }
+                        ],
+                        "controllerPredicate": {
+                            "type": "OwnedByYou"
+                        }
+                    },
+                    "zone": "Graveyard"
+                },
+                "id": "target"
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "Dune Drifter:1",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "to": "Battlefield"
+            },
+            "effect": {
+                "type": "MoveToZone",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "t0"
+                },
+                "destination": "Battlefield",
+                "fromZone": "Graveyard"
+            },
+            "targetRequirement": {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            {
+                                "type": "Or",
+                                "predicates": [
+                                    {
+                                        "type": "IsArtifact"
+                                    },
+                                    {
+                                        "type": "IsCreature"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "ManaValueAtMostDynamic",
+                                "amount": {
+                                    "type": "CastX"
+                                }
+                            }
+                        ],
+                        "controllerPredicate": {
+                            "type": "OwnedByYou"
+                        }
+                    },
+                    "zone": "Graveyard"
+                },
+                "id": "t0"
+            },
+            "descriptionOverride": "When this Vehicle enters, return target artifact or creature card with mana value X or less from your graveyard to the battlefield."
+        }
+    ]
+}
+  Salvation Engine  [DFT]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "AttackEvent"
+            },
+            "effect": {
+                "type": "MoveToZone",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "target"
+                },
+                "destination": "Battlefield",
+                "fromZone": "Graveyard"
+            },
+            "targetRequirement": {
+                "type": "TargetObject",
+                "optional": true,
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsArtifact"
+                            }
+                        ],
+                        "controllerPredicate": {
+                            "type": "OwnedByYou"
+                        }
+                    },
+                    "zone": "Graveyard"
+                },
+                "id": "target"
+            }
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "ModifyStats",
+            "powerBonus": 2,
+            "toughnessBonus": 2,
+            "filter": {
+                "baseFilter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsArtifact"
+                        },
+                        {
+                            "type": "IsCreature"
+                        }
+                    ],
+                    "controllerPredicate": {
+                        "type": "ControlledByYou"
+                    }
+                },
+                "excludeSelf": true
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "Salvation Engine:1",
+            "trigger": {
+                "type": "AttackEvent"
+            },
+            "effect": {
+                "type": "MoveToZone",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "t0"
+                },
+                "destination": "Battlefield"
+            },
+            "targetRequirement": {
+                "type": "TargetObject",
+                "optional": true,
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsArtifact"
+                            }
+                        ],
+                        "controllerPredicate": {
+                            "type": "OwnedByYou"
+                        }
+                    },
+                    "zone": "Graveyard"
+                },
+                "id": "t0"
+            }
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "ModifyStats",
+            "powerBonus": 2,
+            "toughnessBonus": 2,
+            "filter": {
+                "baseFilter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsArtifact"
+                        },
+                        {
+                            "type": "IsCreature"
+                        }
+                    ],
+                    "controllerPredicate": {
+                        "type": "ControlledByYou"
+                    }
+                },
+                "excludeSelf": true
+            }
+        }
+    ]
+}
+  Citizen's Arrest  [DMU]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "to": "Battlefield"
+            },
+            "effect": {
+                "type": "ExileUntilLeaves",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "target"
+                }
+            },
+            "targetRequirement": {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            {
+                                "type": "Or",
+                                "predicates": [
+                                    {
+                                        "type": "IsCreature"
+                                    },
+                                    {
+                                        "type": "IsPlaneswalker"
+                                    }
+                                ]
+                            }
+                        ],
+                        "controllerPredicate": {
+                            "type": "ControlledByOpponent"
+                        }
+                    }
+                },
+                "id": "target"
+            }
+        },
+        {
+            "id": "linked-return",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "from": "Battlefield"
+            },
+            "effect": {
+                "type": "Composite",
+                "effects": [
+                    {
+                        "type": "GatherCards",
+                        "source": {
+                            "type": "FromLinkedExile"
+                        },
+                        "storeAs": "linked_return"
+                    },
+                    {
+                        "type": "MoveCollection",
+                        "from": "linked_return",
+                        "destination": {
+                            "type": "ToZone",
+                            "zone": "Battlefield"
+                        },
+                        "underOwnersControl": true
+                    }
+                ]
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "Citizen's Arrest:1",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "to": "Battlefield"
+            },
+            "effect": {
+                "type": "MoveUntilSourceLeaves",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "t0"
+                },
+                "destination": "Exile"
+            },
+            "targetRequirement": {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            {
+                                "type": "Or",
+                                "predicates": [
+                                    {
+                                        "type": "IsCreature"
+                                    },
+                                    {
+                                        "type": "IsPlaneswalker"
+                                    }
+                                ]
+                            }
+                        ],
+                        "controllerPredicate": {
+                            "type": "ControlledByOpponent"
+                        }
+                    }
+                },
+                "id": "t0"
+            }
+        }
+    ]
+}
+  Dark Bargain  [DOM]
+    script from text:      {
+    "spellEffect": {
+        "type": "Composite",
+        "effects": [
+            {
+                "type": "Composite",
+                "effects": [
+                    {
+                        "type": "GatherCards",
+                        "source": {
+                            "type": "TopOfLibrary",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 3
+                            }
+                        },
+                        "storeAs": "looked"
+                    },
+                    {
+                        "type": "SelectFromCollection",
+                        "from": "looked",
+                        "selection": {
+                            "type": "ChooseExactly",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 2
+                            }
+                        },
+                        "storeSelected": "kept",
+                        "storeRemainder": "rest",
+                        "selectedLabel": "Put in hand",
+                        "remainderLabel": "Put in graveyard"
+                    },
+                    {
+                        "type": "MoveCollection",
+                        "from": "kept",
+                        "destination": {
+                            "type": "ToZone",
+                            "zone": "Hand"
+                        }
+                    },
+                    {
+                        "type": "MoveCollection",
+                        "from": "rest",
+                        "destination": {
+                            "type": "ToZone",
+                            "zone": "Graveyard"
+                        }
+                    }
+                ]
+            },
+            {
+                "type": "DealDamage",
+                "amount": {
+                    "type": "Fixed",
+                    "amount": 2
+                },
+                "target": {
+                    "type": "PlayerRef",
+                    "player": {
+                        "type": "You"
+                    }
+                }
+            }
+        ]
+    }
+}
+    script on the card:    {
+    "spellEffect": {
+        "type": "Composite",
+        "effects": [
+            {
+                "type": "GatherCards",
+                "source": {
+                    "type": "TopOfLibrary",
+                    "count": {
+                        "type": "Fixed",
+                        "amount": 3
+                    }
+                },
+                "storeAs": "looked"
+            },
+            {
+                "type": "SelectFromCollection",
+                "from": "looked",
+                "selection": {
+                    "type": "ChooseExactly",
+                    "count": {
+                        "type": "Fixed",
+                        "amount": 2
+                    }
+                },
+                "storeSelected": "kept",
+                "storeRemainder": "rest",
+                "selectedLabel": "Put in hand",
+                "remainderLabel": "Put in graveyard"
+            },
+            {
+                "type": "MoveCollection",
+                "from": "kept",
+                "destination": {
+                    "type": "ToZone",
+                    "zone": "Hand"
+                }
+            },
+            {
+                "type": "MoveCollection",
+                "from": "rest",
+                "destination": {
+                    "type": "ToZone",
+                    "zone": "Graveyard"
+                }
+            },
+            {
+                "type": "DealDamage",
+                "amount": {
+                    "type": "Fixed",
+                    "amount": 2
+                },
+                "target": {
+                    "type": "Controller"
+                }
+            }
+        ]
+    }
+}
+  Wizard's Lightning  [DOM]
+    script from text:      {
+    "spellEffect": {
+        "type": "DealDamage",
+        "amount": {
+            "type": "Fixed",
+            "amount": 3
+        },
+        "target": {
+            "type": "BoundVariable",
+            "name": "target"
+        }
+    },
+    "targetRequirements": [
+        {
+            "type": "AnyTarget",
+            "id": "target"
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "ModifySpellCost",
+            "target": {
+                "type": "SelfCast"
+            },
+            "modification": {
+                "type": "ReduceGeneric",
+                "amount": 2
+            },
+            "gating": {
+                "type": "OnlyIf",
+                "condition": {
+                    "type": "Exists",
+                    "player": {
+                        "type": "You"
+                    },
+                    "zone": "Battlefield",
+                    "filter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsPermanent"
+                            },
+                            {
+                                "type": "HasSubtype",
+                                "subtype": "Wizard"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "spellEffect": {
+        "type": "DealDamage",
+        "amount": {
+            "type": "Fixed",
+            "amount": 3
+        },
+        "target": {
+            "type": "BoundVariable",
+            "name": "t0"
+        }
+    },
+    "targetRequirements": [
+        {
+            "type": "AnyTarget",
+            "id": "t0"
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "ModifySpellCost",
+            "target": {
+                "type": "SelfCast"
+            },
+            "modification": {
+                "type": "ReduceGenericBy",
+                "source": {
+                    "type": "FixedIfControlFilter",
+                    "amount": 2,
+                    "filter": {
+                        "cardPredicates": [
+                            {
+                                "type": "HasSubtype",
+                                "subtype": "Wizard"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}
+  Wizard's Retort  [DOM]
+    script from text:      {
+    "spellEffect": {
+        "type": "Counter"
+    },
+    "targetRequirements": [
+        {
+            "type": "TargetObject",
+            "filter": {
+                "baseFilter": {},
+                "zone": "Stack"
+            },
+            "id": "target"
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "ModifySpellCost",
+            "target": {
+                "type": "SelfCast"
+            },
+            "modification": {
+                "type": "ReduceGeneric",
+                "amount": 1
+            },
+            "gating": {
+                "type": "OnlyIf",
+                "condition": {
+                    "type": "Exists",
+                    "player": {
+                        "type": "You"
+                    },
+                    "zone": "Battlefield",
+                    "filter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsPermanent"
+                            },
+                            {
+                                "type": "HasSubtype",
+                                "subtype": "Wizard"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "spellEffect": {
+        "type": "Counter"
+    },
+    "targetRequirements": [
+        {
+            "type": "TargetObject",
+            "filter": {
+                "baseFilter": {},
+                "zone": "Stack"
+            },
+            "id": "t0"
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "ModifySpellCost",
+            "target": {
+                "type": "SelfCast"
+            },
+            "modification": {
+                "type": "ReduceGenericBy",
+                "source": {
+                    "type": "FixedIfControlFilter",
+                    "amount": 1,
+                    "filter": {
+                        "cardPredicates": [
+                            {
+                                "type": "HasSubtype",
+                                "subtype": "Wizard"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}
+  Bog Rats  [DRK]
+    script from text:      {
+    "staticAbilities": [
+        {
+            "type": "CantBeBlockedBy",
+            "blockerFilter": {
+                "cardPredicates": [
+                    {
+                        "type": "IsPermanent"
+                    },
+                    {
+                        "type": "HasSubtype",
+                        "subtype": "Wall"
+                    }
+                ]
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "staticAbilities": [
+        {
+            "type": "CantBeBlockedBy",
+            "blockerFilter": {
+                "cardPredicates": [
+                    {
+                        "type": "IsCreature"
+                    },
+                    {
+                        "type": "HasSubtype",
+                        "subtype": "Wall"
+                    }
+                ]
+            }
+        }
+    ]
+}
+  Goblin Digging Team  [DRK]
+    script from text:      {
+    "activatedAbilities": [
+        {
+            "id": "activated",
+            "cost": {
+                "type": "CostComposite",
+                "costs": [
+                    {
+                        "type": "CostTap"
+                    },
+                    {
+                        "type": "CostSacrificeSelf"
+                    }
+                ]
+            },
+            "effect": {
+                "type": "MoveToZone",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "target"
+                },
+                "destination": "Graveyard",
+                "byDestruction": true
+            },
+            "targetRequirements": [
+                {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                {
+                                    "type": "IsPermanent"
+                                },
+                                {
+                                    "type": "HasSubtype",
+                                    "subtype": "Wall"
+                                }
+                            ]
+                        }
+                    },
+                    "id": "target"
+                }
+            ]
+        }
+    ]
+}
+    script on the card:    {
+    "activatedAbilities": [
+        {
+            "id": "Goblin Digging Team:1",
+            "cost": {
+                "type": "CostComposite",
+                "costs": [
+                    {
+                        "type": "CostTap"
+                    },
+                    {
+                        "type": "CostSacrificeSelf"
+                    }
+                ]
+            },
+            "effect": {
+                "type": "MoveToZone",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "t0"
+                },
+                "destination": "Graveyard",
+                "byDestruction": true
+            },
+            "targetRequirements": [
+                {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                {
+                                    "type": "IsCreature"
+                                },
+                                {
+                                    "type": "HasSubtype",
+                                    "subtype": "Wall"
+                                }
+                            ]
+                        }
+                    },
+                    "id": "t0"
+                }
+            ]
+        }
+    ]
+}
+  Goblins of the Flarg  [DRK]
+    script from text:      {
+    "stateTriggeredAbilities": [
+        {
+            "id": "state trigger",
+            "condition": {
+                "type": "Exists",
+                "player": {
+                    "type": "You"
+                },
+                "zone": "Battlefield",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsPermanent"
+                        },
+                        {
+                            "type": "HasSubtype",
+                            "subtype": "Dwarf"
+                        }
+                    ]
+                }
+            },
+            "effect": {
+                "type": "SacrificeSelf"
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "stateTriggeredAbilities": [
+        {
+            "id": "Goblins of the Flarg:1",
+            "condition": {
+                "type": "Exists",
+                "player": {
+                    "type": "You"
+                },
+                "zone": "Battlefield",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsPermanent"
+                        },
+                        {
+                            "type": "HasSubtype",
+                            "subtype": "Dwarf"
+                        }
+                    ]
+                }
+            },
+            "effect": {
+                "type": "SacrificeTarget",
+                "target": {
+                    "type": "Self"
+                }
+            },
+            "descriptionOverride": "When you control a Dwarf, sacrifice this creature"
+        }
+    ]
+}
+  Clammy Prowler  [DSK]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "AttackEvent"
+            },
+            "effect": {
+                "type": "GrantKeyword",
+                "keyword": "CANT_BE_BLOCKED",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "target"
+                }
+            },
+            "targetRequirement": {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsCreature"
+                            }
+                        ],
+                        "statePredicates": [
+                            {
+                                "type": "IsAttacking"
+                            }
+                        ]
+                    },
+                    "excludeSelf": true
+                },
+                "id": "target"
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "Clammy Prowler:1",
+            "trigger": {
+                "type": "AttackEvent"
+            },
+            "effect": {
+                "type": "GrantKeyword",
+                "keyword": "CANT_BE_BLOCKED",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "t0"
+                }
+            },
+            "targetRequirement": {
+                "type": "TargetOther",
+                "baseRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                {
+                                    "type": "IsCreature"
+                                }
+                            ],
+                            "statePredicates": [
+                                {
+                                    "type": "IsAttacking"
+                                }
+                            ]
+                        }
+                    }
+                },
+                "id": "t0"
+            }
+        }
+    ]
+}
+  Sarkhan's Rage  [DTK]
+    script from text:      {
+    "spellEffect": {
+        "type": "Composite",
+        "effects": [
+            {
+                "type": "DealDamage",
+                "amount": {
+                    "type": "Fixed",
+                    "amount": 5
+                },
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "target"
+                }
+            },
+            {
+                "type": "Gated",
+                "gate": {
+                    "type": "Gate.WhenCondition",
+                    "condition": {
+                        "type": "Exists",
+                        "player": {
+                            "type": "You"
+                        },
+                        "zone": "Battlefield",
+                        "filter": {
+                            "cardPredicates": [
+                                {
+                                    "type": "IsPermanent"
+                                },
+                                {
+                                    "type": "HasSubtype",
+                                    "subtype": "Dragon"
+                                }
+                            ]
+                        },
+                        "negate": true
+                    }
+                },
+                "then": {
+                    "type": "DealDamage",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 2
+                    },
+                    "target": {
+                        "type": "PlayerRef",
+                        "player": {
+                            "type": "You"
+                        }
+                    }
+                }
+            }
+        ]
+    },
+    "targetRequirements": [
+        {
+            "type": "AnyTarget",
+            "id": "target"
+        }
+    ]
+}
+    script on the card:    {
+    "spellEffect": {
+        "type": "Composite",
+        "effects": [
+            {
+                "type": "DealDamage",
+                "amount": {
+                    "type": "Fixed",
+                    "amount": 5
+                },
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "t0"
+                }
+            },
+            {
+                "type": "Gated",
+                "gate": {
+                    "type": "Gate.WhenCondition",
+                    "condition": {
+                        "type": "Exists",
+                        "player": {
+                            "type": "You"
+                        },
+                        "zone": "Battlefield",
+                        "filter": {
+                            "cardPredicates": [
+                                {
+                                    "type": "IsPermanent"
+                                },
+                                {
+                                    "type": "HasSubtype",
+                                    "subtype": "Dragon"
+                                }
+                            ]
+                        },
+                        "negate": true
+                    }
+                },
+                "then": {
+                    "type": "DealDamage",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 2
+                    },
+                    "target": {
+                        "type": "Controller"
+                    }
+                }
+            }
+        ]
+    },
+    "targetRequirements": [
+        {
+            "type": "AnyTarget",
+            "id": "t0"
+        }
+    ]
+}
+  Aquitect's Defenses  [ECL]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "to": "Battlefield"
+            },
+            "effect": {
+                "type": "GrantKeyword",
+                "keyword": "HEXPROOF",
+                "target": {
+                    "type": "EnchantedCreature"
+                }
+            }
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "ModifyStats",
+            "powerBonus": 1,
+            "toughnessBonus": 2
+        }
+    ],
+    "auraTarget": {
+        "type": "TargetObject",
+        "filter": {
+            "baseFilter": {
+                "cardPredicates": [
+                    {
+                        "type": "IsCreature"
+                    }
+                ],
+                "controllerPredicate": {
+                    "type": "ControlledByYou"
+                }
+            }
+        },
+        "id": "target"
+    }
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "Aquitect's Defenses:1",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "to": "Battlefield"
+            },
+            "effect": {
+                "type": "GrantEvasionKeyword",
+                "keyword": "HEXPROOF",
+                "target": {
+                    "type": "EnchantedCreature"
+                }
+            }
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "ModifyStats",
+            "powerBonus": 1,
+            "toughnessBonus": 2
+        }
+    ],
+    "auraTarget": {
+        "type": "TargetObject",
+        "filter": {
+            "baseFilter": {
+                "cardPredicates": [
+                    {
+                        "type": "IsCreature"
+                    }
+                ],
+                "controllerPredicate": {
+                    "type": "ControlledByYou"
+                }
+            }
+        }
+    }
+}
+  Mistmeadow Council  [ECL]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "to": "Battlefield"
+            },
+            "effect": {
+                "type": "DrawCards",
+                "count": {
+                    "type": "Fixed",
+                    "amount": 1
+                }
+            }
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "ModifySpellCost",
+            "target": {
+                "type": "SelfCast"
+            },
+            "modification": {
+                "type": "ReduceGeneric",
+                "amount": 1
+            },
+            "gating": {
+                "type": "OnlyIf",
+                "condition": {
+                    "type": "Exists",
+                    "player": {
+                        "type": "You"
+                    },
+                    "zone": "Battlefield",
+                    "filter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsPermanent"
+                            },
+                            {
+                                "type": "HasSubtype",
+                                "subtype": "Kithkin"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "Mistmeadow Council:1",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "to": "Battlefield"
+            },
+            "effect": {
+                "type": "DrawCards",
+                "count": {
+                    "type": "Fixed",
+                    "amount": 1
+                }
+            }
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "ModifySpellCost",
+            "target": {
+                "type": "SelfCast"
+            },
+            "modification": {
+                "type": "ReduceGenericBy",
+                "source": {
+                    "type": "FixedIfControlFilter",
+                    "amount": 1,
+                    "filter": {
+                        "cardPredicates": [
+                            {
+                                "type": "HasSubtype",
+                                "subtype": "Kithkin"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}
+  Keeper of Fables  [ELD]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "OneOrMoreDealCombatDamageToPlayerEvent",
+                "sourceFilter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsCreature"
+                        },
+                        {
+                            "type": "NotSubtype",
+                            "subtype": "Human"
+                        }
+                    ]
+                }
+            },
+            "binding": "ANY",
+            "effect": {
+                "type": "DrawCards",
+                "count": {
+                    "type": "Fixed",
+                    "amount": 1
+                }
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "Keeper of Fables:1",
+            "trigger": {
+                "type": "DealsDamageEvent",
+                "damageType": {
+                    "type": "DamageCombat"
+                },
+                "recipient": {
+                    "type": "RecipientPlayer",
+                    "player": {
+                        "type": "Any"
+                    }
+                },
+                "sourceFilter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsCreature"
+                        },
+                        {
+                            "type": "NotSubtype",
+                            "subtype": "Human"
+                        }
+                    ],
+                    "controllerPredicate": {
+                        "type": "ControlledByYou"
+                    }
+                },
+                "batch": true
+            },
+            "binding": "ANY",
+            "effect": {
+                "type": "DrawCards",
+                "count": {
+                    "type": "Fixed",
+                    "amount": 1
+                }
+            },
+            "descriptionOverride": "Whenever one or more non-Human creatures you control deal combat damage to a player, draw a card."
+        }
+    ]
+}
+  Brightspear Zealot  [EOE]
+    script from text:      {
+    "staticAbilities": [
+        {
+            "type": "ConditionalStaticAbility",
+            "ability": {
+                "type": "ModifyStats",
+                "powerBonus": 2,
+                "toughnessBonus": 0,
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsPermanent"
+                            }
+                        ]
+                    },
+                    "scope": {
+                        "type": "Self"
+                    }
+                }
+            },
+            "condition": {
+                "type": "PlayerCastSpellsThisTurn",
+                "atLeast": 2
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "staticAbilities": [
+        {
+            "type": "ConditionalStaticAbility",
+            "ability": {
+                "type": "GrantDynamicStats",
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsPermanent"
+                            }
+                        ]
+                    },
+                    "scope": {
+                        "type": "Self"
+                    }
+                },
+                "powerBonus": {
+                    "type": "Fixed",
+                    "amount": 2
+                },
+                "toughnessBonus": {
+                    "type": "Fixed",
+                    "amount": 0
+                }
+            },
+            "condition": {
+                "type": "PlayerCastSpellsThisTurn",
+                "atLeast": 2
+            }
+        }
+    ]
+}
+  Arcane Epiphany  [FDN]
+    script from text:      {
+    "spellEffect": {
+        "type": "DrawCards",
+        "count": {
+            "type": "Fixed",
+            "amount": 3
+        }
+    },
+    "staticAbilities": [
+        {
+            "type": "ModifySpellCost",
+            "target": {
+                "type": "SelfCast"
+            },
+            "modification": {
+                "type": "ReduceGeneric",
+                "amount": 1
+            },
+            "gating": {
+                "type": "OnlyIf",
+                "condition": {
+                    "type": "Exists",
+                    "player": {
+                        "type": "You"
+                    },
+                    "zone": "Battlefield",
+                    "filter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsPermanent"
+                            },
+                            {
+                                "type": "HasSubtype",
+                                "subtype": "Wizard"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "spellEffect": {
+        "type": "DrawCards",
+        "count": {
+            "type": "Fixed",
+            "amount": 3
+        }
+    },
+    "staticAbilities": [
+        {
+            "type": "ModifySpellCost",
+            "target": {
+                "type": "SelfCast"
+            },
+            "modification": {
+                "type": "ReduceGenericBy",
+                "source": {
+                    "type": "FixedIfControlFilter",
+                    "amount": 1,
+                    "filter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsCreature"
+                            },
+                            {
+                                "type": "HasSubtype",
+                                "subtype": "Wizard"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}
+  Raise the Past  [FDN]
+    script from text:      {
+    "spellEffect": {
+        "type": "Composite",
+        "effects": [
+            {
+                "type": "GatherCards",
+                "source": {
+                    "type": "FromZone",
+                    "zone": "Graveyard",
+                    "filter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsCreature"
+                            },
+                            {
+                                "type": "ManaValueAtMost",
+                                "max": 2
+                            }
+                        ]
+                    }
+                },
+                "storeAs": "graveyard_lands"
+            },
+            {
+                "type": "MoveCollection",
+                "from": "graveyard_lands",
+                "destination": {
+                    "type": "ToZone",
+                    "zone": "Battlefield"
+                }
+            }
+        ]
+    }
+}
+    script on the card:    {
+    "spellEffect": {
+        "type": "Composite",
+        "effects": [
+            {
+                "type": "GatherCards",
+                "source": {
+                    "type": "FromZone",
+                    "zone": "Graveyard",
+                    "filter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsCreature"
+                            },
+                            {
+                                "type": "ManaValueAtMost",
+                                "max": 2
+                            }
+                        ]
+                    }
+                },
+                "storeAs": "gathered0"
+            },
+            {
+                "type": "MoveCollection",
+                "from": "gathered0",
+                "destination": {
+                    "type": "ToZone",
+                    "zone": "Battlefield"
+                },
+                "underOwnersControl": true
+            }
+        ]
+    }
+}
+  Ravenous Amulet  [FDN]
+    script from text:      {
+    "activatedAbilities": [
+        {
+            "id": "activated",
+            "cost": {
+                "type": "CostComposite",
+                "costs": [
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomMana",
+                            "cost": "{1}"
+                        }
+                    },
+                    {
+                        "type": "CostTap"
+                    },
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomSacrifice",
+                            "filter": {
+                                "cardPredicates": [
+                                    {
+                                        "type": "IsCreature"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "effect": {
+                "type": "Composite",
+                "effects": [
+                    {
+                        "type": "DrawCards",
+                        "count": {
+                            "type": "Fixed",
+                            "amount": 1
+                        }
+                    },
+                    {
+                        "type": "AddCounters",
+                        "counterType": "SOUL",
+                        "count": 1,
+                        "target": {
+                            "type": "Self"
+                        }
+                    }
+                ]
+            },
+            "timing": {
+                "type": "SorcerySpeed"
+            }
+        },
+        {
+            "id": "activated",
+            "cost": {
+                "type": "CostComposite",
+                "costs": [
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomMana",
+                            "cost": "{4}"
+                        }
+                    },
+                    {
+                        "type": "CostTap"
+                    },
+                    {
+                        "type": "CostSacrificeSelf"
+                    }
+                ]
+            },
+            "effect": {
+                "type": "LoseLife",
+                "amount": {
+                    "type": "EntityProperty",
+                    "entity": {
+                        "type": "Self"
+                    },
+                    "numericProperty": {
+                        "type": "CounterCount",
+                        "counterType": "SOUL"
+                    }
+                },
+                "target": {
+                    "type": "PlayerRef",
+                    "player": {
+                        "type": "EachOpponent"
+                    }
+                }
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "activatedAbilities": [
+        {
+            "id": "Ravenous Amulet:1",
+            "cost": {
+                "type": "CostComposite",
+                "costs": [
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomMana",
+                            "cost": "{1}"
+                        }
+                    },
+                    {
+                        "type": "CostTap"
+                    },
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomSacrifice",
+                            "filter": {
+                                "cardPredicates": [
+                                    {
+                                        "type": "IsCreature"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "effect": {
+                "type": "Composite",
+                "effects": [
+                    {
+                        "type": "DrawCards",
+                        "count": {
+                            "type": "Fixed",
+                            "amount": 1
+                        }
+                    },
+                    {
+                        "type": "AddCounters",
+                        "counterType": "SOUL",
+                        "count": 1,
+                        "target": {
+                            "type": "Self"
+                        }
+                    }
+                ]
+            },
+            "timing": {
+                "type": "SorcerySpeed"
+            }
+        },
+        {
+            "id": "Ravenous Amulet:2",
+            "cost": {
+                "type": "CostComposite",
+                "costs": [
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomMana",
+                            "cost": "{4}"
+                        }
+                    },
+                    {
+                        "type": "CostTap"
+                    },
+                    {
+                        "type": "CostSacrificeSelf"
+                    }
+                ]
+            },
+            "effect": {
+                "type": "LoseLife",
+                "amount": {
+                    "type": "LastKnownSourceCounters",
+                    "counterType": "SOUL"
+                },
+                "target": {
+                    "type": "PlayerRef",
+                    "player": {
+                        "type": "EachOpponent"
+                    }
+                }
+            }
+        }
+    ]
+}
+  Balm of Restoration  [FEM]
+    script from text:      {
+    "activatedAbilities": [
+        {
+            "id": "activated",
+            "cost": {
+                "type": "CostComposite",
+                "costs": [
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomMana",
+                            "cost": "{1}"
+                        }
+                    },
+                    {
+                        "type": "CostTap"
+                    },
+                    {
+                        "type": "CostSacrificeSelf"
+                    }
+                ]
+            },
+            "effect": {
+                "type": "Modal",
+                "modes": [
+                    {
+                        "effect": {
+                            "type": "GainLife",
+                            "amount": {
+                                "type": "Fixed",
+                                "amount": 2
+                            }
+                        },
+                        "description": "You gain 2 life"
+                    },
+                    {
+                        "effect": {
+                            "type": "PreventDamageShield",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "target"
+                            },
+                            "amount": {
+                                "type": "Fixed",
+                                "amount": 2
+                            }
+                        },
+                        "targetRequirements": [
+                            {
+                                "type": "AnyTarget",
+                                "id": "target"
+                            }
+                        ],
+                        "description": "Prevent the next 2 damage that would be dealt to target this turn"
+                    }
+                ]
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "activatedAbilities": [
+        {
+            "id": "Balm of Restoration:1",
+            "cost": {
+                "type": "CostComposite",
+                "costs": [
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomMana",
+                            "cost": "{1}"
+                        }
+                    },
+                    {
+                        "type": "CostTap"
+                    },
+                    {
+                        "type": "CostSacrificeSelf"
+                    }
+                ]
+            },
+            "effect": {
+                "type": "Modal",
+                "modes": [
+                    {
+                        "effect": {
+                            "type": "GainLife",
+                            "amount": {
+                                "type": "Fixed",
+                                "amount": 2
+                            }
+                        },
+                        "description": "You gain 2 life"
+                    },
+                    {
+                        "effect": {
+                            "type": "PreventDamageShield",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            },
+                            "amount": {
+                                "type": "Fixed",
+                                "amount": 2
+                            }
+                        },
+                        "targetRequirements": [
+                            {
+                                "type": "AnyTarget",
+                                "id": "t0"
+                            }
+                        ],
+                        "description": "Prevent the next 2 damage that would be dealt to any target this turn"
+                    }
+                ],
+                "countsAsModalSpell": false
+            },
+            "descriptionOverride": "{1}, {T}, Sacrifice this artifact: Choose one — You gain 2 life; or prevent the next 2 damage that would be dealt to any target this turn."
+        }
+    ]
+}
+  Hand of Justice  [FEM]
+    script from text:      {
+    "activatedAbilities": [
+        {
+            "id": "activated",
+            "cost": {
+                "type": "CostComposite",
+                "costs": [
+                    {
+                        "type": "CostTap"
+                    },
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomTapPermanents",
+                            "count": 3,
+                            "filter": {
+                                "cardPredicates": [
+                                    {
+                                        "type": "IsCreature"
+                                    },
+                                    {
+                                        "type": "HasColor",
+                                        "color": "WHITE"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "effect": {
+                "type": "MoveToZone",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "target"
+                },
+                "destination": "Graveyard",
+                "byDestruction": true
+            },
+            "targetRequirements": [
+                {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                {
+                                    "type": "IsCreature"
+                                }
+                            ]
+                        }
+                    },
+                    "id": "target"
+                }
+            ]
+        }
+    ]
+}
+    script on the card:    {
+    "activatedAbilities": [
+        {
+            "id": "Hand of Justice:1",
+            "cost": {
+                "type": "CostComposite",
+                "costs": [
+                    {
+                        "type": "CostTap"
+                    },
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomTapPermanents",
+                            "count": 3,
+                            "filter": {
+                                "cardPredicates": [
+                                    {
+                                        "type": "IsCreature"
+                                    },
+                                    {
+                                        "type": "HasColor",
+                                        "color": "WHITE"
+                                    }
+                                ],
+                                "statePredicates": [
+                                    {
+                                        "type": "IsUntapped"
+                                    }
+                                ],
+                                "controllerPredicate": {
+                                    "type": "ControlledByYou"
+                                }
+                            },
+                            "excludeSelf": true
+                        }
+                    }
+                ]
+            },
+            "effect": {
+                "type": "MoveToZone",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "t0"
+                },
+                "destination": "Graveyard",
+                "byDestruction": true
+            },
+            "targetRequirements": [
+                {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                {
+                                    "type": "IsCreature"
+                                }
+                            ]
+                        }
+                    },
+                    "id": "t0"
+                }
+            ],
+            "descriptionOverride": "{T}, Tap three untapped white creatures you control: Destroy target creature."
+        }
+    ]
+}
+  Vodalian Knights  [FEM]
+    script from text:      {
+    "stateTriggeredAbilities": [
+        {
+            "id": "state trigger",
+            "condition": {
+                "type": "Exists",
+                "player": {
+                    "type": "You"
+                },
+                "zone": "Battlefield",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsLand"
+                        },
+                        {
+                            "type": "HasSubtype",
+                            "subtype": "Island"
+                        }
+                    ]
+                },
+                "negate": true
+            },
+            "effect": {
+                "type": "SacrificeSelf"
+            }
+        }
+    ],
+    "activatedAbilities": [
+        {
+            "id": "activated",
+            "cost": {
+                "type": "CostAtomWrapper",
+                "atom": {
+                    "type": "AtomMana",
+                    "cost": "{U}"
+                }
+            },
+            "effect": {
+                "type": "GrantKeyword",
+                "keyword": "FLYING",
+                "target": {
+                    "type": "Self"
+                }
+            }
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "CantAttackUnless",
+            "condition": {
+                "type": "Exists",
+                "player": {
+                    "type": "DefendingPlayer"
+                },
+                "zone": "Battlefield",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsLand"
+                        },
+                        {
+                            "type": "HasSubtype",
+                            "subtype": "Island"
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "stateTriggeredAbilities": [
+        {
+            "id": "Vodalian Knights:1",
+            "condition": {
+                "type": "Exists",
+                "player": {
+                    "type": "You"
+                },
+                "zone": "Battlefield",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsLand"
+                        },
+                        {
+                            "type": "HasSubtype",
+                            "subtype": "Island"
+                        }
+                    ]
+                },
+                "negate": true
+            },
+            "effect": {
+                "type": "SacrificeTarget",
+                "target": {
+                    "type": "Self"
+                }
+            },
+            "descriptionOverride": "When you control no Islands, sacrifice this creature."
+        }
+    ],
+    "activatedAbilities": [
+        {
+            "id": "Vodalian Knights:2",
+            "cost": {
+                "type": "CostAtomWrapper",
+                "atom": {
+                    "type": "AtomMana",
+                    "cost": "{U}"
+                }
+            },
+            "effect": {
+                "type": "GrantKeyword",
+                "keyword": "FLYING",
+                "target": {
+                    "type": "Self"
+                }
+            }
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "CantAttackUnless",
+            "condition": {
+                "type": "Exists",
+                "player": {
+                    "type": "DefendingPlayer"
+                },
+                "zone": "Battlefield",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsLand"
+                        },
+                        {
+                            "type": "HasSubtype",
+                            "subtype": "Island"
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}
+  Ajani's Anguish  [FRA]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "to": "Battlefield"
+            },
+            "effect": {
+                "type": "DealDamage",
+                "amount": {
+                    "type": "XValue"
+                },
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "target"
+                }
+            },
+            "targetRequirement": {
+                "type": "AnyTarget",
+                "id": "target"
+            }
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "GrantKeyword",
+            "keyword": "TRAMPLE",
+            "filter": {
+                "baseFilter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsCreature"
+                        }
+                    ],
+                    "controllerPredicate": {
+                        "type": "ControlledByYou"
+                    }
+                }
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "Ajani's Anguish:1",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "to": "Battlefield"
+            },
+            "effect": {
+                "type": "DealDamage",
+                "amount": {
+                    "type": "CastX"
+                },
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "t0"
+                }
+            },
+            "targetRequirement": {
+                "type": "AnyTarget",
+                "id": "t0"
+            }
+        }
+    ],
+    "staticAbilities": [
+        {
+            "type": "GrantKeyword",
+            "keyword": "TRAMPLE",
+            "filter": {
+                "baseFilter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsCreature"
+                        }
+                    ],
+                    "controllerPredicate": {
+                        "type": "ControlledByYou"
+                    }
+                }
+            }
+        }
+    ]
+}
+  Frostbite Pyromental  [FRA]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "DealsDamageEvent",
+                "damageType": {
+                    "type": "DamageCombat"
+                },
+                "recipient": {
+                    "type": "RecipientPlayer",
+                    "player": {
+                        "type": "Any"
+                    }
+                }
+            },
+            "effect": {
+                "type": "DrawCards",
+                "count": {
+                    "type": "Fixed",
+                    "amount": 2
+                }
+            }
+        },
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "StepEvent",
+                "step": "END",
+                "player": {
+                    "type": "Each"
+                }
+            },
+            "binding": "ANY",
+            "effect": {
+                "type": "SacrificeSelf"
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "Frostbite Pyromental:1",
+            "trigger": {
+                "type": "DealsDamageEvent",
+                "damageType": {
+                    "type": "DamageCombat"
+                },
+                "recipient": {
+                    "type": "RecipientPlayer",
+                    "player": {
+                        "type": "Any"
+                    }
+                }
+            },
+            "effect": {
+                "type": "DrawCards",
+                "count": {
+                    "type": "Fixed",
+                    "amount": 2
+                }
+            }
+        },
+        {
+            "id": "Frostbite Pyromental:2",
+            "trigger": {
+                "type": "StepEvent",
+                "step": "END",
+                "player": {
+                    "type": "Each"
+                }
+            },
+            "binding": "ANY",
+            "effect": {
+                "type": "SacrificeTarget",
+                "target": {
+                    "type": "Self"
+                }
+            }
+        }
+    ]
+}
+  Memory Trap  [FRA]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "to": "Battlefield"
+            },
+            "effect": {
+                "type": "ExileUntilLeaves",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "target"
+                }
+            },
+            "targetRequirement": {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsNonland"
+                            },
+                            {
+                                "type": "IsPermanent"
+                            }
+                        ],
+                        "controllerPredicate": {
+                            "type": "ControlledByOpponent"
+                        }
+                    }
+                },
+                "id": "target"
+            }
+        },
+        {
+            "id": "linked-return",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "from": "Battlefield"
+            },
+            "effect": {
+                "type": "Composite",
+                "effects": [
+                    {
+                        "type": "GatherCards",
+                        "source": {
+                            "type": "FromLinkedExile"
+                        },
+                        "storeAs": "linked_return"
+                    },
+                    {
+                        "type": "MoveCollection",
+                        "from": "linked_return",
+                        "destination": {
+                            "type": "ToZone",
+                            "zone": "Battlefield"
+                        },
+                        "underOwnersControl": true
+                    }
+                ]
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "Memory Trap:1",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "to": "Battlefield"
+            },
+            "effect": {
+                "type": "MoveUntilSourceLeaves",
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "t0"
+                },
+                "destination": "Exile"
+            },
+            "targetRequirement": {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsNonland"
+                            },
+                            {
+                                "type": "IsPermanent"
+                            }
+                        ],
+                        "controllerPredicate": {
+                            "type": "ControlledByOpponent"
+                        }
+                    }
+                },
+                "id": "t0"
+            }
+        }
+    ]
+}
+  Frontier Mastodon  [FRF]
+    script from text:      {
+    "replacementEffects": [
+        {
+            "type": "EntersWithCounters",
+            "count": 1,
+            "selfOnly": true,
+            "condition": {
+                "type": "Exists",
+                "player": {
+                    "type": "You"
+                },
+                "zone": "Battlefield",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsCreature"
+                        },
+                        {
+                            "type": "PowerAtLeast",
+                            "min": 4
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "replacementEffects": [
+        {
+            "type": "EntersWithCounters",
+            "count": 1,
+            "selfOnly": true,
+            "condition": {
+                "type": "Exists",
+                "player": {
+                    "type": "You"
+                },
+                "zone": "Battlefield",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsCreature"
+                        },
+                        {
+                            "type": "PowerAtLeast",
+                            "min": 4
+                        }
+                    ]
+                },
+                "excludeSelf": true
+            }
+        }
+    ]
+}
+  Midnight Reaper  [GRN]
+    script from text:      {
+    "triggeredAbilities": [
+        {
+            "id": "trigger",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsCreature"
+                        },
+                        {
+                            "type": "IsNontoken"
+                        }
+                    ],
+                    "controllerPredicate": {
+                        "type": "ControlledByYou"
+                    }
+                },
+                "from": "Battlefield",
+                "to": "Graveyard"
+            },
+            "binding": "ANY",
+            "effect": {
+                "type": "Composite",
+                "effects": [
+                    {
+                        "type": "DealDamage",
+                        "amount": {
+                            "type": "Fixed",
+                            "amount": 1
+                        },
+                        "target": {
+                            "type": "PlayerRef",
+                            "player": {
+                                "type": "You"
+                            }
+                        }
+                    },
+                    {
+                        "type": "DrawCards",
+                        "count": {
+                            "type": "Fixed",
+                            "amount": 1
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "triggeredAbilities": [
+        {
+            "id": "Midnight Reaper:1",
+            "trigger": {
+                "type": "ZoneChangeEvent",
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsCreature"
+                        },
+                        {
+                            "type": "IsNontoken"
+                        }
+                    ],
+                    "controllerPredicate": {
+                        "type": "ControlledByYou"
+                    }
+                },
+                "from": "Battlefield",
+                "to": "Graveyard"
+            },
+            "binding": "ANY",
+            "effect": {
+                "type": "Composite",
+                "effects": [
+                    {
+                        "type": "DealDamage",
+                        "amount": {
+                            "type": "Fixed",
+                            "amount": 1
+                        },
+                        "target": {
+                            "type": "Controller"
+                        },
+                        "damageSource": {
+                            "type": "Self"
+                        }
+                    },
+                    {
+                        "type": "DrawCards",
+                        "count": {
+                            "type": "Fixed",
+                            "amount": 1
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}
+  Merchant Scroll  [HML]
+    script from text:      {
+    "spellEffect": {
+        "type": "Composite",
+        "effects": [
+            {
+                "type": "GatherCards",
+                "source": {
+                    "type": "FromZone",
+                    "zone": "Library",
+                    "filter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsInstant"
+                            },
+                            {
+                                "type": "HasColor",
+                                "color": "BLUE"
+                            }
+                        ]
+                    }
+                },
+                "storeAs": "searchable",
+                "search": true
+            },
+            {
+                "type": "SelectFromCollection",
+                "from": "searchable",
+                "selection": {
+                    "type": "ChooseUpTo",
+                    "count": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                },
+                "storeSelected": "found",
+                "prompt": "Search your library for a blue instant card to put into your hand",
+                "selectedLabel": "Put into your hand"
+            },
+            {
+                "type": "MoveCollection",
+                "from": "found",
+                "destination": {
+                    "type": "ToZone",
+                    "zone": "Hand"
+                },
+                "revealed": true
+            },
+            {
+                "type": "ShuffleLibrary"
+            },
+            {
+                "type": "EmitLibrarySearchedEvent"
+            }
+        ]
+    }
+}
+    script on the card:    {
+    "spellEffect": {
+        "type": "Composite",
+        "effects": [
+            {
+                "type": "GatherCards",
+                "source": {
+                    "type": "FromZone",
+                    "zone": "Library",
+                    "filter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsInstant"
+                            }
+                        ]
+                    }
+                },
+                "storeAs": "searchable",
+                "search": true
+            },
+            {
+                "type": "SelectFromCollection",
+                "from": "searchable",
+                "selection": {
+                    "type": "ChooseUpTo",
+                    "count": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                },
+                "storeSelected": "found",
+                "prompt": "Search your library for an instant card to put into your hand",
+                "selectedLabel": "Put into your hand"
+            },
+            {
+                "type": "MoveCollection",
+                "from": "found",
+                "destination": {
+                    "type": "ToZone",
+                    "zone": "Hand"
+                },
+                "revealed": true
+            },
+            {
+                "type": "ShuffleLibrary"
+            },
+            {
+                "type": "EmitLibrarySearchedEvent"
+            }
+        ]
+    }
+}
+  Dreaded Bat-Cloud  [HOB]
+    script from text:      {
+    "staticAbilities": [
+        {
+            "type": "ModifySpellCost",
+            "target": {
+                "type": "SelfCast"
+            },
+            "modification": {
+                "type": "ReduceGeneric",
+                "amount": 3
+            },
+            "gating": {
+                "type": "OnlyIf",
+                "condition": {
+                    "type": "CreatureDiedThisTurn"
+                }
+            }
+        }
+    ]
+}
+    script on the card:    {
+    "staticAbilities": [
+        {
+            "type": "ModifySpellCost",
+            "target": {
+                "type": "SelfCast"
+            },
+            "modification": {
+                "type": "ReduceGenericBy",
+                "source": {
+                    "type": "FixedIfCreatureDiedThisTurn",
+                    "amount": 3
+                }
+            }
+        }
+    ]
+}
+  Cinder Shade  [INV]
+    script from text:      {
+    "activatedAbilities": [
+        {
+            "id": "activated",
+            "cost": {
+                "type": "CostAtomWrapper",
+                "atom": {
+                    "type": "AtomMana",
+                    "cost": "{B}"
+                }
+            },
+            "effect": {
+                "type": "ModifyStats",
+                "powerModifier": {
+                    "type": "Fixed",
+                    "amount": 1
+                },
+                "toughnessModifier": {
+                    "type": "Fixed",
+                    "amount": 1
+                },
+                "target": {
+                    "type": "Self"
+                }
+            }
+        },
+        {
+            "id": "activated",
+            "cost": {
+                "type": "CostComposite",
+                "costs": [
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomMana",
+                            "cost": "{R}"
+                        }
+                    },
+                    {
+                        "type": "CostSacrificeSelf"
+                    }
+                ]
+            },
+            "effect": {
+                "type": "DealDamage",
+                "amount": {
+                    "type": "EntityProperty",
+                    "entity": {
+                        "type": "Self"
+                    },
+                    "numericProperty": {
+                        "type": "Power"
+                    }
+                },
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "target"
+                }
+            },
+            "targetRequirements": [
+                {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                {
+                                    "type": "IsCreature"
+                                }
+                            ]
+                        }
+                    },
+                    "id": "target"
+                }
+            ]
+        }
+    ]
+}
+    script on the card:    {
+    "activatedAbilities": [
+        {
+            "id": "Cinder Shade:1",
+            "cost": {
+                "type": "CostAtomWrapper",
+                "atom": {
+                    "type": "AtomMana",
+                    "cost": "{B}"
+                }
+            },
+            "effect": {
+                "type": "ModifyStats",
+                "powerModifier": {
+                    "type": "Fixed",
+                    "amount": 1
+                },
+                "toughnessModifier": {
+                    "type": "Fixed",
+                    "amount": 1
+                },
+                "target": {
+                    "type": "Self"
+                }
+            }
+        },
+        {
+            "id": "Cinder Shade:2",
+            "cost": {
+                "type": "CostComposite",
+                "costs": [
+                    {
+                        "type": "CostAtomWrapper",
+                        "atom": {
+                            "type": "AtomMana",
+                            "cost": "{R}"
+                        }
+                    },
+                    {
+                        "type": "CostSacrificeSelf"
+                    }
+                ]
+            },
+            "effect": {
+                "type": "DealDamage",
+                "amount": {
+                    "type": "EntityProperty",
+                    "entity": {
+                        "type": "SacrificedAsCost"
+                    },
+                    "numericProperty": {
+                        "type": "Power"
+                    }
+                },
+                "target": {
+                    "type": "BoundVariable",
+                    "name": "t0"
+                }
+            },
+            "targetRequirements": [
+                {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                {
+                                    "type": "IsCreature"
+                                }
+                            ]
+                        }
+                    },
+                    "id": "t0"
+                }
+            ]
+        }
+    ]
+}
+  … and 59 more; raise --top to see them
+

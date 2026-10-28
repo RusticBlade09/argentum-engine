@@ -1,0 +1,69 @@
+{
+    "name": "Relentless Drednok",
+    "manaCost": "{B}",
+    "typeLine": "Artifact Creature � Robot",
+    "oracleText": "Lifelink\n{2}{B}, Exile this card from your graveyard: You draw a card and lose 1 life.",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 1
+    },
+    "keywords": [
+        "LIFELINK"
+    ],
+    "keywordAbilities": [
+        {
+            "type": "Simple",
+            "keyword": "LIFELINK"
+        }
+    ],
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Relentless Drednok:1",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{2}{B}"
+                            }
+                        },
+                        {
+                            "type": "CostExileSelf"
+                        }
+                    ]
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "Fixed",
+                                "amount": 1
+                            }
+                        },
+                        {
+                            "type": "LoseLife",
+                            "amount": {
+                                "type": "Fixed",
+                                "amount": 1
+                            },
+                            "target": {
+                                "type": "Controller"
+                            }
+                        }
+                    ]
+                },
+                "activateFromZone": "Graveyard"
+            }
+        ]
+    },
+    "oracleId": "98cbac1d-7896-4c63-a265-03bc5d670fa6",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/c/e/ce538db8-373d-4554-821e-cd96e795e37a.jpg?1786005690"
+    }
+}

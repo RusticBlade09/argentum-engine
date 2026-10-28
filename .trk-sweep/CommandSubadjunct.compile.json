@@ -1,0 +1,38 @@
+{
+    "name": "Command Subadjunct",
+    "manaCost": "{W}",
+    "typeLine": "Artifact Creature � Borg",
+    "oracleText": "Artifact creatures you control have vigilance.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 1
+    },
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "GrantKeyword",
+                "keyword": "VIGILANCE",
+                "filter": {
+                    "baseFilter": {
+                        "cardPredicates": [
+                            {
+                                "type": "IsArtifact"
+                            },
+                            {
+                                "type": "IsCreature"
+                            }
+                        ],
+                        "controllerPredicate": {
+                            "type": "ControlledByYou"
+                        }
+                    }
+                }
+            }
+        ]
+    },
+    "oracleId": "85b67121-340f-4cff-a26d-2160aa923ec3",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/8/5/853bf74d-0b61-43df-9018-0b40b624a9d1.jpg?1792753641"
+    }
+}

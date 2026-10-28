@@ -1,0 +1,64 @@
+{
+    "name": "Ferenginar",
+    "manaCost": "",
+    "typeLine": "Land � Planet",
+    "oracleText": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {B} or {G}.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Ferenginar:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "GainLife",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                }
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Ferenginar:2",
+                "cost": {
+                    "type": "CostTap"
+                },
+                "effect": {
+                    "type": "AddMana",
+                    "color": "BLACK"
+                },
+                "timing": {
+                    "type": "ManaAbility"
+                },
+                "isManaAbility": true
+            },
+            {
+                "id": "Ferenginar:3",
+                "cost": {
+                    "type": "CostTap"
+                },
+                "effect": {
+                    "type": "AddMana",
+                    "color": "GREEN"
+                },
+                "timing": {
+                    "type": "ManaAbility"
+                },
+                "isManaAbility": true
+            }
+        ],
+        "replacementEffects": [
+            {
+                "type": "EntersTapped"
+            }
+        ]
+    },
+    "oracleId": "2e0753ad-7f76-4d26-8e87-6f201378f333",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/1/7/17fab75f-7ff9-4c50-a6f7-03a85cd275bf.jpg?1792632949"
+    }
+}

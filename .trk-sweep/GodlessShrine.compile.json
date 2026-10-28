@@ -1,0 +1,19 @@
+{
+    "name": "Godless Shrine",
+    "manaCost": "",
+    "typeLine": "Land � Plains Swamp",
+    "oracleText": "({T}: Add {W} or {B}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped.",
+    "script": {
+        "replacementEffects": [
+            {
+                "type": "EntersTapped",
+                "payLifeCost": 2
+            }
+        ]
+    },
+    "oracleId": "73864fcc-1bde-4bc0-831e-2b93e546e417",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/8/f/8fbd1ae0-3d4c-492a-a1ea-85a95fa3d7b6.jpg?1784036826"
+    }
+}

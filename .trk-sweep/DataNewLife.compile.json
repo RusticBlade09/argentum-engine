@@ -1,0 +1,34 @@
+{
+    "name": "Data, New Life",
+    "manaCost": "{1}{U}",
+    "typeLine": "Legendary Artifact Creature � Android Scientist",
+    "oracleText": "Whenever you draw a card, put a +1/+1 counter on Data.",
+    "creatureStats": {
+        "power": 0,
+        "toughness": 1
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Data, New Life:1",
+                "trigger": {
+                    "type": "DrawEvent"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "AddCounters",
+                    "counterType": "PLUS_ONE_PLUS_ONE",
+                    "count": 1,
+                    "target": {
+                        "type": "Self"
+                    }
+                }
+            }
+        ]
+    },
+    "oracleId": "010630c6-5d7b-43e0-90a9-3e3cef9a4e6b",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/9/6/96b7e757-c64d-48c8-bd9c-caad5f3c78fb.jpg?1792753877"
+    }
+}

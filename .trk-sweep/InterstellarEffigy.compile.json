@@ -1,0 +1,50 @@
+{
+    "name": "Interstellar Effigy",
+    "manaCost": "{4}{U}",
+    "typeLine": "Artifact Creature � Construct",
+    "oracleText": "When this creature enters, return target creature an opponent controls to its owner's hand.",
+    "creatureStats": {
+        "power": 4,
+        "toughness": 3
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Interstellar Effigy:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "MoveToZone",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "target"
+                    },
+                    "destination": "Hand"
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": {
+                            "cardPredicates": [
+                                {
+                                    "type": "IsCreature"
+                                }
+                            ],
+                            "controllerPredicate": {
+                                "type": "ControlledByOpponent"
+                            }
+                        }
+                    },
+                    "id": "target"
+                }
+            }
+        ]
+    },
+    "oracleId": "76f52fad-8db2-42f0-8e12-f4341e4c8680",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/4/b/4b7d505f-2a6b-4525-87c7-19e06d49c9df.jpg?1792672545"
+    }
+}

@@ -1,0 +1,86 @@
+{
+    "name": "L'Rell, Fierce Visionary",
+    "manaCost": "{1}{B}{R}",
+    "typeLine": "Legendary Creature � Klingon Warrior",
+    "oracleText": "At the beginning of combat on your turn, create a 2/1 red Klingon Warrior creature token with haste. Sacrifice it at the beginning of the next end step.\n{2}, Sacrifice another creature or artifact: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 4
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "L'Rell, Fierce Visionary:1",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "BEGIN_COMBAT"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "CreateToken",
+                    "power": 2,
+                    "toughness": 1,
+                    "colors": [
+                        "RED"
+                    ],
+                    "creatureTypes": [
+                        "Klingon",
+                        "Warrior"
+                    ],
+                    "keywords": [
+                        "HASTE"
+                    ],
+                    "sacrificeAtStep": "END"
+                }
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "L'Rell, Fierce Visionary:2",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{2}"
+                            }
+                        },
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomSacrifice",
+                                "filter": {
+                                    "cardPredicates": [
+                                        {
+                                            "type": "Or",
+                                            "predicates": [
+                                                {
+                                                    "type": "IsCreature"
+                                                },
+                                                {
+                                                    "type": "IsArtifact"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                "excludeSelf": true
+                            }
+                        }
+                    ]
+                },
+                "effect": {
+                    "type": "Surveil",
+                    "count": 1
+                }
+            }
+        ]
+    },
+    "oracleId": "ea684e78-483c-4b89-b184-b2aeede83cc7",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/7/b/7b06bbb9-7c6d-4889-b55a-1de77c27fd18.jpg?1792508377"
+    }
+}

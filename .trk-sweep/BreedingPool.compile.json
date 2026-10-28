@@ -1,0 +1,19 @@
+{
+    "name": "Breeding Pool",
+    "manaCost": "",
+    "typeLine": "Land � Forest Island",
+    "oracleText": "({T}: Add {G} or {U}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped.",
+    "script": {
+        "replacementEffects": [
+            {
+                "type": "EntersTapped",
+                "payLifeCost": 2
+            }
+        ]
+    },
+    "oracleId": "20283c4a-f1f0-42f0-bc08-6da87474426b",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/6/3/63e4dc07-c742-41bd-8301-861637908fd1.jpg?1784036820"
+    }
+}

@@ -1,0 +1,13 @@
+{
+  "object": "list",
+  "has_more": false,
+  "data": [
+    {
+      "object": "ruling",
+      "oracle_id": "584cf0fd-112a-4ca6-9c0e-1f3228a7d325",
+      "source": "wotc",
+      "published_at": "2021-11-19",
+      "comment": "You must still pay all costs to cast those spells and follow normal casting permissions. For example, if one of the exiled cards is a sorcery, this effect doesn't allow you to cast it during an opponent's turn."
+    }
+  ]
+}

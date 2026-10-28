@@ -1,0 +1,64 @@
+{
+    "name": "Vulcan",
+    "manaCost": "",
+    "typeLine": "Land � Planet",
+    "oracleText": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {W} or {U}.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Vulcan:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "GainLife",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                }
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Vulcan:2",
+                "cost": {
+                    "type": "CostTap"
+                },
+                "effect": {
+                    "type": "AddMana",
+                    "color": "WHITE"
+                },
+                "timing": {
+                    "type": "ManaAbility"
+                },
+                "isManaAbility": true
+            },
+            {
+                "id": "Vulcan:3",
+                "cost": {
+                    "type": "CostTap"
+                },
+                "effect": {
+                    "type": "AddMana",
+                    "color": "BLUE"
+                },
+                "timing": {
+                    "type": "ManaAbility"
+                },
+                "isManaAbility": true
+            }
+        ],
+        "replacementEffects": [
+            {
+                "type": "EntersTapped"
+            }
+        ]
+    },
+    "oracleId": "c7b6bc1f-9161-415e-a097-d9c8cd81d4ae",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/f/c/fc3fe0da-8d93-4f1c-9aad-c2fdc9fe34fc.jpg?1792632981"
+    }
+}

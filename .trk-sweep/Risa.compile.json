@@ -1,0 +1,64 @@
+{
+    "name": "Risa",
+    "manaCost": "",
+    "typeLine": "Land � Planet",
+    "oracleText": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {G} or {W}.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Risa:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "GainLife",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                }
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Risa:2",
+                "cost": {
+                    "type": "CostTap"
+                },
+                "effect": {
+                    "type": "AddMana",
+                    "color": "GREEN"
+                },
+                "timing": {
+                    "type": "ManaAbility"
+                },
+                "isManaAbility": true
+            },
+            {
+                "id": "Risa:3",
+                "cost": {
+                    "type": "CostTap"
+                },
+                "effect": {
+                    "type": "AddMana",
+                    "color": "WHITE"
+                },
+                "timing": {
+                    "type": "ManaAbility"
+                },
+                "isManaAbility": true
+            }
+        ],
+        "replacementEffects": [
+            {
+                "type": "EntersTapped"
+            }
+        ]
+    },
+    "oracleId": "365a4644-74f4-4af9-81ab-0d328ca5edce",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/c/8/c89e7680-9868-4fea-9aaf-6af03bfa0692.jpg?1792632968"
+    }
+}

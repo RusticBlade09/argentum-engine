@@ -1,0 +1,34 @@
+{
+    "name": "Mugato",
+    "manaCost": "{3}{G}{G}",
+    "typeLine": "Creature � Ape Beast",
+    "oracleText": "Reach, vigilance, deathtouch",
+    "creatureStats": {
+        "power": 6,
+        "toughness": 6
+    },
+    "keywords": [
+        "REACH",
+        "VIGILANCE",
+        "DEATHTOUCH"
+    ],
+    "keywordAbilities": [
+        {
+            "type": "Simple",
+            "keyword": "REACH"
+        },
+        {
+            "type": "Simple",
+            "keyword": "VIGILANCE"
+        },
+        {
+            "type": "Simple",
+            "keyword": "DEATHTOUCH"
+        }
+    ],
+    "oracleId": "eb9a3b52-62ad-467f-b62a-0273ceee48e5",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/f/3/f3c68b20-f202-4d55-bef1-398d96e55c57.jpg?1785981595"
+    }
+}

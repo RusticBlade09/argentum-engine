@@ -1,0 +1,33 @@
+{
+    "name": "Collective Drone",
+    "manaCost": "{1}{B}",
+    "typeLine": "Artifact Creature � Borg",
+    "oracleText": "Collective Drone's power is equal to the number of artifact creatures you control.",
+    "creatureStats": {
+        "power": {
+            "type": "Dynamic",
+            "source": {
+                "type": "AggregateBattlefield",
+                "player": {
+                    "type": "You"
+                },
+                "filter": {
+                    "cardPredicates": [
+                        {
+                            "type": "IsArtifact"
+                        },
+                        {
+                            "type": "IsCreature"
+                        }
+                    ]
+                }
+            }
+        },
+        "toughness": 2
+    },
+    "oracleId": "d9806ba7-8af4-4e8e-9238-7bc40c6bee0b",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/6/5/65b74daa-4606-4118-9752-b0dcd7a3f486.jpg?1785981469"
+    }
+}

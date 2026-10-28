@@ -1,0 +1,64 @@
+{
+    "name": "Cardassia Prime",
+    "manaCost": "",
+    "typeLine": "Land � Planet",
+    "oracleText": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {W} or {B}.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Cardassia Prime:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "GainLife",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                }
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Cardassia Prime:2",
+                "cost": {
+                    "type": "CostTap"
+                },
+                "effect": {
+                    "type": "AddMana",
+                    "color": "WHITE"
+                },
+                "timing": {
+                    "type": "ManaAbility"
+                },
+                "isManaAbility": true
+            },
+            {
+                "id": "Cardassia Prime:3",
+                "cost": {
+                    "type": "CostTap"
+                },
+                "effect": {
+                    "type": "AddMana",
+                    "color": "BLACK"
+                },
+                "timing": {
+                    "type": "ManaAbility"
+                },
+                "isManaAbility": true
+            }
+        ],
+        "replacementEffects": [
+            {
+                "type": "EntersTapped"
+            }
+        ]
+    },
+    "oracleId": "aff720b4-b8ef-46ea-9a3d-e101999e6526",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/d/6/d634424f-9148-46a5-95e3-4965a9226bb4.jpg?1792632933"
+    }
+}

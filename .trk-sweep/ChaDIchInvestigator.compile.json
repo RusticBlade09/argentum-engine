@@ -1,0 +1,41 @@
+{
+    "name": "Cha'DIch Investigator",
+    "manaCost": "{4}{B}",
+    "typeLine": "Creature � Klingon Warrior",
+    "oracleText": "When this creature enters, create a 2/1 red Klingon Warrior creature token with haste.",
+    "creatureStats": {
+        "power": 4,
+        "toughness": 4
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Cha'DIch Investigator:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "CreateToken",
+                    "power": 2,
+                    "toughness": 1,
+                    "colors": [
+                        "RED"
+                    ],
+                    "creatureTypes": [
+                        "Klingon",
+                        "Warrior"
+                    ],
+                    "keywords": [
+                        "HASTE"
+                    ]
+                }
+            }
+        ]
+    },
+    "oracleId": "cfdef803-6f7a-4055-8d51-8e8c60953928",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/1/6/16281200-4660-4871-afd2-d4720e6a3197.jpg?1785981461"
+    }
+}

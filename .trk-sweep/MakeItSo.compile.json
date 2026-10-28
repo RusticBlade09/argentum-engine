@@ -1,0 +1,93 @@
+{
+    "name": "Make It So",
+    "manaCost": "{3}{U}",
+    "typeLine": "Sorcery",
+    "oracleText": "Choose one �\n� Untap target permanent you control. Target player draws two cards.\n� Create a 1/1 red Officer creature token and draw two cards.",
+    "script": {
+        "spellEffect": {
+            "type": "Modal",
+            "modes": [
+                {
+                    "effect": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "TapUntap",
+                                "target": {
+                                    "type": "BoundVariable",
+                                    "name": "target"
+                                },
+                                "tap": false
+                            },
+                            {
+                                "type": "DrawCards",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 2
+                                },
+                                "target": {
+                                    "type": "BoundVariable",
+                                    "name": "target 1"
+                                }
+                            }
+                        ]
+                    },
+                    "targetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": {
+                                    "cardPredicates": [
+                                        {
+                                            "type": "IsPermanent"
+                                        }
+                                    ],
+                                    "controllerPredicate": {
+                                        "type": "ControlledByYou"
+                                    }
+                                }
+                            },
+                            "id": "target"
+                        },
+                        {
+                            "type": "TargetPlayer",
+                            "id": "target 1"
+                        }
+                    ],
+                    "description": "Untap target. Target draws cards equal to 2"
+                },
+                {
+                    "effect": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "CreateToken",
+                                "power": 1,
+                                "toughness": 1,
+                                "colors": [
+                                    "RED"
+                                ],
+                                "creatureTypes": [
+                                    "Officer"
+                                ]
+                            },
+                            {
+                                "type": "DrawCards",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 2
+                                }
+                            }
+                        ]
+                    },
+                    "description": "Create a 1/1 red Officer creature token. Draw 2 cards"
+                }
+            ]
+        }
+    },
+    "oracleId": "a9368972-4697-4a10-97e3-324149a26fba",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/7/1/7149df19-4833-47ca-8add-b897f55b930c.jpg?1793013541"
+    }
+}

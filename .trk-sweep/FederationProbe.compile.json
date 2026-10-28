@@ -1,0 +1,80 @@
+{
+    "name": "Federation Probe",
+    "manaCost": "{U}",
+    "typeLine": "Artifact Creature � Construct",
+    "oracleText": "Flying\nWhen this creature enters, choose one �\n� Target creature gets +1/+1 until end of turn.\n� Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 1
+    },
+    "keywords": [
+        "FLYING"
+    ],
+    "keywordAbilities": [
+        {
+            "type": "Simple",
+            "keyword": "FLYING"
+        }
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Federation Probe:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Modal",
+                    "modes": [
+                        {
+                            "effect": {
+                                "type": "ModifyStats",
+                                "powerModifier": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                },
+                                "toughnessModifier": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                },
+                                "target": {
+                                    "type": "BoundVariable",
+                                    "name": "target"
+                                }
+                            },
+                            "targetRequirements": [
+                                {
+                                    "type": "TargetObject",
+                                    "filter": {
+                                        "baseFilter": {
+                                            "cardPredicates": [
+                                                {
+                                                    "type": "IsCreature"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "id": "target"
+                                }
+                            ],
+                            "description": "target gets +1/+1 until end of turn"
+                        },
+                        {
+                            "effect": {
+                                "type": "Surveil",
+                                "count": 1
+                            },
+                            "description": "Surveil 1"
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "oracleId": "6fc7401f-66fe-4d17-be2f-afcf892be740",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/f/9/f988ba84-fc78-41a2-b2f2-eebf78cee591.jpg?1785981405"
+    }
+}

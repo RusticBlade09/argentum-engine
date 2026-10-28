@@ -1,0 +1,11 @@
+{
+    "name": "Forest",
+    "manaCost": "",
+    "typeLine": "Basic Land � Forest",
+    "oracleText": "({T}: Add {G}.)",
+    "oracleId": "b34bb2dc-c1af-4d77-b0b3-a0fb342a5fc6",
+    "setCode": "MDD",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/2/e/2e781bfd-f8cb-4d20-b977-4359f3a21311.jpg?1791578317"
+    }
+}

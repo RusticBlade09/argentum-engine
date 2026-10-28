@@ -1,0 +1,59 @@
+{
+    "name": "Command Decision",
+    "manaCost": "{1}{W}",
+    "typeLine": "Sorcery",
+    "oracleText": "Choose one �\n� Destroy target creature with power 4 or greater.\n� Draw a card.",
+    "script": {
+        "spellEffect": {
+            "type": "Modal",
+            "modes": [
+                {
+                    "effect": {
+                        "type": "MoveToZone",
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "target"
+                        },
+                        "destination": "Graveyard",
+                        "byDestruction": true
+                    },
+                    "targetRequirements": [
+                        {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": {
+                                    "cardPredicates": [
+                                        {
+                                            "type": "IsCreature"
+                                        },
+                                        {
+                                            "type": "PowerAtLeast",
+                                            "min": 4
+                                        }
+                                    ]
+                                }
+                            },
+                            "id": "target"
+                        }
+                    ],
+                    "description": "Destroy target"
+                },
+                {
+                    "effect": {
+                        "type": "DrawCards",
+                        "count": {
+                            "type": "Fixed",
+                            "amount": 1
+                        }
+                    },
+                    "description": "Draw a card"
+                }
+            ]
+        }
+    },
+    "oracleId": "1c4afb0d-6d6e-4d21-9fe0-5621cd2fd27c",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/9/f/9f1f789b-5c08-4a4d-b3a3-4d51ad9f1a4d.jpg?1785981318"
+    }
+}

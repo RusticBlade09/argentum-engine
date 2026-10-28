@@ -1,0 +1,19 @@
+{
+    "name": "Steam Vents",
+    "manaCost": "",
+    "typeLine": "Land � Island Mountain",
+    "oracleText": "({T}: Add {U} or {R}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped.",
+    "script": {
+        "replacementEffects": [
+            {
+                "type": "EntersTapped",
+                "payLifeCost": 2
+            }
+        ]
+    },
+    "oracleId": "17039058-822d-409f-938c-b727a366ba63",
+    "setCode": "TRK",
+    "metadata": {
+        "imageUri": "https://cards.scryfall.io/normal/front/a/8/a83903c7-fd51-4526-aed2-359e946fea36.jpg?1784036844"
+    }
+}
