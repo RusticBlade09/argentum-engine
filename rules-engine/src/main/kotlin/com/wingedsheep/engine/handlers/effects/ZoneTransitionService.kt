@@ -99,6 +99,11 @@ data class ZoneEntryOptions(
     /** "As this enters, choose …" answers made before the move ([EffectEntryChoices]). */
     val entryChoices: Map<com.wingedsheep.sdk.scripting.ChoiceSlot, com.wingedsheep.engine.state.components.battlefield.ChoiceValue> = emptyMap(),
     /**
+     * The entrant's [com.wingedsheep.sdk.scripting.EntersOnlyIfPaid] cost was paid before the move
+     * ([EntryPayment]). Without it such a card goes to its owner's graveyard instead of entering.
+     */
+    val paidToEnter: Boolean = false,
+    /**
      * The counter-or-haste answers for each instance of Riot a battlefield lord *grants* the entrant
      * ([EffectEntryChoices], CR 702.136b), applied as it arrives — a granted permanent has none of
      * the printed riot replacement/static abilities that would read a recorded `MODE` choice.
@@ -405,6 +410,24 @@ class ZoneTransitionService(
             )
         ) {
             return ZoneTransitionResult(state, emptyList(), redirectResult, actualDestination = fromZone)
+        }
+
+        // "If this would enter, you may [pay] instead. If you don't, put it into its owner's
+        // graveyard" (EntersOnlyIfPaid). Every mover that can meet it asks before the move and
+        // passes the answer (EntryPayment); a card arriving here unpaid was declined or couldn't
+        // pay, so it never enters and goes to the graveyard — through this same service, so a
+        // graveyard replacement (Rest in Peace) still applies. A card already in the graveyard
+        // stays put: it never left, so no replacement can exile it. Read off the card as it would
+        // enter (CR 614.12), copy included. A face-down entry has no abilities (CR 708.2) and a
+        // battlefield-to-battlefield move is not an entry.
+        if (actualDestZone == Zone.BATTLEFIELD && fromZone != Zone.BATTLEFIELD &&
+            !options.paidToEnter && !options.faceDown &&
+            EntryPayment.enteringCost(state, entityId, options.entryCopy, cardRegistry, predicateEvaluator) != null
+        ) {
+            if (fromZone == Zone.GRAVEYARD) {
+                return ZoneTransitionResult(state, emptyList(), redirectResult, actualDestination = Zone.GRAVEYARD)
+            }
+            return moveToZone(state, entityId, Zone.GRAVEYARD, ZoneEntryOptions(), currentZoneKey)
         }
 
         // A card-intrinsic redirect into the library shuffles the card in rather than placing it on

@@ -151,6 +151,11 @@ class MoveCollectionExecutor(
             com.wingedsheep.engine.handlers.effects.copy.EffectCopyEntry.prepare(
                 state, effect, context, entrants, cardRegistry, predicateEvaluator
             )?.let { return it }
+            // "If this would enter, you may [pay] instead" (EntersOnlyIfPaid) — asked once each entry
+            // copy is settled (CR 614.12), since it decides whether each card enters at all.
+            com.wingedsheep.engine.handlers.effects.EffectEntryPayments.prepare(
+                state, effect, context, entrants, cardRegistry, predicateEvaluator
+            )?.let { return it }
             if (targetFinder != null) {
                 val prepared = com.wingedsheep.engine.handlers.effects.copy.CopyAuraEntry.prepare(
                     state, effect, context, entrants, cardRegistry, targetFinder, predicateEvaluator)
@@ -902,7 +907,8 @@ class MoveCollectionExecutor(
         destPlayerId: EntityId,
         entryCounterType: com.wingedsheep.sdk.core.CounterType? = null,
         context: EffectContext? = null,
-        replacementSourceState: GameState? = null
+        replacementSourceState: GameState? = null,
+        paidToEnter: Boolean = false,
     ): Pair<GameState, List<GameEvent>> {
         val transition = zones.moveToZone(state, auraId, Zone.BATTLEFIELD,
             com.wingedsheep.engine.handlers.effects.ZoneEntryOptions(
@@ -911,6 +917,7 @@ class MoveCollectionExecutor(
                 entryCounterReplacementState = replacementSourceState,
                 entryChoices = context?.entryChoices?.get(auraId)?.values.orEmpty(),
                 grantedRiotModes = context?.entryChoices?.get(auraId)?.riotModes.orEmpty(),
+                paidToEnter = paidToEnter || com.wingedsheep.engine.handlers.effects.EffectEntryPayments.paid(context, auraId),
                 lookBackGrants = context?.lookBackGrants?.get(auraId)))
         if (transition.actualDestination != Zone.BATTLEFIELD || entryCounterType != null) return transition.state to transition.events
         val (entered, counterEvents) = EntersWithReplacements.applyOnEntry(
@@ -1095,6 +1102,7 @@ class MoveCollectionExecutor(
                 entryCopy = context.entryCopies[cardId],
                 entryChoices = context.entryChoices[cardId]?.values.orEmpty(),
                 grantedRiotModes = context.entryChoices[cardId]?.riotModes.orEmpty(),
+                paidToEnter = com.wingedsheep.engine.handlers.effects.EffectEntryPayments.paid(context, cardId),
                 auraHostId = context.entryAuraHosts[cardId],
                 libraryPlacement = chosenPlacement,
                 tapped = destination.placement == ZonePlacement.Tapped || destination.placement == ZonePlacement.TappedAndAttacking,
