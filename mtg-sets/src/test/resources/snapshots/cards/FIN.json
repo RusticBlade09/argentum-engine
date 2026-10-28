@@ -25496,19 +25496,16 @@
                     }
                 },
                 "effect": {
-                    "type": "AddManaOfChoice",
-                    "colorSet": {
-                        "type": "ManaColorSet.Specific",
-                        "colors": [
-                            "BLUE",
-                            "RED"
-                        ]
-                    },
-                    "amount": {
+                    "type": "AddDynamicMana",
+                    "amountSource": {
                         "type": "EntityProperty",
                         "entity": "Self",
                         "numericProperty": "Power"
-                    }
+                    },
+                    "allowedColors": [
+                        "BLUE",
+                        "RED"
+                    ]
                 },
                 "timing": "ManaAbility",
                 "restrictions": [
