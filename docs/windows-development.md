@@ -7,6 +7,39 @@ used in that session unless marked as a proposed fix.
 
 ## Shell and launcher boundaries
 
+### `just contribute` spans Python, terminal APIs, and Bash
+
+The guided launcher had two separate native Windows failures. First, an interactive console
+was treated as proof that Unix terminal APIs were available: its spinner and raw-input menus
+imported `termios`, producing `ModuleNotFoundError`. Native Windows Python does not provide
+that module. The launcher now uses its plain numbered prompts on Windows; finish pasted card
+lists by typing `END` on a line of its own. Unix terminals retain the interactive UI.
+
+Next, entering the existing set code `TRK` incorrectly reported `No set matches 'TRK'`.
+The resolver had not run: Python tried to execute the extensionless `scripts/resolve-set`
+directly, and Windows returned `[WinError 193] %1 is not a valid Win32 application`.
+The launcher mistook every resolver failure for an unknown set. It now launches both
+`resolve-set` and `card-status` with `sys.executable`, distinguishes resolver failures from
+unknown-set responses, and stops on a failed status check rather than treating empty output
+as a completed set. The final Windows handoff calls `just card-loop` so the recipe launches
+the Bash script; Unix retains its existing `os.execv` handoff.
+
+These boundaries make the script brittle: a working Python prompt does not prove that its
+helpers or the eventual Bash loop can start. Running native Windows Python from Git Bash
+does not give it Unix APIs or shebang execution. For future launcher changes, check each
+boundary and preserve subprocess diagnostics instead of translating every failure into a
+card/set lookup error. The set-selection parser also depends on the human-readable
+`card-status --list` output, and resolver error classification uses its `resolve-set:` prefix;
+changes to those formats need a matching launcher check.
+
+Verification of these fixes covered native Windows spinner fallback, numbered selection,
+`END` input, and real TRK resolution; set selection used simulated card-status output.
+Ubuntu through WSL also passed real code/name/unknown-set resolution and spinner, menu,
+card input, and terminal-restoration checks in a Linux pseudo-terminal. The Unix loop
+handoff was checked with `os.execv` mocked. A full contribution loop, including the Windows
+Bash handoff and agent startup, was not run; these checks do not establish end-to-end
+Windows support for the downstream loop scripts.
+
 ### `just ui-dev` needs `cygpath` on PATH
 
 The shebang recipe failed before starting the app:
