@@ -28,9 +28,9 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- #3968 Builds a 100-card singleton deck for Highlander and Canadian Highlander lobbies (leaving points-list cards out of the Canadian build) instead of a 60-card four-of list
 - Trims its attack to fit a cap on how many creatures may attack a player (a tapped Mirri, Weatherlight Duelist, Dueling Grounds) instead of declaring too many, being rejected and skipping combat
 - The sealed deckbuilder now plays the basic snow lands it opened (Kaldheim packs open one) instead of discarding them with the free basics.
-- #3968 Builds a 100-card singleton deck for Highlander and Canadian Highlander lobbies (leaving points-list cards out of the Canadian build) instead of a 60-card four-of list
 - #3805 Makes a combat declaration handed to it from another seat (Master Warcraft, Brutal Hordechief) for that seat, honouring its must-block requirements, instead of submitting it as its own and conceding after the rejections
 - #3678 Sees a blocker whose block trigger destroys the attacker (Alaborn Zealot) as a killer, the way it sees deathtouch: it no longer attacks a big creature into one, and as the defender it blocks with one to trade up
 - #3674 No longer casts an end-of-combat sweep over what a creature blocked (Glyph of Doom) when that creature can't block before it fires, or a spells-only mana grant (Piracy) when nothing it could then cast would spend the mana
