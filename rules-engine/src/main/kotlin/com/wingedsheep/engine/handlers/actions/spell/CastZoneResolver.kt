@@ -1,5 +1,6 @@
 package com.wingedsheep.engine.handlers.actions.spell
 
+import com.wingedsheep.engine.state.components.stack.EntryKeywordGrant
 import com.wingedsheep.engine.state.permissions.oncePerTurnGranterToSpend
 import com.wingedsheep.engine.state.components.battlefield.controlledActiveStaticAbilities
 import com.wingedsheep.engine.state.components.battlefield.liveStaticAbilities
@@ -974,6 +975,43 @@ class CastZoneResolver(
             }
         }
         return limitedSource
+    }
+
+    /**
+     * The cast-this-way keyword rider of a live [CastSpellTypesFromTopOfLibrary] permission that
+     * covers a top-of-library cast of [cardId] — Thundermane Dragon's "If you cast a creature spell
+     * this way, it gains haste until end of turn" — or null. When several permissions cover the
+     * card the caster chooses which one the cast goes through, and the rider only ever helps, so a
+     * covering rider-bearing permission is the one chosen — unless the engine routes the cast
+     * elsewhere: a card-specific MayPlay, or a play-from-top grant that changes how the spell is paid
+     * (Bolas's Citadel, Gwenom), which the cost path always applies. Its source is recorded so the
+     * grant is attributed to the granting permanent.
+     */
+    fun findTopLibraryCastKeywordRider(
+        state: GameState,
+        playerId: EntityId,
+        cardId: EntityId
+    ): EntryKeywordGrant? {
+        if (state.getLibrary(playerId).firstOrNull() != cardId) return null
+        val cardComponent = state.getEntity(cardId)?.get<CardComponent>() ?: return null
+        if (state.hasMayPlayFor(cardId, playerId, conditionEvaluator, cardRegistry)) return null
+        val alternative = topOfLibraryAlternativeGrant(state, playerId, cardId)
+        if (alternative != null && (alternative.withoutPayingManaCost || alternative.additionalCost != null)) return null
+        for (entityId in state.getBattlefield(playerId)) {
+            val cardDef = state.getEntity(entityId)?.faceUpCardDefinition(cardRegistry) ?: continue
+            for (ability in cardDef.liveStaticAbilities(state, entityId)) {
+                val unwrapped = if (ability is ConditionalStaticAbility) {
+                    val ctx = EffectContext(sourceId = entityId, controllerId = playerId)
+                    if (!conditionEvaluator.evaluate(state, ability.condition, ctx)) continue
+                    ability.ability
+                } else ability
+                if (unwrapped !is CastSpellTypesFromTopOfLibrary) continue
+                val keyword = unwrapped.castThisWayKeyword ?: continue
+                if (!matchesCardFilter(cardComponent, unwrapped.filter, state, entityId, state.projectedState.colorSetOf(cardId), subtypes = effectiveSubtypes(state, cardId, cardComponent))) continue
+                return EntryKeywordGrant(keyword.name, unwrapped.castThisWayKeywordDuration, entityId)
+            }
+        }
+        return null
     }
 
     /**
