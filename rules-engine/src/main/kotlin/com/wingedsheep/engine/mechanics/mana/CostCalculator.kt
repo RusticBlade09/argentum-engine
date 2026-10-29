@@ -898,8 +898,9 @@ class CostCalculator(
      * Find the greatest value of [property] among permanents the player controls matching a filter.
      * Returns 0 if none match. Power/toughness are read from projected state (CR 613) so counters
      * and continuous buffs count, falling back to the printed base when a permanent has no projected
-     * P/T; base power/toughness read the printed base directly; mana value is read from
-     * CardDefinition.manaCost.cmc (X-costs contribute X = 0 per Rule 202.3e on the battlefield).
+     * P/T; base power/toughness read the printed base directly; mana value is the permanent's own
+     * [CardComponent.manaValue] (X-costs contribute X = 0 per Rule 202.3e on the battlefield).
+     * Everything is read off the entity, never the card registry, so tokens count too.
      */
     private fun greatestPropertyAmongMatching(
         state: GameState,
@@ -913,8 +914,7 @@ class CostCalculator(
         for (entityId in state.controlledBattlefield(playerId)) {
             if (!predicateEvaluator.matches(state, projected, entityId, filter, context)) continue
             val card = state.getEntity(entityId)?.get<CardComponent>() ?: continue
-            val cardDef = cardRegistry.getCard(card.cardDefinitionId) ?: continue
-            val value = numericProperty(projected, entityId, card, cardDef, property)
+            val value = numericProperty(projected, entityId, card, property)
             if (value > maxValue) maxValue = value
         }
         return maxValue
@@ -944,8 +944,7 @@ class CostCalculator(
         for (entityId in state.controlledBattlefield(playerId)) {
             if (!predicateEvaluator.matches(state, projected, entityId, filter, context)) continue
             val card = state.getEntity(entityId)?.get<CardComponent>() ?: continue
-            val cardDef = cardRegistry.getCard(card.cardDefinitionId) ?: continue
-            total += numericProperty(projected, entityId, card, cardDef, property)
+            total += numericProperty(projected, entityId, card, property)
         }
         return total.coerceAtLeast(0)
     }
@@ -975,8 +974,7 @@ class CostCalculator(
             ?.targetId
             ?: return 0
         val card = state.getEntity(attachedTo)?.get<CardComponent>() ?: return 0
-        val cardDef = cardRegistry.getCard(card.cardDefinitionId) ?: return 0
-        return numericProperty(state.projectedState, attachedTo, card, cardDef, property)
+        return numericProperty(state.projectedState, attachedTo, card, property)
             .coerceAtLeast(0)
     }
 
@@ -1032,7 +1030,6 @@ class CostCalculator(
         projectedState: ProjectedState,
         entityId: EntityId,
         card: CardComponent,
-        cardDef: CardDefinition,
         property: EntityNumericProperty
     ): Int = when (property) {
         EntityNumericProperty.Power ->
