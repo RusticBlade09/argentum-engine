@@ -28,7 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
-- Drafts with the Draftsim scorer and set ratings its deckbuilder already uses, instead of a rarity-and-keyword heuristic that took weak rares over premium common removal; cards of a set with no ratings file are rated from their abilities rather than by rarity alone, for picks and for the Draftsim deckbuild
+- #3967 Drafts with the Draftsim scorer and set ratings its deckbuilder already uses, instead of a rarity-and-keyword heuristic that took weak rares over premium common removal; cards of a set with no ratings file are rated from their abilities rather than by rarity alone, for picks and for the Draftsim deckbuild
 - Trims its attack to fit a cap on how many creatures may attack a player (a tapped Mirri, Weatherlight Duelist, Dueling Grounds) instead of declaring too many, being rejected and skipping combat
 - The sealed deckbuilder now plays the basic snow lands it opened (Kaldheim packs open one) instead of discarding them with the free basics.
 - #3805 Makes a combat declaration handed to it from another seat (Master Warcraft, Brutal Hordechief) for that seat, honouring its must-block requirements, instead of submitting it as its own and conceding after the rejections
