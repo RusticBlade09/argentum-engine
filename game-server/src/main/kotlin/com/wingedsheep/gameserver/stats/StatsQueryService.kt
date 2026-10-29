@@ -3,6 +3,7 @@ package com.wingedsheep.gameserver.stats
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.registry.PrintingRegistry
+import com.wingedsheep.mtg.sets.MtgSetCatalog
 import com.wingedsheep.sdk.core.CardType
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.jdbc.core.JdbcTemplate
@@ -988,20 +989,34 @@ class StatsQueryService(
      * [bucket] — see [AiVsHumanReport]. Reads the range plus the equally long window before it, so the
      * report can show the change against the previous period. The build each game ran on comes from
      * its replay row; a game whose replay was never stored still counts everywhere but per-build.
+     *
+     * [filter] narrows it to a slice (see [AiVsHumanFilter]). The slice is cut after the read, not in
+     * the SQL: the report also returns every filter value with its count over the unfiltered range,
+     * and those two queries already read every AI-vs-human game in it.
+     *
+     * A game's sets are those of the lobby that produced it: the tournament row's `set_codes` when one
+     * was recorded, else the set names in the game's own `tournament_name` (written for every lobby
+     * game, so it also covers lobbies whose tournament row is missing). Per-deck `set_codes` are not
+     * used — they follow each card's canonical printing, so a reprint-heavy deck reads as old sets.
      */
-    fun aiVsHuman(days: Int?, bucket: AiBucket): AiVsHumanReport {
+    fun aiVsHuman(days: Int?, bucket: AiBucket, filter: AiVsHumanFilter = AiVsHumanFilter.NONE): AiVsHumanReport {
         val now = java.time.Instant.now()
         val since = java.sql.Timestamp.from(days?.let { now.minusSeconds(2L * it * 86_400L) } ?: java.time.Instant.EPOCH)
         val games = jdbc.query(
             """
             SELECT mr.id, mr.ended_at, mr.game_mode, mr.format, gr.engine_version,
+                   mr.lobby_id, mr.tournament_name, t.set_codes AS lobby_set_codes,
                    bool_or(mp.won AND mp.is_ai) AS ai_won,
                    bool_or(mp.won AND NOT mp.is_ai) AS human_won
             FROM match_results mr
             JOIN match_participants mp ON mp.match_id = mr.id
             LEFT JOIN game_replays gr ON gr.game_id = mr.game_id
+            LEFT JOIN LATERAL (
+                SELECT set_codes FROM tournaments WHERE lobby_id = mr.lobby_id ORDER BY id DESC LIMIT 1
+            ) t ON true
             WHERE mr.ended_at >= ?
-            GROUP BY mr.id, mr.ended_at, mr.game_mode, mr.format, gr.engine_version
+            GROUP BY mr.id, mr.ended_at, mr.game_mode, mr.format, gr.engine_version,
+                     mr.lobby_id, mr.tournament_name, t.set_codes
             HAVING bool_or(mp.is_ai) AND bool_or(NOT mp.is_ai)
             ORDER BY mr.ended_at
             """.trimIndent(),
@@ -1018,6 +1033,11 @@ class StatsQueryService(
                         aiWon && !humanWon -> AiMatchOutcome.AI
                         humanWon && !aiWon -> AiMatchOutcome.HUMAN
                         else -> AiMatchOutcome.DRAW
+                    },
+                    setCodes = if (rs.getString("lobby_id") == null) {
+                        emptyList()
+                    } else {
+                        lobbySetCodes(rs.getString("lobby_set_codes"), rs.getString("tournament_name"))
                     },
                 )
             },
@@ -1046,7 +1066,28 @@ class StatsQueryService(
             },
             since,
         )
-        return AiVsHumanAggregator.aggregate(games, humanSeats, days, bucket, now, engineAiHistory.timeline)
+        return AiVsHumanAggregator.aggregate(
+            games, humanSeats, days, bucket, now, engineAiHistory.timeline, filter,
+            setName = { MtgSetCatalog.byCode(it)?.displayName },
+        )
+    }
+
+    /** Set codes by display name, to read the names a lobby game's `tournament_name` carries. */
+    private val setCodeByName: Map<String, String> by lazy {
+        MtgSetCatalog.all.associate { it.displayName.lowercase() to it.code }
+    }
+
+    /**
+     * A lobby game's set codes: the tournament's recorded codes, else the set names in
+     * `tournament_name` (`"<Set> / <Set> <Format>"`) mapped back to codes. A name that matches no set
+     * (a cube) yields nothing rather than a guess.
+     */
+    private fun lobbySetCodes(recorded: String?, tournamentName: String?): List<String> {
+        val codes = recorded?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
+        if (codes.isNotEmpty()) return codes.distinct()
+        val names = tournamentName?.substringBeforeLast(' ', missingDelimiterValue = "")?.takeIf { it.isNotBlank() }
+            ?: return emptyList()
+        return names.split(" / ").mapNotNull { setCodeByName[it.trim().lowercase()] }.distinct()
     }
 
     /**

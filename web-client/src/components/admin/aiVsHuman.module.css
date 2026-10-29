@@ -367,3 +367,107 @@
 @media (max-width: 560px) {
   .miniTrack { display: none; }
 }
+
+/* ── Filters ───────────────────────────────────────────────────────────── */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(10, 12, 20, 0.72);
+}
+.filterField { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 0 1 220px; }
+.filterLabel {
+  color: #8f98ac;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.select {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.3);
+  color: #f1f3f9;
+  font: inherit;
+  font-size: 13px;
+}
+.select:disabled { color: #8f98ac; }
+.select option { background: #161924; }
+.filterChips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex: 1 1 260px; min-width: 0; }
+.excludeChip,
+.excludeChipStatic {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(242, 201, 122, 0.45);
+  background: rgba(242, 201, 122, 0.1);
+  color: #f2c97a;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.excludeChip { cursor: pointer; }
+.excludeChip:hover { background: rgba(242, 201, 122, 0.2); }
+.filterNote { color: #8f98ac; font-size: 12px; }
+.excludeButton {
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: #b4bccd;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.excludeButton:hover { color: #f2c97a; border-color: rgba(242, 201, 122, 0.45); }
+
+/* ── Per-mode small multiples + game mix ───────────────────────────────── */
+
+.multiples {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.multiple {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 10px 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.22);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.multiple:hover { border-color: rgba(255, 255, 255, 0.2); }
+.multipleHead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; min-width: 0; }
+.multipleTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  overflow: hidden;
+  color: #f1f3f9;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.multipleRate { color: #f1f3f9; font-family: var(--font-display); font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.multipleSub { color: #8f98ac; font-size: 12px; font-variant-numeric: tabular-nums; }
+.mixHead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; margin-top: 10px; }
+.mixHead .subchartLabel { margin: 4px 0; }
