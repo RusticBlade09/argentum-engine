@@ -16,6 +16,7 @@ import com.wingedsheep.engine.state.components.combat.BlockersDeclaredThisCombat
 import com.wingedsheep.engine.state.components.combat.BlockingComponent
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.identity.FaceDownComponent
+import com.wingedsheep.engine.state.components.player.BlockerCountLimitThisCombatComponent
 import com.wingedsheep.engine.state.components.player.ManaPoolComponent
 import com.wingedsheep.engine.mechanics.combat.rules.BlockCheckContext
 import com.wingedsheep.engine.mechanics.combat.rules.BlockEvasionRule
@@ -98,9 +99,9 @@ internal class BlockPhaseManager(
             return ExecutionResult.error(state, maxBlockersValidation)
         }
 
-        // Check global blocker-count caps (Dueling Grounds — "No more than one creature can
-        // block each combat"). Counts distinct blocking creatures across all players.
-        val blockerCountValidation = validateGlobalBlockerCount(state, blockers.keys)
+        // Check blocker-count caps: global (Dueling Grounds — "No more than one creature can block
+        // each combat") and per player this combat (Mirri, Weatherlight Duelist's attack trigger).
+        val blockerCountValidation = validateBlockerCountLimits(state, blockers.keys)
         if (blockerCountValidation != null) {
             return ExecutionResult.error(state, blockerCountValidation)
         }
@@ -240,7 +241,7 @@ internal class BlockPhaseManager(
         validateMenaceRequirements(state, blocks) == null &&
             validateMinBlockersRequirements(state, blocks) == null &&
             validateMaxBlockersRequirements(state, blocks) == null &&
-            validateGlobalBlockerCount(state, blocks.keys) == null &&
+            validateBlockerCountLimits(state, blocks.keys) == null &&
             validateCoBlockerRequirements(state, state.projectedState, blocks.keys) == null
 
     private fun removeImpossibleBlockEdges(state: GameState, candidates: Map<EntityId, List<EntityId>>): Map<EntityId, List<EntityId>> {
@@ -299,7 +300,7 @@ internal class BlockPhaseManager(
             group.size - maximum
         }
         val keys = reduced.keys.toList()
-        val globalMaximum = (keys.size downTo 0).first { count -> validateGlobalBlockerCount(state, keys.take(count).toSet()) == null }
+        val globalMaximum = (keys.size downTo 0).first { count -> validateBlockerCountLimits(state, keys.take(count).toSet()) == null }
         val globalMinimum = edges.size - reduced.values.map { it.size }.sortedDescending().take(globalMaximum).sum()
         val minimumRemoved = maxOf(1, perAttackerMinimum, globalMinimum)
         for (removedCount in minimumRemoved..edges.size) {
@@ -311,7 +312,7 @@ internal class BlockPhaseManager(
                 // kept prefix that already breaks one can't be repaired by later removals.
                 val kept = linkedMapOf<EntityId, MutableList<EntityId>>()
                 for (index in 0 until start) if (!removed[index]) kept.getOrPut(edges[index].first) { mutableListOf() }.add(edges[index].second)
-                if (validateMaxBlockersRequirements(state, kept) != null || validateGlobalBlockerCount(state, kept.keys) != null) return
+                if (validateMaxBlockersRequirements(state, kept) != null || validateBlockerCountLimits(state, kept.keys) != null) return
                 if (remaining == 0) {
                     val blocks = linkedMapOf<EntityId, MutableList<EntityId>>()
                     for ((index, edge) in edges.withIndex()) if (!removed[index]) blocks.getOrPut(edge.first) { mutableListOf() }.add(edge.second)
@@ -571,7 +572,7 @@ internal class BlockPhaseManager(
             if (bestScore == upper || (threshold != null && bestScore > threshold)) return
             if (!canComplete(selected, holders.drop(index))) return
             if (optimistic(selected, holders.drop(index)) <= maxOf(bestScore, threshold ?: -1)) return
-            if (validateGlobalBlockerCount(state, selected.keys) != null ||
+            if (validateBlockerCountLimits(state, selected.keys) != null ||
                 validateMaxBlockersRequirements(state, selected) != null) return
             if (score(selected) == upper && legal(selected)) {
                 bestScore = upper; best = selected.toMap(); return
@@ -939,14 +940,29 @@ internal class BlockPhaseManager(
     }
 
     /**
-     * Validate global blocker-count caps. While any permanent with [BlockerCountLimit] is on the
-     * battlefield (e.g. Dueling Grounds), the total number of distinct blocking creatures across
-     * all players may not exceed the smallest such cap. Returns an error message when violated.
+     * Validate blocker-count caps:
+     *  - **global** — while any permanent with [BlockerCountLimit] is on the battlefield (e.g.
+     *    Dueling Grounds), the total number of distinct blocking creatures across all players may
+     *    not exceed the smallest such cap;
+     *  - **per player, this combat** — a player stamped with [BlockerCountLimitThisCombatComponent]
+     *    (Mirri, Weatherlight Duelist's attack trigger) may block with at most that many of the
+     *    creatures they control; a creature blocking several attackers counts once.
+     * Returns an error message when violated.
      */
-    private fun validateGlobalBlockerCount(
+    private fun validateBlockerCountLimits(
         state: GameState,
         blockerIds: Set<EntityId>
     ): String? {
+        if (blockerIds.isNotEmpty() && state.turnOrder.any { state.getEntity(it)?.has<BlockerCountLimitThisCombatComponent>() == true }) {
+            val projected = state.projectedState
+            for ((playerId, blocks) in blockerIds.groupBy { projected.getController(it) }) {
+                val playerCap = playerId?.let { state.getEntity(it)?.get<BlockerCountLimitThisCombatComponent>() } ?: continue
+                if (blocks.size > playerCap.maxBlockers) {
+                    return "You can't block with more than " +
+                        "${if (playerCap.maxBlockers == 1) "one creature" else "${playerCap.maxBlockers} creatures"} this combat"
+                }
+            }
+        }
         var cap: Int? = null
         var capDescription = ""
         for (permId in state.getBattlefield()) {
