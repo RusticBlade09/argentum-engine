@@ -22,12 +22,25 @@ import { Avatar } from '@/components/profile/accountUi'
 import { colorForIdentity, colorLabel, mergeModeBuckets } from './statFormat'
 import { AdminScreen, Panel, StatCard, Table, adminTheme, cellStyle } from './adminUi'
 import { AdminDeckModal, AdminSavedDecks } from './AdminPlayerDecks'
+import { useAdminTournamentParam } from './adminNav'
 
 const GAMES_PAGE_SIZE = 10
 
-export function AdminPlayers({ auth, onBack }: { auth: AdminAuth; onBack: () => void }) {
+export function AdminPlayers({
+  auth,
+  selectedId,
+  onSelect,
+  onCloseDetail,
+  onBack,
+}: {
+  auth: AdminAuth
+  /** The player whose detail is open (`/admin/players/<id>`), or null for the roster. */
+  selectedId: string | null
+  onSelect: (id: string) => void
+  onCloseDetail: () => void
+  onBack: () => void
+}) {
   const [users, setUsers] = useState<AdminUserSummary[]>([])
-  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -50,9 +63,10 @@ export function AdminPlayers({ auth, onBack }: { auth: AdminAuth; onBack: () => 
   if (selectedId != null) {
     return (
       <PlayerDetail
+        key={selectedId}
         auth={auth}
         id={selectedId}
-        onBack={() => setSelectedId(null)}
+        onBack={onCloseDetail}
         onAdminChange={applyAdminChange}
       />
     )
@@ -76,7 +90,7 @@ export function AdminPlayers({ auth, onBack }: { auth: AdminAuth; onBack: () => 
             {users.map((u) => {
               const winRate = u.games > 0 ? Math.round((u.wins / u.games) * 100) : 0
               return (
-                <tr key={u.id} style={styles.row} onClick={() => setSelectedId(u.id)}>
+                <tr key={u.id} style={styles.row} onClick={() => onSelect(u.id)}>
                   <td style={cellStyle.td}>
                     <div style={styles.playerCell}>
                       <Avatar name={u.displayName} avatar={u.avatar} small />
@@ -123,7 +137,7 @@ function PlayerDetail({
   const [games, setGames] = useState<AdminGamesPage>({ entries: [], total: 0 })
   const [gamesPage, setGamesPage] = useState(0)
   const [deckModal, setDeckModal] = useState<{ gameId: string; opponent: string } | null>(null)
-  const [openTournament, setOpenTournament] = useState<number | null>(null)
+  const [openTournament, setOpenTournament, closeTournament] = useAdminTournamentParam()
 
   useEffect(() => {
     let cancelled = false
@@ -348,7 +362,7 @@ function PlayerDetail({
       )}
 
       {openTournament != null && (
-        <TournamentDetailModal tournamentId={openTournament} onClose={() => setOpenTournament(null)} />
+        <TournamentDetailModal tournamentId={openTournament} onClose={closeTournament} />
       )}
     </AdminScreen>
   )

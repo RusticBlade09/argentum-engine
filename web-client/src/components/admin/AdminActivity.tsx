@@ -22,6 +22,7 @@ import { TournamentDetailModal } from '@/components/profile/TournamentDetailModa
 import { formatDateTime } from '@/utils/datetime'
 import { gameModeLabel } from './statFormat'
 import { AdminScreen, Panel, Table, adminTheme, cellStyle } from './adminUi'
+import { useAdminPageParam, useAdminTournamentParam } from './adminNav'
 
 /** Games per page in the recent-games pager. */
 const GAMES_PAGE_SIZE = 20
@@ -33,12 +34,12 @@ export function AdminActivity({ auth, onBack }: { auth: AdminAuth; onBack: () =>
 
   const [games, setGames] = useState<AdminRecentGame[]>([])
   const [gamesTotal, setGamesTotal] = useState(0)
-  const [page, setPage] = useState(0)
+  const [page, setPage] = useAdminPageParam()
   const [gamesError, setGamesError] = useState<string | null>(null)
 
   const [tournaments, setTournaments] = useState<TournamentSummary[]>([])
   const [tournamentsError, setTournamentsError] = useState<string | null>(null)
-  const [openTournament, setOpenTournament] = useState<number | null>(null)
+  const [openTournament, setOpenTournament, closeTournament] = useAdminTournamentParam()
 
   const loadGames = useCallback(
     async (p: number) => {
@@ -160,7 +161,7 @@ export function AdminActivity({ auth, onBack }: { auth: AdminAuth; onBack: () =>
       </Panel>
 
       {openTournament != null && (
-        <TournamentDetailModal tournamentId={openTournament} onClose={() => setOpenTournament(null)} />
+        <TournamentDetailModal tournamentId={openTournament} onClose={closeTournament} />
       )}
     </AdminScreen>
   )

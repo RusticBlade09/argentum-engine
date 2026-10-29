@@ -100,7 +100,7 @@ createRoot(rootElement).render(
           <Route path="/tournament/:lobbyId" element={<TournamentEntryPage />} />
           <Route path="/join/:lobbyId" element={<JoinLobbyPage />} />
           <Route path="/replay/:gameId" element={<ReplayPage />} />
-          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin/*" element={<AdminPage />} />
           <Route path="/deckbuilder" element={<DeckbuilderPage />} />
           <Route path="/deckbuilder/:deckId" element={<DeckbuilderPage />} />
           <Route path="/library" element={<LibraryPage />} />
