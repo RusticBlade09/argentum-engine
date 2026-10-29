@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- #3967 Drafts with the Draftsim scorer and set ratings its deckbuilder already uses, instead of a rarity-and-keyword heuristic that took weak rares over premium common removal; cards of a set with no ratings file are rated from their abilities rather than by rarity alone, for picks and for the Draftsim deckbuild
 - #3968 Builds a 100-card singleton deck for Highlander and Canadian Highlander lobbies (leaving points-list cards out of the Canadian build) instead of a 60-card four-of list
 - Trims its attack to fit a cap on how many creatures may attack a player (a tapped Mirri, Weatherlight Duelist, Dueling Grounds) instead of declaring too many, being rejected and skipping combat
 - The sealed deckbuilder now plays the basic snow lands it opened (Kaldheim packs open one) instead of discarding them with the free basics.

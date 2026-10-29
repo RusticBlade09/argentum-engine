@@ -5,6 +5,7 @@ import com.wingedsheep.ai.draftsim.DraftsimData
 import com.wingedsheep.ai.draftsim.DraftsimDeckBuilder
 import com.wingedsheep.ai.draftsim.DraftsimPoolCard
 import com.wingedsheep.ai.draftsim.toScorerCard
+import com.wingedsheep.ai.draftsim.withFallbackRatings
 
 /**
  * Deckbuild engine backed by the ported Draftsim autobuilder ([DraftsimDeckBuilder]): it ranks
@@ -29,7 +30,7 @@ object DraftsimDeckBuildAdvisor : DeckBuildAdvisor {
     private val COLOR_TO_BASIC = mapOf("W" to "Plains", "U" to "Island", "B" to "Swamp", "R" to "Mountain", "G" to "Forest")
 
     override fun buildDeck(request: DeckBuildRequest): DeckBuildResult {
-        val builder = DraftsimDeckBuilder(DraftsimData.tablesFor(request.setCodes))
+        val builder = DraftsimDeckBuilder(DraftsimData.tablesFor(request.setCodes).withFallbackRatings(request.pool))
         val pool = request.pool.mapIndexed { i, def -> DraftsimPoolCard(def.toScorerCard(), "pool-$i") }
         val byId = pool.associateBy { it.instanceId }
 

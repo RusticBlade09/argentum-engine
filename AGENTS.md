@@ -224,6 +224,7 @@ Set Completion view's Assay-ready badges; for a head start on a card use `just a
 | [`card-sdk-language-reference.md`](docs/card-sdk-language-reference.md) | Full card SDK / DSL catalog — update on any SDK change |
 | [`sdk-index.md`](docs/sdk-index.md) | Generated: every sealed SDK type, one line each, by family — grep it before adding a type |
 | [`api-guide.md`](docs/api-guide.md) | Adding cards/mechanics step-by-step |
+| [`limited-card-ratings.md`](docs/limited-card-ratings.md) | How the AI rates cards for drafting and deckbuilding: Draftsim tables, 17Lands, the effect heuristic, adding ratings |
 | [`continuous-effect-dependency-system.md`](docs/continuous-effect-dependency-system.md) | Rule 613.8 dependency resolution |
 | [`managing-complex-and-rare-abilities.md`](docs/managing-complex-and-rare-abilities.md) | Patterns for complex abilities |
 | [`engine-server-interface.md`](docs/engine-server-interface.md) | Engine ↔ API contract |
