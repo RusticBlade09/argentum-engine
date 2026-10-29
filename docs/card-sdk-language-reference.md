@@ -15060,6 +15060,19 @@ Blighted Agent, Ichor Rats, Plague Stinger, Skithiryx.
     off the stack with a zone-move).
   - **Taigam, Master Opportunist** is the first user: `Composite(CopyTargetSpell(TriggeringEntity),
     CounterEffect(TriggeringEntity → Exile), Suspend(TriggeringEntity, 4))`.
+  - **A spell that suspends itself as it resolves** — "Exile <card name> with N time counters on it." on a card
+    with a printed suspend (**Suspended Sentence**, Arc Blade, Inspiring Refrain, the rest of that cycle) — is
+    `spell { …; selfExile(timeCounters = n) }`, the `selfExile()` clause with its counter count
+    (`CardScript.selfExileTimeCounters`). It replaces the CR 608.2n destination exactly like a plain
+    `selfExile()`; as the card lands in exile `NonPermanentSpellResolver` puts the N time counters on it
+    (`CountersAddedEvent`) and runs the same `markSuspended` tail the special action and `GrantSuspendEffect`
+    use, so — having suspend and a time counter, it is suspended (CR 702.62b) — its owner counts it down and casts
+    it free, after which it exiles itself again. A countered or fizzled spell never reaches the instruction and
+    goes to the graveyard with no counters. Because the clause is the spell's own last instruction, the spell is
+    never put into a graveyard, so graveyard-worded replacements — a cast-this-way rider (Quistis Trepe, Kylox's
+    Voltstrider) or rebound (printed or granted; this holds for a plain `selfExile()` too) — have nothing to replace;
+    flashback's "exile it instead" agrees with it. The DSL rejects a nonzero count on a card without `KeywordAbility.Suspend` (every printed card
+    with the clause has it), and on a cast face.
   - **A printed `Suspend N—[cost]`** (`KeywordAbility.Suspend(cost, timeCounters)`, built via
     `KeywordAbility.suspend("{U}", 4)`) is a **different code path from every other alternative-cost keyword**
     (Flashback/Warp/Mayhem/Plot/Foretell): CR 702.62a is explicit that exiling this way "doesn't use the stack" —
