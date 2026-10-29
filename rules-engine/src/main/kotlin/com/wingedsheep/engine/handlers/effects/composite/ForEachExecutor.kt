@@ -7,6 +7,7 @@ import com.wingedsheep.engine.core.ForEachItem
 import com.wingedsheep.engine.state.components.battlefield.CountersComponent
 import com.wingedsheep.engine.core.GameEvent
 import com.wingedsheep.engine.handlers.EffectContext
+import com.wingedsheep.engine.handlers.effects.token.TokenEntryGroups
 import com.wingedsheep.engine.handlers.effects.BattlefieldFilterUtils
 import com.wingedsheep.engine.handlers.effects.EffectExecutor
 import com.wingedsheep.engine.handlers.effects.TargetResolutionUtils
@@ -87,13 +88,22 @@ class ForEachExecutor(
         // A group loop is one simultaneous event: freeze each member's look-back grants
         // before the first iteration moves anything, for its leaves-the-battlefield look-back
         // (CR 603.10a). Carried on the outer context, so it survives a mid-loop pause.
-        val loopContext = if (space is IterationSpace.Group && cardRegistry != null) {
+        val lookBackContext = if (space is IterationSpace.Group && cardRegistry != null) {
             val frozen = com.wingedsheep.engine.event.LookBackGrants.frozen(
                 state, items.mapNotNull { (it as? ForEachItem.OfEntity)?.entityId },
                 cardRegistry, predicateEvaluator.conditions
             )
             if (frozen.isEmpty()) context else context.copy(lookBackGrants = context.lookBackGrants + frozen)
         } else context
+
+        // "For each creature, create a token …" is one instruction: every token it makes enters
+        // at once and sees the others enter (CR 603.6a), so the iterations share one entry group.
+        // Carried on the outer context, so it survives a mid-loop pause.
+        val loopContext = if (TokenEntryGroups.createsTokens(effect.body) && TokenEntryGroups.group(context) == null) {
+            val (group, allocated) = currentState.newRoutingId()
+            currentState = allocated
+            TokenEntryGroups.withGroup(lookBackContext, group)
+        } else lookBackContext
 
         val move = effect.body as? com.wingedsheep.sdk.scripting.effects.MoveToZoneEffect
         // An atomic move over a group or all chosen targets is one instruction. A
