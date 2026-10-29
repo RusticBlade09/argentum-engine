@@ -364,11 +364,36 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'modes',
     title: 'Cards: Bring a deck',
     summary:
-      'Play a deck you built or pasted. Optionally restrict everyone to a constructed format — Standard, Pioneer, Modern, Pauper, Legacy, Vintage, Commander, Brawl, Standard Brawl or Premodern.',
+      'Play a deck you built or pasted. Optionally restrict everyone to a constructed format — Standard, Pioneer, Modern, Pauper, Legacy, Vintage, Commander, Brawl, Standard Brawl, Premodern, Highlander or Canadian Highlander.',
     body: [
       { kind: 'p', text: '“No restriction” lets any legal-in-the-engine card in. The restriction is checked when a deck is submitted, not when it is built.' },
     ],
-    related: ['deckbuilder'],
+    related: ['deckbuilder', 'highlander'],
+  },
+  {
+    id: 'highlander',
+    section: 'modes',
+    title: 'Highlander and Canadian Highlander',
+    summary:
+      '100-card singleton decks without a commander, over the Vintage card pool, at 20 life. Canadian Highlander adds a points list: the strongest cards cost points, and a deck may spend at most 10.',
+    body: [
+      { kind: 'p', text: 'Both are deck-legality choices, not separate modes: pick one as the format in the deckbuilder, as the restriction under Cards → Bring a deck, or as the Constructed format in matchmaking. The game itself plays like any 1v1 constructed game.' },
+      {
+        kind: 'table',
+        head: ['', 'Highlander', 'Canadian Highlander'],
+        rows: [
+          ['Deck size', 'At least 100', 'At least 100'],
+          ['Copies', 'One of each card except basic lands', 'One of each card except basic lands'],
+          ['Card pool', 'Vintage (restricted cards allowed)', 'Vintage (restricted cards allowed)'],
+          ['Points', 'None', 'At most 10, from the format’s points list'],
+          ['Sideboard', 'Allowed', 'None — the format has no sideboards'],
+        ],
+      },
+      { kind: 'p', text: 'With Canadian Highlander picked, the deckbuilder shows each pointed card’s cost on its row and the deck’s total beside the card count.' },
+      { kind: 'tip', text: 'The points list changes a few times a year. Argentum follows the format’s official list; see the link below for the current one.' },
+    ],
+    related: ['cards-bring-a-deck', 'deck-legality', 'matchmaking'],
+    links: [{ label: 'Canadian Highlander points list', href: 'https://www.canadianhighlander.ca/points-list/' }],
   },
   {
     id: 'cards-random',
@@ -1473,13 +1498,13 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'decks',
     title: 'Formats and deck legality',
     summary:
-      'The deckbuilder’s format dropdown — Standard, Pioneer, Modern, Pauper, Legacy, Vintage, Commander, Brawl, Standard Brawl or Premodern — filters the catalogue to legal cards and checks the deck as you build: “Legal ✓” or “N issues”.',
+      'The deckbuilder’s format dropdown — Standard, Pioneer, Modern, Pauper, Legacy, Vintage, Commander, Brawl, Standard Brawl, Premodern, Highlander or Canadian Highlander — filters the catalogue to legal cards and checks the deck as you build: “Legal ✓” or “N issues”.',
     body: [
       { kind: 'p', text: 'Hover the issue count for the list. Individual rows are flagged too: not legal in the format, too many copies, singleton violations, cards outside the commander’s colour identity.' },
       { kind: 'p', text: 'A lobby can restrict everyone to a format, in which case the deck is checked again when you submit it. “No format” lets in anything the engine implements.' },
       { kind: 'p', text: 'A card that imported but is not implemented yet is kept as a placeholder and marked; it cannot be played until it is.' },
     ],
-    related: ['deckbuilder', 'cards-bring-a-deck', 'set-completion'],
+    related: ['deckbuilder', 'cards-bring-a-deck', 'set-completion', 'highlander'],
   },
   {
     id: 'commander-decks',

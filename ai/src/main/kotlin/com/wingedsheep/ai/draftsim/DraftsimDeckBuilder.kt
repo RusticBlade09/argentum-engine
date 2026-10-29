@@ -64,6 +64,16 @@ data class DraftsimDeckShape(
             removalFirstPass = 9,
             removalMax = 14,
         )
+
+        /** A 100-card singleton Highlander deck: [LIMITED]'s caps scaled by 60/23. */
+        val HIGHLANDER = DraftsimDeckShape(
+            nonlandCount = 60,
+            landCount = 40,
+            creatureFloor = 34,
+            bucketCap = mapOf(0 to 0, 1 to 8, 2 to 21, 3 to 21, 4 to 16, 5 to 10, 6 to 5),
+            removalFirstPass = 16,
+            removalMax = 23,
+        )
     }
 }
 
