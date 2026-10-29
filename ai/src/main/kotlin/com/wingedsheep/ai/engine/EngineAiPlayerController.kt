@@ -2,6 +2,11 @@ package com.wingedsheep.ai.engine
 
 import com.wingedsheep.ai.ActionResponse
 import com.wingedsheep.ai.AiPlayerController
+import com.wingedsheep.ai.draftsim.DraftsimData
+import com.wingedsheep.ai.draftsim.DraftsimScorer
+import com.wingedsheep.ai.draftsim.ScorerCard
+import com.wingedsheep.ai.draftsim.toScorerCard
+import com.wingedsheep.ai.draftsim.withFallbackRatings
 import com.wingedsheep.ai.insight.AiInsightSink
 import com.wingedsheep.ai.llm.BottomCardsInfo
 import com.wingedsheep.ai.llm.CardSummary
@@ -197,18 +202,26 @@ class EngineAiPlayerController(
     }
 
     // =========================================================================
-    // Draft Picking (Heuristic)
+    // Draft Picking (Draftsim)
     // =========================================================================
     //
-    // The color-aware per-card scoring lives in the shared [LimitedPickScorer] so the bot and the
-    // human-facing "Suggest Pick" advisor stay in lockstep. This controller only orchestrates which
-    // cards to take.
+    // Picks use the same Draftsim scorer and set tables that build the AI's deck from the drafted
+    // pool (DraftsimDeckBuildAdvisor), so the bot drafts toward the deck it will actually build.
+    // Cards the set's table leaves unrated — every card of a set we ship no ratings file for — are
+    // rated by [LimitedCardRater] off their definitions rather than by rarity alone.
 
-    private fun inferColors(pickedSoFar: List<CardSummary>): Map<Char, Int> =
-        LimitedPickScorer.inferColors(pickedSoFar)
+    /** Pick value of each card in [cards] given what the bot has already taken. */
+    private fun scoreCards(cards: List<CardSummary>, pickedSoFar: List<CardSummary>): Map<String, Double> {
+        val setCodes = (cards + pickedSoFar).mapNotNull { it.setCode?.takeIf(String::isNotBlank) }.distinct()
+        val definitions = (cards + pickedSoFar).mapNotNull { cardRegistry.getCard(it.name) }
+        val tables = DraftsimData.tablesFor(setCodes).withFallbackRatings(definitions)
+        val scores = DraftsimScorer(tables).scoreBoosterAuto(cards.map(::scorerCard), pickedSoFar.map(::scorerCard))
+        return cards.associate { it.name to (scores[it.name]?.total ?: 0.0) }
+    }
 
-    private fun rateCard(card: CardSummary, colorCommitment: Map<Char, Int>, pickedSoFar: List<CardSummary>): Double =
-        LimitedPickScorer.score(card, colorCommitment, pickedSoFar)
+    /** The full definition where the registry has it (declared colors, color identity), else the summary. */
+    private fun scorerCard(card: CardSummary): ScorerCard =
+        cardRegistry.getCard(card.name)?.toScorerCard() ?: card.toScorerCard()
 
     override fun chooseDraftPick(
         pack: List<CardSummary>,
@@ -218,12 +231,9 @@ class EngineAiPlayerController(
         picksRequired: Int,
         passDirection: String
     ): List<String> {
-        val colorCommitment = inferColors(pickedSoFar)
-        val ranked = pack.sortedByDescending { rateCard(it, colorCommitment, pickedSoFar) }
-        val picks = ranked.take(picksRequired).map { it.name }
-        logger.info("Engine AI draft pick P{}p{}: {} (from {} cards, committed colors: {})",
-            packNumber, pickNumber, picks.joinToString(", "), pack.size,
-            colorCommitment.entries.sortedByDescending { it.value }.take(2).joinToString("") { "${it.key}" })
+        val scores = scoreCards(pack, pickedSoFar)
+        val picks = pack.sortedByDescending { scores[it.name] ?: 0.0 }.take(picksRequired).map { it.name }
+        logger.info("Engine AI draft pick P{}p{}: {} (from {} cards)", packNumber, pickNumber, picks.joinToString(", "), pack.size)
         return picks
     }
 
@@ -233,22 +243,18 @@ class EngineAiPlayerController(
         pileSizes: List<Int>,
         pickedSoFar: List<CardSummary>
     ): Boolean {
-        val colorCommitment = inferColors(pickedSoFar)
-        val totalRating = pileCards.sumOf { rateCard(it, colorCommitment, pickedSoFar) }
-        // Take pile if average card quality is decent, or if there's a standout card
-        val avgRating = totalRating / pileCards.size.coerceAtLeast(1)
-        val bestCard = pileCards.maxByOrNull { rateCard(it, colorCommitment, pickedSoFar) }
-        val bestRating = if (bestCard != null) rateCard(bestCard, colorCommitment, pickedSoFar) else 0.0
-
-        // More willing to take larger piles (more cards = more value even if some are weak)
-        val sizeBonus = (pileCards.size - 1) * 1.0
-        val take = avgRating + sizeBonus >= 5.0 || bestRating >= 8.0
+        val scores = scoreCards(pileCards, pickedSoFar).values
+        val best = scores.maxOrNull() ?: 0.0
+        // What the pile adds over the filler a skipped pile still yields: take a standout card, or
+        // enough above-filler cards together.
+        val surplus = scores.sumOf { (it - WINSTON_FILLER).coerceAtLeast(0.0) }
+        val take = best >= WINSTON_STANDOUT || surplus >= WINSTON_PILE_SURPLUS
 
         // On the last pile, always take (forced by Winston rules, but just in case)
         val isLastPile = pileIndex == pileSizes.size - 1
 
-        logger.info("Engine AI Winston pile {}: {} cards, avg={}, best={} → {}",
-            pileIndex, pileCards.size, "%.1f".format(avgRating), "%.1f".format(bestRating),
+        logger.info("Engine AI Winston pile {}: {} cards, best={}, surplus={} → {}",
+            pileIndex, pileCards.size, "%.1f".format(best), "%.1f".format(surplus),
             if (take || isLastPile) "TAKE" else "SKIP")
         return take || isLastPile
     }
@@ -258,12 +264,10 @@ class EngineAiPlayerController(
         availableSelections: List<String>,
         pickedSoFar: List<CardSummary>
     ): String {
-        val colorCommitment = inferColors(pickedSoFar)
-
-        // Rate each available selection by sum of card ratings in that row/column
+        // Rate each available selection by the sum of its cards' pick values
+        val scores = scoreCards(grid.filterNotNull(), pickedSoFar)
         val best = availableSelections.maxByOrNull { selection ->
-            val cards = getGridCards(grid, selection)
-            cards.sumOf { rateCard(it, colorCommitment, pickedSoFar) }
+            getGridCards(grid, selection).sumOf { scores[it.name] ?: 0.0 }
         } ?: availableSelections.first()
 
         val cards = getGridCards(grid, best)
@@ -287,4 +291,12 @@ class EngineAiPlayerController(
         return indices.mapNotNull { if (it < grid.size) grid[it] else null }
     }
 
+    private companion object {
+        /** A Winston pile holding a card this good (Draftsim pick value) is worth taking for it alone. */
+        const val WINSTON_STANDOUT = 4.0
+        /** Pick value of replacement-level filler: what a skipped pile still hands you. */
+        const val WINSTON_FILLER = 2.0
+        /** Summed value above filler at which a pile of lesser cards is worth taking. */
+        const val WINSTON_PILE_SURPLUS = 3.0
+    }
 }

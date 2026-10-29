@@ -644,5 +644,6 @@ private fun ServerMessage.SealedCardInfo.toCardSummary() = CardSummary(
     power = power,
     toughness = toughness,
     oracleText = oracleText,
-    rulings = rulings.map { CardRuling(it.date, it.text) }
+    rulings = rulings.map { CardRuling(it.date, it.text) },
+    setCode = setCode,
 )
