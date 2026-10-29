@@ -577,6 +577,52 @@
     ]
 }
 
+// Life Goes On
+{
+    "name": "Life Goes On",
+    "manaCost": "{G}",
+    "typeLine": "Instant",
+    "oracleText": "You gain 4 life. If a creature died this turn, you gain 8 life instead.",
+    "script": {
+        "spellEffect": {
+            "type": "Gated",
+            "gate": {
+                "type": "Gate.WhenCondition",
+                "condition": "CreatureDiedThisTurn"
+            },
+            "then": {
+                "type": "GainLife",
+                "amount": {
+                    "type": "Fixed",
+                    "amount": 8
+                }
+            },
+            "otherwise": {
+                "type": "GainLife",
+                "amount": {
+                    "type": "Fixed",
+                    "amount": 4
+                }
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "121",
+        "artist": "Daarken",
+        "flavorText": "\"If you believe the God-Pharaoh tests you, charge with me to prove yourself. If you believe he betrayed us all, join with me to fight for tomorrow!\"\n—Samut, former Tah-crop initiate",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/f/5f39c264-a9a5-46f3-bd67-01d93d69e457.jpg?1783936018",
+        "rulings": [
+            {
+                "date": "2020-06-23",
+                "text": "You won't gain more than 8 life if more than one creature died this turn."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "GREEN"
+    ]
+}
+
 // Marauding Boneslasher
 {
     "name": "Marauding Boneslasher",

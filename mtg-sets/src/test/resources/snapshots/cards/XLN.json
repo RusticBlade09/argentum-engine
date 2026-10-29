@@ -2406,6 +2406,101 @@
     ]
 }
 
+// Kitesail Freebooter
+{
+    "name": "Kitesail Freebooter",
+    "manaCost": "{1}{B}",
+    "typeLine": "Creature — Human Pirate",
+    "oracleText": "Flying\nWhen this creature enters, target opponent reveals their hand. You choose a noncreature, nonland card from it. Exile that card until this creature leaves the battlefield.",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 2
+    },
+    "keywords": [
+        "FLYING"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Kitesail Freebooter:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "RevealHand",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        },
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "FromZone",
+                                "zone": "Hand",
+                                "player": {
+                                    "type": "BoundVariable",
+                                    "name": "t0"
+                                }
+                            },
+                            "storeAs": "gathered1"
+                        },
+                        {
+                            "type": "SelectFromCollection",
+                            "from": "gathered1",
+                            "selection": {
+                                "type": "ChooseExactly",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 1
+                                }
+                            },
+                            "filter": "noncreature nonland",
+                            "storeSelected": "selected2",
+                            "prompt": "Choose a noncreature, nonland card to exile until Kitesail Freebooter leaves the battlefield",
+                            "selectedLabel": "Exile",
+                            "showAllCards": true,
+                            "alwaysPrompt": true
+                        },
+                        {
+                            "type": "MoveUntilSourceLeaves",
+                            "target": {
+                                "type": "PipelineTarget",
+                                "collectionName": "selected2"
+                            },
+                            "destination": "Exile"
+                        }
+                    ]
+                },
+                "targetRequirement": {
+                    "type": "TargetOpponent",
+                    "id": "t0"
+                },
+                "descriptionOverride": "When this creature enters, target opponent reveals their hand. You choose a noncreature, nonland card from it. Exile that card until this creature leaves the battlefield."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "110",
+        "rarity": "UNCOMMON",
+        "artist": "Dan Murayama Scott",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/6/f62fd592-4910-417d-a500-e7029f3d119f.jpg?1783935759",
+        "rulings": [
+            {
+                "date": "2020-06-23",
+                "text": "If Kitesail Freebooter leaves the battlefield before its enters-the-battlefield ability resolves, the opponent will reveal their hand, but no card will be exiled."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
 // Legion's Judgment
 {
     "name": "Legion's Judgment",
