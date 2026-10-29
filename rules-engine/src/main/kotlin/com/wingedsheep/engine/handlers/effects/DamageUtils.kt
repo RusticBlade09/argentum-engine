@@ -1015,9 +1015,11 @@ object DamageUtils {
      */
     private fun damageSourceController(state: GameState, projected: ProjectedState, sourceId: EntityId): EntityId? =
         projected.getController(sourceId)
-            ?: state.getEntity(sourceId)?.get<ControllerComponent>()?.playerId
-            // A spell source carries no ControllerComponent; its controller is the caster.
+            // A spell's controller is its caster (or whoever took control of it). Checked before
+            // ControllerComponent, which a spell only carries as a leftover from its hand card — a
+            // prepare-spell copy minted in exile has none, and a stolen spell's is stale.
             ?: state.getEntity(sourceId)?.get<SpellOnStackComponent>()?.casterId
+            ?: state.getEntity(sourceId)?.get<ControllerComponent>()?.playerId
             ?: state.getEntity(sourceId)?.get<LastKnownPermanentComponent>()?.snapshot?.controllerId
 
     /**
@@ -2898,7 +2900,7 @@ object DamageUtils {
                 val damageBonusComponent = playerContainer.get<DamageBonusComponent>() ?: continue
 
                 // Check that the source is controlled by this player
-                val sourceController = state.getEntity(sourceId)?.get<ControllerComponent>()?.playerId
+                val sourceController = damageSourceController(state, projected, sourceId)
                 if (sourceController != playerId) continue
 
                 // Check if the source matches the source filter
@@ -2913,8 +2915,7 @@ object DamageUtils {
 
         // Check battlefield permanents for NoncombatDamageBonus static abilities (Artist's Talent Level 3)
         if (sourceId != null && !isCombatDamage) {
-            val sourceController = projected.getController(sourceId)
-                ?: state.getEntity(sourceId)?.get<ControllerComponent>()?.playerId
+            val sourceController = damageSourceController(state, projected, sourceId)
             if (sourceController != null) {
                 for (entityId in state.controlledBattlefield(sourceController)) {
                     val container = state.getEntity(entityId) ?: continue
