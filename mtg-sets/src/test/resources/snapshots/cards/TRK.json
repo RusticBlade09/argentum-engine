@@ -772,6 +772,95 @@
     ]
 }
 
+// Commander Raffi Musiker
+{
+    "name": "Commander Raffi Musiker",
+    "manaCost": "{2}{B}",
+    "typeLine": "Legendary Creature — Human Officer",
+    "oracleText": "When Commander Musiker enters, choose one —\n• Exile up to one target card from a graveyard. You gain 2 life.\n• Investigate. You lose 2 life. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 2
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Commander Raffi Musiker:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Modal",
+                    "modes": [
+                        {
+                            "effect": {
+                                "type": "Composite",
+                                "effects": [
+                                    {
+                                        "type": "MoveToZone",
+                                        "target": {
+                                            "type": "BoundVariable",
+                                            "name": "t0"
+                                        },
+                                        "destination": "Exile"
+                                    },
+                                    {
+                                        "type": "GainLife",
+                                        "amount": {
+                                            "type": "Fixed",
+                                            "amount": 2
+                                        }
+                                    }
+                                ]
+                            },
+                            "targetRequirements": [
+                                {
+                                    "type": "TargetObject",
+                                    "optional": true,
+                                    "filter": {
+                                        "baseFilter": {},
+                                        "zone": "Graveyard"
+                                    },
+                                    "id": "t0"
+                                }
+                            ],
+                            "description": "Exile up to one target card from a graveyard. You gain 2 life."
+                        },
+                        {
+                            "effect": {
+                                "type": "Composite",
+                                "effects": [
+                                    "Investigate",
+                                    {
+                                        "type": "LoseLife",
+                                        "amount": {
+                                            "type": "Fixed",
+                                            "amount": 2
+                                        },
+                                        "target": "Controller"
+                                    }
+                                ]
+                            },
+                            "description": "Investigate. You lose 2 life."
+                        }
+                    ]
+                },
+                "descriptionOverride": "When Commander Musiker enters, choose one — Exile up to one target card from a graveyard and you gain 2 life; or investigate and you lose 2 life."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "100",
+        "rarity": "UNCOMMON",
+        "artist": "Runa I. Rosenberger",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/e/7e60bd56-3da1-4211-b790-320471eef242.jpg?1793013565"
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
 // Constable Odo
 {
     "name": "Constable Odo",
