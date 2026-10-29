@@ -1830,6 +1830,59 @@
     ]
 }
 
+// Khaaaaaaaaaaaannn!
+{
+    "name": "Khaaaaaaaaaaaannn!",
+    "manaCost": "{X}{R}",
+    "typeLine": "Instant",
+    "oracleText": "Khaaaaaaaaaaaannn! deals twice X damage to target creature. If that creature would die this turn, exile it instead.",
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "DealDamage",
+                    "amount": {
+                        "type": "Multiply",
+                        "amount": "XValue",
+                        "multiplier": 2
+                    },
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                {
+                    "type": "MarkExileOnDeath",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                }
+            ]
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": "creature"
+                },
+                "id": "t0"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "154",
+        "rarity": "UNCOMMON",
+        "artist": "Evan Shipard",
+        "flavorText": "\"I've done far worse than kill you. I've hurt you, and I wish to go on hurting you.\"\n—Khan Noonien Singh",
+        "imageUri": "https://cards.scryfall.io/normal/front/2/2/22c60c17-74ec-460b-bf7a-e56e42239826.jpg?1785981536"
+    },
+    "colorIdentityOverride": [
+        "RED"
+    ]
+}
+
 // L'Rell, Fierce Visionary
 {
     "name": "L'Rell, Fierce Visionary",
