@@ -7,13 +7,15 @@ import com.wingedsheep.ai.draftsim.DraftsimPoolCard
 import com.wingedsheep.ai.draftsim.toScorerCard
 import com.wingedsheep.engine.limited.BoosterGenerator
 import com.wingedsheep.engine.registry.CardRegistry
+import com.wingedsheep.sdk.core.CanadianHighlanderPoints
 import com.wingedsheep.sdk.core.DeckFormat
 import com.wingedsheep.sdk.model.CardDefinition
 import kotlin.random.Random
 import org.slf4j.LoggerFactory
 
 /**
- * Builds a 60-card constructed deck that is legal in a given [DeckFormat].
+ * Builds a 60-card constructed deck that is legal in a given [DeckFormat] — or, for the Highlander
+ * formats, a 100-card singleton one.
  *
  * This is the constructed counterpart to [com.wingedsheep.ai.engine.SealedDeckGenerator]: where that
  * one opens boosters and autobuilds a 40-card limited deck, this one draws from a *constructed* card
@@ -26,9 +28,11 @@ import org.slf4j.LoggerFactory
  *
  * **Per-card legality is the whole of the pool filter.** [CardDefinition.legalFormats] is
  * Scryfall-sourced and already accounts for bans and set legality, so "is this card allowed in
- * Pauper" needs no rarity check here. Structural rules on top of that (singleton, 100 cards, a
- * commander in the command zone) are *not* modelled here: commander-shape formats are rejected
- * outright and belong to [CommanderDeckGenerator], which builds that shape instead.
+ * Pauper" needs no rarity check here. A commander in the command zone is *not* modelled here:
+ * commander-shape formats are rejected outright and belong to [CommanderDeckGenerator]. The
+ * commander-less Highlander formats are, through [DeckShape.HIGHLANDER]: 100 singleton cards, and
+ * for Canadian Highlander a pool without any card on the points list — a deck that spends no points
+ * can never exceed the cap.
  */
 class ConstructedDeckGenerator(
     private val boosterGenerator: BoosterGenerator,
@@ -66,7 +70,14 @@ class ConstructedDeckGenerator(
                 "Use CommanderDeckGenerator instead."
         }
 
-        val pool = cardPool.legalPool(setCodes, format)
+        val shape = if (format.isHighlanderShape) DeckShape.HIGHLANDER else DeckShape.CONSTRUCTED
+        val pool = cardPool.legalPool(setCodes, format).let { legal ->
+            if (format == DeckFormat.CANADIAN_HIGHLANDER) {
+                legal.filter { CanadianHighlanderPoints.pointsFor(it.name) == 0 }
+            } else {
+                legal
+            }
+        }
         require(pool.isNotEmpty()) {
             "No ${format.displayName}-legal cards available" +
                 if (setCodes.isEmpty()) "" else " in ${setCodes.joinToString(", ")}"
@@ -81,7 +92,7 @@ class ConstructedDeckGenerator(
             if (setCodes.isEmpty()) "all sets" else setCodes.joinToString(", "),
         )
 
-        val deckList = draftsimBuild(pool)
+        val deckList = draftsimBuild(pool, shape)
             // Pin the basics to the set's art, exactly as a human's submitted deck is.
             ?.let { BoosterGenerator.withBasicLandArt(it, basics.associateBy { basic -> basic.name }) }
             ?: run {
@@ -95,10 +106,19 @@ class ConstructedDeckGenerator(
                     basicLandVariants = basics,
                     setCodes = setCodes,
                     random = random,
+                    deckSize = shape.deckSize,
+                    landCount = shape.draftsim.landCount,
+                    maxCopies = shape.copiesPerCard,
                 ).generate()
             }
         val played = deckList.keys.mapTo(HashSet()) { it.substringBefore('#') }
-        return GeneratedDeck(deckList, sideboard = Wishboard.build(pool, random, exclude = played))
+        // Canadian Highlander plays without a sideboard, so there is nowhere to put a wishboard.
+        val sideboard = if (format == DeckFormat.CANADIAN_HIGHLANDER) {
+            emptyMap()
+        } else {
+            Wishboard.build(pool, random, exclude = played)
+        }
+        return GeneratedDeck(deckList, sideboard = sideboard)
     }
 
     /** Convenience overload: build from the whole format-legal card base. */
@@ -120,20 +140,20 @@ class ConstructedDeckGenerator(
      * builder *can* use pool lands, but it takes them unranked, and a constructed pool's land slice
      * is mostly narrow utility lands — a bad trade against a clean basics manabase.
      */
-    private fun draftsimBuild(pool: List<CardDefinition>): Map<String, Int>? {
+    private fun draftsimBuild(pool: List<CardDefinition>, shape: DeckShape): Map<String, Int>? {
         val tables = ConstructedRatings.tables()
-        val shortlist = shortlist(pool.filterNot { it.isLand }, DraftsimCardOps(tables))
+        val shortlist = shortlist(pool.filterNot { it.isLand }, DraftsimCardOps(tables), shape.shortlistSize)
         if (shortlist.isEmpty()) return null
 
         val instances = shortlist.flatMapIndexed { index, card ->
             val scorerCard = card.toScorerCard()
-            (0 until COPIES_PER_CARD).map { copy -> DraftsimPoolCard(scorerCard, "pool-$index-$copy") }
+            (0 until shape.copiesPerCard).map { copy -> DraftsimPoolCard(scorerCard, "pool-$index-$copy") }
         }
         val nameByInstance = instances.associate { it.instanceId to it.card.name }
 
         // "draft" mode ranks the two best hypotheses and skips the three-color good-stuff build,
         // which would ask an all-basics manabase to cast three colors.
-        val build = runCatching { DraftsimDeckBuilder(tables, SHAPE).buildDecks(instances, mode = "draft") }
+        val build = runCatching { DraftsimDeckBuilder(tables, shape.draftsim).buildDecks(instances, mode = "draft") }
             .onFailure { logger.warn("Draftsim constructed build threw", it) }
             .getOrNull()
             ?.firstOrNull()
@@ -149,17 +169,17 @@ class ConstructedDeckGenerator(
             if (count > 0) deckList[name] = (deckList[name] ?: 0) + count
         }
 
-        // A short build is a build the pool couldn't support; the random fallback always fills 60.
+        // A short build is a build the pool couldn't support; the random fallback fills the deck.
         val size = deckList.values.sum()
-        if (size < DECK_SIZE) {
-            logger.warn("Draftsim constructed build came back {} cards short of {}", DECK_SIZE - size, DECK_SIZE)
+        if (size < shape.deckSize) {
+            logger.warn("Draftsim constructed build came back {} cards short of {}", shape.deckSize - size, shape.deckSize)
             return null
         }
         return deckList
     }
 
     /**
-     * Draw [SHORTLIST_SIZE] cards from [pool], biased hard towards the ones Draftsim rates highly.
+     * Draw [size] cards from [pool], biased hard towards the ones Draftsim rates highly.
      *
      * The weight is the rating *cubed*, so bombs almost always make the cut while the tail still
      * turns over between games — a constructed lobby that seated the identical AI deck every time
@@ -168,27 +188,36 @@ class ConstructedDeckGenerator(
      * Unrated cards (a set Draftsim never covered, or our own content) fall back to the rarity
      * ladder rather than dropping out, so a pool with no ratings at all still shortlists sanely.
      */
-    private fun shortlist(pool: List<CardDefinition>, ops: DraftsimCardOps): List<CardDefinition> =
-        pool.weightedSample(SHORTLIST_SIZE, random) { card ->
+    private fun shortlist(pool: List<CardDefinition>, ops: DraftsimCardOps, size: Int): List<CardDefinition> =
+        pool.weightedSample(size, random) { card ->
             val rating = ops.ratingFallback(card.toScorerCard()).coerceAtLeast(ConstructedRatings.MIN_WEIGHT)
             rating * rating * rating
         }
 
+    /**
+     * The two deck shapes this generator builds.
+     *
+     * @property shortlistSize How many distinct cards the autobuilder actually sees. Sealed scale —
+     *   the builder's home turf, and what keeps its quadratic scoring cheap — while still leaving
+     *   every two-colour guild enough castable cards to fill the nonland slots. A singleton deck
+     *   needs one distinct card per slot, so its shortlist is wider.
+     * @property copiesPerCard Instances per shortlisted card: Draftsim's own four-of cap for
+     *   constructed, so it can build four-ofs; one for a singleton deck.
+     */
+    private enum class DeckShape(
+        val draftsim: DraftsimDeckShape,
+        val shortlistSize: Int,
+        val copiesPerCard: Int,
+    ) {
+        CONSTRUCTED(DraftsimDeckShape.CONSTRUCTED, shortlistSize = 120, copiesPerCard = 4),
+        HIGHLANDER(DraftsimDeckShape.HIGHLANDER, shortlistSize = 240, copiesPerCard = 1);
+
+        val deckSize: Int get() = draftsim.nonlandCount + draftsim.landCount
+    }
+
     private companion object {
         private val logger = LoggerFactory.getLogger(ConstructedDeckGenerator::class.java)
 
-        private val SHAPE = DraftsimDeckShape.CONSTRUCTED
-        private val DECK_SIZE = SHAPE.nonlandCount + SHAPE.landCount
-
-        /**
-         * How many distinct cards the autobuilder actually sees. Sealed scale — the builder's home
-         * turf, and what keeps its quadratic scoring cheap — while still leaving every two-colour
-         * guild enough castable cards to fill 36 slots.
-         */
-        private const val SHORTLIST_SIZE = 120
-
-        /** Instances per shortlisted card — Draftsim's own four-of cap, so it can build four-ofs. */
-        private const val COPIES_PER_CARD = 4
 
         private val COLOR_TO_BASIC =
             mapOf("W" to "Plains", "U" to "Island", "B" to "Swamp", "R" to "Mountain", "G" to "Forest")

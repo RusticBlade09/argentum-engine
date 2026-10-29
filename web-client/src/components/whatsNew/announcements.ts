@@ -30,6 +30,14 @@ export interface Announcement {
 
 export const ANNOUNCEMENTS: readonly Announcement[] = [
   {
+    id: 'mode-highlander',
+    date: '2026-10-29',
+    kind: 'mode',
+    title: 'Highlander and Canadian Highlander',
+    body:
+      'Two new constructed formats: 100-card singleton decks over the Vintage card pool, no commander, 20 life. Canadian Highlander adds its points list, so you can play Black Lotus or Sol Ring as long as the deck stays within 10 points. Pick either in the deckbuilder, as a lobby’s deck restriction, or as a Constructed format in matchmaking.',
+  },
+  {
     id: 'set-znr',
     date: '2026-10-28',
     kind: 'set',

@@ -33,6 +33,7 @@ import { type UnifiedDeck, useUnifiedDecks } from '@/store/useUnifiedDecks'
 import { useSaveDeck } from '@/store/useSaveDeck'
 import { useCardIndex } from '@/store/useCardIndex'
 import {
+  autoBuiltDeckSize,
   labelForFormat,
   useDeckLegalFormats,
 } from '@/utils/deckLegality'
@@ -184,6 +185,7 @@ export function DeckPicker({
   // `randomDescription`).
   const randomIsConstructed = format !== null && !COMMANDER_SHAPES.includes(format.toUpperCase())
   const formatLabel = format?.replace('_', ' ').toLowerCase() ?? ''
+  const constructedSize = autoBuiltDeckSize(format)
 
   // Default tab: wherever a deck the caller named lives; else saved if available, else the starter
   // decks, else random, else paste. Starters before Random because landing there submits nothing:
@@ -268,9 +270,9 @@ export function DeckPicker({
     .join(', ')
   const randomDescription = randomIsConstructed
     ? pinnedSets
-      ? `A 60-card ${formatLabel}-legal deck, auto-built the moment the game starts from the
+      ? `A ${constructedSize}-card ${formatLabel}-legal deck, auto-built the moment the game starts from the
          ${formatLabel}-legal cards in ${setsPhrase}. Nothing to submit — just ready up.`
-      : `A 60-card ${formatLabel}-legal deck, auto-built from the whole legal card pool the moment
+      : `A ${constructedSize}-card ${formatLabel}-legal deck, auto-built from the whole legal card pool the moment
          the game starts. Pick sets below to build it out of those instead.`
     : format !== null
       ? pinnedSets
