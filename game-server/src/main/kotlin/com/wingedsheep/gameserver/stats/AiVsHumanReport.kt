@@ -28,7 +28,40 @@ data class AiMatchGame(
     /** The deploy that played it (`game_replays.engine_version`); null when no replay was stored. */
     val engineVersion: String?,
     val outcome: AiMatchOutcome,
+    /**
+     * The sets the game's card pool came from — the draft/sealed sets of the lobby or tournament that
+     * produced it. Empty for games outside a set-based lobby (quick games, constructed, cubes), whose
+     * decks span whatever sets their cards' canonical printings sit in.
+     */
+    val setCodes: List<String> = emptyList(),
 )
+
+/**
+ * Narrows the [AiVsHumanReport] to a slice of the games. Every aggregate — overall, previous window,
+ * series, per-mode, per-build, recent, humans — is computed over the games that pass it.
+ *
+ * Humans are excluded by *game*: a game any excluded human sat in drops out entirely, so a pod with a
+ * heavy player in it doesn't leave a half-counted record behind. [excludeTopHumans] picks the humans
+ * with the most games in the range (after the mode/format/set filters), so "discount the regulars"
+ * stays meaningful as the range or the slice changes.
+ */
+data class AiVsHumanFilter(
+    val gameMode: String? = null,
+    val format: String? = null,
+    val setCode: String? = null,
+    /** [AiMatchHumanSeat.playerKey]s to leave out. */
+    val excludeHumans: Set<String> = emptySet(),
+    val excludeTopHumans: Int = 0,
+) {
+    fun matchesSlice(game: AiMatchGame): Boolean =
+        (gameMode == null || game.gameMode == gameMode) &&
+            (format == null || game.format == format) &&
+            (setCode == null || setCode in game.setCodes)
+
+    companion object {
+        val NONE = AiVsHumanFilter()
+    }
+}
 
 /** A human seat in an AI-vs-human game. [playerKey] is the account id, or the guest's name. */
 data class AiMatchHumanSeat(
@@ -91,6 +124,38 @@ data class AiPeriodRecord(val start: String, val record: AiRecord, val aiChanges
 data class AiModeRecord(val gameMode: String?, val format: String?, val record: AiRecord)
 
 /**
+ * One game mode's own series, on the same buckets as [AiVsHumanReport.series] — the small multiples
+ * that show whether a dip is the AI getting weaker or the game mix moving toward a harder mode.
+ */
+data class AiModeSeries(val gameMode: String?, val format: String?, val series: List<AiPeriodRecord>)
+
+/** A value a filter can take, with how many AI-vs-human games in the range carry it (before any filter). */
+data class AiModeOption(val gameMode: String?, val format: String?, val games: Long)
+
+data class AiSetOption(val code: String, val name: String?, val games: Long)
+
+data class AiFilterOptions(
+    /** Most games first. */
+    val modes: List<AiModeOption>,
+    /** Most games first. A multi-set lobby counts toward each of its sets. */
+    val sets: List<AiSetOption>,
+    /** Games in the range with no recorded set (quick games, constructed, cubes). */
+    val gamesWithoutSet: Long,
+)
+
+/** The filter the report was computed under, echoed back with the humans it left out. */
+data class AiAppliedFilter(
+    val gameMode: String?,
+    val format: String?,
+    val setCode: String?,
+    val excludeTopHumans: Int,
+    /** Every human left out — named or among the top — with their record in the range's slice. */
+    val excludedHumans: List<AiHumanRecord>,
+    /** Games the human exclusions dropped from the range. */
+    val excludedGames: Long,
+)
+
+/**
  * A deployed build's record. [firstSeen] / [lastSeen] bound the games it played in the range.
  * [newAiChanges] counts the engine AI changes it carried that the build before it did not — null when
  * the build can't be placed on main's history (a `dev` build) or no earlier build is known to compare.
@@ -130,6 +195,8 @@ data class AiRecentGame(val endedAt: String, val gameMode: String?, val format: 
 
 /** A human's record against the AI, from the human's side. */
 data class AiHumanRecord(
+    /** Stable id to pass back as `excludeHuman`: `user:<uuid>` for an account, `guest:<name>` for a guest. */
+    val key: String,
     val name: String,
     // Pinned: Jackson would otherwise emit `guest` for an `is`-prefixed Boolean.
     @get:JsonProperty("isGuest") val isGuest: Boolean,
@@ -150,6 +217,8 @@ data class AiVsHumanReport(
     val series: List<AiPeriodRecord>,
     /** Most games first. */
     val byMode: List<AiModeRecord>,
+    /** The [MAX_MODE_SERIES][AiVsHumanAggregator.MAX_MODE_SERIES] most-played modes, each with its own series. */
+    val seriesByMode: List<AiModeSeries>,
     /** Newest build first, at most [AiVsHumanAggregator.MAX_BUILDS]; games with no known build are left out. */
     val byBuild: List<AiBuildRecord>,
     /** The latest games, oldest first, at most [AiVsHumanAggregator.RECENT_GAMES]. */
@@ -157,6 +226,8 @@ data class AiVsHumanReport(
     /** The humans who have played the AI most, at most [AiVsHumanAggregator.MAX_HUMANS]. */
     val topHumans: List<AiHumanRecord>,
     val aiChanges: AiChangeLog,
+    val filter: AiAppliedFilter,
+    val options: AiFilterOptions,
 )
 
 enum class AiBucket {
@@ -181,23 +252,45 @@ object AiVsHumanAggregator {
     const val MAX_BUILDS = 10
     const val RECENT_GAMES = 40
     const val MAX_HUMANS = 10
+    const val MAX_MODE_SERIES = 6
 
     /**
      * @param games every AI-vs-human game since `now - 2 × days` (the range plus the window before
      *   it, for [AiVsHumanReport.previous]), or all of them when [days] is null.
      * @param humanSeats the human seats of those games.
      * @param timeline the engine AI's change history, to mark changes on the series and builds.
+     * @param filter the slice to report on; [AiVsHumanReport.options] are counted before it applies.
+     * @param setName a set's display name by code, for [AiFilterOptions.sets].
      */
     fun aggregate(
-        games: List<AiMatchGame>,
+        allGames: List<AiMatchGame>,
         humanSeats: List<AiMatchHumanSeat>,
         days: Int?,
         bucket: AiBucket,
         now: Instant,
         timeline: EngineAiTimeline = EngineAiTimeline.UNAVAILABLE,
+        filter: AiVsHumanFilter = AiVsHumanFilter.NONE,
+        setName: (String) -> String? = { null },
     ): AiVsHumanReport {
         val rangeStart = days?.let { now.minusSeconds(it * 86_400L) }
-        val inRange = games.filter { rangeStart == null || !it.endedAt.isBefore(rangeStart) }.sortedBy { it.endedAt }
+        fun inRange(g: AiMatchGame) = rangeStart == null || !g.endedAt.isBefore(rangeStart)
+        val options = options(allGames.filter(::inRange), setName)
+
+        // The slice (mode / format / set), then the humans it excludes — named, or the busiest in range.
+        val sliced = allGames.filter(filter::matchesSlice)
+        val slicedIds = sliced.mapTo(HashSet()) { it.matchId }
+        val slicedInRangeIds = sliced.filter(::inRange).mapTo(HashSet()) { it.matchId }
+        val slicedSeats = humanSeats.filter { it.matchId in slicedIds }
+        val outcomeBySlicedId = sliced.associate { it.matchId to it.outcome }
+        val rangeHumans = humanRecords(slicedSeats.filter { it.matchId in slicedInRangeIds }, outcomeBySlicedId)
+        // The busiest humans are counted on top of the named ones, so "leave out the busiest" still drops
+        // someone after the busiest is already left out by name.
+        val excludedKeys = filter.excludeHumans + rangeHumans.filter { it.key !in filter.excludeHumans }
+            .take(filter.excludeTopHumans.coerceAtLeast(0)).map { it.key }
+        val droppedIds = slicedSeats.filter { it.playerKey in excludedKeys }.mapTo(HashSet()) { it.matchId }
+        val games = sliced.filter { it.matchId !in droppedIds }
+
+        val inRange = games.filter(::inRange).sortedBy { it.endedAt }
         val previous = rangeStart?.let { start ->
             val prevStart = start.minusSeconds(days * 86_400L)
             AiRecord.of(games.filter { !it.endedAt.isBefore(prevStart) && it.endedAt.isBefore(start) }.map { it.outcome })
@@ -224,6 +317,11 @@ object AiVsHumanAggregator {
             byMode = inRange.groupBy { it.gameMode to it.format }
                 .map { (key, g) -> AiModeRecord(key.first, key.second, AiRecord.of(g.map { it.outcome })) }
                 .sortedWith(compareByDescending<AiModeRecord> { it.record.games }.thenBy { it.gameMode }),
+            seriesByMode = inRange.groupBy { it.gameMode to it.format }
+                .entries
+                .sortedWith(compareByDescending<Map.Entry<Pair<String?, String?>, List<AiMatchGame>>> { it.value.size }.thenBy { it.key.first })
+                .take(MAX_MODE_SERIES)
+                .map { (key, g) -> AiModeSeries(key.first, key.second, seriesFrom(g, bucket, series.firstOrNull()?.start, now)) },
             byBuild = inRange.filter { !it.engineVersion.isNullOrBlank() }
                 .groupBy { it.engineVersion!! }
                 .map { (version, g) ->
@@ -240,24 +338,16 @@ object AiVsHumanAggregator {
             recent = inRange.takeLast(RECENT_GAMES).map {
                 AiRecentGame(it.endedAt.toString(), it.gameMode, it.format, it.outcome)
             },
-            topHumans = humanSeats.filter { it.matchId in inRangeIds }
-                .groupBy { it.playerKey }
-                .map { (_, seats) ->
-                    // A drawn game is a draw for every human in it; otherwise a seat that didn't win
-                    // lost — in a pod, to the AI or to another human, either way not a win against it.
-                    val draws = seats.count { outcomeById[it.matchId] == AiMatchOutcome.DRAW && !it.won }.toLong()
-                    val wins = seats.count { it.won }.toLong()
-                    AiHumanRecord(
-                        name = seats.last().displayName,
-                        isGuest = seats.last().isGuest,
-                        games = seats.size.toLong(),
-                        wins = wins,
-                        losses = seats.size - wins - draws,
-                        draws = draws,
-                    )
-                }
-                .sortedWith(compareByDescending<AiHumanRecord> { it.games }.thenBy { it.name.lowercase() })
-                .take(MAX_HUMANS),
+            topHumans = humanRecords(humanSeats.filter { it.matchId in inRangeIds }, outcomeById).take(MAX_HUMANS),
+            filter = AiAppliedFilter(
+                gameMode = filter.gameMode,
+                format = filter.format,
+                setCode = filter.setCode,
+                excludeTopHumans = filter.excludeTopHumans.coerceAtLeast(0),
+                excludedHumans = rangeHumans.filter { it.key in excludedKeys },
+                excludedGames = slicedInRangeIds.count { it in droppedIds }.toLong(),
+            ),
+            options = options,
             aiChanges = AiChangeLog(
                 available = timeline.available,
                 changes = changesOnAxis.sortedByDescending { it.ordinal }.map { change ->
@@ -277,6 +367,36 @@ object AiVsHumanAggregator {
         )
     }
 
+    /** Each human's record over [seats], most games first. */
+    private fun humanRecords(seats: List<AiMatchHumanSeat>, outcomeById: Map<Long, AiMatchOutcome>): List<AiHumanRecord> =
+        seats.groupBy { it.playerKey }
+            .map { (key, own) ->
+                // A drawn game is a draw for every human in it; otherwise a seat that didn't win
+                // lost — in a pod, to the AI or to another human, either way not a win against it.
+                val draws = own.count { outcomeById[it.matchId] == AiMatchOutcome.DRAW && !it.won }.toLong()
+                val wins = own.count { it.won }.toLong()
+                AiHumanRecord(
+                    key = key,
+                    name = own.last().displayName,
+                    isGuest = own.last().isGuest,
+                    games = own.size.toLong(),
+                    wins = wins,
+                    losses = own.size - wins - draws,
+                    draws = draws,
+                )
+            }
+            .sortedWith(compareByDescending<AiHumanRecord> { it.games }.thenBy { it.name.lowercase() })
+
+    private fun options(inRange: List<AiMatchGame>, setName: (String) -> String?): AiFilterOptions = AiFilterOptions(
+        modes = inRange.groupingBy { it.gameMode to it.format }.eachCount()
+            .map { (key, n) -> AiModeOption(key.first, key.second, n.toLong()) }
+            .sortedWith(compareByDescending<AiModeOption> { it.games }.thenBy { it.gameMode }.thenBy { it.format }),
+        sets = inRange.flatMap { it.setCodes.distinct() }.groupingBy { it }.eachCount()
+            .map { (code, n) -> AiSetOption(code, setName(code), n.toLong()) }
+            .sortedWith(compareByDescending<AiSetOption> { it.games }.thenBy { it.code }),
+        gamesWithoutSet = inRange.count { it.setCodes.isEmpty() }.toLong(),
+    )
+
     private data class PlacedBuild(val version: String, val ordinal: Int, val firstSeen: Instant)
 
     /** The AI changes [version] carried past the newest known build before it on main. */
@@ -286,8 +406,12 @@ object AiVsHumanAggregator {
         return timeline.changes.count { it.ordinal > before.ordinal && it.ordinal <= ordinal }
     }
 
-    private fun series(games: List<AiMatchGame>, bucket: AiBucket, rangeStart: Instant?, now: Instant): List<AiPeriodRecord> {
-        val firstDay = (rangeStart ?: games.firstOrNull()?.endedAt ?: return emptyList()).utcDay()
+    private fun series(games: List<AiMatchGame>, bucket: AiBucket, rangeStart: Instant?, now: Instant): List<AiPeriodRecord> =
+        seriesFrom(games, bucket, (rangeStart ?: games.firstOrNull()?.endedAt)?.utcDay()?.toString(), now)
+
+    /** [games] bucketed from the bucket holding [firstDayIso] (`YYYY-MM-DD`) to now, gaps filled. */
+    private fun seriesFrom(games: List<AiMatchGame>, bucket: AiBucket, firstDayIso: String?, now: Instant): List<AiPeriodRecord> {
+        val firstDay = LocalDate.parse(firstDayIso ?: return emptyList())
         val byBucket = games.groupBy { bucket.startOf(it.endedAt.utcDay()) }
         val last = bucket.startOf(now.utcDay())
         val out = ArrayList<AiPeriodRecord>()

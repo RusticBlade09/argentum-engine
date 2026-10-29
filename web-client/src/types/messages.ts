@@ -3463,6 +3463,8 @@ export type DeckFormat =
   | 'STANDARD_BRAWL'
   | 'PAUPER'
   | 'PREMODERN'
+  | 'HIGHLANDER'
+  | 'CANADIAN_HIGHLANDER'
 
 export interface QuickGameLobbyStateMessage {
   readonly type: 'quickGameLobbyState'

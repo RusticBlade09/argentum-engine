@@ -165,6 +165,35 @@ class ConstructedDeckGeneratorTest : FunSpec({
         gen.generate(listOf("RPT"), DeckFormat.MODERN).values.sum() shouldBe deckSize
     }
 
+    test("builds a 100-card singleton deck for the Highlander formats") {
+        // A wide mono-green pool: a singleton deck needs one distinct card per nonland slot.
+        val wide = (1..90).map { i ->
+            card("HL $i", "{${i % 5}}{G}", Rarity.COMMON, setOf(DeckFormat.HIGHLANDER, DeckFormat.CANADIAN_HIGHLANDER))
+        }
+        val gen = generatorOver("AAA" to wide)
+
+        listOf(DeckFormat.HIGHLANDER, DeckFormat.CANADIAN_HIGHLANDER).forEach { format ->
+            val deck = gen.generateDeck(listOf("AAA"), format)
+            withClue(format.displayName) {
+                deck.deckList.values.sum() shouldBe 100
+                deck.deckList.filterKeys { !it.startsWith("Forest") }.values.forEach { it shouldBe 1 }
+            }
+        }
+    }
+
+    test("a Canadian Highlander deck spends no points and carries no sideboard") {
+        val legal = setOf(DeckFormat.HIGHLANDER, DeckFormat.CANADIAN_HIGHLANDER)
+        val wide = (1..90).map { i -> card("HL $i", "{${i % 5}}{G}", Rarity.COMMON, legal) } +
+            // On the points list; the generator leaves it out rather than budget for it.
+            card("Sol Ring", "{1}", Rarity.UNCOMMON, legal)
+        val gen = generatorOver("AAA" to wide)
+
+        val deck = gen.generateDeck(listOf("AAA"), DeckFormat.CANADIAN_HIGHLANDER)
+
+        deck.deckList.keys.contains("Sol Ring") shouldBe false
+        deck.sideboard shouldBe emptyMap()
+    }
+
     test("refuses commander-shape formats rather than faking one") {
         // Commander needs a designated commander, singleton construction and a colour-identity
         // constraint — none of which this builder models. RandomDeckResolver relies on the throw to
