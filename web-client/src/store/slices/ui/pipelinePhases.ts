@@ -351,6 +351,19 @@ export function computePhases(actionInfo: LegalActionInfo, options?: ComputePhas
 // mergeResult — applies a phase result to the accumulated action
 // ---------------------------------------------------------------------------
 
+/**
+ * "Sacrifice X creatures" announced at X = 0 owes nothing, so its picker would only ask the
+ * player to confirm an empty selection: drop it from the phases left after the X pick.
+ */
+export function dropSacrificeXPickerAtZero(
+  phases: PipelinePhase[],
+  actionInfo: LegalActionInfo,
+  xValue: number,
+): PipelinePhase[] {
+  if (xValue !== 0 || !actionInfo.additionalCostInfo?.sacrificeCountIsX) return phases
+  return phases.filter((p) => !(p.type === 'costPayment' && (p.costIndex ?? 0) === 0))
+}
+
 export function mergeResult(
   action: GameAction,
   actionInfo: LegalActionInfo,
@@ -967,13 +980,24 @@ export function enterPhase(
           flags.isTapPermanentSelection = true
           flags.targetDescription = costInfo.description
           break
-        case 'SacrificeVariable':
+        case 'SacrificeVariable': {
           validTargets = [...(costInfo.validSacrificeTargets ?? [])]
-          minTargets = costInfo.sacrificeCount ?? 0
-          maxTargets = validTargets.length
+          // "Sacrifice X creatures": exactly the X the xSelection phase put on the action.
+          const xCount =
+            costInfo.sacrificeCountIsX && action.type === 'CastSpell' && typeof action.xValue === 'number'
+              ? action.xValue
+              : null
+          minTargets = xCount ?? costInfo.sacrificeCount ?? 0
+          maxTargets = xCount ?? validTargets.length
           flags.isSacrificeSelection = true
-          flags.targetDescription = costInfo.description
+          flags.targetDescription =
+            xCount == null
+              ? costInfo.description
+              : xCount === 1
+                ? costInfo.description.replace(/\bX (\w+?)s\b/, '1 $1')
+                : costInfo.description.replace(/\bX\b/, String(xCount))
           break
+        }
         case 'TapPermanents': {
           validTargets = [...(costInfo.validTapTargets ?? [])]
           // Station-style multi-select shortcut (CR 702.184a): each chosen creature becomes its

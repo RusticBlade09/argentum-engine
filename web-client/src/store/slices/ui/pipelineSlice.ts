@@ -8,7 +8,7 @@
  */
 import type { SliceCreator, ActionPipelineState, PhaseResult } from '../types'
 import type { ActivateAbilityAction, CastSpellAction, EntityId, GameAction, LegalActionInfo } from '@/types'
-import { computePhases, mergeResult, enterPhase } from './pipelinePhases'
+import { computePhases, mergeResult, enterPhase, dropSacrificeXPickerAtZero } from './pipelinePhases'
 import type { PipelineStoreMethods } from './pipelinePhases'
 import {
   parseManaCost as parseManaCostUtil,
@@ -261,6 +261,10 @@ export const createPipelineSlice: SliceCreator<PipelineSlice> = (set, get) => ({
     // reuses the existing `Blight`/`BlightVariable` targeting flow.
     if (result.type === 'blightVariable' && result.blightAmount > 0) {
       nextPhases = [{ type: 'costPayment' }, ...nextPhases]
+    }
+
+    if (result.type === 'xSelection') {
+      nextPhases = dropSacrificeXPickerAtZero(nextPhases, actionInfo, result.xValue)
     }
 
     // Dynamic phase injection: a non-mana escalate cost (CR 702.120a) is owed once per mode

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { computePhases, enterPhase, mergeResult } from './pipelinePhases'
+import { computePhases, dropSacrificeXPickerAtZero, enterPhase, mergeResult } from './pipelinePhases'
 import type { LegalActionInfo } from '@/types/messages'
+import type { PipelinePhase } from '../types'
 
 /**
  * Minimal CastSpell LegalActionInfo factory — only the fields computePhases reads matter.
@@ -630,5 +631,62 @@ describe('Casualty — sacrifice picker', () => {
       {} as never,
     )
     expect(merged).toMatchObject({ casualtyCreature: 'courser', xValue: 2 })
+  })
+})
+
+describe('Sacrifice X creatures — exact-X sacrifice picker', () => {
+  function sacrificeXAction(): LegalActionInfo {
+    return castAction({
+      description: 'Cast Eliminate the Competition',
+      hasXCost: true,
+      maxAffordableX: 3,
+      additionalCostInfo: {
+        costType: 'SacrificeVariable',
+        description: 'Sacrifice X creatures you control',
+        validSacrificeTargets: ['a', 'b', 'c'],
+        sacrificeCount: 0,
+        sacrificeCountIsX: true,
+      },
+    })
+  }
+
+  it('announces X before the sacrifice is picked', () => {
+    expect(computePhases(sacrificeXAction(), { autoTapEnabled: true })).toEqual([
+      { type: 'xSelection' },
+      { type: 'costPayment' },
+    ])
+  })
+
+  it('requires exactly the chosen X sacrifices', () => {
+    const info = sacrificeXAction()
+    let captured: Record<string, unknown> | null = null
+    const store = {
+      startTargeting: (arg: Record<string, unknown>) => { captured = arg },
+    } as unknown as Parameters<typeof enterPhase>[3]
+    enterPhase({ type: 'costPayment' }, info, { ...info.action, xValue: 2 } as never, store, undefined)
+    expect(captured).toMatchObject({
+      validTargets: ['a', 'b', 'c'],
+      minTargets: 2,
+      maxTargets: 2,
+      isSacrificeSelection: true,
+      targetDescription: 'Sacrifice 2 creatures you control',
+    })
+  })
+
+  it('names a single sacrifice in the singular at X = 1', () => {
+    const info = sacrificeXAction()
+    let captured: Record<string, unknown> | null = null
+    const store = {
+      startTargeting: (arg: Record<string, unknown>) => { captured = arg },
+    } as unknown as Parameters<typeof enterPhase>[3]
+    enterPhase({ type: 'costPayment' }, info, { ...info.action, xValue: 1 } as never, store, undefined)
+    expect(captured).toMatchObject({ minTargets: 1, maxTargets: 1, targetDescription: 'Sacrifice 1 creature you control' })
+  })
+
+  it('skips the sacrifice picker when X is 0', () => {
+    const info = sacrificeXAction()
+    const rest: PipelinePhase[] = [{ type: 'costPayment' }, { type: 'targeting' } as PipelinePhase]
+    expect(dropSacrificeXPickerAtZero(rest, info, 0)).toEqual([{ type: 'targeting' }])
+    expect(dropSacrificeXPickerAtZero(rest, info, 2)).toEqual(rest)
   })
 })
