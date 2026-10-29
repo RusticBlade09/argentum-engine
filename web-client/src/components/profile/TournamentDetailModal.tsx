@@ -33,11 +33,11 @@ export function TournamentDetailModal({
     }
   }, [tournamentId])
 
+  // Leaving for a profile or replay doesn't close the modal first: the page unmounts anyway, and a
+  // host that keeps the modal in the URL (the admin screens) reopens it when the player comes Back.
+  // Closing first would race that host's history pop against this push.
   const goProfile = (userId: string | null) => {
-    if (userId) {
-      onClose()
-      navigate(`/u/${userId}`)
-    }
+    if (userId) navigate(`/u/${userId}`)
   }
 
   const mode = detail ? gameModeLabel(detail.gameMode, detail.format) : null
@@ -119,10 +119,7 @@ export function TournamentDetailModal({
                       <button
                         type="button"
                         className={a.miniButton}
-                        onClick={() => {
-                          onClose()
-                          navigate(`/replay/${g.gameId}`)
-                        }}
+                        onClick={() => navigate(`/replay/${g.gameId}`)}
                       >
                         Watch
                       </button>

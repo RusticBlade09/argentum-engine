@@ -46,6 +46,7 @@ import { TournamentStatusBadge } from '@/components/tournament/TournamentStatusB
 import { colorLabel, formatBytes, formatCount, gameModeLabel, mergeModeBuckets } from './statFormat'
 import { GeoMap } from './GeoMap'
 import { AdminScreen, Panel, StatCard, Table, adminTheme, cellStyle, chartTooltipStyle } from './adminUi'
+import { useAdminTournamentParam } from './adminNav'
 
 /** How many card rows to show before the "Show all" toggle — keeps the tables from running forever. */
 const CARD_PREVIEW = 12
@@ -63,7 +64,7 @@ export function AdminDashboard({ auth, onBack }: { auth: AdminAuth; onBack: () =
   const [database, setDatabase] = useState<DatabaseStats | null>(null)
   const [showAllCards, setShowAllCards] = useState(false)
   const [showAllWinRates, setShowAllWinRates] = useState(false)
-  const [openTournament, setOpenTournament] = useState<number | null>(null)
+  const [openTournament, setOpenTournament, closeTournament] = useAdminTournamentParam()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -213,7 +214,7 @@ export function AdminDashboard({ auth, onBack }: { auth: AdminAuth; onBack: () =
       </Panel>
 
       {openTournament != null && (
-        <TournamentDetailModal tournamentId={openTournament} onClose={() => setOpenTournament(null)} />
+        <TournamentDetailModal tournamentId={openTournament} onClose={closeTournament} />
       )}
     </AdminScreen>
   )
