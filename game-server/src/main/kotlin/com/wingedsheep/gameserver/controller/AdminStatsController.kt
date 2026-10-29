@@ -2,6 +2,7 @@ package com.wingedsheep.gameserver.controller
 
 import com.wingedsheep.gameserver.auth.AdminAuthService
 import com.wingedsheep.gameserver.stats.AiBucket
+import com.wingedsheep.gameserver.stats.AiVsHumanFilter
 import com.wingedsheep.gameserver.stats.GeoIpService
 import com.wingedsheep.gameserver.stats.StatsQueryService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -55,6 +56,10 @@ class AdminStatsController(
     /**
      * The AI's record against human players: overall, over time, per build and per game mode.
      * `days = 0` means all time; `bucket` is `day`, `week` or `month`.
+     *
+     * Optional slice: `gameMode` and `format` (as `byMode` reports them), `set` (a set code), and the
+     * humans to leave out — `excludeHuman` (repeatable, a `topHumans[].key`) and/or `excludeTopHumans`
+     * (the N busiest humans in the slice). The response's `options` lists the values to offer.
      */
     @GetMapping("/ai-vs-human")
     fun aiVsHuman(
@@ -62,10 +67,22 @@ class AdminStatsController(
         @RequestHeader(HttpHeaders.AUTHORIZATION, required = false) authorization: String?,
         @RequestParam(defaultValue = "90") days: Int,
         @RequestParam(defaultValue = "week") bucket: String,
+        @RequestParam(required = false) gameMode: String?,
+        @RequestParam(required = false) format: String?,
+        @RequestParam(name = "set", required = false) setCode: String?,
+        @RequestParam(required = false) excludeHuman: List<String>?,
+        @RequestParam(defaultValue = "0") excludeTopHumans: Int,
     ): ResponseEntity<Any> = adminAuth.guard(password, authorization) {
         val parsedBucket = AiBucket.entries.firstOrNull { it.name.equals(bucket, ignoreCase = true) }
             ?: return@guard ResponseEntity.badRequest().body(mapOf("error" to "bucket must be day, week or month"))
-        ResponseEntity.ok(statsQuery.aiVsHuman(days.takeIf { it > 0 }?.coerceAtMost(3650), parsedBucket))
+        val filter = AiVsHumanFilter(
+            gameMode = gameMode?.takeIf { it.isNotBlank() },
+            format = format?.takeIf { it.isNotBlank() },
+            setCode = setCode?.takeIf { it.isNotBlank() },
+            excludeHumans = excludeHuman.orEmpty().filter { it.isNotBlank() }.toSet(),
+            excludeTopHumans = excludeTopHumans.coerceIn(0, 20),
+        )
+        ResponseEntity.ok(statsQuery.aiVsHuman(days.takeIf { it > 0 }?.coerceAtMost(3650), parsedBucket, filter))
     }
 
     @GetMapping("/modes")

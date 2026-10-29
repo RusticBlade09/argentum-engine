@@ -189,6 +189,12 @@ export interface AiVsHumanReport {
   /** Oldest first, gap-filled. `start` is the bucket's first UTC day; `aiChanges` counts engine AI changes merged in it. */
   readonly series: { readonly start: string; readonly record: AiRecord; readonly aiChanges: number }[]
   readonly byMode: { readonly gameMode: string | null; readonly format: string | null; readonly record: AiRecord }[]
+  /** The most-played modes (at most six), each with its own series on the same buckets as `series`. */
+  readonly seriesByMode: {
+    readonly gameMode: string | null
+    readonly format: string | null
+    readonly series: { readonly start: string; readonly record: AiRecord }[]
+  }[]
   /** Newest deployed build first. `newAiChanges`: AI changes it added over the build before it (null = unknown). */
   readonly byBuild: {
     readonly version: string
@@ -206,16 +212,55 @@ export interface AiVsHumanReport {
   /** Latest games, oldest first. */
   readonly recent: { readonly endedAt: string; readonly gameMode: string | null; readonly format: string | null; readonly outcome: AiMatchOutcome }[]
   /** Humans who played the AI most, from the human's side. */
-  readonly topHumans: {
-    readonly name: string
-    readonly isGuest: boolean
-    readonly games: number
-    readonly wins: number
-    readonly losses: number
-    readonly draws: number
-  }[]
+  readonly topHumans: AiHumanRecord[]
+  /** The filter the report was computed under, with the humans it left out. */
+  readonly filter: {
+    readonly gameMode: string | null
+    readonly format: string | null
+    readonly setCode: string | null
+    readonly excludeTopHumans: number
+    readonly excludedHumans: AiHumanRecord[]
+    /** Games in the range the human exclusions dropped. */
+    readonly excludedGames: number
+  }
+  /** The values each filter can take, counted over the whole range before any filter applies. */
+  readonly options: {
+    readonly modes: { readonly gameMode: string | null; readonly format: string | null; readonly games: number }[]
+    readonly sets: { readonly code: string; readonly name: string | null; readonly games: number }[]
+    readonly gamesWithoutSet: number
+  }
 }
 
-/** The AI's record against humans over the last `days` days (0 = all time). */
-export const fetchAiVsHuman = (auth: AdminAuth, days: number, bucket: 'day' | 'week' | 'month') =>
-  getAdminStats<AiVsHumanReport>(auth, `/ai-vs-human?days=${days}&bucket=${bucket}`)
+/** A human's record against the AI, from the human's side. */
+export interface AiHumanRecord {
+  /** Pass back as `excludeHuman` to leave this player out. */
+  readonly key: string
+  readonly name: string
+  readonly isGuest: boolean
+  readonly games: number
+  readonly wins: number
+  readonly losses: number
+  readonly draws: number
+}
+
+/** Narrows the AI-vs-humans report to a slice of the games. */
+export interface AiVsHumanFilter {
+  readonly gameMode: string | null
+  readonly format: string | null
+  readonly setCode: string | null
+  /** `AiHumanRecord.key`s whose games are left out. */
+  readonly excludeHumans: readonly string[]
+  /** Leave out the N humans with the most games in the slice. */
+  readonly excludeTopHumans: number
+}
+
+/** The AI's record against humans over the last `days` days (0 = all time), narrowed by `filter`. */
+export function fetchAiVsHuman(auth: AdminAuth, days: number, bucket: 'day' | 'week' | 'month', filter?: AiVsHumanFilter) {
+  const params = new URLSearchParams({ days: String(days), bucket })
+  if (filter?.gameMode) params.set('gameMode', filter.gameMode)
+  if (filter?.format) params.set('format', filter.format)
+  if (filter?.setCode) params.set('set', filter.setCode)
+  for (const key of filter?.excludeHumans ?? []) params.append('excludeHuman', key)
+  if (filter?.excludeTopHumans) params.set('excludeTopHumans', String(filter.excludeTopHumans))
+  return getAdminStats<AiVsHumanReport>(auth, `/ai-vs-human?${params.toString()}`)
+}
