@@ -3637,7 +3637,8 @@
                                                 }
                                             ]
                                         }
-                                    ]
+                                    ],
+                                    "controllerPredicate": "ControlledByYou"
                                 }
                             },
                             "id": "t0"
