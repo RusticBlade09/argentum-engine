@@ -54,8 +54,8 @@ class DrillTooDeepScenarioTest : ScenarioTestBase() {
                 withClue("the charge-counter mode only targets Spacecraft or Planets you control") {
                     game.castSpellWithMode(1, "Drill Too Deep", 0, theirs).error shouldNotBe null
                 }
-                game.state.getEntity(theirs)?.get<CountersComponent>()
-                    ?.getCount(CounterType.CHARGE) ?: 0 shouldBe 0
+                (game.state.getEntity(theirs)?.get<CountersComponent>()
+                    ?.getCount(CounterType.CHARGE) ?: 0) shouldBe 0
             }
         }
     }
