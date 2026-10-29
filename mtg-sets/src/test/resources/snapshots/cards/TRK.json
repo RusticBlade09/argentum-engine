@@ -772,6 +772,168 @@
     ]
 }
 
+// Commander Raffi Musiker
+{
+    "name": "Commander Raffi Musiker",
+    "manaCost": "{2}{B}",
+    "typeLine": "Legendary Creature — Human Officer",
+    "oracleText": "When Commander Musiker enters, choose one —\n• Exile up to one target card from a graveyard. You gain 2 life.\n• Investigate. You lose 2 life. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 2
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Commander Raffi Musiker:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Modal",
+                    "modes": [
+                        {
+                            "effect": {
+                                "type": "Composite",
+                                "effects": [
+                                    {
+                                        "type": "MoveToZone",
+                                        "target": {
+                                            "type": "BoundVariable",
+                                            "name": "t0"
+                                        },
+                                        "destination": "Exile"
+                                    },
+                                    {
+                                        "type": "GainLife",
+                                        "amount": {
+                                            "type": "Fixed",
+                                            "amount": 2
+                                        }
+                                    }
+                                ]
+                            },
+                            "targetRequirements": [
+                                {
+                                    "type": "TargetObject",
+                                    "optional": true,
+                                    "filter": {
+                                        "baseFilter": {},
+                                        "zone": "Graveyard"
+                                    },
+                                    "id": "t0"
+                                }
+                            ],
+                            "description": "Exile up to one target card from a graveyard. You gain 2 life."
+                        },
+                        {
+                            "effect": {
+                                "type": "Composite",
+                                "effects": [
+                                    "Investigate",
+                                    {
+                                        "type": "LoseLife",
+                                        "amount": {
+                                            "type": "Fixed",
+                                            "amount": 2
+                                        },
+                                        "target": "Controller"
+                                    }
+                                ]
+                            },
+                            "description": "Investigate. You lose 2 life."
+                        }
+                    ]
+                },
+                "descriptionOverride": "When Commander Musiker enters, choose one — Exile up to one target card from a graveyard and you gain 2 life; or investigate and you lose 2 life."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "100",
+        "rarity": "UNCOMMON",
+        "artist": "Runa I. Rosenberger",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/e/7e60bd56-3da1-4211-b790-320471eef242.jpg?1793013565"
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
+// Common Goal
+{
+    "name": "Common Goal",
+    "manaCost": "{1}{G}",
+    "typeLine": "Sorcery",
+    "oracleText": "One or two target creatures you control each deal damage equal to their power to target creature an opponent controls.",
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "GatherCards",
+                    "source": "ChosenTargets",
+                    "storeAs": "gathered0"
+                },
+                {
+                    "type": "FilterCollection",
+                    "from": "gathered0",
+                    "filter": "creature ctrl:you",
+                    "storeMatching": "matching1"
+                },
+                {
+                    "type": "ForEach",
+                    "space": {
+                        "type": "IterationSpace.Collection",
+                        "collection": "matching1"
+                    },
+                    "body": {
+                        "type": "DealDamage",
+                        "amount": {
+                            "type": "EntityProperty",
+                            "entity": "IterationEntity",
+                            "numericProperty": "Power"
+                        },
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t0"
+                        },
+                        "damageSource": "IterationEntity"
+                    }
+                }
+            ]
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": "creature ctrl:opponent"
+                },
+                "id": "t0"
+            },
+            {
+                "type": "TargetObject",
+                "count": 2,
+                "minCount": 1,
+                "filter": {
+                    "baseFilter": "creature ctrl:you"
+                },
+                "id": "t1"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "190",
+        "artist": "Ioannis Fiore",
+        "flavorText": "\"So be it, human. We shall work together, if only so I can be the one to kill you.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/4/f/4fddc950-fbc5-4cf7-b694-dcd54ffccb31.jpg?1785981568"
+    },
+    "colorIdentityOverride": [
+        "GREEN"
+    ]
+}
+
 // Constable Odo
 {
     "name": "Constable Odo",
@@ -1665,6 +1827,59 @@
     },
     "colorIdentityOverride": [
         "BLUE"
+    ]
+}
+
+// Khaaaaaaaaaaaannn!
+{
+    "name": "Khaaaaaaaaaaaannn!",
+    "manaCost": "{X}{R}",
+    "typeLine": "Instant",
+    "oracleText": "Khaaaaaaaaaaaannn! deals twice X damage to target creature. If that creature would die this turn, exile it instead.",
+    "script": {
+        "spellEffect": {
+            "type": "Composite",
+            "effects": [
+                {
+                    "type": "DealDamage",
+                    "amount": {
+                        "type": "Multiply",
+                        "amount": "XValue",
+                        "multiplier": 2
+                    },
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                {
+                    "type": "MarkExileOnDeath",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                }
+            ]
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": "creature"
+                },
+                "id": "t0"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "154",
+        "rarity": "UNCOMMON",
+        "artist": "Evan Shipard",
+        "flavorText": "\"I've done far worse than kill you. I've hurt you, and I wish to go on hurting you.\"\n—Khan Noonien Singh",
+        "imageUri": "https://cards.scryfall.io/normal/front/2/2/22c60c17-74ec-460b-bf7a-e56e42239826.jpg?1785981536"
+    },
+    "colorIdentityOverride": [
+        "RED"
     ]
 }
 
@@ -3218,6 +3433,114 @@
         "BLUE",
         "WHITE"
     ]
+}
+
+// Warp Core
+{
+    "name": "Warp Core",
+    "manaCost": "{2}",
+    "typeLine": "Artifact",
+    "oracleText": "When this artifact enters, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle.\n{1}, {T}: Put two charge counters on target Spacecraft. Activate only as a sorcery.",
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Warp Core:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Gated",
+                    "gate": "Gate.MayDecide",
+                    "then": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "GatherCards",
+                                "source": {
+                                    "type": "FromZone",
+                                    "zone": "Library",
+                                    "filter": "basicland"
+                                },
+                                "storeAs": "searchable",
+                                "search": true
+                            },
+                            {
+                                "type": "SelectFromCollection",
+                                "from": "searchable",
+                                "selection": {
+                                    "type": "ChooseUpTo",
+                                    "count": {
+                                        "type": "Fixed",
+                                        "amount": 1
+                                    }
+                                },
+                                "storeSelected": "found",
+                                "prompt": "Search your library for a basic land card to put into your hand",
+                                "selectedLabel": "Put into your hand"
+                            },
+                            {
+                                "type": "MoveCollection",
+                                "from": "found",
+                                "destination": {
+                                    "type": "ToZone",
+                                    "zone": "Hand"
+                                },
+                                "revealed": true
+                            },
+                            "ShuffleLibrary",
+                            "EmitLibrarySearchedEvent"
+                        ]
+                    }
+                }
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Warp Core:2",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{1}"
+                            }
+                        },
+                        "CostTap"
+                    ]
+                },
+                "effect": {
+                    "type": "AddCounters",
+                    "counterType": "CHARGE",
+                    "count": 2,
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "permanent Spacecraft"
+                        },
+                        "id": "t0"
+                    }
+                ],
+                "timing": "SorcerySpeed",
+                "descriptionOverride": "{1}, {T}: Put two charge counters on target Spacecraft. Activate only as a sorcery."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "274",
+        "artist": "Leon Tukker",
+        "flavorText": "Every warp core has its own glow and thrum, each as unique as a human heartbeat.",
+        "imageUri": "https://cards.scryfall.io/normal/front/d/e/de8e2bde-b368-4d10-8409-86f5da6997f6.jpg?1792590999"
+    },
+    "colorIdentityOverride": []
 }
 
 // Xenobotanist
