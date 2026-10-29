@@ -5476,6 +5476,297 @@
     ]
 }
 
+// Keen Glidemaster
+{
+    "name": "Keen Glidemaster",
+    "manaCost": "{1}{U}",
+    "typeLine": "Creature — Human Soldier",
+    "oracleText": "{2}{U}: Target creature gains flying until end of turn.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 1
+    },
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Keen Glidemaster:1",
+                "cost": {
+                    "type": "CostAtomWrapper",
+                    "atom": {
+                        "type": "AtomMana",
+                        "cost": "{2}{U}"
+                    }
+                },
+                "effect": {
+                    "type": "GrantKeyword",
+                    "keyword": "FLYING",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "creature"
+                        },
+                        "id": "t0"
+                    }
+                ],
+                "descriptionOverride": "{2}{U}: Target creature gains flying until end of turn."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "54",
+        "artist": "Caroline Gariba",
+        "flavorText": "\"Fear is a rational response, but waiting won't make it any easier. Just jump!\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/c/c/cce6289e-f665-4faa-8285-c843447f3e52.jpg?1783930726"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
+// Keral Keep Disciples
+{
+    "name": "Keral Keep Disciples",
+    "manaCost": "{2}{R}{R}",
+    "typeLine": "Creature — Human Monk",
+    "oracleText": "Whenever you activate a loyalty ability of a Chandra planeswalker, this creature deals 1 damage to each opponent.",
+    "creatureStats": {
+        "power": 4,
+        "toughness": 3
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Keral Keep Disciples:1",
+                "trigger": {
+                    "type": "AbilityActivatedEvent",
+                    "sourceFilter": {
+                        "cardPredicates": [
+                            "IsPlaneswalker",
+                            {
+                                "type": "HasSubtype",
+                                "subtype": "Chandra"
+                            }
+                        ],
+                        "statePredicates": [
+                            "IsOnBattlefield"
+                        ]
+                    },
+                    "requireLoyalty": true
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "DealDamage",
+                    "amount": {
+                        "type": "Fixed",
+                        "amount": 1
+                    },
+                    "target": {
+                        "type": "PlayerRef",
+                        "player": "EachOpponent"
+                    }
+                },
+                "descriptionOverride": "Whenever you activate a loyalty ability of a Chandra planeswalker, this creature deals 1 damage to each opponent."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "334",
+        "rarity": "UNCOMMON",
+        "artist": "Leesha Hannigan",
+        "flavorText": "\"You're not setting foot in here. Not on our watch!\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/b/7b862e46-f5a2-4fce-98b5-2c5aa49ec648.jpg?1783930617",
+        "rulings": [
+            {
+                "date": "2020-06-23",
+                "text": "The ability of Keral Keep Disciples resolves before the ability that caused it to trigger."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "RED"
+    ]
+}
+
+// Kinetic Augur
+{
+    "name": "Kinetic Augur",
+    "manaCost": "{3}{R}",
+    "typeLine": "Creature — Human Shaman",
+    "oracleText": "Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)\nKinetic Augur's power is equal to the number of instant and sorcery cards in your graveyard.\nWhen this creature enters, discard up to two cards, then draw that many cards.",
+    "creatureStats": {
+        "power": {
+            "type": "Dynamic",
+            "source": {
+                "type": "Count",
+                "player": "You",
+                "zone": "Graveyard",
+                "filter": "instant|sorcery"
+            }
+        },
+        "toughness": 4
+    },
+    "keywords": [
+        "TRAMPLE"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Kinetic Augur:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "GatherCards",
+                            "source": {
+                                "type": "FromZone",
+                                "zone": "Hand"
+                            },
+                            "storeAs": "discarded_candidates"
+                        },
+                        {
+                            "type": "SelectFromCollection",
+                            "from": "discarded_candidates",
+                            "selection": {
+                                "type": "ChooseUpTo",
+                                "count": {
+                                    "type": "Fixed",
+                                    "amount": 2
+                                }
+                            },
+                            "storeSelected": "discarded",
+                            "prompt": "Discard up to 2 cards"
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "discarded",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Graveyard"
+                            },
+                            "moveType": "Discard"
+                        },
+                        {
+                            "type": "DrawCards",
+                            "count": {
+                                "type": "VariableReference",
+                                "variableName": "discarded_count"
+                            }
+                        }
+                    ]
+                },
+                "descriptionOverride": "When this creature enters, discard up to two cards, then draw that many cards."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "154",
+        "rarity": "UNCOMMON",
+        "artist": "Colin Boyer",
+        "imageUri": "https://cards.scryfall.io/normal/front/d/c/dc5e8221-fc2d-4d90-80f3-729606648c54.jpg?1783930687",
+        "rulings": [
+            {
+                "date": "2020-06-23",
+                "text": "The ability that defines Kinetic Augur's power works in all zones, not just on the battlefield."
+            },
+            {
+                "date": "2020-06-23",
+                "text": "As Kinetic Augur's triggered ability resolves, you choose whether to discard zero, one, or two cards, discard them, and draw that many. You can't discard one card, draw a card, then choose to discard again."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "RED"
+    ]
+}
+
+// Leafkin Avenger
+{
+    "name": "Leafkin Avenger",
+    "manaCost": "{2}{R}{G}",
+    "typeLine": "Creature — Elemental Druid",
+    "oracleText": "{T}: Add {G} for each creature with power 4 or greater you control.\n{7}{R}: This creature deals damage equal to its power to target player or planeswalker.",
+    "creatureStats": {
+        "power": 4,
+        "toughness": 3
+    },
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Leafkin Avenger:1",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "AddMana",
+                    "color": "GREEN",
+                    "amount": {
+                        "type": "AggregateBattlefield",
+                        "player": "You",
+                        "filter": "creature pow>=4"
+                    }
+                },
+                "timing": "ManaAbility",
+                "isManaAbility": true,
+                "descriptionOverride": "{T}: Add {G} for each creature with power 4 or greater you control."
+            },
+            {
+                "id": "Leafkin Avenger:2",
+                "cost": {
+                    "type": "CostAtomWrapper",
+                    "atom": {
+                        "type": "AtomMana",
+                        "cost": "{7}{R}"
+                    }
+                },
+                "effect": {
+                    "type": "DealDamage",
+                    "amount": {
+                        "type": "EntityProperty",
+                        "entity": "Self",
+                        "numericProperty": "Power"
+                    },
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetPlayerOrPlaneswalker",
+                        "id": "t0"
+                    }
+                ],
+                "descriptionOverride": "{7}{R}: This creature deals damage equal to its power to target player or planeswalker."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "220",
+        "rarity": "UNCOMMON",
+        "artist": "Filip Burburan",
+        "flavorText": "\"My roots are ash, my heart a smoldering ember. What I could not protect, I will avenge.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/b/7bd3a903-23e0-4b5a-9c7e-390d5ced8371.jpg?1783930662",
+        "rulings": [
+            {
+                "date": "2020-06-23",
+                "text": "If Leafkin Avenger leaves the battlefield while its last ability is on the stack, use its power as it last existed on the battlefield to determine how much damage it deals."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "RED",
+        "GREEN"
+    ]
+}
+
 // Library Larcenist
 {
     "name": "Library Larcenist",
@@ -5516,6 +5807,276 @@
     },
     "colorIdentityOverride": [
         "BLUE"
+    ]
+}
+
+// Light of Promise
+{
+    "name": "Light of Promise",
+    "manaCost": "{2}{W}",
+    "typeLine": "Enchantment — Aura",
+    "oracleText": "Enchant creature\nEnchanted creature has \"Whenever you gain life, put that many +1/+1 counters on this creature.\"",
+    "script": {
+        "staticAbilities": [
+            {
+                "type": "GrantTriggeredAbility",
+                "ability": {
+                    "id": "Light of Promise:1",
+                    "trigger": "LifeGainEvent",
+                    "binding": "ANY",
+                    "effect": {
+                        "type": "AddDynamicCounters",
+                        "counterType": "PLUS_ONE_PLUS_ONE",
+                        "amount": {
+                            "type": "ContextProperty",
+                            "key": "TRIGGER_LIFE_GAINED"
+                        },
+                        "target": "Self"
+                    },
+                    "descriptionOverride": "Whenever you gain life, put that many +1/+1 counters on this creature."
+                }
+            }
+        ],
+        "auraTarget": {
+            "type": "TargetObject",
+            "filter": {
+                "baseFilter": "creature"
+            }
+        }
+    },
+    "metadata": {
+        "collectorNumber": "25",
+        "rarity": "UNCOMMON",
+        "artist": "Cristi Balanescu",
+        "flavorText": "The light washed over him, and in the wind he heard the roars of all the pridemates who had come before.",
+        "imageUri": "https://cards.scryfall.io/normal/front/d/5/d5f80411-0a95-4e0a-b7a8-af23ddf385cc.jpg?1783930738",
+        "rulings": [
+            {
+                "date": "2020-06-23",
+                "text": "If enchanted creature is dealt lethal damage at the same time that you gain life, it won't receive a counter from its ability in time to save it."
+            },
+            {
+                "date": "2020-06-23",
+                "text": "Each creature with lifelink dealing combat damage causes a separate life-gaining event. For example, if two creatures you control with lifelink deal combat damage at the same time, the ability will trigger twice. However, if a single creature you control with lifelink deals combat damage to multiple creatures, players, and/or planeswalkers at the same time (perhaps because it has trample or was blocked by more than one creature), the ability will trigger only once."
+            },
+            {
+                "date": "2020-06-23",
+                "text": "If you gain an amount of life \"for each\" of something, that life is gained as one event and the ability triggers only once."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
+// Liliana's Devotee
+{
+    "name": "Liliana's Devotee",
+    "manaCost": "{2}{B}",
+    "typeLine": "Creature — Human Warlock",
+    "oracleText": "Zombies you control get +1/+0.\nAt the beginning of your end step, if a creature died this turn, you may pay {1}{B}. If you do, create a 2/2 black Zombie creature token.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 3
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Liliana's Devotee:1",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "END"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Gated",
+                    "gate": {
+                        "type": "Gate.MayPay",
+                        "cost": {
+                            "type": "PayManaCost",
+                            "cost": "{1}{B}"
+                        }
+                    },
+                    "then": {
+                        "type": "CreateToken",
+                        "power": 2,
+                        "toughness": 2,
+                        "colors": [
+                            "BLACK"
+                        ],
+                        "creatureTypes": [
+                            "Zombie"
+                        ],
+                        "imageUri": "https://cards.scryfall.io/normal/front/3/f/3f170f84-6c36-43e2-91e6-3c7a136944b1.jpg?1783930590"
+                    }
+                },
+                "interveningIf": "CreatureDiedThisTurn",
+                "descriptionOverride": "At the beginning of your end step, if a creature died this turn, you may pay {1}{B}. If you do, create a 2/2 black Zombie creature token."
+            }
+        ],
+        "staticAbilities": [
+            {
+                "type": "ModifyStats",
+                "powerBonus": 1,
+                "toughnessBonus": 0,
+                "filter": {
+                    "baseFilter": "creature Zombie ctrl:you"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "109",
+        "rarity": "UNCOMMON",
+        "artist": "Colin Boyer",
+        "flavorText": "Liliana inspires horror in many and fanatical admiration in a few.",
+        "imageUri": "https://cards.scryfall.io/normal/front/a/e/ae5d7f15-a86f-4eaa-8280-2e7f73c8ce3a.jpg?1783930704",
+        "rulings": [
+            {
+                "date": "2020-06-23",
+                "text": "If a creature didn't die before your end step begins, the last ability of Liliana's Devotee doesn't trigger at all. The creature may have died before Liliana's Devotee entered the battlefield, however."
+            },
+            {
+                "date": "2020-06-23",
+                "text": "The triggered ability triggers just once, no matter how many creatures died this turn."
+            },
+            {
+                "date": "2020-06-23",
+                "text": "While resolving the triggered ability, you can't pay more than {1}{B} to get more than one Zombie token."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
+// Liliana's Scrounger
+{
+    "name": "Liliana's Scrounger",
+    "manaCost": "{2}{B}",
+    "typeLine": "Creature — Human Wizard",
+    "oracleText": "At the beginning of each end step, if a creature died this turn, you may put a loyalty counter on a Liliana planeswalker you control.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 2
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Liliana's Scrounger:1",
+                "trigger": {
+                    "type": "StepEvent",
+                    "step": "END",
+                    "player": "Each"
+                },
+                "binding": "ANY",
+                "effect": {
+                    "type": "Gated",
+                    "gate": "Gate.MayDecide",
+                    "then": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "SelectTarget",
+                                "requirement": {
+                                    "type": "TargetObject",
+                                    "filter": {
+                                        "baseFilter": "planeswalker Liliana ctrl:you"
+                                    }
+                                },
+                                "storeAs": "target0",
+                                "nonTargeting": true,
+                                "prompt": "Choose a Liliana planeswalker you control to get a loyalty counter"
+                            },
+                            {
+                                "type": "AddCountersToCollection",
+                                "collectionName": "target0",
+                                "counterType": "LOYALTY"
+                            }
+                        ]
+                    },
+                    "descriptionOverride": "At the beginning of each end step, if a creature died this turn, you may put a loyalty counter on a Liliana planeswalker you control."
+                },
+                "interveningIf": "CreatureDiedThisTurn",
+                "descriptionOverride": "At the beginning of each end step, if a creature died this turn, you may put a loyalty counter on a Liliana planeswalker you control."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "330",
+        "rarity": "UNCOMMON",
+        "artist": "Martina Fačková",
+        "flavorText": "\"This arm's got plenty of use left in it. Who'd throw such a nice thing away?\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/5/a/5a64625f-937a-449e-b1fc-cd0f25b033f6.jpg?1783930619",
+        "rulings": [
+            {
+                "date": "2020-06-23",
+                "text": "If a creature didn't die before your end step begins, the ability of Liliana's Scrounger doesn't trigger at all. The creature may have died before Liliana's Scrounger entered the battlefield, however."
+            },
+            {
+                "date": "2020-06-23",
+                "text": "The triggered ability triggers just once, no matter how many creatures died this turn."
+            },
+            {
+                "date": "2020-06-23",
+                "text": "If you control more than one Liliana planeswalker, you choose which one receives a loyalty counter as the ability of Liliana's Scrounger resolves."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
+// Liliana's Standard Bearer
+{
+    "name": "Liliana's Standard Bearer",
+    "manaCost": "{2}{B}",
+    "typeLine": "Creature — Zombie Knight",
+    "oracleText": "Flash\nWhen this creature enters, draw X cards, where X is the number of creatures that died under your control this turn.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 1
+    },
+    "keywords": [
+        "FLASH"
+    ],
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Liliana's Standard Bearer:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "DrawCards",
+                    "count": {
+                        "type": "TurnTracking",
+                        "player": "You",
+                        "tracker": "CREATURES_DIED"
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "110",
+        "rarity": "RARE",
+        "artist": "Josh Hass",
+        "flavorText": "The purple banner of the House of Vess is a symbol of death wherever it's flown.",
+        "imageUri": "https://cards.scryfall.io/normal/front/3/d/3dc48b87-62cb-48f6-8979-e6fb98717b52.jpg?1783930705",
+        "rulings": [
+            {
+                "date": "2020-06-23",
+                "text": "The value of X is determined only as the triggered ability resolves. If Liliana's Standard Bearer dies while that ability's on the stack, it will count itself."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLACK"
     ]
 }
 
@@ -5603,6 +6164,491 @@
     },
     "colorIdentityOverride": [
         "BLACK"
+    ]
+}
+
+// Liliana, Death Mage
+{
+    "name": "Liliana, Death Mage",
+    "manaCost": "{4}{B}{B}",
+    "typeLine": "Legendary Planeswalker — Liliana",
+    "oracleText": "+1: Return up to one target creature card from your graveyard to your hand.\n−3: Destroy target creature. Its controller loses 2 life.\n−7: Target opponent loses 2 life for each creature card in their graveyard.",
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Liliana, Death Mage:1",
+                "cost": {
+                    "type": "CostLoyalty",
+                    "change": 1
+                },
+                "effect": {
+                    "type": "MoveToZone",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "destination": "Hand"
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "optional": true,
+                        "filter": {
+                            "baseFilter": "creature own:you",
+                            "zone": "Graveyard"
+                        },
+                        "id": "t0"
+                    }
+                ],
+                "timing": "SorcerySpeed",
+                "isPlaneswalkerAbility": true
+            },
+            {
+                "id": "Liliana, Death Mage:2",
+                "cost": {
+                    "type": "CostLoyalty",
+                    "change": -3
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "MoveToZone",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t1"
+                            },
+                            "destination": "Graveyard",
+                            "byDestruction": true
+                        },
+                        {
+                            "type": "LoseLife",
+                            "amount": {
+                                "type": "Fixed",
+                                "amount": 2
+                            },
+                            "target": "TargetController"
+                        }
+                    ]
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "creature"
+                        },
+                        "id": "t1"
+                    }
+                ],
+                "timing": "SorcerySpeed",
+                "isPlaneswalkerAbility": true
+            },
+            {
+                "id": "Liliana, Death Mage:3",
+                "cost": {
+                    "type": "CostLoyalty",
+                    "change": -7
+                },
+                "effect": {
+                    "type": "LoseLife",
+                    "amount": {
+                        "type": "Multiply",
+                        "amount": {
+                            "type": "Count",
+                            "player": "TargetOpponent",
+                            "zone": "Graveyard",
+                            "filter": "creature"
+                        },
+                        "multiplier": 2
+                    },
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t2"
+                    }
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetOpponent",
+                        "id": "t2"
+                    }
+                ],
+                "timing": "SorcerySpeed",
+                "isPlaneswalkerAbility": true
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "328",
+        "rarity": "MYTHIC",
+        "artist": "Kieran Yanner",
+        "imageUri": "https://cards.scryfall.io/normal/front/9/2/921e3dc3-f8eb-4498-a6a8-b424952230cd.jpg?1783930620",
+        "rulings": [
+            {
+                "date": "2020-06-23",
+                "text": "If the target creature is an illegal target by the time Liliana's second ability tries to resolve, the ability won't resolve. No player loses 2 life. If the target is legal but not destroyed (most likely because it has indestructible), its controller does lose 2 life."
+            }
+        ]
+    },
+    "startingLoyalty": 4,
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
+// Liliana, Waker of the Dead
+{
+    "name": "Liliana, Waker of the Dead",
+    "manaCost": "{2}{B}{B}",
+    "typeLine": "Legendary Planeswalker — Liliana",
+    "oracleText": "+1: Each player discards a card. Each opponent who can't loses 3 life.\n−3: Target creature gets -X/-X until end of turn, where X is the number of cards in your graveyard.\n−7: You get an emblem with \"At the beginning of combat on your turn, put target creature card from a graveyard onto the battlefield under your control. It gains haste.\"",
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Liliana, Waker of the Dead:1",
+                "cost": {
+                    "type": "CostLoyalty",
+                    "change": 1
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "ForEach",
+                            "space": {
+                                "type": "IterationSpace.Players",
+                                "players": "EachOpponent"
+                            },
+                            "body": {
+                                "type": "Gated",
+                                "gate": {
+                                    "type": "Gate.WhenCondition",
+                                    "condition": {
+                                        "type": "Exists",
+                                        "player": "You",
+                                        "zone": "Hand",
+                                        "negate": true
+                                    }
+                                },
+                                "then": {
+                                    "type": "StorePlayer",
+                                    "storeAs": "players1"
+                                }
+                            },
+                            "collectCollections": {
+                                "players1": "collected2"
+                            }
+                        },
+                        {
+                            "type": "ForEach",
+                            "space": {
+                                "type": "IterationSpace.Players",
+                                "players": "ActivePlayerFirst"
+                            },
+                            "body": {
+                                "type": "Composite",
+                                "effects": [
+                                    {
+                                        "type": "GatherCards",
+                                        "source": {
+                                            "type": "FromZone",
+                                            "zone": "Hand"
+                                        },
+                                        "storeAs": "gathered4"
+                                    },
+                                    {
+                                        "type": "SelectFromCollection",
+                                        "from": "gathered4",
+                                        "selection": {
+                                            "type": "ChooseExactly",
+                                            "count": {
+                                                "type": "Fixed",
+                                                "amount": 1
+                                            }
+                                        },
+                                        "storeSelected": "selected5",
+                                        "prompt": "Choose a card to discard"
+                                    }
+                                ]
+                            },
+                            "collectCollections": {
+                                "selected5": "collected6"
+                            }
+                        },
+                        {
+                            "type": "MoveCollection",
+                            "from": "collected6",
+                            "destination": {
+                                "type": "ToZone",
+                                "zone": "Graveyard"
+                            },
+                            "moveType": "Discard"
+                        },
+                        {
+                            "type": "ForEach",
+                            "space": {
+                                "type": "IterationSpace.Players",
+                                "players": {
+                                    "type": "InCollection",
+                                    "collection": "collected2"
+                                }
+                            },
+                            "body": {
+                                "type": "LoseLife",
+                                "amount": {
+                                    "type": "Fixed",
+                                    "amount": 3
+                                },
+                                "target": "Controller"
+                            }
+                        }
+                    ],
+                    "descriptionOverride": "Each player discards a card. Each opponent who can't loses 3 life."
+                },
+                "timing": "SorcerySpeed",
+                "isPlaneswalkerAbility": true
+            },
+            {
+                "id": "Liliana, Waker of the Dead:2",
+                "cost": {
+                    "type": "CostLoyalty",
+                    "change": -3
+                },
+                "effect": {
+                    "type": "ModifyStats",
+                    "powerModifier": {
+                        "type": "Multiply",
+                        "amount": {
+                            "type": "Count",
+                            "player": "You",
+                            "zone": "Graveyard"
+                        },
+                        "multiplier": -1
+                    },
+                    "toughnessModifier": {
+                        "type": "Multiply",
+                        "amount": {
+                            "type": "Count",
+                            "player": "You",
+                            "zone": "Graveyard"
+                        },
+                        "multiplier": -1
+                    },
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "creature"
+                        },
+                        "id": "t0"
+                    }
+                ],
+                "timing": "SorcerySpeed",
+                "isPlaneswalkerAbility": true
+            },
+            {
+                "id": "Liliana, Waker of the Dead:4",
+                "cost": {
+                    "type": "CostLoyalty",
+                    "change": -7
+                },
+                "effect": {
+                    "type": "CreateGlobalTriggeredAbility",
+                    "ability": {
+                        "id": "Liliana, Waker of the Dead:3",
+                        "trigger": {
+                            "type": "StepEvent",
+                            "step": "BEGIN_COMBAT"
+                        },
+                        "binding": "ANY",
+                        "effect": {
+                            "type": "Composite",
+                            "effects": [
+                                {
+                                    "type": "MoveToZone",
+                                    "target": {
+                                        "type": "BoundVariable",
+                                        "name": "t1"
+                                    },
+                                    "destination": "Battlefield",
+                                    "controllerOverride": "Controller",
+                                    "fromZone": "Graveyard"
+                                },
+                                {
+                                    "type": "GrantKeyword",
+                                    "keyword": "HASTE",
+                                    "target": {
+                                        "type": "BoundVariable",
+                                        "name": "t1"
+                                    },
+                                    "duration": "Permanent"
+                                }
+                            ]
+                        },
+                        "targetRequirement": {
+                            "type": "TargetObject",
+                            "filter": {
+                                "baseFilter": "creature",
+                                "zone": "Graveyard"
+                            },
+                            "id": "t1"
+                        },
+                        "descriptionOverride": "At the beginning of combat on your turn, put target creature card from a graveyard onto the battlefield under your control. It gains haste."
+                    },
+                    "descriptionOverride": "At the beginning of combat on your turn, put target creature card from a graveyard onto the battlefield under your control. It gains haste."
+                },
+                "timing": "SorcerySpeed",
+                "isPlaneswalkerAbility": true
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "108",
+        "rarity": "MYTHIC",
+        "artist": "Anna Steinbauer",
+        "imageUri": "https://cards.scryfall.io/normal/front/e/3/e329a3e2-6702-4758-8aac-c3017e77b619.jpg?1783930705",
+        "rulings": [
+            {
+                "date": "2020-06-23",
+                "text": "As Liliana's first ability resolves, first the player whose turn it is chooses a card in hand without revealing it, then each other player in turn order does the same. Then all the chosen cards are discarded at the same time. Finally, each opponent who couldn't discard a card loses 3 life."
+            },
+            {
+                "date": "2020-06-23",
+                "text": "A player who has a card in hand can't choose to lose 3 life instead of discarding a card."
+            },
+            {
+                "date": "2020-06-23",
+                "text": "If you have no cards in hand, you just don't discard anything. You don't lose 3 life. Other players still discard if able."
+            },
+            {
+                "date": "2020-06-23",
+                "text": "The value of X is determined only as Liliana's second ability resolves. Once that happens, the value of X won't change later in the turn even if the number of cards in your graveyard changes."
+            },
+            {
+                "date": "2020-06-23",
+                "text": "Creatures put onto the battlefield with Liliana's emblem gain haste indefinitely."
+            }
+        ]
+    },
+    "startingLoyalty": 4,
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
+// Llanowar Visionary
+{
+    "name": "Llanowar Visionary",
+    "manaCost": "{2}{G}",
+    "typeLine": "Creature — Elf Druid",
+    "oracleText": "When this creature enters, draw a card.\n{T}: Add {G}.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 2
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Llanowar Visionary:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "DrawCards",
+                    "count": {
+                        "type": "Fixed",
+                        "amount": 1
+                    }
+                }
+            }
+        ],
+        "activatedAbilities": [
+            {
+                "id": "Llanowar Visionary:2",
+                "cost": "CostTap",
+                "effect": {
+                    "type": "AddMana",
+                    "color": "GREEN"
+                },
+                "timing": "ManaAbility",
+                "isManaAbility": true
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "193",
+        "artist": "Cristi Balanescu",
+        "flavorText": "The elves of Llanowar look to their past to determine the shape of their future.",
+        "imageUri": "https://cards.scryfall.io/normal/front/d/6/d6e23afa-7e08-4049-baf0-d4d0134ba2c8.jpg?1783930671"
+    },
+    "colorIdentityOverride": [
+        "GREEN"
+    ]
+}
+
+// Lofty Denial
+{
+    "name": "Lofty Denial",
+    "manaCost": "{1}{U}",
+    "typeLine": "Instant",
+    "oracleText": "Counter target spell unless its controller pays {1}. If you control a creature with flying, counter that spell unless its controller pays {4} instead.",
+    "script": {
+        "spellEffect": {
+            "type": "Gated",
+            "gate": {
+                "type": "Gate.WhenCondition",
+                "condition": {
+                    "type": "Exists",
+                    "player": "You",
+                    "zone": "Battlefield",
+                    "filter": "creature kw:flying"
+                }
+            },
+            "then": {
+                "type": "Counter",
+                "condition": {
+                    "type": "CounterCondition.UnlessPaysMana",
+                    "cost": "{4}"
+                }
+            },
+            "otherwise": {
+                "type": "Counter",
+                "condition": {
+                    "type": "CounterCondition.UnlessPaysMana",
+                    "cost": "{1}"
+                }
+            }
+        },
+        "targetRequirements": [
+            {
+                "type": "TargetObject",
+                "filter": {
+                    "baseFilter": {},
+                    "zone": "Stack"
+                },
+                "id": "t0"
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "56",
+        "artist": "Manuel Castañón",
+        "flavorText": "The mage scowled as yet another bolt splashed harmlessly against seemingly empty air.",
+        "imageUri": "https://cards.scryfall.io/normal/front/6/4/64832674-beb1-446e-b2f7-8a5e271139a5.jpg?1783930725",
+        "rulings": [
+            {
+                "date": "2020-06-23",
+                "text": "If you control more than one creature with flying, Lofty Denial still requires only {4}."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "BLUE"
     ]
 }
 
