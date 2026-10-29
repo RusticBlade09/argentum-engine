@@ -504,9 +504,13 @@ object DamageUtils {
             val currentLife = newState.lifeTotal(targetId)
             var lifeLossAmount = applyStaticLifeLossModification(newState, targetId, effectiveAmount, predicateEvaluator = zones.predicateEvaluator)
             lifeLossAmount = applyLifeLossFloors(newState, targetId, currentLife, lifeLossAmount, predicateEvaluator = zones.predicateEvaluator)
+            val firstLoss = isFirstLifeLossThisTurn(newState, targetId)
             val (written, newLife) = writeLifeReduction(newState, targetId, currentLife, currentLife - lifeLossAmount, zones.predicateEvaluator)
-            newState = trackDamageReceivedByPlayer(written, targetId, effectiveAmount, sourceId, isCombatDamage)
-            events.add(LifeChangedEvent(targetId, currentLife, newLife, LifeChangeReason.DAMAGE))
+            // A loss a floor or replacement cancelled isn't a loss: it mustn't spend "first time this turn".
+            newState = trackDamageReceivedByPlayer(
+                written, targetId, effectiveAmount, sourceId, isCombatDamage, causedLifeLoss = newLife < currentLife
+            )
+            events.add(LifeChangedEvent(targetId, currentLife, newLife, LifeChangeReason.DAMAGE, firstLoss))
         } else if (projected.isPlaneswalker(targetId)) {
             // It's a planeswalker - remove loyalty counters equal to damage dealt
             if (sourceId != null) {
@@ -870,6 +874,18 @@ object DamageUtils {
     }
 
     /**
+     * Whether [playerId] has not lost life yet this turn — i.e. the loss about to happen is the
+     * turn's first. Read *before* the loss is marked ([markLifeLostThisTurn] /
+     * [trackDamageReceivedByPlayer]) to stamp a losing [LifeChangedEvent.firstThisTurn], for
+     * "whenever an opponent loses life for the first time during each of their turns" (Valgavoth,
+     * Harrower of Souls). Turn history, not a trigger cap: a loss earlier in the turn — before the
+     * watching permanent entered — still makes later losses not-first.
+     */
+    fun isFirstLifeLossThisTurn(state: GameState, playerId: EntityId): Boolean =
+        state.getEntity(playerId)
+            ?.has<com.wingedsheep.engine.state.components.player.LifeLostThisTurnComponent>() != true
+
+    /**
      * Mark that [playerId] lost life this turn (non-damage life loss, e.g., from LoseLife effects or payments).
      * Sets the LifeLostThisTurnComponent (existence flag) and accumulates [amount] onto the
      * LifeLostAmountThisTurnComponent. The amount is used by
@@ -950,8 +966,9 @@ object DamageUtils {
         }
         val (written, newLife) = writeLifeReduction(state, playerId, currentLife, currentLife - lossAmount, predicateEvaluator)
         if (newLife == currentLife && lossAmount > 0) return written to null
+        val firstLoss = isFirstLifeLossThisTurn(written, playerId)
         val newState = markLifeLostThisTurn(written, playerId, currentLife - newLife)
-        return newState to LifeChangedEvent(playerId, currentLife, newLife, reason)
+        return newState to LifeChangedEvent(playerId, currentLife, newLife, reason, firstLoss)
     }
 
     /**
