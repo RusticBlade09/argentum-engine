@@ -315,6 +315,10 @@ class TriggerMatcher(
                     // CastSpellHandler appends the spell being cast before triggers are detected,
                     // so this count includes it and the `== nthSpell` comparison stays the same.
                     val records = state.spellsCastThisTurnByPlayer[event.casterId] ?: emptyList()
+                    // The spell being cast must itself match: a creature spell cast after the first
+                    // noncreature one would otherwise see that count still at 1 and fire again.
+                    val thisCast = records.lastOrNull { it.sourceEntityId == event.spellEntityId }
+                    if (thisCast == null || !predicateEvaluator.matchesFilter(thisCast, spellFilter)) return false
                     records.count { predicateEvaluator.matchesFilter(it, spellFilter) }
                 }
                 currentCount == trigger.nthSpell
