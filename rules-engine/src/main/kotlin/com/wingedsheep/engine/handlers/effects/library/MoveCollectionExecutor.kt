@@ -83,6 +83,12 @@ class MoveCollectionExecutor(
             allCards
         }
 
+        // Cards a controlled search found (Opposition Agent) are exiled instead of going where the
+        // instruction says, and the player who controlled the search may play them. The rest of the
+        // collection moves as written, without them — later steps can't see them in exile.
+        val searchFound = LibrarySearchControl.foundCards(context.pipeline.storedCollections, cards)
+        if (searchFound.isNotEmpty()) return exileSearchFound(state, effect, context, cards, searchFound)
+
         if (effect.moveType == MoveType.Discard) context = context.copy(discardCollectionName = effect.from)
         val destination = effect.destination
         // How many cards this moves is hidden when hidden cards decided the collection, or when
@@ -249,6 +255,49 @@ class MoveCollectionExecutor(
         }
         return withDepartedPermanents(state, result, cards)
     }
+
+    private fun exileSearchFound(
+        state: GameState,
+        effect: MoveCollectionEffect,
+        context: EffectContext,
+        cards: List<EntityId>,
+        found: Map<EntityId, EntityId>,
+    ): EffectResult {
+        var newState = state
+        val events = mutableListOf<GameEvent>()
+        for ((owner, owned) in found.keys.groupBy { ownerOf(state, it) ?: context.controllerId }) {
+            val exiled = moveCardsToZone(
+                newState, context, owned, CardDestination.ToZone(Zone.EXILE), owner, revealed = effect.revealed
+            )
+            if (exiled.outcome !is Outcome.Done) return exiled
+            newState = exiled.state
+            events += exiled.events
+        }
+        for ((controller, granted) in found.entries.groupBy({ it.value }, { it.key })) {
+            newState = LibrarySearchControl.grantPlay(newState, granted, controller, context.sourceId)
+        }
+        // Found cards are gone from every collection, so no later step can see them in exile — not
+        // this collection, not an alias of it, not a controlled-search pool.
+        val stripped = context.pipeline.storedCollections
+            .filterValues { pool -> pool.any { it in found } }
+            .mapValues { (_, pool) -> pool.filter { it !in found } }
+        val rest = cards.filter { it !in found }
+        if (rest.isEmpty()) {
+            return EffectResult.success(newState, events).copy(
+                updatedCollections = stripped + listOfNotNull(effect.storeMovedAs).associateWith { emptyList() }
+            )
+        }
+        val restResult = execute(
+            newState, effect.copy(filter = null),
+            context.copy(pipeline = context.pipeline.copy(
+                storedCollections = context.pipeline.storedCollections + stripped + (effect.from to rest)
+            ))
+        )
+        return restResult.copy(events = events + restResult.events, updatedCollections = stripped + restResult.updatedCollections)
+    }
+
+    private fun ownerOf(state: GameState, cardId: EntityId): EntityId? =
+        state.getEntity(cardId)?.get<OwnerComponent>()?.playerId ?: state.getEntity(cardId)?.get<CardComponent>()?.ownerId
 
     /**
      * Point each card that entered attacking at the defender its controller chose for it (CR 508.4).

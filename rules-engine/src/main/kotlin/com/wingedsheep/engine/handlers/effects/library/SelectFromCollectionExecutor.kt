@@ -204,6 +204,7 @@ class SelectFromCollectionExecutor(
             val collections = mutableMapOf(effect.storeSelected to selected)
             if (remainderName != null) collections[remainderName] = cards.filter { it !in selected }
             collections += HiddenPools.marks(listOfNotNull(effect.storeSelected, remainderName), hiddenDeciders, prior)
+            collections += LibrarySearchControl.narrowPool(prior, effect.from, cards, selected)
             return EffectResult.success(stateAfter).copy(updatedCollections = collections)
         }
         // Nothing the chooser could pick, asked anyway: the empty selection is the only answer, so
@@ -524,7 +525,10 @@ class SelectFromCollectionExecutor(
         spellFaces: Map<EntityId, List<Int>>? = null,
         hiddenDeciders: List<EntityId> = emptyList()
     ): EffectResult {
-        val playerId = decidingPlayerId ?: context.controllerId
+        // A searcher someone else controls while they search (Opposition Agent) doesn't make the pick.
+        val playerId = LibrarySearchControl.decider(
+            context.pipeline.storedCollections, effect.from, decidingPlayerId ?: context.controllerId
+        )
         val sourceName = context.sourceId?.let { sourceId ->
             state.getEntity(sourceId)?.get<CardComponent>()?.name
         }
@@ -562,11 +566,18 @@ class SelectFromCollectionExecutor(
 
         val librarySearch = context.pipeline.storedCollections[PipelineState.searchedKey(effect.from)]
             .orEmpty().isNotEmpty()
+        // The controlling player picks for the searcher, and what they find is exiled for the picker.
+        val controlledSearch = playerId != (decidingPlayerId ?: context.controllerId)
 
         val decision = { decisionId: String -> SelectCardsDecision(
             id = decisionId,
             playerId = playerId,
-            prompt = prompt,
+            prompt = if (controlledSearch) {
+                // The authored prompt speaks to the searcher, and names a destination the cards
+                // won't reach: say whose search it is and where the found cards go instead.
+                val what = prompt.replace(Regex("\\byour\\b"), "their").replace(Regex(" to put .*$"), "")
+                "You control your opponent's search. $what — the cards found are exiled, and you may play them"
+            } else prompt,
             context = DecisionContext(
                 sourceId = context.sourceId,
                 sourceName = sourceName,
@@ -577,7 +588,7 @@ class SelectFromCollectionExecutor(
             maxSelections = maxSelections,
             ordered = false,
             cardInfo = cardInfoMap,
-            selectedLabel = effect.selectedLabel,
+            selectedLabel = if (controlledSearch) "Exile — you may play it" else effect.selectedLabel,
             remainderLabel = effect.remainderLabel,
             useTargetingUI = effect.useTargetingUI,
             nonSelectableOptions = nonSelectableCards,
