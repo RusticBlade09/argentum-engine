@@ -935,12 +935,55 @@ class TournamentLobby(
         players[playerId] = LobbyPlayerState(identity = identity)
         identity.currentLobbyId = lobbyId
 
-        if (hostPlayerId == null) {
+        // A human joining a lobby whose host seat fell to an AI takes it back: an AI never
+        // starts or configures a lobby, so leaving it as host strands everyone waiting.
+        if (hostPlayerId == null || (!identity.isAi && !hostIsHuman)) {
             hostPlayerId = playerId
         }
 
         return playerId
     }
+
+    /** True while at least one seat belongs to a human player. */
+    val hasHumanPlayers: Boolean get() = players.values.any { !it.identity.isAi }
+
+    private val hostIsHuman: Boolean
+        get() = hostPlayerId?.let { players[it] }?.identity?.isAi == false
+
+    /**
+     * Pick a new host after the current one left: a human when one remains, else any seat (an
+     * AI-only tournament still needs a host id to drive it). [players] is a hash map, so "first"
+     * is arbitrary — the human preference is what keeps the lobby startable.
+     */
+    private fun reassignHost() {
+        hostPlayerId = players.entries.firstOrNull { !it.value.identity.isAi }?.key
+            ?: players.keys.firstOrNull()
+    }
+
+    /**
+     * Hand the host seat to a human if an AI holds it while humans are seated — repairs lobbies
+     * that reached that state before host transfer preferred humans. Returns true if it changed.
+     */
+    fun repairHost(): Boolean {
+        if (hostIsHuman || !hasHumanPlayers) return false
+        reassignHost()
+        return true
+    }
+
+    /**
+     * A lobby still gathering players that no human sits in any more. Nobody can start it, so
+     * it should be closed rather than left advertising open seats behind an AI "host".
+     */
+    val isAbandonedByHumans: Boolean
+        get() = state == LobbyState.WAITING_FOR_PLAYERS && !hasHumanPlayers
+
+    /**
+     * Release every seat's lobby pointer ahead of closing the lobby. Returns the AI identities,
+     * which exist only for this lobby and should be unregistered by the caller.
+     */
+    fun vacateSeats(): List<PlayerIdentity> = players.values.map { it.identity }.onEach {
+        if (it.currentLobbyId == lobbyId) it.currentLobbyId = null
+    }.filter { it.isAi }
 
     /**
      * Remove a player from the lobby (for disconnection).
@@ -955,9 +998,7 @@ class TournamentLobby(
         if (state == LobbyState.WAITING_FOR_PLAYERS) {
             players.remove(playerId)
             // Transfer host if the host left
-            if (hostPlayerId == playerId) {
-                hostPlayerId = players.keys.firstOrNull()
-            }
+            if (hostPlayerId == playerId) reassignHost()
         }
         // During tournament, the player state remains in `players` but their identity
         // is disconnected - they can rejoin using the lobby code
@@ -972,9 +1013,7 @@ class TournamentLobby(
         playerState.identity.currentLobbyId = null
 
         // Transfer host if the host left
-        if (hostPlayerId == playerId) {
-            hostPlayerId = players.keys.firstOrNull()
-        }
+        if (hostPlayerId == playerId) reassignHost()
     }
 
     /**
