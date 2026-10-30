@@ -1182,6 +1182,8 @@ export type GameStore = {
     secondCommander?: string | null,
     /** The deck's companion (CR 702.139), a sideboard card; null for none. */
     companion?: string | null,
+    /** The format the deck was built for, or null; see `SubmitQuickGameLobbyDeckMessage.deckFormat`. */
+    deckFormat?: string | null,
   ) => void
   setQuickGameLobbyReady: (ready: boolean) => void
   setQuickGameLobbySetCode: (setCodes: readonly string[]) => void

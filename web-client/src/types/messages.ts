@@ -3757,6 +3757,11 @@ export interface SubmitQuickGameLobbyDeckMessage {
    * listed there, checks against the deck, and reveals outside the game at game start.
    */
   readonly companion?: string
+  /**
+   * The format the deck was built for (a saved deck's or an example's), upper-case. The server
+   * keeps it only when the deck is legal there, and an AI on Auto builds a deck for it.
+   */
+  readonly deckFormat?: string
 }
 
 export interface SetQuickGameLobbyReadyMessage {
@@ -3845,6 +3850,7 @@ export function createSubmitQuickGameLobbyDeckMessage(
   secondCommander?: string | null,
   secondCommanderPrinting?: PrintingRef,
   companion?: string | null,
+  deckFormat?: string | null,
 ): SubmitQuickGameLobbyDeckMessage {
   return {
     type: 'submitQuickGameLobbyDeck',
@@ -3856,6 +3862,7 @@ export function createSubmitQuickGameLobbyDeckMessage(
     ...(commander && secondCommander && secondCommanderPrinting ? { secondCommanderPrinting } : {}),
     ...(sideboard && Object.keys(sideboard).length > 0 ? { sideboard } : {}),
     ...(companion ? { companion } : {}),
+    ...(deckFormat ? { deckFormat: deckFormat.toUpperCase() } : {}),
   }
 }
 export function createSetQuickGameLobbyReadyMessage(ready: boolean): SetQuickGameLobbyReadyMessage {

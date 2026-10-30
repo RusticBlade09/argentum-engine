@@ -23,8 +23,8 @@ import kotlin.random.Random
  * printed there), isn't the human's own deck in disguise ([MAX_OVERLAP]), has the shape the lobby
  * plays (a commander exactly when the game uses commanders), and passes the lobby's format.
  *
- * A tuned constructed deck spread over many sets has no set identity to match, so the resolver
- * matches it on power instead, by [formatTier]: the narrowest constructed format it is legal in.
+ * A constructed deck spread over many sets has no set identity to match, so the resolver matches
+ * it by format instead ([matchFormat]).
  */
 @Component
 class PremadeOpponentPicker(
@@ -59,36 +59,35 @@ class PremadeOpponentPicker(
     }
 
     /**
-     * The narrowest constructed format [deck] is legal in — or null when it isn't tuned (most of its
-     * non-basic copies outside playsets: a pile, not a list), or is legal in none of them.
+     * The format to build an opponent for [deck] in, or null when none applies.
      *
-     * Pauper comes first because commons-only is a power ceiling of its own; past it the formats
-     * nest, each card pool a superset of the one before. A lobby restriction [within] limits the
-     * answer to tiers whose decks it admits, so the AI's deck stays legal there: Pauper only under
-     * Pauper, Standard up to Modern under Modern, and null under a format outside the ladder
-     * (Premodern, the singleton shapes).
+     * In order: the format the deck [declared] it was built for (checked legal when it was
+     * submitted), when the lobby admits it; else the lobby's own [lobbyFormat] — narrowed, on the
+     * Standard-to-Vintage ladder, to the smallest step the deck is legal in, so a Standard deck in
+     * a Modern lobby meets a Standard deck; else, with no lobby restriction, the narrowest step of
+     * that ladder the deck is legal in. Commander-shaped formats never apply — a commander game
+     * builds its own deck.
      */
-    fun formatTier(deck: Map<String, Int>, within: DeckFormat? = null): DeckFormat? {
-        val tiers = when (within) {
-            null -> listOf(DeckFormat.PAUPER) + NESTED_TIERS
-            DeckFormat.PAUPER -> listOf(DeckFormat.PAUPER)
-            in NESTED_TIERS -> NESTED_TIERS.subList(0, NESTED_TIERS.indexOf(within) + 1)
-            else -> return null
+    fun matchFormat(deck: Map<String, Int>, declared: DeckFormat?, lobbyFormat: DeckFormat?): DeckFormat? {
+        if (declared != null && !declared.isCommanderShape && admits(lobbyFormat, declared)) return declared
+        return when {
+            lobbyFormat == null -> narrowestLegal(deck, NESTED_FORMATS)
+            lobbyFormat in NESTED_FORMATS ->
+                narrowestLegal(deck, NESTED_FORMATS.subList(0, NESTED_FORMATS.indexOf(lobbyFormat) + 1))
+            lobbyFormat.isCommanderShape -> null
+            else -> lobbyFormat
         }
-        if (!isTuned(deck)) return null
-        return tiers.firstOrNull { deckValidator.validate(deck, it).valid }
     }
 
-    /** At least [MIN_PLAYSET_SHARE] of the non-basic copies come three or more to a name. */
-    private fun isTuned(deck: Map<String, Int>): Boolean {
-        val nonBasics = setInference.nonBasicNames(deck)
-        val copies = deck.filterKeys { it.substringBefore('#') in nonBasics }
-            .entries
-            .groupBy({ it.key.substringBefore('#') }, { it.value })
-            .mapValues { (_, counts) -> counts.sum() }
-            .values
-        val total = copies.sum()
-        return total > 0 && copies.filter { it >= PLAYSET_MIN }.sum() >= total * MIN_PLAYSET_SHARE
+    private fun narrowestLegal(deck: Map<String, Int>, formats: List<DeckFormat>): DeckFormat? =
+        formats.firstOrNull { deckValidator.validate(deck, it).valid }
+
+    /** Whether a lobby restricted to [lobbyFormat] accepts a deck built for [format]. */
+    private fun admits(lobbyFormat: DeckFormat?, format: DeckFormat): Boolean = when {
+        lobbyFormat == null || lobbyFormat == format -> true
+        lobbyFormat in NESTED_FORMATS && format in NESTED_FORMATS ->
+            NESTED_FORMATS.indexOf(format) <= NESTED_FORMATS.indexOf(lobbyFormat)
+        else -> false
     }
 
     private fun isLegal(starter: DecksController.ExampleDeckDTO, format: DeckFormat): Boolean =
@@ -113,17 +112,13 @@ class PremadeOpponentPicker(
         /** Past this, the "sibling" is the human's own starter (or a light edit of it). */
         const val MAX_OVERLAP = 0.5
 
-        /** The formats whose card pools nest, weakest first; see [formatTier]. */
-        val NESTED_TIERS = listOf(
+        /** The formats whose card pools nest, smallest first; see [matchFormat]. */
+        val NESTED_FORMATS = listOf(
             DeckFormat.STANDARD,
             DeckFormat.PIONEER,
             DeckFormat.MODERN,
             DeckFormat.LEGACY,
             DeckFormat.VINTAGE,
         )
-
-        /** Three copies counts as a playset: lists run 3-ofs of cards they want but can't afford four of. */
-        const val PLAYSET_MIN = 3
-        const val MIN_PLAYSET_SHARE = 0.6
     }
 }

@@ -54,14 +54,12 @@ import org.springframework.stereotype.Component
  * from those sets in the shape of the human's own (a 60-card constructed build against a 60-card
  * list, a sealed pool against a 40-card one), else the unmatched answer above.
  *
- * **A tuned constructed list with no set identity is matched on power instead.** A Standard deck
+ * **A constructed list with no set identity is matched by format instead.** A Standard deck
  * spread over a dozen sets has nothing to match, and its unmatched answer was a sealed pool from a
- * random set — 40 singletons against 60 cards of playsets, which the AI lost nine times in ten. It
- * now meets a deck generated to the narrowest format the list is legal in, playsets and all; see
- * [PremadeOpponentPicker.formatTier] for what "tuned" and "tier" mean. Card ratings were tried as
- * the power signal and rejected: they are limited ratings, and they ranked a lifegain list that won
- * nine games in ten as the weakest of the Standard starters. An untuned pile and a human on Random
- * keep the unmatched answer.
+ * random set — 40 singletons against a tuned 60, which the AI lost nine times in ten. It now meets
+ * a deck generated for the format the list was built for: the one its saved deck or example
+ * declares, else the lobby's, else the narrowest of the nested constructed formats it is legal in
+ * ([PremadeOpponentPicker.matchFormat]). A human on Random keeps the unmatched answer.
  */
 @Component
 class RandomDeckResolver(
@@ -114,6 +112,7 @@ class RandomDeckResolver(
         fallbackSetCode: String,
         commanderRules: Boolean,
         opponentDeck: Map<String, Int>?,
+        opponentDeckFormat: DeckFormat? = null,
     ): GeneratedDeck {
         val sets = if (spec is AiDeckSpec.Auto && !opponentDeck.isNullOrEmpty()) {
             setInference.setsOf(opponentDeck)
@@ -122,7 +121,7 @@ class RandomDeckResolver(
         }
         if (opponentDeck == null || sets.isEmpty()) {
             if (spec is AiDeckSpec.Auto && opponentDeck != null) {
-                powerMatchedDeck(opponentDeck, format, commanderRules)?.let { return it }
+                formatMatchedDeck(opponentDeck, opponentDeckFormat, format, commanderRules)?.let { return it }
             }
             return resolve(spec, format, fallbackSetCode, commanderRules)
         }
@@ -131,37 +130,49 @@ class RandomDeckResolver(
             logger.info("AI plays a sibling starter from {} against the human's deck", sets.joinToString(", "))
             return starter
         }
-        return matchedDeck(format, sets, commanderRules, opponentDeck.values.sum())
+        // Built out of the deck's sets, to the format it was built for when it declared one.
+        val buildFormat = if (opponentDeckFormat != null && !commanderRules) {
+            premadePicker.matchFormat(opponentDeck, opponentDeckFormat, format) ?: format
+        } else {
+            format
+        }
+        return matchedDeck(buildFormat, sets, commanderRules, opponentDeck.values.sum())
             ?: resolve(spec, format, fallbackSetCode, commanderRules)
     }
 
     /**
-     * An opponent at the power of [opponentDeck], a tuned constructed list with no set identity: a
-     * deck generated to the narrowest format the list is legal in, from that format's whole card
-     * base. Generated rather than picked from the curated starters so the AI's list turns over from
-     * game to game the way a sealed pool does. Null — the caller's unmatched answer — for a
-     * commander game, a limited-sized list, an untuned pile, or a list outside the format ladder.
+     * A deck generated for the format [opponentDeck] — a constructed list with no set identity — is
+     * played in ([matchedFormat]), from that format's whole card base. Generated rather than picked
+     * from the curated starters so the AI's list turns over from game to game the way a sealed pool
+     * does. Null — the caller's unmatched answer — when no format applies.
      */
-    private fun powerMatchedDeck(
+    private fun formatMatchedDeck(
         opponentDeck: Map<String, Int>,
+        opponentDeckFormat: DeckFormat?,
         format: DeckFormat?,
         commanderRules: Boolean,
     ): GeneratedDeck? {
-        val tier = powerTier(opponentDeck, format, commanderRules) ?: return null
-        logger.info("AI builds a {} deck to match the human's", tier.displayName)
-        return runCatching { constructedDeckGenerator.generateDeck(emptyList(), tier) }
-            .onFailure { logger.warn("Power-matched {} deck failed", tier.displayName, it) }
+        val target = matchedFormat(opponentDeck, opponentDeckFormat, format, commanderRules) ?: return null
+        logger.info("AI builds a {} deck to match the human's", target.displayName)
+        return runCatching { constructedDeckGenerator.generateDeck(emptyList(), target) }
+            .onFailure { logger.warn("Format-matched {} deck failed", target.displayName, it) }
             .getOrNull()
     }
 
     /**
-     * The format an Auto AI seat would build to against [opponentDeck] — a tuned constructed list
-     * with no set identity — or null when it would play the deck's sets or the unmatched answer.
+     * The format an Auto AI seat builds for against [opponentDeck], or null when it plays the
+     * deck's sets or the unmatched answer instead: a constructed-sized list with no set identity,
+     * outside a commander game. See [PremadeOpponentPicker.matchFormat] for which format.
      */
-    fun powerTier(opponentDeck: Map<String, Int>?, format: DeckFormat?, commanderRules: Boolean): DeckFormat? {
+    fun matchedFormat(
+        opponentDeck: Map<String, Int>?,
+        opponentDeckFormat: DeckFormat?,
+        format: DeckFormat?,
+        commanderRules: Boolean,
+    ): DeckFormat? {
         if (opponentDeck.isNullOrEmpty() || commanderRules || opponentDeck.values.sum() < CONSTRUCTED_DECK_SIZE) return null
         if (setInference.setsOf(opponentDeck).isNotEmpty()) return null
-        return premadePicker.formatTier(opponentDeck, within = format)
+        return premadePicker.matchFormat(opponentDeck, opponentDeckFormat, format)
     }
 
     /** The sets an Auto AI seat would match [opponentDeck] to; empty when it wouldn't match. */

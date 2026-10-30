@@ -75,9 +75,8 @@ class PremadeOpponentPickerTest : FunSpec({
         picker.pick(borosMice, listOf("DSK"), format = null, commanderRules = false) shouldBe null
     }
 
-    // --- A tuned constructed list with no set identity is matched on power, by the narrowest format
-    // the list is legal in. Orzhov Lifegain stands in for the human's list — a Standard deck spread
-    // over a dozen sets.
+    // --- A constructed list with no set identity is matched by format. Orzhov Lifegain stands in
+    // for the human's list — a Standard deck spread over a dozen sets.
 
     val orzhovLifegain = starters.getValue("standard_orzhov_lifegain").cards
 
@@ -85,20 +84,33 @@ class PremadeOpponentPickerTest : FunSpec({
         inference.setsOf(orzhovLifegain) shouldBe emptyList()
     }
 
-    test("a tuned Standard list reads as the Standard tier") {
-        picker.formatTier(orzhovLifegain) shouldBe DeckFormat.STANDARD
+    test("the format the deck was built for wins") {
+        picker.matchFormat(orzhovLifegain, declared = DeckFormat.PIONEER, lobbyFormat = null) shouldBe DeckFormat.PIONEER
+        picker.matchFormat(orzhovLifegain, declared = DeckFormat.HIGHLANDER, lobbyFormat = null) shouldBe DeckFormat.HIGHLANDER
     }
 
-    test("a lobby restriction caps the tier at what it admits") {
-        picker.formatTier(orzhovLifegain, within = DeckFormat.MODERN) shouldBe DeckFormat.STANDARD
-        picker.formatTier(orzhovLifegain, within = DeckFormat.PAUPER) shouldBe null
-        picker.formatTier(orzhovLifegain, within = DeckFormat.PREMODERN) shouldBe null
+    test("an undeclared list is matched to the narrowest nested format it is legal in") {
+        picker.matchFormat(orzhovLifegain, declared = null, lobbyFormat = null) shouldBe DeckFormat.STANDARD
     }
 
-    test("an untuned pile of the same cards has no tier") {
-        // Every non-basic as a singleton, topped up with Plains: legal, but a pile, not a list.
-        val pile = orzhovLifegain.keys.filter { it != "Plains" && it != "Swamp" }.associateWith { 1 } +
-            ("Plains" to 60 - orzhovLifegain.keys.count { it != "Plains" && it != "Swamp" })
-        picker.formatTier(pile) shouldBe null
+    test("a singleton list is matched like any other") {
+        // No playsets at all — strength isn't read off duplicates.
+        val singletons = orzhovLifegain.keys.filter { it != "Plains" && it != "Swamp" }
+        val list = singletons.associateWith { 1 } + ("Plains" to 60 - singletons.size)
+        picker.matchFormat(list, declared = null, lobbyFormat = null) shouldBe DeckFormat.STANDARD
+    }
+
+    test("the lobby's restriction bounds the match") {
+        // A Standard deck in a Modern lobby meets a Standard deck, not a Modern one.
+        picker.matchFormat(orzhovLifegain, declared = null, lobbyFormat = DeckFormat.MODERN) shouldBe DeckFormat.STANDARD
+        // A declaration the lobby doesn't admit falls back to the lobby.
+        picker.matchFormat(orzhovLifegain, declared = DeckFormat.MODERN, lobbyFormat = DeckFormat.STANDARD) shouldBe DeckFormat.STANDARD
+        // Off the nested ladder the lobby's format stands as it is.
+        picker.matchFormat(orzhovLifegain, declared = null, lobbyFormat = DeckFormat.PREMODERN) shouldBe DeckFormat.PREMODERN
+    }
+
+    test("commander shapes never apply") {
+        picker.matchFormat(orzhovLifegain, declared = DeckFormat.COMMANDER, lobbyFormat = null) shouldBe DeckFormat.STANDARD
+        picker.matchFormat(orzhovLifegain, declared = null, lobbyFormat = DeckFormat.COMMANDER) shouldBe null
     }
 })
