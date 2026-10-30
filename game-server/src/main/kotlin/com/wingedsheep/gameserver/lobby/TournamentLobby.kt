@@ -432,6 +432,8 @@ class TournamentLobby(
      * (CR 407.3). Never on together with [ranked] — the handlers clear one when the other is set.
      */
     var playingForAnte: Boolean = false,
+    /** When the lobby opened, for the public list's newest-first order. Not persisted: a restored lobby restarts its clock. */
+    val createdAt: Long = System.currentTimeMillis(),
 ) {
     var cube: ResolvedCube? = null
         private set
