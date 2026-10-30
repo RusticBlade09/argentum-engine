@@ -1317,9 +1317,14 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'playing',
     title: 'Yields — stop being asked',
     summary:
-      'Right-click (or long-press) an ability on the stack to open its yield menu: yield until end of turn, always yield, always answer Yes, always answer No, or revoke.',
+      'Tell the game to stop asking about a repeating ability: auto-pass it on the stack, or always answer its “you may” Yes or No. Every copy of the ability follows the same yield.',
     body: [
-      { kind: 'p', text: 'This is the fix for a repeating optional trigger asking you the same question every turn. Active yields are listed in a panel while they are in force, so you can revoke one at any time.' },
+      { kind: 'p', text: 'This is the fix for a repeating trigger asking you the same question every turn. There are three ways in:' },
+      { kind: 'p', text: '• When an ability asks “you may…”, tick Remember my answer under the Yes/No buttons. The answer you give becomes automatic for the rest of the game.' },
+      { kind: 'p', text: '• When an ability is on top of the stack, press the Yield… button under it. Choose Auto-pass this turn, Auto-pass all game, Always answer Yes or Always answer No.' },
+      { kind: 'p', text: '• Right-click any ability on the stack for the same menu.' },
+      { kind: 'p', text: 'An ability you are yielding to shows a small marker on the stack (Auto-pass, Always yes or Always no). All of them are listed in the Active yields panel in the bottom-right corner while they are in force. Click a marker to change it, or press × in the panel to be asked again.' },
+      { kind: 'tip', text: 'Yields never choose targets, order triggers, pick modes or pay costs for you. They only pass priority or answer a plain “you may”.' },
     ],
     shortcuts: ['stack-yield-menu'],
     related: ['priority-modes', 'trigger-order'],
