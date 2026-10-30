@@ -507,18 +507,19 @@ object TargetSelection {
     }
 
     /**
-     * Up to [count] of [ranked], best first, skipping any pick that would take the summed mana value
-     * over [cap] ("... with total mana value 6 or less", Kairi, the Swirling Sky).
+     * Up to [count] of [ranked], best first, skipping any pick that would take the summed value over
+     * [cap] ("... with total mana value 6 or less", Kairi, the Swirling Sky; "... with total power 10
+     * or less", Nethroi, Apex of Death). [values] are the decision's server-computed `targetValues`.
      */
-    fun underManaValueCap(state: GameState, ranked: List<EntityId>, cap: Int, count: Int): List<EntityId> {
+    fun underTotalCap(ranked: List<EntityId>, cap: Int, values: Map<EntityId, Int>?, count: Int): List<EntityId> {
         val picks = mutableListOf<EntityId>()
         var total = 0
         for (candidate in ranked) {
             if (picks.size == count) break
-            val manaValue = com.wingedsheep.engine.mechanics.ManaValues.of(state, candidate)
-            if (total + manaValue > cap) continue
+            val value = values?.get(candidate) ?: 0
+            if (total + value > cap) continue
             picks += candidate
-            total += manaValue
+            total += value
         }
         return picks
     }

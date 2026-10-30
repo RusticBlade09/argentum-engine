@@ -531,11 +531,14 @@ export interface TargetRequirementInfo {
   /** When true, every chosen card target must be owned by the same player ("from a single graveyard"). */
   readonly sameOwner?: boolean
   /**
-   * When set, the combined mana value of the chosen card targets may not exceed this cap
-   * ("any number of target creature cards with total mana value X or less" — Fire Lord Sozin).
-   * Already resolved to a concrete number server-side.
+   * When set, the summed value of the chosen targets may not exceed this cap ("any number of target
+   * creature cards with total power 10 or less" — Nethroi; "… total mana value X or less" — Fire
+   * Lord Sozin). Resolved server-side; `totalCapLabel` names the property and `targetValues` holds
+   * each candidate's share — all three set together.
    */
-  readonly totalManaValueAtMost?: number | null
+  readonly totalCap?: number | null
+  readonly totalCapLabel?: string | null
+  readonly targetValues?: Readonly<Record<EntityId, number>> | null
   /**
    * True for "another target" wording: a pick here must differ from every target chosen for an
    * earlier requirement. Absent/false lets separate "target" instances choose the same object

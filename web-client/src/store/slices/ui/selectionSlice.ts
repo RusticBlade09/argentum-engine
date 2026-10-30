@@ -3,6 +3,7 @@
  * decision selection, and mana source selection flows.
  */
 import { compatibleSelectionPool } from '@/utils/selectionGroups'
+import { wouldExceedTotalCaps } from '@/utils/targeting'
 import { decisionInteractionEpoch } from '@/network/liveAction'
 import { targetEntityId } from './pipelinePhases'
 import type {
@@ -569,18 +570,13 @@ export const createSelectionSlice: SliceCreator<SelectionSlice> = (set, get) => 
         }
       }
       if (!state.decisionSelectionState.validOptions.includes(cardId)) return state
-      const manaCap = state.decisionSelectionState.manaValueCap
-      if (manaCap != null) {
-        const valueOf = (id: EntityId) => manaCap.values[id] ?? 0
-        const kept = maxSelections === 1 ? [] : selectedOptions
-        const total = kept.reduce((sum, id) => sum + valueOf(id), 0) + valueOf(cardId)
-        if (total > manaCap.cap) {
-          return {
-            decisionSelectionState: {
-              ...state.decisionSelectionState,
-              warning: `The targets' total mana value can't exceed ${manaCap.cap} — deselect one first to pick this one.`,
-            },
-          }
+      const overCap = wouldExceedTotalCaps(state.decisionSelectionState.totalCaps ?? [], maxSelections === 1 ? [] : selectedOptions, cardId)
+      if (overCap) {
+        return {
+          decisionSelectionState: {
+            ...state.decisionSelectionState,
+            warning: `The targets' total ${overCap.label} can't exceed ${overCap.cap} — deselect one first to pick this one.`,
+          },
         }
       }
       if (selectedOptions.length < maxSelections) {
