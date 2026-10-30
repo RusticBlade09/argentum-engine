@@ -419,7 +419,14 @@ data class YesNoDecision(
      * only which answers it offers. A decision with this false is forced, so the AI and the human
      * auto-answer both say "no" without a prompt.
      */
-    val yesAvailable: Boolean = true
+    val yesAvailable: Boolean = true,
+    /**
+     * True when this is a pure "you may" question of a card ability that a persistent
+     * ALWAYS_ANSWER_YES / ALWAYS_ANSWER_NO yield on [DecisionContext.abilityIdentity] would answer
+     * next time — so the client can offer "don't ask again" right on the prompt. False for pay
+     * gates and anything else a yield never auto-answers.
+     */
+    val canRememberAnswer: Boolean = false
 ) : PendingDecision
 
 /**

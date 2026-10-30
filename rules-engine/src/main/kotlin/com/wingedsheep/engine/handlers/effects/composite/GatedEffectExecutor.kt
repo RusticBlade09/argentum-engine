@@ -343,7 +343,8 @@ class GatedEffectExecutor(
             peerOptions = labels != null,
             yesDetail = labels?.yesDetail,
             noDetail = labels?.noDetail,
-            yesAvailable = yesAvailable
+            yesAvailable = yesAvailable,
+            canRememberAnswer = gate is Gate.MayDecide && context.abilityIdentity != null
         ) }
 
         val continuation = GatedEffectContinuation(

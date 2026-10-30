@@ -2,7 +2,7 @@ import { ErrorCode, GameOverReason, ZoneType } from './enums'
 import { EntityId } from './entities'
 import { DecisionResponse, GameAction } from './actions'
 import { ClientEvent } from './events'
-import { ClientGameState, ClientCard, ClientZone, ClientPlayer, ClientCombatState, ClientCommanderDamage, ClientDeckCard, ClientRestrictedManaEntry } from './gameState'
+import { ClientGameState, ClientCard, ClientZone, ClientPlayer, ClientCombatState, ClientCommanderDamage, ClientDeckCard, ClientRestrictedManaEntry, ClientAbilityIdentity } from './gameState'
 
 // ============================================================================
 // Server Messages (received from server)
@@ -372,6 +372,8 @@ export interface DecisionContext {
   readonly subjectEntityId?: EntityId
   /** Validated resolution targets; render their identities from the masked state. */
   readonly targetIds?: readonly EntityId[]
+  /** Definition-scoped identity of the card ability asking, when there is one (yield key). */
+  readonly abilityIdentity?: ClientAbilityIdentity | null
 }
 
 /**
@@ -491,6 +493,11 @@ export interface YesNoDecision extends PendingDecisionBase {
    * is the only answer. Absent means true.
    */
   readonly yesAvailable?: boolean
+  /**
+   * A pure "you may" of a card ability that an Always Yes / Always No yield on
+   * `context.abilityIdentity` would answer — so the prompt can offer "remember my answer".
+   */
+  readonly canRememberAnswer?: boolean
 }
 
 /**
