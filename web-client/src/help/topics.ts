@@ -150,7 +150,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       ] },
       { kind: 'h', text: 'Side column' },
       { kind: 'ul', items: [
-        'Open lobbies — public lobbies anyone may join, newest first, with an online-player count. Each shows the table (1v1, Free-for-All, tournament…), what is being played, who is hosting and who has joined, and how many seats are left. With many lobbies, filter by 1v1 / Multiplayer / Tournaments or search by host, set or format. Refreshes every few seconds.',
+        'Open lobbies — public lobbies anyone may join, newest first, with an online-player count. Each shows the table (1v1, Free-for-All, tournament…), what is being played, who is hosting and who has joined, and how many seats are left. Seats taken by AI players are marked apart from people — square pips and a robot badge — so you can tell a table of humans from one padded with AI. With many lobbies, filter by 1v1 / Multiplayer / Tournaments or search by host, set or format. Refreshes every few seconds.',
         'Live Games — games in progress, each with a Spectate button.',
         'A Learn to Play row, and for guests a reminder of what a free account adds.',
       ] },

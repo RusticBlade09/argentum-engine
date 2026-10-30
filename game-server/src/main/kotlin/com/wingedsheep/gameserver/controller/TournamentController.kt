@@ -39,8 +39,10 @@ class TournamentController(
         val hostName: String? = null,
         /** The host's account avatar id, or null for a guest — drawn beside "Hosted by". */
         val hostAvatar: String? = null,
-        /** Seated human players, host first. AI seats are counted in [playerCount] only. */
+        /** Seated human players, host first. AI seats are counted in [playerCount] and [aiPlayerCount]. */
         val playerNames: List<String> = emptyList(),
+        /** How many of [playerCount]'s seats are held by AI players, so the list can tell them apart from people. */
+        val aiPlayerCount: Int = 0,
         /** TOURNAMENT (bracket), FREE_FOR_ALL, TWO_HEADED_GIANT or TEAM_VS_TEAM. */
         val gameMode: String = "TOURNAMENT",
         val ranked: Boolean = false,
@@ -104,6 +106,7 @@ class TournamentController(
                     hostName = host?.playerName,
                     hostAvatar = host?.avatar,
                     playerNames = humans.sortedBy { if (it.playerId == host?.playerId) 0 else 1 }.map { it.playerName },
+                    aiPlayerCount = lobby.playerCount - humans.size,
                     gameMode = lobby.gameMode.name,
                     ranked = lobby.ranked,
                     cubeName = lobby.cube?.name,

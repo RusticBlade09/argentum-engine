@@ -339,6 +339,28 @@
   color: var(--text-tertiary);
 }
 
+.aiBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  padding: 0 6px 0 4px;
+  color: var(--text-secondary, #c8c8d0);
+  font-size: 10.5px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+.botIcon {
+  width: 11px;
+  height: 11px;
+  opacity: 0.85;
+}
+
 .seats {
   display: inline-flex;
   align-items: center;
@@ -358,9 +380,17 @@
   border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
-.pip[data-filled='true'] {
+.pip[data-seat='human'] {
   background: var(--accent);
   border-color: var(--accent);
+}
+
+/* AI seats: taken, but not by a person — a square in the accent's outline with a faint fill,
+   so it reads as "occupied" without competing with the human pips. */
+.pip[data-seat='ai'] {
+  border-radius: 2px;
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 .seatCount {

@@ -6,6 +6,10 @@
  * Built for a busy server as well as a quiet one: past a handful of lobbies a category filter
  * appears, past a few more a search field (host, players, sets, format), and the list scrolls
  * inside the panel instead of pushing the rest of the side column off-screen.
+ *
+ * AI seats are drawn apart from people — square pips after the round human ones, and a robot
+ * badge in the byline — because "4/6" means something very different when three of the four
+ * are bots.
  */
 import { useMemo, useState } from 'react'
 import type { TournamentFormat } from '@/types'
@@ -26,6 +30,8 @@ export interface PublicTournamentSummary {
   hostName?: string | null
   hostAvatar?: string | null
   playerNames?: string[]
+  /** Seats in [playerCount] held by AI players. */
+  aiPlayerCount?: number
   gameMode?: 'TOURNAMENT' | 'FREE_FOR_ALL' | 'TWO_HEADED_GIANT' | 'TEAM_VS_TEAM'
   ranked?: boolean
   cubeName?: string | null
@@ -191,6 +197,7 @@ function LobbyRow({ entry, onJoin }: { entry: PublicLobbyEntry; onJoin: (entry: 
   const tags = lobbyTags(entry)
   const host = entry.hostName ?? null
   const others = (entry.playerNames ?? []).filter((n) => n !== host)
+  const aiSeats = aiSeatsOf(entry)
   const openSeats = Math.max(0, entry.maxPlayers - entry.playerCount)
   const waited = entry.openSeconds !== undefined ? formatWaited(entry.openSeconds) : null
 
@@ -234,27 +241,55 @@ function LobbyRow({ entry, onJoin }: { entry: PublicLobbyEntry; onJoin: (entry: 
           ) : (
             <span className={styles.hostText}>Host unknown</span>
           )}
+          {aiSeats > 0 && <AiBadge count={aiSeats} />}
         </span>
-        <SeatMeter filled={entry.playerCount} total={entry.maxPlayers} openSeats={openSeats} />
+        <SeatMeter filled={entry.playerCount} ai={aiSeats} total={entry.maxPlayers} openSeats={openSeats} />
       </div>
     </li>
   )
 }
 
-/** One pip per seat — the table filling up at a glance — with the count for the exact number. */
-function SeatMeter({ filled, total, openSeats }: { filled: number; total: number; openSeats: number }) {
-  const label = openSeats === 1 ? '1 seat left' : `${openSeats} seats left`
+/**
+ * One pip per seat — the table filling up at a glance — with the count for the exact number.
+ * People come first as round pips, AI seats follow as squares, so the two read apart by shape
+ * and not by colour alone.
+ */
+function SeatMeter({ filled, ai, total, openSeats }: { filled: number; ai: number; total: number; openSeats: number }) {
+  const humans = filled - ai
+  const left = openSeats === 1 ? '1 seat left' : `${openSeats} seats left`
+  const label = ai > 0 ? `${plural(humans, 'player')}, ${ai} AI, ${left}` : left
   return (
-    <span className={styles.seats} title={label} aria-label={`${filled} of ${total} players, ${label}`}>
+    <span className={styles.seats} title={label} aria-label={`${filled} of ${total} seats taken: ${label}`}>
       {total <= 8 && (
         <span className={styles.pips} aria-hidden>
           {Array.from({ length: total }, (_, i) => (
-            <span key={i} className={styles.pip} data-filled={i < filled} />
+            <span key={i} className={styles.pip} data-seat={i < humans ? 'human' : i < filled ? 'ai' : 'open'} />
           ))}
         </span>
       )}
       <span className={styles.seatCount} aria-hidden>{filled}/{total}</span>
     </span>
+  )
+}
+
+/** "3 AI" beside the host: the byline lists people by name, so the bots get a count of their own. */
+function AiBadge({ count }: { count: number }) {
+  const label = count === 1 ? '1 AI player' : `${count} AI players`
+  return (
+    <span className={styles.aiBadge} title={`${label} seated`} aria-label={`${label} seated`}>
+      <BotIcon />
+      {count} AI
+    </span>
+  )
+}
+
+function BotIcon() {
+  return (
+    <svg className={styles.botIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden focusable="false">
+      <path d="M12 4v3" />
+      <rect x="4" y="7" width="16" height="12" rx="3" />
+      <path d="M9 12v1.5M15 12v1.5" />
+    </svg>
   )
 }
 
@@ -274,6 +309,16 @@ function SearchIcon() {
       <path d="m20 20-3.5-3.5" />
     </svg>
   )
+}
+
+/** Quick-game listings never carry AI seats (vs-AI lobbies aren't public), so only tournaments report them. */
+function aiSeatsOf(entry: PublicLobbyEntry): number {
+  if (entry.kind !== 'tournament') return 0
+  return Math.max(0, Math.min(entry.aiPlayerCount ?? 0, entry.playerCount))
+}
+
+function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? '' : 's'}`
 }
 
 function categoryOf(entry: PublicLobbyEntry): Category {
@@ -334,6 +379,7 @@ function searchText(entry: PublicLobbyEntry): string {
   if (entry.kind === 'tournament') parts.push(...entry.setNames)
   else if (entry.setCode) parts.push(entry.setCode)
   if (entry.ranked) parts.push('ranked')
+  if (aiSeatsOf(entry) > 0) parts.push('ai bot')
   return parts.join(' ').toLowerCase()
 }
 
