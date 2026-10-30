@@ -167,6 +167,8 @@
 
 .row {
   --accent: #4ade80;
+  /* AI seats get their own hue, unused by any category accent, so a bot never passes for a person. */
+  --ai: #67e8f9;
   position: relative;
   flex: none;
   display: flex;
@@ -339,6 +341,28 @@
   color: var(--text-tertiary);
 }
 
+.aiBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  padding: 0 6px 0 4px;
+  color: var(--ai);
+  font-size: 10.5px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--ai) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ai) 45%, transparent);
+  border-radius: 999px;
+}
+
+.botIcon {
+  width: 12px;
+  height: 12px;
+}
+
 .seats {
   display: inline-flex;
   align-items: center;
@@ -358,9 +382,20 @@
   border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
-.pip[data-filled='true'] {
+.pip[data-seat='human'] {
   background: var(--accent);
   border-color: var(--accent);
+}
+
+/* AI seats: a cyan square, set off from the human pips by a gap, matching the "N AI" badge. */
+.pip[data-seat='ai'] {
+  border-radius: 1.5px;
+  background: var(--ai);
+  border-color: var(--ai);
+}
+
+.pip[data-group-start='true'] {
+  margin-left: 4px;
 }
 
 .seatCount {
