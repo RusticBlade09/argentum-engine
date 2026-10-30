@@ -51,6 +51,7 @@ import type { LobbyRecipe } from '../lobby/lobbyRecipe'
 import { AI_DISABLED_ON_SERVER } from '../lobby/modeMatrix'
 import { defaultSetCode } from '../lobby/useApplyRecipe'
 import { SetPickerModal } from './SetPickerModal'
+import { setProfile } from '@/components/setGuide/setProfiles'
 import { SetIcon } from './SetIcon'
 import { LaunchDeckChoice } from './LaunchDeckChoice'
 import { useStarterDecks, type StarterDeck } from '@/store/useStarterDecks'
@@ -217,6 +218,7 @@ function LaunchPanel({
   const opponents = effectiveOpponents(effective)
   const stages = stagesFor(effective)
   const set = availableSets.find((s) => s.code === setCode)
+  const setTagline = setCode ? setProfile(setCode)?.tagline : undefined
   const randomSet = availableSets.find((s) => s.code === randomSetCode)
   const isAi = effective.playWith === 'AI'
 
@@ -325,6 +327,11 @@ function LaunchPanel({
               <span className={styles.setName}>{set?.name ?? 'Choose a set'}</span>
               <span className={styles.setChange}>Change</span>
             </button>
+            {setTagline && <p className={styles.setTagline}>{setTagline}</p>}
+            {/* A new tab, so the choices made here survive the detour. */}
+            <a href="/sets" target="_blank" rel="noopener" className={styles.setGuideLink}>
+              Not sure which set? Compare them in the Set guide ↗
+            </a>
           </Field>
         )}
 
