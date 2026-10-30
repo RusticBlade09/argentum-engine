@@ -172,7 +172,7 @@ class MoveToZoneEffectExecutor(
         val entersHere = effect.destination == Zone.BATTLEFIELD && effect.faceDown == null &&
             !ZoneMovementUtils.entryRedirected(
                 state, targetId, currentZone.zoneType, controllerId, context.entryCopies[targetId],
-                cardRegistry, zones.predicateEvaluator
+                cardRegistry, zones.predicateEvaluator, effect.entersWith
             )
 
         if (entersHere) {
@@ -525,6 +525,7 @@ class MoveToZoneEffectExecutor(
             faceDown = isBattlefieldFaceDown,
             morphData = morphData,
             faceDownMode = if (isBattlefieldFaceDown) faceDownMode else null,
+            entersWith = effect.entersWith,
             // Single-card sibling of the collection path: the player resolving the effect chose
             // this card and saw where it went, so they keep knowing it. The audience policy —
             // including "out of a public zone means the whole table knows" — is
