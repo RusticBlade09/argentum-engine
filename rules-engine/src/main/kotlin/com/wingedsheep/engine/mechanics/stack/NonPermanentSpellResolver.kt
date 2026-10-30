@@ -1,5 +1,6 @@
 package com.wingedsheep.engine.mechanics.stack
 
+import com.wingedsheep.sdk.scripting.ChoiceSlot
 import com.wingedsheep.sdk.scripting.targets.TargetRequirement
 import com.wingedsheep.engine.state.components.identity.TextChanges
 import com.wingedsheep.engine.state.components.identity.TextReplacementComponent
@@ -547,8 +548,17 @@ internal class NonPermanentSpellResolver(
         //
         // Countered and fizzled spells really are put into a graveyard, and those paths don't read
         // the self-shuffle flag at all, so every clause here applies to them as usual.
+        //
+        // Buyback (CR 702.27a) replaces "into that player's graveyard" with its owner's hand. Against
+        // another graveyard-worded replacement (a rider, rebound) CR 616.1 lets the spell's controller
+        // choose; the engine doesn't ask and always applies buyback, the choice buyback was paid for
+        // (a rare pairing — e.g. a buyback spell cast through Kylox's Voltstrider). Flashback's "anywhere else" still applies
+        // after buyback has, so a flashed-back spell is exiled either way.
+        val boughtBack = spellComponent.declaredCostSlot == ChoiceSlot.BOUGHT_BACK && !flashbackExile &&
+            !cipherExile && !selfExile && !selfShuffleIntoLibrary
         val intendedDestination = when {
             cipherExile -> Zone.EXILE
+            boughtBack -> Zone.HAND
             // The rider is the most specific instruction on this one spell, so it outranks the
             // card-intrinsic exile reasons below rather than being OR'd into them — it is the only
             // one that can send the card somewhere other than exile (Kylox's Voltstrider — "put it
