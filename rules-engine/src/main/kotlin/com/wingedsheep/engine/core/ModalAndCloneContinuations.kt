@@ -699,31 +699,17 @@ data class CreateTokenCopyRemainingContinuation(
  * so the chosen effect can be executed with the correct targets.
  *
  * @property choosingPlayerId The player who is making the choice
- * @property controllerId The ability controller (for effect context)
- * @property sourceId The spell/ability source
  * @property sourceName Name of the source for display
  * @property choices The feasible choices presented to the player (indices match the decision options)
- * @property targets Original targets from the effect context (preserved for ContextTarget resolution)
- * @property namedTargets Named targets from the pipeline state
- * @property triggeringEntityId The entity that triggered the ability
- * @property chosenCounterType The kind an enclosing counter-kind loop is visiting, so a chosen
- *   `RemoveCountersOfIteratedKind` / `AddCountersOfChosenKind(kindFrom = ITERATION)` still reads it
+ * @property context The whole effect context at the choice — targets, X, triggering entity and
+ *   player, pipeline state (stored collections and numbers), the counter kind an enclosing loop is
+ *   visiting — so the chosen effect resolves exactly as it would have without the pause (Finale of
+ *   Devastation's "mana value X or less" after its zone choice).
  */
 @Serializable
 data class ChooseActionContinuation(
     val choosingPlayerId: EntityId,
-    val controllerId: EntityId,
-    val sourceId: EntityId?,
     val sourceName: String?,
     val choices: List<@Serializable EffectChoice>,
-    val targets: List<ChosenTarget> = emptyList(),
-    val namedTargets: Map<String, ChosenTarget> = emptyMap(),
-    val triggeringEntityId: EntityId? = null,
-    val objectReferences: com.wingedsheep.engine.handlers.ObjectReferenceEnvironment = com.wingedsheep.engine.handlers.ObjectReferenceEnvironment(),
-    val resolvingTriggeredAbility: com.wingedsheep.sdk.scripting.TriggeredAbility? = null,
-    val chosenCounterType: com.wingedsheep.sdk.core.CounterType? = null,
-    /** The label the creating effect ran under; the program its resume runs keeps it. */
-    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val programOrigin: com.wingedsheep.engine.core.ProgramOrigin? = null,
+    val context: com.wingedsheep.engine.handlers.EffectContext,
 ) : AnswerContinuation
