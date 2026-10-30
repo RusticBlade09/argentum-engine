@@ -168,6 +168,7 @@
 .row {
   --accent: #4ade80;
   position: relative;
+  flex: none;
   display: flex;
   flex-direction: column;
   gap: 6px;

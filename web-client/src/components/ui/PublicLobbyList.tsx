@@ -227,8 +227,8 @@ function LobbyRow({ entry, onJoin }: { entry: PublicLobbyEntry; onJoin: (entry: 
             <>
               <Avatar name={host} avatar={entry.hostAvatar} small />
               <span className={styles.hostText}>
-                <span className={styles.hostName}>{host}</span>
-                {others.length > 0 && <span className={styles.others}> with {others.join(', ')}</span>}
+                Hosted by <span className={styles.hostName}>{host}</span>
+                {others.length > 0 && <span className={styles.others}> · with {others.join(', ')}</span>}
               </span>
             </>
           ) : (
