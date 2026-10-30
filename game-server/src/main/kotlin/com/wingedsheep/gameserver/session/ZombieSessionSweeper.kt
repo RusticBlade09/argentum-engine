@@ -78,10 +78,19 @@ class ZombieSessionSweeper(
         }
     }
 
-    private fun sweepEmptyLobbies() {
+    internal fun sweepEmptyLobbies() {
         val now = System.currentTimeMillis()
+        // Lobbies whose host seat fell to an AI before host transfer preferred humans.
+        for (lobby in lobbyRepository.findAllLobbies()) {
+            if (lobby.state == LobbyState.WAITING_FOR_PLAYERS && lobby.repairHost()) {
+                logger.info("Handed host of lobby ${lobby.lobbyId} back to a human player")
+                lobbyRepository.saveLobby(lobby)
+                lobbySharedContext.broadcastLobbyUpdate(lobby)
+            }
+        }
         val empty = lobbyRepository.findAllLobbies().filter { lobby ->
             lobby.playerCount == 0 ||
+                lobby.isAbandonedByHumans ||
                 (lobby.state == LobbyState.TOURNAMENT_COMPLETE &&
                     lobby.completedAt != null &&
                     now - lobby.completedAt!! > TOURNAMENT_COMPLETE_GRACE_PERIOD_MS)
@@ -89,6 +98,7 @@ class ZombieSessionSweeper(
         for (lobby in empty) {
             logger.info("Sweeping lobby: ${lobby.lobbyId} (state=${lobby.state}, players=${lobby.playerCount})")
             // No-op unless this was a still-live tournament with an in-progress stats row.
+            lobby.vacateSeats().forEach { sessionRegistry.removeIdentity(it.token) }
             tournamentResultSink.recordAbandoned(lobby.lobbyId)
             lobbyRepository.removeLobby(lobby.lobbyId)
             lobbyRepository.removeTournament(lobby.lobbyId)

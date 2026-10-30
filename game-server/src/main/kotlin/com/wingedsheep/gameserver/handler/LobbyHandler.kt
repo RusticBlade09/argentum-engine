@@ -485,7 +485,7 @@ class LobbyHandler(
             gameMode = LobbyGameMode.TOURNAMENT,
         )
         identities.forEach { lobby.addPlayer(it) }
-        val host = identities.first().playerId
+        val host = lobby.hostPlayerId!!
         if (lobby.jumpstartStartError() != null || !lobby.startJumpstart(host)) {
             identities.forEach { it.currentLobbyId = null }
             return false
@@ -2221,11 +2221,7 @@ class LobbyHandler(
 
         logger.info("Player ${identity.playerName} left lobby $lobbyId (cannot rejoin)")
 
-        if (lobby.playerCount == 0) {
-            tournamentResultSink.recordAbandoned(lobbyId)
-            lobbyRepository.removeLobby(lobbyId)
-            logger.info("Lobby $lobbyId removed (empty)")
-        } else {
+        if (!closeIfAbandoned(lobby)) {
             // Auto-adjust grid draft booster count when player count changes
             if (lobby.format == TournamentFormat.GRID_DRAFT && lobby.state == LobbyState.WAITING_FOR_PLAYERS) {
                 lobby.boosterCount = gridDraftHandler.gridDraftDefaultBoosters(lobby.players.size)
@@ -2273,13 +2269,21 @@ class LobbyHandler(
 
         logger.info("Player ${identity.playerName} auto-left lobby $lobbyId")
 
-        if (lobby.playerCount == 0) {
-            tournamentResultSink.recordAbandoned(lobbyId)
-            lobbyRepository.removeLobby(lobbyId)
-            logger.info("Lobby $lobbyId removed (empty)")
-        } else {
-            ctx.broadcastLobbyUpdate(lobby)
-        }
+        if (!closeIfAbandoned(lobby)) ctx.broadcastLobbyUpdate(lobby)
+    }
+
+    /**
+     * Close [lobby] once nobody can use it: no seats at all, or — while still gathering players —
+     * only AI seats left. An AI never starts a lobby, so without this the last human leaving a
+     * lobby they had filled with AIs left it listed as open, "hosted" by one of the AIs.
+     */
+    private fun closeIfAbandoned(lobby: TournamentLobby): Boolean {
+        if (lobby.playerCount > 0 && !lobby.isAbandonedByHumans) return false
+        lobby.vacateSeats().forEach { sessionRegistry.removeIdentity(it.token) }
+        tournamentResultSink.recordAbandoned(lobby.lobbyId)
+        lobbyRepository.removeLobby(lobby.lobbyId)
+        logger.info("Lobby ${lobby.lobbyId} removed (no human players left)")
+        return true
     }
 
     private fun handleStopLobby(session: WebSocketSession) {
