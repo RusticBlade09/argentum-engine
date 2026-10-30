@@ -581,7 +581,7 @@ object DamageUtils {
                 // exactly as for marked damage, before the counters change the toughness.
                 val witherLethalNeeded =
                     if (sourceId != null && sourceHasDeathtouch(zones.cardRegistry, newState, projected, sourceId)) 1
-                    else ((projected.getToughness(targetId) ?: 0) -
+                    else (projected.lethalDamageThreshold(targetId) -
                         (newState.getEntity(targetId)?.get<DamageComponent>()?.amount ?: 0)).coerceAtLeast(0)
                 creatureExcessDamage = (effectiveAmount - witherLethalNeeded).coerceAtLeast(0)
                 // CR 702.80a / 122.6a: the -1/-1 counters are put on the creature by the wither
@@ -627,9 +627,10 @@ object DamageUtils {
                 // lethal. With deathtouch, any amount of damage greater than 1 is excess —
                 // lethal collapses to a flat 1 regardless of marked damage (CR 120.4a refs
                 // 702.2).
-                val toughness = projected.getToughness(targetId) ?: 0
+                // Lethal is judged by toughness, or by power under a lethal-damage-by-power rule
+                // modification (Zilortha) — CR 120.6.
                 val lethalNeeded = if (hasDeathtouch) 1
-                else (toughness - currentDamage).coerceAtLeast(0)
+                else (projected.lethalDamageThreshold(targetId) - currentDamage).coerceAtLeast(0)
                 creatureExcessDamage = (effectiveAmount - lethalNeeded).coerceAtLeast(0)
                 // "Excess damage is dealt to that creature's controller instead" (Gandalf's
                 // Sanction): the creature is marked only with the lethal portion; the excess is
