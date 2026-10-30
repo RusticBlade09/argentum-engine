@@ -18478,7 +18478,14 @@ The priority groups are (CR 616.1a–f):
   settle boundary for combat damage) — before SBAs and trigger detection, never on the stack. One run
   per application, with the amount that application prevented; `Self` is the replacement's host, "you"
   its controller, `TriggeringEntity` the permanent the damage would have been dealt to. Unpreventable
-  damage prevents nothing, so the rider doesn't run.
+  damage still runs the rider (CR 615.12: the prevention applies once, prevents nothing, and its
+  additional effect still happens) with `preventedDamage()` = 0 — so Purity gains nothing, while
+  **Nine Lives**' amount-free rider still lands: `PreventDamage(appliesTo = DamageEvent(recipient =
+  Recipient.You), onPrevented = Effects.AddCounters(CounterType.INCARNATION, 1, EffectTarget.Self))`,
+  one counter per source's damage event. A reflexive "when damage is prevented this way" rider must
+  gate itself on a nonzero amount (CR 615.13 — it triggers only when some damage was prevented):
+  Phyrexian Vindicator wraps its `ReflexiveTrigger` in `Effects.If(Conditions.CompareAmounts(
+  preventedDamage(), ComparisonOperator.GT, 0), …)`.
   `half = true` prevents **half** the damage that reaches it instead of a fixed `amount` (which must
   stay null), rounded up by default — `roundUp = false` for "rounded down". Gisela, Blade of
   Goldnight: `PreventDamage(half = true, appliesTo = DamageEvent(recipient = Recipient.AnyOf(listOf(
