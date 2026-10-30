@@ -251,8 +251,8 @@ function LobbyRow({ entry, onJoin }: { entry: PublicLobbyEntry; onJoin: (entry: 
 
 /**
  * One pip per seat — the table filling up at a glance — with the count for the exact number.
- * People come first as round pips, AI seats follow as squares, so the two read apart by shape
- * and not by colour alone.
+ * People come first as round pips in the lobby's accent, AI seats follow as cyan squares after a
+ * small gap, so the two read apart by colour, shape and grouping.
  */
 function SeatMeter({ filled, ai, total, openSeats }: { filled: number; ai: number; total: number; openSeats: number }) {
   const humans = filled - ai
@@ -263,7 +263,12 @@ function SeatMeter({ filled, ai, total, openSeats }: { filled: number; ai: numbe
       {total <= 8 && (
         <span className={styles.pips} aria-hidden>
           {Array.from({ length: total }, (_, i) => (
-            <span key={i} className={styles.pip} data-seat={i < humans ? 'human' : i < filled ? 'ai' : 'open'} />
+            <span
+              key={i}
+              className={styles.pip}
+              data-seat={i < humans ? 'human' : i < filled ? 'ai' : 'open'}
+              data-group-start={i === humans && ai > 0 && humans > 0}
+            />
           ))}
         </span>
       )}
