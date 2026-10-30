@@ -1009,7 +1009,7 @@ sealed interface KeywordAbility {
      *
      * This class only carries the printed *setup* half — [cost] and [timeCounters]. The
      * countdown-and-cast half is component-driven, not definition-driven: the engine's
-     * synthesized [com.wingedsheep.sdk.scripting.Suspend.countdownAbility] is granted to
+     * synthesized [com.wingedsheep.sdk.scripting.Suspend.exileAbilities] are granted to
      * *any* exiled card carrying the runtime `SuspendedComponent` marker, so the same
      * machinery serves both a printed suspend (stamped by the engine's
      * `SuspendCardFromHandHandler` special action) and a suspend granted at runtime to an
@@ -2042,7 +2042,7 @@ sealed interface KeywordAbility {
         fun modular(n: Int): KeywordAbility = Numeric(Keyword.MODULAR, n)
         fun fading(n: Int): KeywordAbility = Numeric(Keyword.FADING, n)
         /**
-         * Vanishing N (CR 702.62) — engine-live. Declaring this is the whole implementation;
+         * Vanishing N (CR 702.63) — engine-live. Declaring this is the whole implementation;
          * [Vanishing] supplies the enters-with-N-time-counters replacement and both triggers.
          * Do not also hand-write those three parts, or they will stack with the engine's.
          */

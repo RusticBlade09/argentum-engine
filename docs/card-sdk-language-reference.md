@@ -8062,6 +8062,12 @@ work for abilities-on-stack (which carry no `CardComponent`).
   matches. "Each foretold card you own in exile" is
   `DynamicAmount.Count(Player.You, Zone.EXILE, GameObjectFilter.Any.foretold())` (Niko Defies
   Destiny, Alrund, God of the Cosmos).
+- `IsSuspended` (filter builder `suspended()`) — a **suspended card** (CR 702.62b): in exile, with
+  suspend, and at least one time counter on it. "Has suspend" reads the engine's `SuspendedComponent`
+  marker — the one that grants the suspend triggers — so a card exiled with time counters by an unrelated
+  effect never matches, and a card whose last time counter is gone stops matching. "Target permanent or
+  suspended card" is the cross-zone union `TargetFilter.Permanent.or(TargetFilter(GameObjectFilter.Any
+  .suspended()).inZone(Zone.EXILE))` (Clockspinning). Never matches in group-static projection.
 - `WasCastForWarp` (filter builder `castForWarp()`) — battlefield permanent that
   was cast for its warp cost (CR 702.185). Pair with
   `Conditions.TargetMatchesFilter(GameObjectFilter.Creature.castForWarp(), …)` to
@@ -14508,7 +14514,7 @@ Blighted Agent, Ichor Rats, Plague Stinger, Skithiryx.
   its third ability is "if you *can't* remove a counter, sacrifice it" — one turn earlier than
   vanishing's. Hand-lower it, or add the counter type first.
 - `Vanishing(n)` — **engine-live.** Declare it and nothing else: `keywordAbility(KeywordAbility.vanishing(3))`
-  (Deep Forest Hermit). The engine supplies all three CR 702.62 abilities from
+  (Deep Forest Hermit). The engine supplies all three CR 702.63a abilities from
   [`Vanishing`](../mtg-sdk/src/main/kotlin/com/wingedsheep/sdk/scripting/Vanishing.kt) — the
   "enters with N time counters" replacement is synthesized at the entry seam from the printed `n`
   (so it runs through `placeEntryCounters` and honours Hardened Scales / Solemnity), and the upkeep
@@ -14516,8 +14522,8 @@ Blighted Agent, Ichor Rats, Plague Stinger, Skithiryx.
   the **projected** keyword, the same way flanking and the Siege defeat trigger are. Deriving from
   the projection is what makes a token created *with* vanishing, or a creature that *gains* it,
   count down as well — and what makes "loses all abilities" stop the clock. Do **not** hand-write
-  the three parts; they would stack with the engine's. Note 702.62b and 702.62c stay two separate
-  abilities (unlike suspend, which fuses them): a vanishing permanent sits where instant-speed
+  the three parts; they would stack with the engine's. Note the countdown and the sacrifice stay two separate
+  abilities (as suspend's countdown and cast do): a vanishing permanent sits where instant-speed
   counter removal can reach it, and it is sacrificed whenever the last counter leaves, not only on
   an upkeep.
 - `Renown(n)` — **engine-live.** Declare it and nothing else:
@@ -14889,7 +14895,7 @@ Blighted Agent, Ichor Rats, Plague Stinger, Skithiryx.
   instant/flash, sorcery speed otherwise), independent of whether the card's mana cost could ever actually be paid.
   On exiling, the handler puts `timeCounters` time counters on the card and stamps it exactly like
   `GrantSuspendExecutor` (`SuspendedComponent` + dormant haste), handing off into the pre-existing
-  `Suspend.countdownAbility` — the same countdown-and-free-cast machinery a runtime-granted suspend (Taigam, Master
+  `Suspend.exileAbilities` — the same countdown-and-free-cast machinery a runtime-granted suspend (Taigam, Master
   Opportunist) uses. See the full mechanic writeup under §11 "Keywords" → `Suspend` above. **Ancestral Vision** is the reference
   card — a Sorcery with **no printed mana cost** (`hasNoManaCost = true`), playable only through Suspend.
 - `Hideaway(n)` — `KeywordAbility.hideaway(n)`; display tag rendered "Hideaway N". Mechanic is composed manually via `MoveCollectionEffect(faceDown = FaceDownMode.HIDDEN, linkToSource = true)` + `CardSource.FromLinkedExile()` — the keyword itself carries no engine behavior.
@@ -15140,14 +15146,18 @@ Blighted Agent, Ichor Rats, Plague Stinger, Skithiryx.
 - `Suspend` (CR 702.62) — an **exile-zone** mechanic, unlike Impending/Vanishing which live on the battlefield.
   A suspended card sits in exile with **time counters**; at the beginning of its **owner's** upkeep one is removed,
   and when the last is gone its owner **may play it for free**, with **haste** if it's a creature. The lifecycle is
-  **component-driven**, not definition-driven: the engine grants `Suspend.countdownAbility` (a synthesized
-  `activeZone = EXILE` upkeep trigger — remove a counter, then a `Effects.May` that gathers the card via
-  `CardSource.Entity(EffectTarget.Self)` and casts it with `CastFromCollectionWithoutPayingCostEffect`) to **any** exiled card carrying the
-  `SuspendedComponent` marker. So an arbitrary card with no printed suspend can be suspended.
+  **component-driven**, not definition-driven: the engine grants `Suspend.exileAbilities` — CR 702.62a's two
+  synthesized `activeZone = EXILE` triggers: `Suspend.countdownAbility` (owner's upkeep, if it has a time counter,
+  remove one) and `Suspend.lastCounterCastAbility` (`CountersRemovedEvent(TIME, lastRemoved = true)`, if it's still
+  exiled, an `Effects.May` that gathers the card via `CardSource.Entity(EffectTarget.Self)` and casts it with
+  `CastFromCollectionWithoutPayingCostEffect`) — to **any** exiled card carrying the `SuspendedComponent` marker. So an
+  arbitrary card with no printed suspend can be suspended, and the cast trigger fires for **whatever** removes the
+  last time counter, not only the upkeep countdown (Clockspinning). A "suspended card" target or filter is
+  `GameObjectFilter.Any.suspended()` in `Zone.EXILE` (`StatePredicate.IsSuspended`, CR 702.62b).
   - **Putting a card into suspend** is a chain you compose; `Effects.Suspend(target, timeCounters)` is the reusable
     two-step tail (`AddCounters(TIME, n)` + `GrantSuspendEffect` — the latter sets the marker **and** arms a dormant
     haste effect on the card with duration `WhileControlledByController`, so the haste ends the moment the player who
-    played it loses control of the permanent — CR 702.62g). The caller supplies the exile step first, because it differs by source zone:
+    played it loses control of the permanent — CR 702.62a). The caller supplies the exile step first, because it differs by source zone:
     a spell on the stack uses `CounterSpellToExile` / `CounterEffect(counterDestination = Exile())` (it can't be lifted
     off the stack with a zone-move).
   - **Taigam, Master Opportunist** is the first user: `Composite(CopyTargetSpell(TriggeringEntity),
@@ -15172,7 +15182,7 @@ Blighted Agent, Ichor Rats, Plague Stinger, Skithiryx.
     Modelled with the same shape as Plot/Foretell (`SuspendCardFromHand` action, `SuspendCardFromHandHandler`,
     `SuspendEnumerator`): pay the printed cost, move hand → exile, put N time counters on it, then stamp
     `SuspendedComponent` + the dormant haste effect exactly like `GrantSuspendExecutor` — handing off into the same
-    `Suspend.countdownAbility` machinery a granted suspend uses. Legal any time the player could *begin* to cast the
+    `Suspend.exileAbilities` machinery a granted suspend uses. Legal any time the player could *begin* to cast the
     card (instant speed for an instant/flash, sorcery speed otherwise — `SuspendEnumerator` checks this, ignoring
     whether the card's own mana cost could ever actually be paid, per CR 702.62c). **Ancestral Vision** (Time
     Spiral) is the canonical user — a Sorcery with **no printed mana cost**, playable only through Suspend.
