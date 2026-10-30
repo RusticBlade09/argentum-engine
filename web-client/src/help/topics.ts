@@ -150,7 +150,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       ] },
       { kind: 'h', text: 'Side column' },
       { kind: 'ul', items: [
-        'Public Lobbies — open lobbies anyone may join, with an online-player count. Refreshes every few seconds.',
+        'Open lobbies — public lobbies anyone may join, newest first, with an online-player count. Each shows the table (1v1, Free-for-All, tournament…), what is being played, who is hosting and who has joined, and how many seats are left. With many lobbies, filter by 1v1 / Multiplayer / Tournaments or search by host, set or format. Refreshes every few seconds.',
         'Live Games — games in progress, each with a Spectate button.',
         'A Learn to Play row, and for guests a reminder of what a free account adds.',
       ] },
@@ -846,7 +846,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     summary:
       'Three to eight players: either one shared game — Free-for-All, Two-Headed Giant or Team vs. Team — or a round-robin bracket of 1v1 matches with standings. Choose “Anyone” to list the lobby publicly so strangers can join.',
     body: [
-      { kind: 'p', text: 'Everyone joins with the same invite code, or from Public Lobbies on the home screen when the lobby’s visibility is Public. A lobby holds as many seats as its table allows; the host starts once everyone has arrived.' },
+      { kind: 'p', text: 'Everyone joins with the same invite code, or from Open lobbies on the home screen when the lobby’s visibility is Public. A lobby holds as many seats as its table allows; the host starts once everyone has arrived.' },
       { kind: 'p', text: 'A group can bring their own decks or share a limited pool: sealed and draft both work at a multiplayer table as well as in a bracket.' },
     ],
     related: ['table-free-for-all', 'table-two-headed-giant', 'table-team-vs-team', 'event-round-robin', 'lobby-screen'],
