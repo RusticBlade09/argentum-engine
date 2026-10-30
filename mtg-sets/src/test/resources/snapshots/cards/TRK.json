@@ -2423,6 +2423,77 @@
     ]
 }
 
+// Picard, Leading by Example
+{
+    "name": "Picard, Leading by Example",
+    "manaCost": "{1}{W}",
+    "typeLine": "Legendary Creature — Human Officer",
+    "oracleText": "{1}, {T}: Another target creature gets +X/+X until end of turn, where X is Picard's power. Activate only as a sorcery.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 2
+    },
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Picard, Leading by Example:1",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomMana",
+                                "cost": "{1}"
+                            }
+                        },
+                        "CostTap"
+                    ]
+                },
+                "effect": {
+                    "type": "ModifyStats",
+                    "powerModifier": {
+                        "type": "EntityProperty",
+                        "entity": "Self",
+                        "numericProperty": "Power"
+                    },
+                    "toughnessModifier": {
+                        "type": "EntityProperty",
+                        "entity": "Self",
+                        "numericProperty": "Power"
+                    },
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    }
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "creature",
+                            "excludeSelf": true
+                        },
+                        "id": "t0"
+                    }
+                ],
+                "timing": "SorcerySpeed",
+                "descriptionOverride": "{1}, {T}: Another target creature gets +X/+X until end of turn, where X is Picard's power. Activate only as a sorcery."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "29",
+        "rarity": "UNCOMMON",
+        "artist": "Julie Dillon",
+        "flavorText": "\"I have the utmost confidence in your ability to perform the impossible.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/9/f9fa20c5-f241-4da2-9c99-c9b650095d74.jpg?1785981358"
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
 // Planetary Patrol
 {
     "name": "Planetary Patrol",
