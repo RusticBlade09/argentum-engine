@@ -1,4 +1,4 @@
-package com.wingedsheep.mtg.sets.definitions.snc.cards
+package com.wingedsheep.mtg.sets.definitions.rtr.cards
 
 import com.wingedsheep.sdk.dsl.Costs
 import com.wingedsheep.sdk.dsl.Effects
@@ -27,9 +27,9 @@ val TavernSwindler = card("Tavern Swindler") {
 
     metadata {
         rarity = Rarity.UNCOMMON
-        collectorNumber = "96"
-        artist = "Pauline Voss"
-        flavorText = "\"Only a chump stops after one unlucky loss. You're not a chump, are you?\""
-        imageUri = "https://cards.scryfall.io/normal/front/b/1/b17114ed-f98f-4b82-ba03-ef7ec5f572ba.jpg?1783923124"
+        collectorNumber = "79"
+        artist = "Cynthia Sheppard"
+        flavorText = "Rakdos cultists are her best customers. They never flinch at pain and are seldom good at math."
+        imageUri = "https://cards.scryfall.io/normal/front/4/7/47240ed3-f256-45fb-ab38-7b07e672d2ed.jpg"
     }
 }

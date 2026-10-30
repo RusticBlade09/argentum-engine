@@ -1,4 +1,4 @@
-package com.wingedsheep.mtg.sets.definitions.otj.cards
+package com.wingedsheep.mtg.sets.definitions.m21.cards
 
 import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.dsl.DynamicAmounts
@@ -41,8 +41,8 @@ val TerrorOfThePeaks = card("Terror of the Peaks") {
 
     metadata {
         rarity = Rarity.MYTHIC
-        collectorNumber = "149"
-        artist = "Joshua Raphael"
-        imageUri = "https://cards.scryfall.io/normal/front/9/0/904ff94a-4db4-44a6-8593-89c32905b3fc.jpg?1712355862"
+        collectorNumber = "164"
+        artist = "Andrey Kuzinskiy"
+        imageUri = "https://cards.scryfall.io/normal/front/4/3/432ecd5f-966f-4403-a973-51e175a524a0.jpg"
     }
 }

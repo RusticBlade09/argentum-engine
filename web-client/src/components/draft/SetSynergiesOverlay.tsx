@@ -1482,6 +1482,72 @@ const SET_SYNERGIES: Record<string, SetSynergies> = {
       },
     ],
   },
+  M21: {
+    setCode: 'M21',
+    setName: 'Core Set 2021',
+    archetypes: [
+      {
+        name: 'Fliers',
+        colors: ['W', 'U'],
+        keyCard: 'Watcher of the Spheres',
+        description: 'Draft creatures with flying and the cards that make them cheaper or bigger, then race in the air while ground blockers hold the fort. A tempo deck that wins over the top of a stalled board.',
+      },
+      {
+        name: 'Graveyard Value',
+        colors: ['U', 'B'],
+        keyCard: 'Obsessive Stitcher',
+        description: 'Loot and mill your own library to fill the graveyard, then return the best creatures from it. A grindy control deck that trades early and reanimates its threats late.',
+      },
+      {
+        name: 'Sacrifice Aggro',
+        colors: ['B', 'R'],
+        keyCard: 'Dire Fleet Warmonger',
+        description: 'Trade small creatures and fodder for bigger attacks and burn, cashing in creatures before they die for nothing. An aggressive deck that turns every body into damage.',
+      },
+      {
+        name: 'Big Creatures',
+        colors: ['R', 'G'],
+        keyCard: 'Leafkin Avenger',
+        description: 'Ramp into creatures with power 4 or greater and reward having them with extra mana and damage. A stompy midrange deck whose creatures outsize anything across the table.',
+      },
+      {
+        name: '+1/+1 Counters',
+        colors: ['G', 'W'],
+        keyCard: 'Conclave Mentor',
+        description: 'Put +1/+1 counters on your creatures and stack effects that add even more of them. A midrange deck that grows a sturdy board each turn.',
+      },
+      {
+        name: 'Life Gain',
+        colors: ['W', 'B'],
+        keyCard: 'Indulging Patrician',
+        description: 'Gain life in small chunks every turn and turn three or more of it into drain on the opponent. A grindy deck that stays out of reach while its lifelinkers chip away.',
+      },
+      {
+        name: 'Spells',
+        colors: ['U', 'R'],
+        keyCard: 'Experimental Overload',
+        description: 'Fill the deck with instants and sorceries and play creatures that reward casting them, then cash in a graveyard full of spells. A tempo deck that interacts on every turn.',
+      },
+      {
+        name: 'Creatures Dying',
+        colors: ['B', 'G'],
+        keyCard: 'Twinblade Assassins',
+        description: 'Trade creatures freely and draw cards whenever one dies, backed by plenty of removal. A grindy midrange deck that out-values the opponent in long games.',
+      },
+      {
+        name: 'Go-Wide Aggro',
+        colors: ['R', 'W'],
+        keyCard: 'Alpine Houndmaster',
+        description: 'Curve out with cheap creatures, including Dogs that find each other, and reward attacking with several at once. A fast aggro deck that ends the game before the opponent\'s bombs land.',
+      },
+      {
+        name: 'Card Draw',
+        colors: ['G', 'U'],
+        keyCard: 'Lorescale Coatl',
+        description: 'Draw extra cards and play creatures that grow whenever you draw. A value deck that turns card advantage into a bigger board.',
+      },
+    ],
+  },
   ZNR: {
     setCode: 'ZNR',
     setName: 'Zendikar Rising',
