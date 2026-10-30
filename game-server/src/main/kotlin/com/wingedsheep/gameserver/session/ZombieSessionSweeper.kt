@@ -31,6 +31,7 @@ class ZombieSessionSweeper(
         sweepAbandonedGames(Instant.now())
         sweepFinishedGames()
         sweepEmptyLobbies()
+        sweepUnattendedLobbies(Instant.now())
         sweepDisconnectedIdentities()
         sweepDisconnectedSpectators()
         sweepStaleTrackingEntries()
@@ -97,12 +98,44 @@ class ZombieSessionSweeper(
         }
         for (lobby in empty) {
             logger.info("Sweeping lobby: ${lobby.lobbyId} (state=${lobby.state}, players=${lobby.playerCount})")
-            // No-op unless this was a still-live tournament with an in-progress stats row.
-            lobby.vacateSeats().forEach { sessionRegistry.removeIdentity(it.token) }
-            tournamentResultSink.recordAbandoned(lobby.lobbyId)
-            lobbyRepository.removeLobby(lobby.lobbyId)
-            lobbyRepository.removeTournament(lobby.lobbyId)
+            closeLobby(lobby)
         }
+    }
+
+    /**
+     * Close lobbies whose humans have all been gone for a while — see [AbandonedLobbyPolicy].
+     * Also keeps each lobby's [com.wingedsheep.gameserver.lobby.TournamentLobby.unattendedSince] clock.
+     */
+    internal fun sweepUnattendedLobbies(now: Instant) {
+        for (lobby in lobbyRepository.findAllLobbies()) {
+            if (!AbandonedLobbyPolicy.applies(lobby.state) || !AbandonedLobbyPolicy.isUnattended(lobby)) {
+                lobby.unattendedSince = null
+                continue
+            }
+            if (lobby.unattendedSince == null) lobby.unattendedSince = now
+            if (!AbandonedLobbyPolicy.shouldClose(lobby.unattendedSince, now)) continue
+
+            logger.info("Sweeping unattended lobby: ${lobby.lobbyId} (state=${lobby.state}, since=${lobby.unattendedSince})")
+            // Close the lobby first, so the games ended below report into nothing instead of
+            // pairing the next round of a bracket nobody is in.
+            closeLobby(lobby)
+            val games = gameRepository.findAll().filter {
+                !it.isGameOver() && gameRepository.getLobbyForGame(it.sessionId) == lobby.lobbyId
+            }
+            for (game in games) {
+                runCatching {
+                    gamePlayHandler.abandonGame(game, "The game was ended because everyone left its lobby.")
+                }.onFailure { logger.error("Failed to end game ${game.sessionId} of unattended lobby ${lobby.lobbyId}", it) }
+            }
+        }
+    }
+
+    private fun closeLobby(lobby: com.wingedsheep.gameserver.lobby.TournamentLobby) {
+        // No-op unless this was a still-live tournament with an in-progress stats row.
+        lobby.vacateSeats().forEach { sessionRegistry.removeIdentity(it.token) }
+        tournamentResultSink.recordAbandoned(lobby.lobbyId)
+        lobbyRepository.removeLobby(lobby.lobbyId)
+        lobbyRepository.removeTournament(lobby.lobbyId)
     }
 
     private fun sweepDisconnectedIdentities() {

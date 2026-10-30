@@ -772,6 +772,15 @@ class TournamentLobby(
         private set
 
     /**
+     * Since when no human seat has been connected, or null while one is. Kept by
+     * [com.wingedsheep.gameserver.session.ZombieSessionSweeper] and read by
+     * [com.wingedsheep.gameserver.session.AbandonedLobbyPolicy]; not persisted — a restart restarts
+     * the clock.
+     */
+    @Volatile
+    var unattendedSince: java.time.Instant? = null
+
+    /**
      * Basic lands available for deck building: the set's standard art, one printing per type. Shown
      * to the player while building and stamped onto the submitted deck, so both agree.
      */
