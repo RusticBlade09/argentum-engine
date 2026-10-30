@@ -53,6 +53,15 @@ import org.springframework.stereotype.Component
  * ([PremadeOpponentPicker] — the starter families are tuned against each other), else a deck built
  * from those sets in the shape of the human's own (a 60-card constructed build against a 60-card
  * list, a sealed pool against a 40-card one), else the unmatched answer above.
+ *
+ * **A tuned constructed list with no set identity is matched on power instead.** A Standard deck
+ * spread over a dozen sets has nothing to match, and its unmatched answer was a sealed pool from a
+ * random set — 40 singletons against 60 cards of playsets, which the AI lost nine times in ten. It
+ * now meets a deck generated to the narrowest format the list is legal in, playsets and all; see
+ * [PremadeOpponentPicker.formatTier] for what "tuned" and "tier" mean. Card ratings were tried as
+ * the power signal and rejected: they are limited ratings, and they ranked a lifegain list that won
+ * nine games in ten as the weakest of the Standard starters. An untuned pile and a human on Random
+ * keep the unmatched answer.
  */
 @Component
 class RandomDeckResolver(
@@ -111,7 +120,12 @@ class RandomDeckResolver(
         } else {
             emptyList()
         }
-        if (opponentDeck == null || sets.isEmpty()) return resolve(spec, format, fallbackSetCode, commanderRules)
+        if (opponentDeck == null || sets.isEmpty()) {
+            if (spec is AiDeckSpec.Auto && opponentDeck != null) {
+                powerMatchedDeck(opponentDeck, format, commanderRules)?.let { return it }
+            }
+            return resolve(spec, format, fallbackSetCode, commanderRules)
+        }
 
         premadePicker.pick(opponentDeck, sets, format, commanderRules)?.let { starter ->
             logger.info("AI plays a sibling starter from {} against the human's deck", sets.joinToString(", "))
@@ -119,6 +133,35 @@ class RandomDeckResolver(
         }
         return matchedDeck(format, sets, commanderRules, opponentDeck.values.sum())
             ?: resolve(spec, format, fallbackSetCode, commanderRules)
+    }
+
+    /**
+     * An opponent at the power of [opponentDeck], a tuned constructed list with no set identity: a
+     * deck generated to the narrowest format the list is legal in, from that format's whole card
+     * base. Generated rather than picked from the curated starters so the AI's list turns over from
+     * game to game the way a sealed pool does. Null — the caller's unmatched answer — for a
+     * commander game, a limited-sized list, an untuned pile, or a list outside the format ladder.
+     */
+    private fun powerMatchedDeck(
+        opponentDeck: Map<String, Int>,
+        format: DeckFormat?,
+        commanderRules: Boolean,
+    ): GeneratedDeck? {
+        val tier = powerTier(opponentDeck, format, commanderRules) ?: return null
+        logger.info("AI builds a {} deck to match the human's", tier.displayName)
+        return runCatching { constructedDeckGenerator.generateDeck(emptyList(), tier) }
+            .onFailure { logger.warn("Power-matched {} deck failed", tier.displayName, it) }
+            .getOrNull()
+    }
+
+    /**
+     * The format an Auto AI seat would build to against [opponentDeck] — a tuned constructed list
+     * with no set identity — or null when it would play the deck's sets or the unmatched answer.
+     */
+    fun powerTier(opponentDeck: Map<String, Int>?, format: DeckFormat?, commanderRules: Boolean): DeckFormat? {
+        if (opponentDeck.isNullOrEmpty() || commanderRules || opponentDeck.values.sum() < CONSTRUCTED_DECK_SIZE) return null
+        if (setInference.setsOf(opponentDeck).isNotEmpty()) return null
+        return premadePicker.formatTier(opponentDeck, within = format)
     }
 
     /** The sets an Auto AI seat would match [opponentDeck] to; empty when it wouldn't match. */

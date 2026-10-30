@@ -82,6 +82,15 @@ class RandomDeckResolverTest : FunSpec({
         CardDefinition.basicLand("Forest", Subtype.FOREST, ScryfallMetadata(collectorNumber = "300")),
     )
 
+    /**
+     * Cards no booster set prints — what a constructed list spread across many sets looks like to
+     * set inference, which then finds no identity to match. Pauper-legal commons, legal everywhere
+     * but Standard.
+     */
+    val offSetCards = (1..20).map {
+        card("ZZZ Common $it", "{${it % 4}}{G}", Rarity.COMMON, allFormats - DeckFormat.STANDARD)
+    }
+
     fun resolver(): RandomDeckResolver {
         val configs = listOf("AAA", "BBB").associateWith { code ->
             BoosterGenerator.SetConfig(
@@ -94,6 +103,7 @@ class RandomDeckResolverTest : FunSpec({
         val booster = BoosterGenerator(configs)
         val registry = CardRegistry()
         configs.values.forEach { registry.register(it.cards) }
+        registry.register(offSetCards)
         registry.register(basics)
         val inference = DeckSetInference(booster, registry)
         return RandomDeckResolver(
@@ -307,5 +317,63 @@ class RandomDeckResolverTest : FunSpec({
     test("the lobby label can name the sets an Auto AI will match") {
         resolver().matchingSets(bbbDeck(copies = 2, size = 40)) shouldBe listOf("BBB")
         resolver().matchingSets(null) shouldBe emptyList()
+    }
+
+    // --- A tuned list with no set identity is matched on power: a deck generated to the narrowest
+    // format the list is legal in, in the same playset shape.
+
+    /** Fifteen off-set commons as playsets: tuned, Pauper-legal, and from no set. */
+    val tunedOffSetList = offSetCards.take(15).associate { it.name to 4 }
+
+    test("Auto facing a tuned list with no set identity builds to that list's format tier") {
+        val deck = resolver().resolveAgainst(
+            AiDeckSpec.Auto, format = null, fallbackSetCode = "AAA", commanderRules = false,
+            opponentDeck = tunedOffSetList,
+        )
+
+        // The list is commons only, so the tier is Pauper and the AI's deck is too.
+        deck.deckList.values.sum() shouldBe constructedSize
+        deck.deckList.keys.none { "Rare" in it } shouldBe true
+    }
+
+    test("a lobby restriction keeps the power-matched deck inside it") {
+        // Under Modern the Pauper tier isn't on offer; the list is Modern-legal, so the AI builds Modern.
+        val deck = resolver().resolveAgainst(
+            AiDeckSpec.Auto, format = DeckFormat.MODERN, fallbackSetCode = "AAA", commanderRules = false,
+            opponentDeck = tunedOffSetList,
+        )
+
+        deck.deckList.values.sum() shouldBe constructedSize
+    }
+
+    test("power-matched decks turn over from game to game") {
+        val decks = (1..3).map {
+            resolver().resolveAgainst(
+                AiDeckSpec.Auto, format = null, fallbackSetCode = "AAA", commanderRules = false,
+                opponentDeck = tunedOffSetList,
+            ).deckList
+        }
+
+        decks.distinct().size shouldNotBe 1
+    }
+
+    test("an untuned pile with no set identity leaves Auto as it was") {
+        // Ten singletons and basics: legal, but a pile rather than a list.
+        val pile = offSetCards.take(10).associate { it.name to 1 } + ("Forest" to 50)
+        val deck = resolver().resolveAgainst(
+            AiDeckSpec.Auto, format = null, fallbackSetCode = "AAA", commanderRules = false,
+            opponentDeck = pile,
+        )
+
+        deck.deckList.values.sum() shouldBe sealedSize
+    }
+
+    test("a commander game never power-matches a 60-card list") {
+        val deck = resolver().resolveAgainst(
+            AiDeckSpec.Auto, format = null, fallbackSetCode = "AAA", commanderRules = true,
+            opponentDeck = tunedOffSetList,
+        )
+
+        deck.commander shouldNotBe null
     }
 })

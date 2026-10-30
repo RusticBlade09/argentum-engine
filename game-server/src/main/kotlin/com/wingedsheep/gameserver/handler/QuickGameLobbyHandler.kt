@@ -1124,8 +1124,12 @@ class QuickGameLobbyHandler(
             else -> "sealed"
         }
         // Once the human has picked a deck, Auto means "out of that deck's sets" — say which.
-        val matched = randomDeckResolver.matchingSets(lobby.submittedHumanDeck())
+        val humanDeck = lobby.submittedHumanDeck()
+        val matched = randomDeckResolver.matchingSets(humanDeck)
+        // A tuned list with no set identity is matched on power instead — name the format it builds to.
+        val tier = randomDeckResolver.powerTier(humanDeck, lobby.format, lobby.usesCommanderRules)
         return when {
+            tier != null -> "Auto (${tier.displayName})"
             matched.isEmpty() -> "Auto ($shape)"
             lobby.format != null || lobby.usesCommanderRules -> "Auto ($shape · ${matched.joinToString(", ")})"
             else -> "Auto (${matched.joinToString(", ")})"
