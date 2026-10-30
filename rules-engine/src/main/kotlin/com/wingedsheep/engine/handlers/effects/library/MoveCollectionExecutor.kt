@@ -141,7 +141,7 @@ class MoveCollectionExecutor(
         }
 
         if (effect.faceDown == null) {
-            val entrants = cards.filter { id ->
+            var entrants = cards.filter { id ->
                 when (destination) {
                     is CardDestination.ToZone -> destination.zone == Zone.BATTLEFIELD
                     is CardDestination.ToZoneExiledFrom -> originZoneOf(state, id, destination.fallback) == Zone.BATTLEFIELD
@@ -157,6 +157,15 @@ class MoveCollectionExecutor(
             com.wingedsheep.engine.handlers.effects.copy.EffectCopyEntry.prepare(
                 state, effect, context, entrants, cardRegistry, predicateEvaluator
             )?.let { return it }
+            // Sent elsewhere instead (Containment Priest's exile), judged after any entry copy
+            // (CR 616.1c): such a card never enters, so it asks none of the questions below; the
+            // move itself applies the redirect. One simultaneous entry, so read off this board.
+            entrants = entrants.filterNot { (id, controller) ->
+                ZoneMovementUtils.entryRedirected(
+                    state, id, state.logicalZone(id)?.zoneType, controller, context.entryCopies[id],
+                    cardRegistry, predicateEvaluator
+                )
+            }
             // "If this would enter, you may [pay] instead" (EntersOnlyIfPaid) — asked once each entry
             // copy is settled (CR 614.12), since it decides whether each card enters at all.
             com.wingedsheep.engine.handlers.effects.EffectEntryPayments.prepare(

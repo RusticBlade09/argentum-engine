@@ -159,10 +159,23 @@ class MoveToZoneEffectExecutor(
             return EffectResult.success(state)
         }
 
+        // "Enters as a copy" applies first (CR 616.1c): every later question — and whether a
+        // replacement sends the card elsewhere instead — is about the card as it would enter.
         if (effect.destination == Zone.BATTLEFIELD && effect.faceDown == null) {
             com.wingedsheep.engine.handlers.effects.copy.EffectCopyEntry.prepare(
                 state, effect, context, mapOf(targetId to controllerId), cardRegistry, zones.predicateEvaluator
             )?.let { return it }
+        }
+
+        // A card a replacement sends elsewhere instead (Containment Priest's exile) never enters,
+        // so it asks none of the entry questions below; the move itself applies the redirect.
+        val entersHere = effect.destination == Zone.BATTLEFIELD && effect.faceDown == null &&
+            !ZoneMovementUtils.entryRedirected(
+                state, targetId, currentZone.zoneType, controllerId, context.entryCopies[targetId],
+                cardRegistry, zones.predicateEvaluator
+            )
+
+        if (entersHere) {
             // "If this would enter, you may [pay] instead" (EntersOnlyIfPaid) — asked once the entry
             // copy is settled (CR 614.12: of the card as it would exist on the battlefield), and
             // before anything else, since it decides whether the card enters at all.
@@ -171,7 +184,7 @@ class MoveToZoneEffectExecutor(
             )?.let { return it }
         }
 
-        if (effect.destination == Zone.BATTLEFIELD && effect.faceDown == null) {
+        if (entersHere) {
             val prepared = com.wingedsheep.engine.handlers.effects.copy.CopyAuraEntry.prepare(
                 state, effect, context, mapOf(targetId to controllerId), cardRegistry, targetFinder, zones.predicateEvaluator)
             prepared.pause?.let { return it }
@@ -188,13 +201,13 @@ class MoveToZoneEffectExecutor(
         // during stack resolution and never reach this executor, and the explicit
         // "attached to ..." effect has its own executor, so a generic move-to-battlefield of an
         // Aura is always the choose-as-it-enters case.
-        if (effect.destination == Zone.BATTLEFIELD && effect.faceDown == null && cardComponent.typeLine.isAura && targetId !in context.entryAuraHosts && context.entryCopies[targetId]?.copiedCard == null) {
+        if (entersHere && cardComponent.typeLine.isAura && targetId !in context.entryAuraHosts && context.entryCopies[targetId]?.copiedCard == null) {
             return attachAuraOnEnter(state, targetId, cardComponent, controllerId, context)
         }
 
         // "As this enters, choose …" (CR 614.12a) — asked before the move, of the copied card when
         // the entrant enters as a copy; the transition stamps the answers on arrival.
-        if (effect.destination == Zone.BATTLEFIELD && effect.faceDown == null) {
+        if (entersHere) {
             com.wingedsheep.engine.handlers.effects.EffectEntryChoices.prepare(
                 state, effect, context, mapOf(targetId to controllerId), cardRegistry, zones.predicateEvaluator
             )?.let { return it }
