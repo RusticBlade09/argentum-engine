@@ -30,6 +30,16 @@ export interface Announcement {
 
 export const ANNOUNCEMENTS: readonly Announcement[] = [
   {
+    id: 'set-m21',
+    date: '2026-10-30',
+    kind: 'set',
+    setCode: 'M21',
+    title: 'Core Set 2021 is complete',
+    body:
+      "Teferi, Basri, Chandra, Liliana and Garruk headline a straightforward core set where every two-colour pair has a clear plan: Watcher of the Spheres fliers, Conclave Mentor counters, Indulging Patrician life drain, Dire Fleet Warmonger sacrifice aggro and Leafkin Avenger's big creatures. Removal is plentiful and the bombs are huge, so games swing on who draws Terror of the Peaks first.",
+    tryIf: 'classic two-colour Limited, big dragons and planeswalkers',
+  },
+  {
     id: 'set-stx',
     date: '2026-10-30',
     kind: 'set',

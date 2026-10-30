@@ -670,6 +670,32 @@ object SetArchetypes {
                     "Ramp into X spells and Fractals, then double the +1/+1 counters on your creatures. A counters-ramp deck whose threats scale with every land and every counter."),
             )
         ),
+        "M21" to SetSynergies(
+            setCode = "M21",
+            setName = "Core Set 2021",
+            archetypes = listOf(
+                Archetype("Fliers", listOf(Color.WHITE, Color.BLUE),
+                    "Draft creatures with flying and the cards that make them cheaper or bigger, then race in the air while ground blockers hold the fort. A tempo deck that wins over the top of a stalled board."),
+                Archetype("Graveyard Value", listOf(Color.BLUE, Color.BLACK),
+                    "Loot and mill your own library to fill the graveyard, then return the best creatures from it. A grindy control deck that trades early and reanimates its threats late."),
+                Archetype("Sacrifice Aggro", listOf(Color.BLACK, Color.RED),
+                    "Trade small creatures and fodder for bigger attacks and burn, cashing in creatures before they die for nothing. An aggressive deck that turns every body into damage."),
+                Archetype("Big Creatures", listOf(Color.RED, Color.GREEN),
+                    "Ramp into creatures with power 4 or greater and reward having them with extra mana and damage. A stompy midrange deck whose creatures outsize anything across the table."),
+                Archetype("+1/+1 Counters", listOf(Color.GREEN, Color.WHITE),
+                    "Put +1/+1 counters on your creatures and stack effects that add even more of them. A midrange deck that grows a sturdy board each turn."),
+                Archetype("Life Gain", listOf(Color.WHITE, Color.BLACK),
+                    "Gain life in small chunks every turn and turn three or more of it into drain on the opponent. A grindy deck that stays out of reach while its lifelinkers chip away."),
+                Archetype("Spells", listOf(Color.BLUE, Color.RED),
+                    "Fill the deck with instants and sorceries and play creatures that reward casting them, then cash in a graveyard full of spells. A tempo deck that interacts on every turn."),
+                Archetype("Creatures Dying", listOf(Color.BLACK, Color.GREEN),
+                    "Trade creatures freely and draw cards whenever one dies, backed by plenty of removal. A grindy midrange deck that out-values the opponent in long games."),
+                Archetype("Go-Wide Aggro", listOf(Color.RED, Color.WHITE),
+                    "Curve out with cheap creatures, including Dogs that find each other, and reward attacking with several at once. A fast aggro deck that ends the game before the opponent's bombs land."),
+                Archetype("Card Draw", listOf(Color.GREEN, Color.BLUE),
+                    "Draw extra cards and play creatures that grow whenever you draw. A value deck that turns card advantage into a bigger board."),
+            )
+        ),
         "ZNR" to SetSynergies(
             setCode = "ZNR",
             setName = "Zendikar Rising",

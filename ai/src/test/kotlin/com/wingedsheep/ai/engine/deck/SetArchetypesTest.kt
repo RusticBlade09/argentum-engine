@@ -260,6 +260,24 @@ class SetArchetypesTest : StringSpec({
             "Lorehold" to listOf("Spirit"),
         )
     }
+    "Core Set 2021 exposes its ten signpost color-pair archetypes" {
+        val synergies = requireNotNull(SetArchetypes.getForSet("m21"))
+
+        synergies.setName shouldBe "Core Set 2021"
+        synergies.archetypes.associate { it.name to it.colors.toSet() } shouldBe mapOf(
+            "Fliers" to setOf(Color.WHITE, Color.BLUE),
+            "Graveyard Value" to setOf(Color.BLUE, Color.BLACK),
+            "Sacrifice Aggro" to setOf(Color.BLACK, Color.RED),
+            "Big Creatures" to setOf(Color.RED, Color.GREEN),
+            "+1/+1 Counters" to setOf(Color.GREEN, Color.WHITE),
+            "Life Gain" to setOf(Color.WHITE, Color.BLACK),
+            "Spells" to setOf(Color.BLUE, Color.RED),
+            "Creatures Dying" to setOf(Color.BLACK, Color.GREEN),
+            "Go-Wide Aggro" to setOf(Color.RED, Color.WHITE),
+            "Card Draw" to setOf(Color.GREEN, Color.BLUE),
+        )
+        synergies.archetypes.map { it.colors.toSet() }.toSet() shouldBe ALL_COLOR_PAIRS
+    }
     "Zendikar Rising exposes its ten signpost color-pair archetypes" {
         val synergies = requireNotNull(SetArchetypes.getForSet("znr"))
 

@@ -4282,6 +4282,61 @@
     ]
 }
 
+// Tavern Swindler
+{
+    "name": "Tavern Swindler",
+    "manaCost": "{1}{B}",
+    "typeLine": "Creature — Human Rogue",
+    "oracleText": "{T}, Pay 3 life: Flip a coin. If you win the flip, you gain 6 life.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 2
+    },
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "Tavern Swindler:1",
+                "cost": {
+                    "type": "CostComposite",
+                    "costs": [
+                        "CostTap",
+                        {
+                            "type": "CostAtomWrapper",
+                            "atom": {
+                                "type": "AtomPayLife",
+                                "amount": {
+                                    "type": "Fixed",
+                                    "amount": 3
+                                }
+                            }
+                        }
+                    ]
+                },
+                "effect": {
+                    "type": "FlipCoin",
+                    "wonEffect": {
+                        "type": "GainLife",
+                        "amount": {
+                            "type": "Fixed",
+                            "amount": 6
+                        }
+                    }
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "79",
+        "rarity": "UNCOMMON",
+        "artist": "Cynthia Sheppard",
+        "flavorText": "Rakdos cultists are her best customers. They never flinch at pain and are seldom good at math.",
+        "imageUri": "https://cards.scryfall.io/normal/front/4/7/47240ed3-f256-45fb-ab38-7b07e672d2ed.jpg"
+    },
+    "colorIdentityOverride": [
+        "BLACK"
+    ]
+}
+
 // Tenement Crasher
 {
     "name": "Tenement Crasher",
