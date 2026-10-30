@@ -241,7 +241,10 @@ export function SetCompletionPage() {
       <header className={styles.pageHead}>
         <div className={styles.pageHeading}>
           <h1 className={pageStyles.h1}>Set completion</h1>
-          <p className={pageStyles.lede}>How much of every Magic set Argentum can play today.</p>
+          <p className={pageStyles.lede}>
+            How much of every Magic set Argentum can play today. Looking for a set to draft or play sealed?{' '}
+            <Link to="/sets">Try the Set guide</Link>.
+          </p>
         </div>
         <div className={styles.viewSwitch}>
           <div className={pageStyles.tabs} role="tablist" aria-label="View">

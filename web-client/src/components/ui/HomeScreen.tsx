@@ -360,14 +360,23 @@ export function HomeScreen({
               Cards
             </button>
             <button type="button" className={home.navItem} onClick={() => setShowReplays(true)}>Replays</button>
-            {/* "Which set should I play?" — the guide links on to implementation progress. */}
+            {/* "Which cards of a set can I actually play with?" is a deckbuilding question. */}
+            <button
+              type="button"
+              className={home.navItem}
+              onClick={() => navigate('/set-completion')}
+              title="How much of every Magic set Argentum can play today"
+            >
+              Sets
+            </button>
+            {/* "Which set should I draft or play sealed?" — the guide to the fully playable sets. */}
             <button
               type="button"
               className={home.navItem}
               onClick={() => navigate('/sets')}
-              title="Compare the playable sets and find one that suits you"
+              title="Compare the sets you can draft or play sealed and find one that suits you"
             >
-              Sets
+              Set guide
             </button>
             <button type="button" className={home.navItem} onClick={() => navigate('/learn')}>Learn</button>
             <button
@@ -495,7 +504,8 @@ export function HomeScreen({
         <nav className={home.nav} aria-label="Main">
           <button type="button" className={home.navItem} onClick={() => navigate('/library')}>Decks &amp; Cubes</button>
           <button type="button" className={home.navItem} onClick={() => navigate('/cards')}>Cards</button>
-          <button type="button" className={home.navItem} onClick={() => navigate('/sets')}>Sets</button>
+          <button type="button" className={home.navItem} onClick={() => navigate('/set-completion')}>Sets</button>
+          <button type="button" className={home.navItem} onClick={() => navigate('/sets')}>Set guide</button>
           <button type="button" className={home.navItem} onClick={() => navigate('/learn')}>Learn</button>
           <button
             type="button"

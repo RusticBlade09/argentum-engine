@@ -858,9 +858,9 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'limited',
     title: 'Choosing a set: the Set guide',
     summary:
-      'Sets, in the home screen’s top bar, lists every set that is fully playable for sealed and draft, with what it is about, how it plays, and power, speed and complexity ratings to compare them by.',
+      'Set guide, in the home screen’s top bar, lists every set that is fully playable for sealed and draft, with what it is about, how it plays, and power, speed and complexity ratings to compare them by. The play screen links to it under its set choice.',
     body: [
-      { kind: 'p', text: 'Each set has a one-line pitch on its tile and three five-step meters. The ratings compare the sets here with each other as Limited formats, not with Magic as a whole: Power is how strong the cards are, Speed how quickly games tend to end, Complexity how much there is to keep track of.' },
+      { kind: 'p', text: 'Each set has a short summary on its tile — what it is about, how it plays and what makes it special — and three five-step meters. The ratings compare the sets here with each other as Limited formats, not with Magic as a whole: Power is how strong the cards are, Speed how quickly games tend to end, Complexity how much there is to keep track of.' },
       { kind: 'ul', items: [
         'Quick filters answer the usual questions — Easy to learn, Fast & aggressive, Slow & grindy, High power, Before 2008 — and theme chips narrow it to sets built around creature types, graveyards, spells, artifacts and so on. Search also matches mechanics, so `foretell` finds Kaldheim.',
         'Click a set to read about it up close: the world, how its games play, its mechanics and its draft archetypes.',
@@ -1651,7 +1651,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'cards',
     title: 'Which cards are implemented',
     summary:
-      'Set Completion, linked as Implementation progress from the Set guide, lists every set and how much of it the engine can actually play. Useful before committing to a deck or picking a set to draft.',
+      'Set Completion, under Sets in the home screen’s top bar, lists every set and how much of it the engine can actually play. Useful before committing to a deck or picking a set to draft.',
     body: [
       { kind: 'p', text: 'The deckbuilder only ever offers implemented cards, so a deck you build there always works. This page is the other direction: it tells you what is missing from a set you had in mind.' },
       { kind: 'p', text: 'Open a set to get its full card list, each card marked implemented or missing. A handful come back “not planned” — cards needing something the engine will never carry, like ante or physical dexterity — and those are left out of every total, so the percentage measures what there is any intention of building.' },
