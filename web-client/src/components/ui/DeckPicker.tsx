@@ -71,6 +71,12 @@ export interface DeckPickerProps {
     secondCommander?: string | null,
     /** The deck's companion (CR 702.139) — a card on `sideboard` — or null. */
     companion?: string | null,
+    /**
+     * The format the chosen deck was built for — a saved deck's or an example's — or null for a
+     * pasted list or a random pool. A hint the server checks, never trusts: the AI on Auto builds
+     * a deck for it.
+     */
+    deckFormat?: string | null,
   ) => void
   onValidityChange?: (isValid: boolean) => void
   /** Set selection for quick-game Random decks. Empty means the server chooses a set. */
@@ -465,6 +471,14 @@ export function DeckPicker({
     return named && (currentSideboard[named] ?? 0) > 0 ? named : null
   }, [tab, decks, selectedSavedId, parsedPaste, currentSideboard])
 
+  // The format the chosen deck was built for: a saved deck's, else an example's. A pasted list
+  // carries none — the server infers one from its legality.
+  const currentFormat: string | null = useMemo(() => {
+    if (tab === 'saved') return decks.find((d) => d.id === selectedSavedId)?.format ?? null
+    if (tab === 'examples') return examples.find((ex) => ex.id === selectedExampleId)?.format ?? null
+    return null
+  }, [tab, decks, selectedSavedId, examples, selectedExampleId])
+
   // Strip the commander out of `currentDeck` before crossing the network boundary. `currentDeck`
   // keeps the commander baked in so the totalCards display reads "100 cards" for a Commander
   // deck, but the server's `Deck.cards` is documented as the library only (CR 903.6a) — the
@@ -482,10 +496,12 @@ export function DeckPicker({
   // On the Random tab `{}` *is* the chosen deck (server generates a random pool), so emit it.
   useEffect(() => {
     if (tab !== 'random' && Object.keys(currentDeck).length === 0) return
-    onDeckChange(deckListForServer, currentCommander, currentSideboard, currentSecondCommander, currentCompanion)
+    onDeckChange(
+      deckListForServer, currentCommander, currentSideboard, currentSecondCommander, currentCompanion, currentFormat,
+    )
   }, [
     tab, currentDeck, deckListForServer, currentCommander, currentSecondCommander, currentSideboard, currentCompanion,
-    onDeckChange,
+    currentFormat, onDeckChange,
   ])
 
   // Server-side validation when the deck is non-empty.

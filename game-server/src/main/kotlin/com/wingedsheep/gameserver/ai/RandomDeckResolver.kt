@@ -53,6 +53,13 @@ import org.springframework.stereotype.Component
  * ([PremadeOpponentPicker] — the starter families are tuned against each other), else a deck built
  * from those sets in the shape of the human's own (a 60-card constructed build against a 60-card
  * list, a sealed pool against a 40-card one), else the unmatched answer above.
+ *
+ * **A constructed list with no set identity is matched by format instead.** A Standard deck
+ * spread over a dozen sets has nothing to match, and its unmatched answer was a sealed pool from a
+ * random set — 40 singletons against a tuned 60, which the AI lost nine times in ten. It now meets
+ * a deck generated for the format the list was built for: the one its saved deck or example
+ * declares, else the lobby's, else the narrowest of the nested constructed formats it is legal in
+ * ([PremadeOpponentPicker.matchFormat]). A human on Random keeps the unmatched answer.
  */
 @Component
 class RandomDeckResolver(
@@ -105,20 +112,67 @@ class RandomDeckResolver(
         fallbackSetCode: String,
         commanderRules: Boolean,
         opponentDeck: Map<String, Int>?,
+        opponentDeckFormat: DeckFormat? = null,
     ): GeneratedDeck {
         val sets = if (spec is AiDeckSpec.Auto && !opponentDeck.isNullOrEmpty()) {
             setInference.setsOf(opponentDeck)
         } else {
             emptyList()
         }
-        if (opponentDeck == null || sets.isEmpty()) return resolve(spec, format, fallbackSetCode, commanderRules)
+        if (opponentDeck == null || sets.isEmpty()) {
+            if (spec is AiDeckSpec.Auto && opponentDeck != null) {
+                formatMatchedDeck(opponentDeck, opponentDeckFormat, format, commanderRules)?.let { return it }
+            }
+            return resolve(spec, format, fallbackSetCode, commanderRules)
+        }
 
         premadePicker.pick(opponentDeck, sets, format, commanderRules)?.let { starter ->
             logger.info("AI plays a sibling starter from {} against the human's deck", sets.joinToString(", "))
             return starter
         }
-        return matchedDeck(format, sets, commanderRules, opponentDeck.values.sum())
+        // Built out of the deck's sets, to the format it was built for when it declared one.
+        val buildFormat = if (opponentDeckFormat != null && !commanderRules) {
+            premadePicker.matchFormat(opponentDeck, opponentDeckFormat, format) ?: format
+        } else {
+            format
+        }
+        return matchedDeck(buildFormat, sets, commanderRules, opponentDeck.values.sum())
             ?: resolve(spec, format, fallbackSetCode, commanderRules)
+    }
+
+    /**
+     * A deck generated for the format [opponentDeck] — a constructed list with no set identity — is
+     * played in ([matchedFormat]), from that format's whole card base. Generated rather than picked
+     * from the curated starters so the AI's list turns over from game to game the way a sealed pool
+     * does. Null — the caller's unmatched answer — when no format applies.
+     */
+    private fun formatMatchedDeck(
+        opponentDeck: Map<String, Int>,
+        opponentDeckFormat: DeckFormat?,
+        format: DeckFormat?,
+        commanderRules: Boolean,
+    ): GeneratedDeck? {
+        val target = matchedFormat(opponentDeck, opponentDeckFormat, format, commanderRules) ?: return null
+        logger.info("AI builds a {} deck to match the human's", target.displayName)
+        return runCatching { constructedDeckGenerator.generateDeck(emptyList(), target) }
+            .onFailure { logger.warn("Format-matched {} deck failed", target.displayName, it) }
+            .getOrNull()
+    }
+
+    /**
+     * The format an Auto AI seat builds for against [opponentDeck], or null when it plays the
+     * deck's sets or the unmatched answer instead: a constructed-sized list with no set identity,
+     * outside a commander game. See [PremadeOpponentPicker.matchFormat] for which format.
+     */
+    fun matchedFormat(
+        opponentDeck: Map<String, Int>?,
+        opponentDeckFormat: DeckFormat?,
+        format: DeckFormat?,
+        commanderRules: Boolean,
+    ): DeckFormat? {
+        if (opponentDeck.isNullOrEmpty() || commanderRules || opponentDeck.values.sum() < CONSTRUCTED_DECK_SIZE) return null
+        if (setInference.setsOf(opponentDeck).isNotEmpty()) return null
+        return premadePicker.matchFormat(opponentDeck, opponentDeckFormat, format)
     }
 
     /** The sets an Auto AI seat would match [opponentDeck] to; empty when it wouldn't match. */
