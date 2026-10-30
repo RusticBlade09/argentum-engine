@@ -1148,6 +1148,85 @@
     ]
 }
 
+// Dahar Master
+{
+    "name": "Dahar Master",
+    "manaCost": "{3}{R}",
+    "typeLine": "Creature — Klingon Warrior",
+    "oracleText": "When this creature enters, you may sacrifice another nonland permanent. When you do, this creature deals 2 damage to any target.",
+    "creatureStats": {
+        "power": 4,
+        "toughness": 3
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Dahar Master:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "ReflexiveTrigger",
+                    "action": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "SelectTarget",
+                                "requirement": {
+                                    "type": "TargetObject",
+                                    "filter": {
+                                        "baseFilter": "nonland permanent ctrl:you",
+                                        "excludeSelf": true
+                                    }
+                                },
+                                "storeAs": "target0",
+                                "nonTargeting": true,
+                                "prompt": "Choose another nonland permanent to sacrifice"
+                            },
+                            {
+                                "type": "SacrificeTarget",
+                                "target": {
+                                    "type": "PipelineTarget",
+                                    "collectionName": "target0"
+                                }
+                            }
+                        ]
+                    },
+                    "reflexiveEffect": {
+                        "type": "DealDamage",
+                        "amount": {
+                            "type": "Fixed",
+                            "amount": 2
+                        },
+                        "target": {
+                            "type": "BoundVariable",
+                            "name": "t0"
+                        }
+                    },
+                    "reflexiveTargetRequirements": [
+                        {
+                            "type": "AnyTarget",
+                            "id": "t0"
+                        }
+                    ],
+                    "descriptionOverride": "You may sacrifice another nonland permanent. When you do, this creature deals 2 damage to any target."
+                },
+                "descriptionOverride": "When this creature enters, you may sacrifice another nonland permanent. When you do, this creature deals 2 damage to any target."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "146",
+        "artist": "Grant Griffin",
+        "flavorText": "\"The *d'k tahg* is sharp, but it is your conviction that drives it into the heart of your enemy.\"",
+        "imageUri": "https://cards.scryfall.io/normal/front/1/1/1122fe1c-97f7-409d-ad37-0fed46f9f963.jpg?1792590970"
+    },
+    "colorIdentityOverride": [
+        "RED"
+    ]
+}
+
 // Data, New Life
 {
     "name": "Data, New Life",
