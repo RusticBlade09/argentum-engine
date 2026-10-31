@@ -874,7 +874,10 @@ class TriggerMatcher(
                     matchesPlayer(state, trigger.player, event.playerId, controllerId, sourceId)
             }
             is EventPattern.BecomesTargetEvent -> {
-                event is BecomesTargetEvent && matchesBecomesTargetTrigger(trigger, binding, event, sourceId, controllerId, state)
+                // "One or more … become the target" fires once per targeting object, in
+                // TriggerDetector.detectBecomesTargetBatchTriggers — never once per target here.
+                !trigger.batch && event is BecomesTargetEvent &&
+                    matchesBecomesTargetTrigger(trigger, binding, event, sourceId, controllerId, state)
             }
             is EventPattern.MutateEvent -> {
                 if (event !is com.wingedsheep.engine.core.MutatedEvent) return false
@@ -3242,6 +3245,16 @@ class TriggerMatcher(
         if (trigger.firstTimeEachTurn) {
             val first = if (trigger.counterType != null) event.firstOfTypeThisTurn else event.firstThisTurn
             if (!first) return false
+        }
+        // Ordinal "when the Nth counter is put on": this placement must take the count from below
+        // N to N or more. Read the count the event recorded; the live one is only exact when this
+        // was the resolution's sole placement on the recipient.
+        trigger.nth?.let { nth ->
+            val countAfter = event.totalCount
+                ?: state.getEntity(event.entityId)?.get<CountersComponent>()?.getCount(event.counterType)
+                ?: return false
+            val countBefore = countAfter - event.amount
+            if (!(countBefore < nth && nth <= countAfter)) return false
         }
         // Placer restriction (CR 122.6 / 122.6a): "Whenever YOU put counters ...". A placement the
         // engine didn't attribute to a placer (null) never satisfies a non-null selector.

@@ -137,7 +137,28 @@ class RandomDeckResolver(
             format
         }
         return matchedDeck(buildFormat, sets, commanderRules, opponentDeck.values.sum())
+            // The deck's sets couldn't support a build of their own (too few legal spells or
+            // creatures): a constructed list still deserves a constructed opponent, so build for
+            // its format from the whole card base before dropping to the unmatched sealed answer.
+            ?: formatWideFallback(opponentDeck, opponentDeckFormat, format, commanderRules)
             ?: resolve(spec, format, fallbackSetCode, commanderRules)
+    }
+
+    /**
+     * The format-wide build behind a failed set-matched one: the same deck [formatMatchedDeck]
+     * builds for a list with no set identity. Null outside a commander game's constructed-sized
+     * list, or when no format applies.
+     */
+    private fun formatWideFallback(
+        opponentDeck: Map<String, Int>,
+        opponentDeckFormat: DeckFormat?,
+        format: DeckFormat?,
+        commanderRules: Boolean,
+    ): GeneratedDeck? {
+        if (commanderRules || opponentDeck.values.sum() < CONSTRUCTED_DECK_SIZE) return null
+        val target = premadePicker.matchFormat(opponentDeck, opponentDeckFormat, format) ?: return null
+        logger.info("AI's set-matched deck failed; building a {} deck from the whole format instead", target.displayName)
+        return buildForFormat(target)
     }
 
     /**
@@ -154,10 +175,13 @@ class RandomDeckResolver(
     ): GeneratedDeck? {
         val target = matchedFormat(opponentDeck, opponentDeckFormat, format, commanderRules) ?: return null
         logger.info("AI builds a {} deck to match the human's", target.displayName)
-        return runCatching { constructedDeckGenerator.generateDeck(emptyList(), target) }
+        return buildForFormat(target)
+    }
+
+    private fun buildForFormat(target: DeckFormat): GeneratedDeck? =
+        runCatching { constructedDeckGenerator.generateDeck(emptyList(), target) }
             .onFailure { logger.warn("Format-matched {} deck failed", target.displayName, it) }
             .getOrNull()
-    }
 
     /**
      * The format an Auto AI seat builds for against [opponentDeck], or null when it plays the
