@@ -5,6 +5,7 @@ import com.wingedsheep.ai.engine.AiProfile
 import com.wingedsheep.ai.engine.LimitedCardRater
 import com.wingedsheep.ai.engine.advisor.CardAdvisorRegistry
 import com.wingedsheep.ai.engine.evaluation.BoardPresence
+import com.wingedsheep.ai.engine.evaluation.StatRelevance
 import com.wingedsheep.ai.engine.knowledge.CardIntent
 import com.wingedsheep.ai.engine.knowledge.CardIntentAnalyzer
 import com.wingedsheep.ai.engine.knowledge.IntentTag
@@ -98,6 +99,9 @@ object AiCardRating {
 
     // ── In game ─────────────────────────────────────────────────────────────
 
+    private fun statDetail(stat: Int, rate: Double, knee: Int): String =
+        if (stat <= knee) "$stat × $rate" else "$stat × $rate, tapering past $knee"
+
     private fun board(card: CardDefinition, intent: CardIntent): Board {
         val type = card.typeLine
         if (type.isLand) {
@@ -122,18 +126,24 @@ object AiCardRating {
                 )
             }
             val none = emptySet<String>()
+            // The vacuum reading of [CreatureValuation.statsReadTheBoard]: stats taper past their
+            // knees; the fight thresholds need a board, so the note names them instead.
+            fun body(p: Int, t: Int, keywords: Set<String>) =
+                BoardPresence.creatureBodyValue(p, t, keywords, diminishingReturns = true)
             val parts = buildList {
-                add(Part("Power", BoardPresence.creatureBodyValue(power, 0, none), "$power × 1.0"))
-                add(Part("Toughness", BoardPresence.creatureBodyValue(0, toughness, none), "$toughness × 0.4"))
-                val base = BoardPresence.creatureBodyValue(power, toughness, none)
+                add(Part("Power", body(power, 0, none), statDetail(power, 1.0, StatRelevance.POWER_KNEE)))
+                add(Part("Toughness", body(0, toughness, none), statDetail(toughness, 0.4, StatRelevance.TOUGHNESS_KNEE)))
+                val base = body(power, toughness, none)
                 for (keyword in card.keywords.sortedBy { it.name }) {
-                    val v = BoardPresence.creatureBodyValue(power, toughness, setOf(keyword.name)) - base
+                    val v = body(power, toughness, setOf(keyword.name)) - base
                     if (v != 0.0) add(Part(keyword.displayName, v))
                 }
             }
             return Board(
                 BoardKind.CREATURE, parts.sumOf { it.value }, parts,
-                "Abilities add nothing here: the AI values what they do when they trigger or are activated.",
+                "In a game it is also worth more for each fight it wins on size — power that kills their " +
+                    "biggest creature, toughness that survives it or the damage removal they have shown. " +
+                    "Abilities add nothing here: the AI values what they do when they trigger or are activated.",
             )
         }
         val ladder = CardIntentAnalyzer.priorLadder(intent)

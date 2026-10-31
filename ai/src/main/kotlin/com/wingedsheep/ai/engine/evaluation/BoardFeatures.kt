@@ -201,6 +201,14 @@ data class CreatureValuation(
      * of a card each one buys. [com.wingedsheep.ai.engine.AiProfile.walkersPricedAsEngines] sets it.
      */
     val walkersAsEngines: Boolean = false,
+    /**
+     * Price power and toughness by what they do against the table instead of linearly
+     * ([StatRelevance]): diminishing returns past a knee, so a 1000/1000 is not worth fifty 20/20s,
+     * and bonuses for the fights its size decides — the share of opposing creatures its power kills
+     * and its toughness survives, and toughness out of reach of the damage removal the opponent has
+     * shown. [com.wingedsheep.ai.engine.AiProfile.LIVE] ships it.
+     */
+    val statsReadTheBoard: Boolean = false,
 ) {
     companion object {
         /** Neither correction: what every number published before 2026-08-10 was measured on. */
@@ -241,16 +249,17 @@ object BoardPresence : BoardFeature {
         pendingLandDropIsMana: Boolean = false,
         handAtRoot: Set<EntityId>? = null,
         modalLandRoot: ModalLandRoot? = null,
+        shownReach: Map<EntityId, Int>? = null,
     ): Double {
         val sides = state.sidesFor(playerId) ?: return 0.0
-        val mine = boardValue(state, projected, sides.mine, intents, creatureValuation) +
+        val mine = boardValue(state, projected, sides.mine, intents, creatureValuation, shownReach) +
             if (sequenceLandsByUsableMana) {
                 landSequencing(state, projected, playerId, intents, pendingLandDropIsMana, handAtRoot, modalLandRoot)
             } else {
                 0.0
             }
         return sides.against(OpponentAggregate.THREAT) { opponent ->
-            mine - boardValue(state, projected, opponent, intents, creatureValuation)
+            mine - boardValue(state, projected, opponent, intents, creatureValuation, shownReach)
         }
     }
 
@@ -268,19 +277,22 @@ object BoardPresence : BoardFeature {
         private val surplusAwareLands: Boolean = false,
         private val handAtRoot: Set<EntityId>? = null,
         private val modalLandRoot: ModalLandRoot? = null,
+        private val shownReach: Map<EntityId, Int>? = null,
     ) : BoardFeature {
         override fun score(state: GameState, projected: ProjectedState, playerId: EntityId): Double =
             score(
                 state, projected, playerId, intents, sequenceLandsByUsableMana, creatureValuation,
-                pendingLandDropIsMana, handAtRoot, modalLandRoot,
+                pendingLandDropIsMana, handAtRoot, modalLandRoot, shownReach,
             )
 
         override fun rootedAt(root: GameState, playerId: EntityId): BoardFeature =
-            if (!sequenceLandsByUsableMana) this
+            if (!sequenceLandsByUsableMana && !creatureValuation.statsReadTheBoard) this
             else Bound(
                 intents, sequenceLandsByUsableMana, creatureValuation, pendingLandDropIsMana, surplusAwareLands,
-                handAtRoot = root.getZone(playerId, Zone.HAND).toSet(),
-                modalLandRoot = if (surplusAwareLands) ModalLandRoot.of(root, playerId) else null,
+                handAtRoot = if (sequenceLandsByUsableMana) root.getZone(playerId, Zone.HAND).toSet() else null,
+                modalLandRoot = if (sequenceLandsByUsableMana && surplusAwareLands) ModalLandRoot.of(root, playerId) else null,
+                // Read once at the root, never at the leaf — see [StatRelevance] for why.
+                shownReach = if (creatureValuation.statsReadTheBoard) StatContext.shownReachAt(root, intents) else null,
             )
     }
 
@@ -290,12 +302,19 @@ object BoardPresence : BoardFeature {
         side: List<EntityId>,
         intents: IntentCatalog,
         creatureValuation: CreatureValuation,
+        shownReach: Map<EntityId, Int>? = null,
     ): Double {
         var total = 0.0
         for (playerId in side) {
+            // One read of the opposing board per player, not one per creature.
+            val statContext = if (creatureValuation.statsReadTheBoard) {
+                StatContext.facing(state, projected, playerId, shownReach)
+            } else {
+                null
+            }
             for (entityId in projected.getBattlefieldControlledBy(playerId)) {
                 val card = state.getEntity(entityId)?.get<CardComponent>() ?: continue
-                total += permanentValue(state, projected, entityId, card, intents, creatureValuation)
+                total += permanentValue(state, projected, entityId, card, intents, creatureValuation, statContext)
             }
         }
         return total
@@ -411,11 +430,18 @@ object BoardPresence : BoardFeature {
         card: CardComponent,
         intents: IntentCatalog = IntentCatalog.NONE,
         creatureValuation: CreatureValuation = CreatureValuation.LEGACY,
+        /** The opposing board, under [CreatureValuation.statsReadTheBoard]; read here when not supplied. */
+        statContext: StatContext? = null,
     ): Double {
         val container = state.getEntity(entityId) ?: return 0.0
 
         if (projected.isCreature(entityId)) {
-            return creatureValue(state, projected, entityId, container, creatureValuation)
+            val context = statContext ?: if (creatureValuation.statsReadTheBoard) {
+                projected.getController(entityId)?.let { StatContext.facing(state, projected, it, null) }
+            } else {
+                null
+            }
+            return creatureValue(state, projected, entityId, container, creatureValuation, context)
         }
 
         // Non-creature permanents
@@ -604,7 +630,32 @@ object BoardPresence : BoardFeature {
         /** [power] and [toughness] with "until end of turn" modifications taken back off. */
         settledPower: Int = power,
         settledToughness: Int = toughness,
+        /**
+         * The opposing board, under [CreatureValuation.statsReadTheBoard]: stats are softened past
+         * their knees and the fight thresholds they cross are paid ([StatRelevance]). Null is the
+         * historical linear reading.
+         */
+        statContext: StatContext? = null,
+        /** Soften stats past their knees even with no board to read — the vacuum card reading. */
+        diminishingReturns: Boolean = statContext != null,
     ): Double {
+        val p: Double
+        val sp: Double
+        val st: Double
+        if (diminishingReturns) {
+            p = StatRelevance.softPower(power)
+            sp = StatRelevance.softPower(settledPower)
+            st = StatRelevance.softToughness(settledToughness)
+        } else {
+            p = power.toDouble()
+            sp = settledPower.toDouble()
+            st = settledToughness.toDouble()
+        }
+        return statBodyValue(p, sp, st, keywords) +
+            (statContext?.let { StatRelevance.thresholdBonus(settledPower, settledToughness, keywords, it) } ?: 0.0)
+    }
+
+    private fun statBodyValue(power: Double, settledPower: Double, settledToughness: Double, keywords: Set<String>): Double {
         // Base: power matters more than toughness for winning
         var value = settledPower * 1.0 + settledToughness * 0.4
 
@@ -647,6 +698,7 @@ object BoardPresence : BoardFeature {
         entityId: EntityId,
         container: ComponentContainer,
         valuation: CreatureValuation = CreatureValuation.LEGACY,
+        statContext: StatContext? = null,
     ): Double {
         val power = projected.getPower(entityId) ?: 0
         val toughness = projected.getToughness(entityId) ?: 0
@@ -670,7 +722,7 @@ object BoardPresence : BoardFeature {
 
         // Everything that is a property of the card's own body — stats, keywords, DEFENDER — is
         // [creatureBodyValue]; everything below is a property of this permanent in this position.
-        var value = creatureBodyValue(strikingPower, toughness, keywords, settledPower, settledToughness)
+        var value = creatureBodyValue(strikingPower, toughness, keywords, settledPower, settledToughness, statContext)
 
         // ── Drawbacks ──
         // "Can't attack" hung on the creature by a Pacifism takes away the same thing DEFENDER
@@ -682,7 +734,8 @@ object BoardPresence : BoardFeature {
             projected.cantAttack(entityId) &&
             Keyword.DEFENDER.name !in keywords
         ) {
-            value -= power * 0.8 // can't attack, power mostly wasted
+            val wasted = if (statContext != null) StatRelevance.softPower(power) else power.toDouble()
+            value -= wasted * 0.8 // can't attack, power mostly wasted
         }
 
         // ── Combat restrictions (Pacifism, "can't block this turn", etc.) ──
