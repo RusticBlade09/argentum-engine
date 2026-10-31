@@ -8,6 +8,7 @@ import com.wingedsheep.sdk.scripting.effects.CompositeEffect
 import com.wingedsheep.sdk.scripting.effects.ConniveEffect
 import com.wingedsheep.sdk.scripting.effects.LearnEffect
 import com.wingedsheep.sdk.scripting.effects.Effect
+import com.wingedsheep.sdk.scripting.effects.GatedEffect
 
 /**
  * The one traversal of a card's effect tree that both card scorers share.
@@ -115,6 +116,28 @@ object EffectWalker {
      * what an intent tag is.
      */
     fun leaves(effect: Effect): List<Effect> = fold(effect, LeafCollector)
+
+    /**
+     * [leaves], with every gate the walk stops at opened onto its payoff: the `then` and
+     * `otherwise` of "you may pay {E}. If you do, …" ([com.wingedsheep.sdk.scripting.effects.Gate.MayPay]),
+     * "you may discard a card. If you do, …" ([com.wingedsheep.sdk.scripting.effects.Gate.DoAction]),
+     * a pay-X or pay-life gate, and a "you may …, otherwise …" choice.
+     *
+     * The gate's own cost or action is left out on purpose: discarding or sacrificing to pay for
+     * the payoff is the price, not what the ability is for, and reading it would call Pia's
+     * "you may discard a card" a discard spell. A gate someone else decides ([GatedEffect.decisionMaker],
+     * the punisher shape — "its owner may put it on top of their library") stays a leaf: which branch
+     * happens is the opponent's call, so neither branch is what the card does.
+     *
+     * The static readers that ask what a card is *for* ([CardIntentAnalyzer], [TargetPolarityAnalyzer])
+     * read this walk. [leaves] keeps stopping at the gate, because widening it would move the rater's
+     * numbers — the same reason it stops at modes and `ForEach` bodies.
+     */
+    fun payoffLeaves(effect: Effect): List<Effect> = leaves(effect).flatMap { leaf ->
+        val gated = leaf as? GatedEffect
+        if (gated == null || gated.decisionMaker != null) listOf(leaf)
+        else listOfNotNull(gated.then, gated.otherwise).flatMap { payoffLeaves(it) }
+    }
 
     private object LeafCollector : Fold<List<Effect>> {
         override fun leaf(effect: Effect): List<Effect> = listOf(effect)

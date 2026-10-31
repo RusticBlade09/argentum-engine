@@ -146,7 +146,7 @@ object CardIntentAnalyzer {
     fun analyzeEffect(effect: Effect): CardIntent {
         val tags = mutableSetOf<IntentTag>()
         var removalReach: Int? = null
-        for (leaf in EffectWalker.leaves(effect)) {
+        for (leaf in readingLeaves(effect)) {
             tags += tagsOf(leaf)
             reachOf(leaf)?.let { removalReach = maxOf(removalReach ?: 0, it) }
         }
@@ -189,7 +189,7 @@ object CardIntentAnalyzer {
         val leaves = scripts.flatMap { script ->
             EffectWalker.slots(script).map { it.effect } +
                 script.stateTriggeredAbilities.map { it.effect }
-        }.flatMap { EffectWalker.leaves(it) }
+        }.flatMap { readingLeaves(it) }
 
         val tags = mutableSetOf<IntentTag>()
         var removalReach: Int? = null
@@ -314,7 +314,7 @@ object CardIntentAnalyzer {
         val manaAbilities = scripts.flatMap { it.activatedAbilities }.filter { it.isManaAbility }
         val sickRamp = sick && manaAbilities.isNotEmpty() && manaAbilities.all { tapsOrUntapsItself(it.cost) }
         if (deferred.isEmpty() && !sickRamp) return tags
-        fun tagsOfRoots(roots: List<Effect>) = roots.flatMap { EffectWalker.leaves(it) }.flatMapTo(HashSet()) { tagsOf(it) }
+        fun tagsOfRoots(roots: List<Effect>) = roots.flatMap { readingLeaves(it) }.flatMapTo(HashSet()) { tagsOf(it) }
         val later = tagsOfRoots(deferred) + if (sickRamp) setOf(IntentTag.RAMP) else emptySet()
         val onlyLater = later - tagsOfRoots(immediate) -
             scripts.flatMap { it.staticAbilities }.flatMapTo(HashSet()) { tagsOf(it) }
@@ -342,6 +342,19 @@ object CardIntentAnalyzer {
         AbilityCost.Tap, AbilityCost.Untap -> true
         is AbilityCost.Composite -> cost.costs.any { tapsOrUntapsItself(it) }
         else -> false
+    }
+
+    /**
+     * The leaves this analyzer reads: [EffectWalker.payoffLeaves] — every "if you do" gate opened
+     * onto its payoff — with a reflexive trigger ("you may sacrifice a creature. When you do, …")
+     * read as the effect it fires. The action before "when you do" is the price, like a gate's.
+     *
+     * The reflexive payoff is read here and not in [EffectWalker.payoffLeaves] because its targets
+     * are chosen when it triggers, against its own requirements: a polarity reader matching its
+     * `ContextTarget(0)` against the outer ability's slots would read the wrong target.
+     */
+    private fun readingLeaves(effect: Effect): List<Effect> = EffectWalker.payoffLeaves(effect).flatMap { leaf ->
+        if (leaf is ReflexiveTriggerEffect) readingLeaves(leaf.reflexiveEffect) else listOf(leaf)
     }
 
     /**
@@ -426,6 +439,13 @@ object CardIntentAnalyzer {
             }
         }
 
+        // "Target creature has base toughness 0 until end of turn" kills anything not propped up
+        // by counters or a pump — removal with no toughness defence, like destroy. A larger base
+        // is a gift or a curse depending on the creature, so it earns no tag.
+        is SetBaseStatsEffect ->
+            if (effect.toughness?.let(::fixed) == 0 && hitsAnotherPermanent(effect.target)) removalTags(effect.target)
+            else emptySet()
+
         is AddCountersEffect -> counterTags(effect.counterType, effect.target)
         is AddDynamicCountersEffect -> counterTags(effect.counterType, effect.target)
 
@@ -458,7 +478,7 @@ object CardIntentAnalyzer {
         // there for why), which makes this the analyzer's own reading of the node: interpret the
         // body, and promote it to a sweeper when the iteration spans a whole group of permanents.
         is ForEachEffect -> {
-            val inner = EffectWalker.leaves(effect.body)
+            val inner = readingLeaves(effect.body)
                 .flatMap { tagsOf(it) }
                 .toSet()
             if (effect.space is IterationSpace.Group && IntentTag.REMOVAL in inner) {
@@ -475,7 +495,7 @@ object CardIntentAnalyzer {
         // spell when every mode counters, so [IntentTag.COUNTERSPELL] alone needs all of them.
         // A cast with its modes chosen is read off those modes instead — [analyzeModes].
         is ModalEffect -> {
-            val perMode = effect.modes.map { mode -> EffectWalker.leaves(mode.effect).flatMapTo(HashSet()) { tagsOf(it) } }
+            val perMode = effect.modes.map { mode -> readingLeaves(mode.effect).flatMapTo(HashSet()) { tagsOf(it) } }
             val union = perMode.flatMapTo(HashSet()) { it }
             if (perMode.all { IntentTag.COUNTERSPELL in it }) union else union - IntentTag.COUNTERSPELL
         }
@@ -548,7 +568,7 @@ object CardIntentAnalyzer {
         is AddCountersEffect ->
             effect.counterType.ptDelta?.second?.takeIf { it < 0 && hitsAnotherPermanent(effect.target) }?.let { -it * effect.count }
         // The largest creature any one mode answers, the union [tagsOf] reads for the tags.
-        is ModalEffect -> effect.modes.flatMap { EffectWalker.leaves(it.effect) }.mapNotNull { reachOf(it) }.maxOrNull()
+        is ModalEffect -> effect.modes.flatMap { readingLeaves(it.effect) }.mapNotNull { reachOf(it) }.maxOrNull()
         else -> null
     }
 
@@ -576,7 +596,7 @@ object CardIntentAnalyzer {
      */
     private fun isExpiringGroupPump(effect: Effect): Boolean =
         effect is ForEachEffect && effect.space is IterationSpace.Group &&
-            EffectWalker.leaves(effect.body).any {
+            readingLeaves(effect.body).any {
                 isExpiringPump(it) && (it as ModifyStatsEffect).target == EffectTarget.IterationEntity
             }
 

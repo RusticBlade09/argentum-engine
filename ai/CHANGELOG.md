@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- Reads the payoff behind "you may pay/discard/sacrifice … If you do, …": aims those pumps and counters at its own creatures, and sees the tutors, draws and removal they unlock; reads a base-0/0 shrink as removal and a loyalty counter as a gift
 - #4151 Generated Commander decks now fill role quotas — about ten ramp (fixing ramp first for three-plus colours), eight interaction, seven card draw — and 25 cards on the commander's tribe, keywords or theme, and play 36 lands with the pool's on-colour duals instead of 38 basics split by pips
 - #4150 Reads "choose one" spells (charms, commands): in hand a charm is worth what any of its modes does, and a cast is judged by the modes it chose — it no longer spends a charm's team pump at the opponent's end step or its counter mode on an empty stack, and sees a tax-counter mode's tax
 - #4150 Reads +1/+1 counters put on another creature as a pump and -1/-1 counters on an opponent's creature as removal, so it flashes in a creature like Little Bear before combat when the counter makes its attack lethal; still holds a flash creature in its own upkeep, and one whose ETB only taps a blocker when it has nothing to attack with
