@@ -151,6 +151,27 @@ object CardIntentAnalyzer {
     }
 
     /**
+     * What casting [card] with the modes at [modeIndices] does — the reading a *cast* of a modal
+     * spell needs, where [analyze] answers what the card could do with any of them.
+     *
+     * The two differ exactly where timing is decided: a charm that can counter a spell *or* shrink
+     * a creature is not dead on an empty stack once the shrink is the mode chosen, and a charm whose
+     * chosen mode is "creatures you control get +1/+2 until end of turn" is a combat trick to hold,
+     * which no union of its modes can say. Read as the card with that spell effect, so speed and
+     * everything structural come from the card as before.
+     *
+     * Null when [card] is not a single-face modal spell or an index names no mode — the caller then
+     * keeps the card's own reading. Not memoized: a few modes are one cheap pass.
+     */
+    fun analyzeModes(card: CardDefinition, modeIndices: List<Int>): CardIntent? {
+        if (card.cardFaces.isNotEmpty() || modeIndices.isEmpty()) return null
+        val modal = card.script.spellEffect as? ModalEffect ?: return null
+        val chosen = modeIndices.map { modal.modes.getOrNull(it)?.effect ?: return null }
+        val effect = chosen.singleOrNull() ?: CompositeEffect(chosen)
+        return compute(card, listOf(card.script.copy(spellEffect = effect)))
+    }
+
+    /**
      * The intent [scripts] add up to, read as belonging to [card].
      *
      * Every caller passes the scripts that are in force for what it is asking about — the whole
@@ -441,6 +462,18 @@ object CardIntentAnalyzer {
             }
         }
 
+        // "Choose one —": the card can do whatever any one mode does, so it carries every mode's
+        // tags — a charm with a removal mode is removal in hand, as a ForEach body is read above.
+        // A tag *also* answers "is this card dead here?" for exactly one consumer: a counterspell
+        // with nothing on the stack is a discard ([HoldPolicy]). That is only true of a modal
+        // spell when every mode counters, so [IntentTag.COUNTERSPELL] alone needs all of them.
+        // A cast with its modes chosen is read off those modes instead — [analyzeModes].
+        is ModalEffect -> {
+            val perMode = effect.modes.map { mode -> EffectWalker.leaves(mode.effect).flatMapTo(HashSet()) { tagsOf(it) } }
+            val union = perMode.flatMapTo(HashSet()) { it }
+            if (perMode.all { IntentTag.COUNTERSPELL in it }) union else union - IntentTag.COUNTERSPELL
+        }
+
         else -> emptySet()
     }
 
@@ -485,6 +518,8 @@ object CardIntentAnalyzer {
 
         is DividedDamageEffect -> effect.totalDamage
         is ModifyStatsEffect -> fixed(effect.toughnessModifier)?.takeIf { it < 0 }?.let { -it }
+        // The largest creature any one mode answers, the union [tagsOf] reads for the tags.
+        is ModalEffect -> effect.modes.flatMap { EffectWalker.leaves(it.effect) }.mapNotNull { reachOf(it) }.maxOrNull()
         else -> null
     }
 
