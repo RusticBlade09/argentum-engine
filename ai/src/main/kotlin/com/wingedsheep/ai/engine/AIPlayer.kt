@@ -320,6 +320,7 @@ class AIPlayer(
                 targetPolarityFromEffect = profile.targetPolarityFromEffect,
                 selectionSeesWhoseCards = profile.selectionSeesWhoseCards,
                 topOrBottomWeighsTheDraw = profile.topOrBottomWeighsTheDraw,
+                lookDigsForLand = profile.lookDigsForLand,
             )
 
             // Wire up the decision resolver so simulations can resolve non-trivial

@@ -188,6 +188,12 @@ object ArenaAgents {
             "live-without-landcycling-use",
             AiProfile.LIVE.copy(id = "live-without-landcycling-use", landcyclingNeedsAUse = false),
         ),
+        // LIVE keeping any scried / surveiled spell over the keep threshold, land-short or not:
+        // `just arena live-without-look-digs live 300`
+        ArenaAgent(
+            "live-without-look-digs",
+            AiProfile.LIVE.copy(id = "live-without-look-digs", lookDigsForLand = false),
+        ),
         // LIVE reading each candidate's playouts raw again, without its static leaf as a prior playout:
         // `just arena live-without-static-prior live 300` prices `RolloutSettings.staticPriorPlayouts`.
         ArenaAgent(
