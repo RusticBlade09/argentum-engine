@@ -1,6 +1,7 @@
 package com.wingedsheep.ai.engine.knowledge
 
 import com.wingedsheep.ai.engine.evaluation.BoardPresence
+import com.wingedsheep.ai.engine.evaluation.SynergyPresence
 import com.wingedsheep.ai.engine.isOpponentTo
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.identity.CardComponent
@@ -73,6 +74,8 @@ object RemovalPatience {
         card: CardComponent,
         targets: List<ChosenTarget>,
         boardPresenceWeight: Double,
+        /** When set, a payoff's fuel counts toward its worth ([SynergyPresence.payoffValue]). */
+        synergy: SynergyPresence? = null,
     ): Double {
         // A sweeper's worth is the whole board it answers, and it names no targets to judge.
         if (IntentTag.SWEEPER in intent.tags) return 0.0
@@ -105,7 +108,8 @@ object RemovalPatience {
         if (patience <= 0.0) return 0.0
 
         val victimCard = state.getEntity(victim)?.get<CardComponent>() ?: return 0.0
-        val worth = BoardPresence.permanentValue(state, projected, victim, victimCard)
+        val worth = BoardPresence.permanentValue(state, projected, victim, victimCard) +
+            (synergy?.payoffValue(state, projected, victim) ?: 0.0)
         val fairTrade = Patience.FAIR_TRADE_VALUE_PER_MANA * card.manaValue
         return boardPresenceWeight * patience * (fairTrade - worth).coerceAtLeast(0.0)
     }

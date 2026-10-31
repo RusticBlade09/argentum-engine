@@ -40,6 +40,15 @@ class AddCountersReadingAiTest : ScenarioTestBase() {
             }
         }
 
+        test("a loyalty counter on a target is a gift") {
+            // Teyo: target permanent you control gains deathtouch, a +1/+1 counter if it's a
+            // creature, a loyalty counter if it's a planeswalker — every branch helps it.
+            val trigger = cardRegistry.getCard("Teyo, Diamondblade Mage")!!.script.triggeredAbilities.single()
+            com.wingedsheep.ai.engine.knowledge.TargetPolarityAnalyzer
+                .forRequirements(trigger.effect, trigger.allTargetRequirements) shouldBe
+                listOf(com.wingedsheep.ai.engine.knowledge.TargetPolarity.BENEFICIAL)
+        }
+
         // instants-12's shape: a flash creature whose arrival changes this turn's attack is worth
         // having before we swing, so the ambush hold steps aside and the board decides.
         test("casts Little Bear before combat to grow the Bear that is about to attack") {

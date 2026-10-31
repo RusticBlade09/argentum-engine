@@ -189,10 +189,12 @@ These are the ones that have actually caused bugs here.
 - **Ask what the engine AI makes of a card** — `just ai-card "<Card>|<Card>"` prints, per card, which
   abilities its readers understand (and the effect type behind each gap), its draft pick rating and
   where that comes from (flagging a card nothing rates, so the AI guesses from a heuristic), its board
-  value in play and what it thinks the card is for. Use it before a card or feature PR (`add-card` /
-  `add-feature` Step 10), and whenever you need to explain or predict an AI decision — a misplay in an
+  value in play, what it thinks the card is for, and which synergy axes it reads the card feeding or
+  rewarding. Before a card or feature PR (`add-card` / `add-feature` Step 10) it is a gate, not a
+  report: close the understanding, rating and synergy gaps it shows, or name them in the PR. Use it also
+  whenever you need to explain or predict an AI decision — a misplay in an
   `ai-game-review` or `ai-playtest` log, a strange draft pick. The Assay Explorer's card page draws the
-  same analysis for humans.
+  reading and rating for humans.
 - **Reprints** — only a card's *earliest real printing* gets a full `card(...)`; later sets get a
   `Printing(...)` row, never a duplicate canonical. `just check-card-printing "<Card>"` is the gate.
 

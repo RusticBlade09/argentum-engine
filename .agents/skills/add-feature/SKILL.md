@@ -265,30 +265,47 @@ costs every later reader (and Assay's own grammar) a second spelling.
 
 A new effect, trigger, cost or keyword is invisible to the engine AI until its readers classify it.
 The AI still plays a card that uses it, but on a generic default: it can't tell whether a target is
-helped or hurt, what the card is for, or when to hold it — and its draft heuristic scores the new
-effect at zero, so a card no table rates is underpicked. That is how a feature that works for players
-quietly makes the AI worse.
+helped or hurt, what the card is for, or when to hold it; its draft heuristic scores the new effect at
+zero, so a card no table rates is underpicked; and its synergy reader can't see what the card feeds or
+cashes in, so an engine is played and built as a lone body. That is how a feature that works for players
+quietly makes the AI worse. **Close all three in the same change** — you know the semantics best now.
 
-Check a card that exercises the feature:
+Check one or two cards that exercise the feature:
 
 ```bash
-just ai-card "<a card using it>"
+just ai-card "<a card using it>|<another>"
 ```
 
 (or open it in the Assay Explorer, where **AI reading** and **How the AI rates it** draw the same
-answers). A `✕` naming your new type, or a heuristic breakdown with no term for the ability, is the gap.
+answers). Read its four answers against the cards' Oracle text:
 
-- **Teach the readers in the same change when the type is new.** A new effect type is exactly the
-  classifier entry `just ai-reading-loop` would otherwise have to come back for, and you know its
-  semantics best right now. The readers: `TargetPolarityAnalyzer` (does each target slot help or hurt),
-  `CardIntentAnalyzer.tagsOf` (what it is for), `CombatReach` / `ExpiringGrantWindow` (P/T and
-  until-end-of-turn grants), and `LimitedCardRater.scoreEffect` (its draft value). Prove the reading with
-  an AI test and re-bless `just ai-reading-baseline` so the cards it fixed move to read-fully. An
-  AI-behaviour change also gets its `ai/CHANGELOG.md` line.
-- **If you leave it for later**, `AiReadingRatchetTest` will fail on the new group: re-bless the
-  baseline in this PR and name the unread type in the PR body so it lands on the ai-reading-loop list.
+- **Understanding** (`Reading`, `Intent`, `In play`). A `✕` naming your new type, `! abilities not
+  recognised`, or an `In play` value that ignores the ability is the gap. Teach the readers:
+  `TargetPolarityAnalyzer` (does each target slot help or hurt), `CardIntentAnalyzer.tagsOf` (what it is
+  for), `CombatReach` / `ExpiringGrantWindow` (P/T and until-end-of-turn grants). A **new decision**
+  (a new `PendingDecision` shape, a new choice inside resolution) also needs `DecisionResponder` to
+  answer it sensibly rather than with its first legal option — test the choice it makes.
+- **Rating** (`Pick`). A heuristic breakdown with no term for the ability means
+  `LimitedCardRater.scoreEffect` scores it at zero: give it a term sized against comparable effects
+  (`docs/limited-card-ratings.md`, section 3, "The effect heuristic").
+- **Synergy** (`Synergy`). If the feature makes or rewards a resource on an existing `SynergyAxis` — a
+  new token-making or sacrifice effect, a new cost that sacrifices, a new `EventPattern` a payoff can
+  watch, a new way to put +1/+1 counters or mill yourself — teach `SynergyAxes` the feeding or rewarding
+  side, so `SynergyPresence` prices the payoff by its fuel and `CommanderSynergy` builds around it. A
+  mechanic that *is* a new resource players build around (an axis no existing one covers) gets its axis
+  only when it has both a feeder and a payoff side among real cards; say why in the PR. Trigger patterns
+  bound to the card itself or to opponents' objects stay out of `rewards`.
+
+Prove each reading with an AI test (a decision that changes, a profile or score that's pinned), re-bless
+`just ai-reading-baseline` so the cards it fixed move to read-fully, and add the `ai/CHANGELOG.md` line.
+
+- **If you leave a part for later**, `AiReadingRatchetTest` will fail on a new unread group: re-bless the
+  baseline in this PR and name the unread type (or the missed synergy axis) in the PR body so it lands on
+  the ai-reading-loop list. Say which of understanding / rating / synergy is deferred and why.
 - **Widened an existing type?** Check one card on the old shape and one on the new — a reader matching
-  the old shape may silently stop reading it.
+  the old shape (including `SynergyAxes`) may silently stop reading it.
+- **PR body:** the same `AI: reads n/n · pick … · intent … · synergy …` line `add-card` asks for, per
+  card you checked.
 
 ## Step 11: Build, verify, commit
 

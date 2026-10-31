@@ -2,13 +2,17 @@ package com.wingedsheep.ai.audit
 
 import com.wingedsheep.ai.arena.harnessRegistry
 import com.wingedsheep.ai.engine.LimitedCardRater
+import com.wingedsheep.ai.engine.knowledge.SynergyAxes
+import com.wingedsheep.ai.engine.knowledge.SynergyAxis
+import com.wingedsheep.sdk.model.CardDefinition
 import com.wingedsheep.mtg.sets.MtgSetCatalog
 import io.kotest.core.spec.style.FunSpec
 import java.util.Locale
 
 /**
  * `just ai-card "<name>[|<name>…]"` — the engine AI's coverage of a few cards, in the terminal: what
- * its readers understand ([AiReadingAudit.read]) and how it rates them ([AiCardRating]). The same
+ * its readers understand ([AiReadingAudit.read]), how it rates them ([AiCardRating]) and which synergy
+ * axes it reads them feeding or rewarding ([SynergyAxes]). The rating and reading are the same
  * answers the Assay explorer's "AI reading" and "How the AI rates it" panels draw, for an agent or a
  * contributor without a browser — the `add-card` and `add-feature` skills' AI-coverage step.
  *
@@ -31,7 +35,7 @@ class AiCardReport : FunSpec({
             val sets = MtgSetCatalog.all
                 .filter { s -> s.cards.any { it.name == card.name } || s.printings.any { it.name == card.name } }
                 .sortedBy { it.releaseDate ?: "9999" }.map { it.code }
-            out.append(report(card.name, AiReadingAudit.read(card) { registry.getCard(it) }, AiCardRating.of(card, sets)))
+            out.append(report(card, AiReadingAudit.read(card) { registry.getCard(it) }, AiCardRating.of(card, sets)))
         }
         val file = java.io.File(System.getProperty("aiCardOut") ?: "build/reports/ai-card.txt")
         file.parentFile?.mkdirs()
@@ -43,7 +47,8 @@ class AiCardReport : FunSpec({
 private fun f(x: Double) = String.format(Locale.ROOT, "%.1f", x)
 private fun signed(x: Double) = (if (x >= 0) "+" else "−") + f(kotlin.math.abs(x))
 
-private fun report(name: String, reading: AiReadingAudit.CardReading, rating: AiCardRating.Rating): String = buildString {
+private fun report(card: CardDefinition, reading: AiReadingAudit.CardReading, rating: AiCardRating.Rating): String = buildString {
+    val name = card.name
     appendLine()
     appendLine("━━ $name ━━")
 
@@ -97,5 +102,15 @@ private fun report(name: String, reading: AiReadingAudit.CardReading, rating: Ai
     }
     appendLine("Intent    ${parts.joinToString(", ")}")
     rating.intent.facts.forEach { appendLine("          · $it") }
+    val synergy = SynergyAxes.of(card)
+    appendLine(
+        "Synergy   " + if (synergy.isEmpty) "none read"
+        else listOfNotNull(
+            synergy.feeds.takeIf { it.isNotEmpty() }?.let { "feeds " + it.joinToString(", ", transform = ::axisLabel) },
+            synergy.rewards.takeIf { it.isNotEmpty() }?.let { "rewards " + it.joinToString(", ", transform = ::axisLabel) },
+        ).joinToString(" · "),
+    )
     rating.advisor?.let { appendLine("Advisor   $it") }
 }
+
+private fun axisLabel(axis: SynergyAxis): String = axis.name.lowercase().replace('_', ' ')
