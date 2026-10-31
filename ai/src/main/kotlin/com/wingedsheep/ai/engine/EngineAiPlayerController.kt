@@ -61,11 +61,13 @@ class EngineAiPlayerController(
      * can browse what the AI weighed. Null in normal play.
      */
     insightSink: AiInsightSink? = null,
+    /** The profile this seat plays — [AiProfile.LIVE] in production; tests pass variants. */
+    private val profile: AiProfile = AiProfile.LIVE,
 ) : AiPlayerController {
 
     private val aiPlayer =
         AIPlayer.create(
-            cardRegistry, playerId, AiProfile.LIVE, insightSink = insightSink,
+            cardRegistry, playerId, profile, insightSink = insightSink,
         )
 
     override fun chooseAction(
@@ -152,7 +154,14 @@ class EngineAiPlayerController(
             cards[entityId]?.typeLine?.contains("Land", ignoreCase = true) == true
         }
 
-        val keep = landCount in 2..5
+        // A 2–5-lander that can't cast its spells early — wrong colours for all of them, or two
+        // lands and nothing to do on them — goes back. Only a seven-card keep is read this way.
+        val keep = landCount in 2..5 && !(
+            profile.curveAwareMulligan && mulliganMessage.cardsToPutOnBottom == 0 &&
+                OpeningHandReader.shouldMulligan(
+                    mulliganMessage.hand.mapNotNull { cards[it] }, mulliganMessage.isOnThePlay,
+                )
+            )
         logger.info("Engine AI mulligan: hand={} cards, {} lands → {}", handSize, landCount, if (keep) "KEEP" else "MULLIGAN")
         return keep
     }
