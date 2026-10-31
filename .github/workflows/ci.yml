@@ -34,12 +34,17 @@ jobs:
         include:
           - name: engine            # the engine's own tests (card scenarios are the groups below)
             tasks: ":rules-engine:test"
-          - name: scenarios-old     # card scenarios, sets released up to 2022
-            tasks: >-
-              :mtg-sets:1993-1999:tests:test :mtg-sets:2000-2002:tests:test
-              :mtg-sets:2003-2007:tests:test :mtg-sets:2008-2016:tests:test
-              :mtg-sets:2017-2022:tests:test
-          - name: scenarios-2023-24 # card scenarios, the two biggest recent eras
+          # Card scenarios, one chronological slice of eras per runner. Sized for the corpus once the
+          # remaining sets are finished, not just today's: 2017-2022 is the largest era module and sets
+          # the floor, so no group is planned to outgrow it. Split that era module when it becomes the
+          # long pole (see docs/build-performance-plan.md).
+          - name: scenarios-1993-2002
+            tasks: ":mtg-sets:1993-1999:tests:test :mtg-sets:2000-2002:tests:test"
+          - name: scenarios-2003-16
+            tasks: ":mtg-sets:2003-2007:tests:test :mtg-sets:2008-2016:tests:test"
+          - name: scenarios-2017-22
+            tasks: ":mtg-sets:2017-2022:tests:test"
+          - name: scenarios-2023-24
             tasks: ":mtg-sets:2023:tests:test :mtg-sets:2024:tests:test"
           - name: scenarios-2025-26
             tasks: ":mtg-sets:2025:tests:test :mtg-sets:2026:tests:test"
