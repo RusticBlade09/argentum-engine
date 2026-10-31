@@ -22,6 +22,7 @@ import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.battlefield.TappedComponent
 import com.wingedsheep.engine.state.components.identity.CardComponent
+import com.wingedsheep.engine.state.components.player.PlayerLostComponent
 import com.wingedsheep.engine.core.doesntUntapDuringUntapStep
 import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.core.Phase
@@ -513,8 +514,8 @@ class CombatAdvisor(
         // Only chump-block when unblocked damage would kill us THIS turn.
         // Don't chump-block for next-turn lethal — losing a blocker now makes next turn worse.
         val assignedBlockers = bestMap.keys.toMutableSet()
-        val incomingDamage = calculateIncomingDamage(state, projected, attackers, bestMap)
-        if (incomingDamage >= myLife) {
+        val lethalAsPlanned = isLethalThisCombat(state, projected, attackers, bestMap, myLife, playerId)
+        if (lethalAsPlanned) {
             val unblockedAttackers = attackers
                 .filter { attacker -> bestMap.values.none { attacker in it } }
 
@@ -539,12 +540,12 @@ class CombatAdvisor(
             // however good the trade reads. So rebuild the assignment for damage *prevented*, and
             // adopt it only when it genuinely saves us: positions the AI already survives keep the
             // plan they had.
-            if (calculateIncomingDamage(state, projected, attackers, bestMap) >= myLife) {
+            if (isLethalThisCombat(state, projected, attackers, bestMap, myLife, playerId)) {
                 val survival = damageMinimisingPlan(state, projected, attackers, validBlockers, mandatoryMap)
                 if (stackChumpsOnTramplers) {
                     stackOnTramplers(state, projected, attackers, validBlockers, survival, myLife)
                 }
-                if (calculateIncomingDamage(state, projected, attackers, survival) < myLife) {
+                if (!isLethalThisCombat(state, projected, attackers, survival, myLife, playerId)) {
                     bestMap = survival
                     assignedBlockers.clear()
                     assignedBlockers.addAll(survival.keys)
@@ -554,7 +555,7 @@ class CombatAdvisor(
 
         // ── Clock pass: buy the life the next attack would need, when it costs less than it saves ──
         if (chumpForTheClock) {
-            if (calculateIncomingDamage(state, projected, attackers, bestMap) < myLife) {
+            if (!isLethalThisCombat(state, projected, attackers, bestMap, myLife, playerId)) {
                 bestMap = clockChumps(state, projected, playerId, attackers, validBlockers, bestMap, myLife)
                 assignedBlockers.clear()
                 assignedBlockers.addAll(bestMap.keys)
@@ -562,7 +563,7 @@ class CombatAdvisor(
         }
         // ── Proactive chump-block: if facing lethal within 2 turns, sacrifice low-value creatures ──
         // Only do this when NOT already facing immediate lethal (that's handled above).
-        else if (incomingDamage < myLife) {
+        else if (!lethalAsPlanned) {
             val inDanger = isLifeInDanger(state, projected, attackers, bestMap, myLife, playerId, chumpOnlyWhenInDanger)
             if (inDanger) {
                 val unblockedAttackers = attackers
@@ -1166,7 +1167,8 @@ class CombatAdvisor(
             blocked.isNotEmpty() && blocker !in survivors && blocked.all { it in survivors }
         }.keys
 
-        val lethal = current.lifeTotal(playerId) <= 0
+        // Life is one way to lose this combat; commander damage (CR 903.10a) is another.
+        val lethal = current.lifeTotal(playerId) <= 0 || current.getEntity(playerId)?.has<PlayerLostComponent>() == true
         return BlockPlanOutcome(baseScore + counterAttackBonus, losingBlockers, lethal)
     }
 
@@ -1187,10 +1189,9 @@ class CombatAdvisor(
         playerId: EntityId,
         countCreaturesThatUntap: Boolean = false,
     ): Boolean {
+        // Immediate lethal — to life or to one commander's damage
+        if (isLethalThisCombat(state, projected, attackers, blockerMap, myLife, playerId)) return true
         val incomingDamage = calculateIncomingDamage(state, projected, attackers, blockerMap)
-
-        // Immediate lethal
-        if (incomingDamage >= myLife) return true
 
         // Next-turn check: after taking this damage, would opponent's next attack kill us?
         val lifeAfter = myLife - incomingDamage
@@ -1210,7 +1211,17 @@ class CombatAdvisor(
                     )
             }
 
-        val nextTurnDamage = incomingNextTurnDamage(state, projected, playerId, myBlockers)
+        // The commander damage this combat deals is not in [state] yet; the next swing adds to it.
+        val blockedAttackerIds = blockerMap.values.flatten().toSet()
+        val nextTurnDamage = incomingNextTurnDamage(
+            state, projected, playerId, myBlockers, life = lifeAfter,
+            commanderDamageThisCombat = { attacker ->
+                if (attacker !in attackers) 0
+                else commanderDamageToUs(
+                    state, attacker, playerId, incomingDamageFrom(state, projected, attacker, blockedAttackerIds, blockerMap),
+                )
+            },
+        )
         if (nextTurnDamage > 0 && lifeAfter <= nextTurnDamage) return true
 
         return false
@@ -1222,6 +1233,12 @@ class CombatAdvisor(
      * Summed within a team (CR 805.10 — teammates attack in one combat, against one set of
      * blockers) but maxed across teams, because opposing teams attack on separate turns and we
      * untap in between. In a two-player game this is one team of one player: the original call.
+     *
+     * In life units: a swing that kills us with commander damage (CR 903.10a) — one opposing
+     * commander reaching the damage it still needs through our best blocks
+     * ([CombatMath.commanderDamageLethal]) — is reported as at least [life], so every caller's
+     * "`>= life` is lethal" check reads it as lethal. [commanderDamageThisCombat] is commander
+     * damage a combat still being planned will add before that swing.
      */
     private fun incomingNextTurnDamage(
         state: GameState,
@@ -1230,13 +1247,22 @@ class CombatAdvisor(
         myBlockers: List<EntityId>,
         chumpBlocks: Boolean = true,
         stackOnTramplers: Boolean = false,
+        life: Int = state.lifeTotal(playerId),
+        commanderDamageThisCombat: (EntityId) -> Int = { 0 },
     ): Int {
         val sides = state.sidesFor(playerId) ?: return 0
         // A creature that can't block is no defence, however untapped it is. Counting it made
         // attacking with one (Aesthir Glider) look like it opened the crack-back it never closed.
         val blockers = myBlockers.filterNot { projected.cantBlock(it) }
         return sides.opponents.maxOf { team ->
-            team.sumOf { CombatMath.estimateNextTurnDamage(state, projected, it, blockers, chumpBlocks, stackOnTramplers) }
+            val damage = team.sumOf { CombatMath.estimateNextTurnDamage(state, projected, it, blockers, chumpBlocks, stackOnTramplers) }
+            val commanderLethal = team.any { opponent ->
+                CombatMath.commanderDamageLethal(
+                    state, projected, CombatMath.nextTurnAttackers(state, projected, opponent), playerId, blockers,
+                    chumpBlocks, stackOnTramplers, commanderDamageThisCombat,
+                )
+            }
+            if (commanderLethal) maxOf(damage, life) else damage
         }
     }
 
@@ -1527,23 +1553,59 @@ class CombatAdvisor(
         blockerMap: Map<EntityId, List<EntityId>>
     ): Int {
         val blockedAttackerIds = blockerMap.values.flatten().toSet()
-        var incomingDamage = 0
-        for (attacker in attackers) {
-            val aPower = projected.getPower(attacker) ?: 0
-            if (aPower <= 0) continue
-            // Damage aimed at a planeswalker or a battle is not damage to us (CR 510.1b).
-            if (defendPlaneswalkers && !attacksAPlayer(state, attacker)) continue
-            val aKeywords = projected.getKeywords(attacker)
-            if (attacker !in blockedAttackerIds) {
-                // A double striker hits twice; counted under [stackChumpsOnTramplers].
-                val hits = if (stackChumpsOnTramplers && Keyword.DOUBLE_STRIKE.name in aKeywords) 2 else 1
-                incomingDamage += hits * aPower
-            } else if (Keyword.TRAMPLE.name in aKeywords) {
-                incomingDamage += trampleSpill(projected, attacker, blockerMap)
-            }
-        }
-        return incomingDamage
+        return attackers.sumOf { incomingDamageFrom(state, projected, it, blockedAttackerIds, blockerMap) }
     }
+
+    /** The share of [calculateIncomingDamage] that [attacker] deals us. */
+    private fun incomingDamageFrom(
+        state: GameState,
+        projected: ProjectedState,
+        attacker: EntityId,
+        blockedAttackerIds: Set<EntityId>,
+        blockerMap: Map<EntityId, List<EntityId>>,
+    ): Int {
+        val aPower = projected.getPower(attacker) ?: 0
+        if (aPower <= 0) return 0
+        // Damage aimed at a planeswalker or a battle is not damage to us (CR 510.1b).
+        if (defendPlaneswalkers && !attacksAPlayer(state, attacker)) return 0
+        val aKeywords = projected.getKeywords(attacker)
+        return if (attacker !in blockedAttackerIds) {
+            // A double striker hits twice; counted under [stackChumpsOnTramplers].
+            val hits = if (stackChumpsOnTramplers && Keyword.DOUBLE_STRIKE.name in aKeywords) 2 else 1
+            hits * aPower
+        } else if (Keyword.TRAMPLE.name in aKeywords) {
+            trampleSpill(projected, attacker, blockerMap)
+        } else {
+            0
+        }
+    }
+
+    /**
+     * Whether [blockerMap] lets this combat kill [playerId]: the damage through it reaches
+     * [myLife], or one attacking commander's share reaches the commander damage we still have room
+     * for ([CombatMath.commanderDamageRoom], CR 903.10a). The one "is this plan lethal" test the
+     * chump, survival and clock passes and [isLifeInDanger] share.
+     */
+    private fun isLethalThisCombat(
+        state: GameState,
+        projected: ProjectedState,
+        attackers: List<EntityId>,
+        blockerMap: Map<EntityId, List<EntityId>>,
+        myLife: Int,
+        playerId: EntityId,
+    ): Boolean {
+        val blockedAttackerIds = blockerMap.values.flatten().toSet()
+        val shares = attackers.associateWith { incomingDamageFrom(state, projected, it, blockedAttackerIds, blockerMap) }
+        if (shares.values.sum() >= myLife) return true
+        return shares.any { (attacker, damage) ->
+            damage > 0 && commanderDamageToUs(state, attacker, playerId, damage) >=
+                (CombatMath.commanderDamageRoom(state, attacker, playerId) ?: return@any false)
+        }
+    }
+
+    /** [damage] when [attacker] is attacking [playerId] (not a teammate or a walker), else 0. */
+    private fun commanderDamageToUs(state: GameState, attacker: EntityId, playerId: EntityId, damage: Int): Int =
+        if (defenderOf(state, attacker)?.let { it == playerId } != false) damage else 0
 
 
 

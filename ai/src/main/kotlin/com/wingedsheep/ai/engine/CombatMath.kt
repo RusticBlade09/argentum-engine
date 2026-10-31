@@ -10,6 +10,8 @@ import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.battlefield.DamageComponent
 import com.wingedsheep.engine.state.components.battlefield.TappedComponent
 import com.wingedsheep.engine.state.components.identity.CardComponent
+import com.wingedsheep.engine.state.components.identity.CommanderComponent
+import com.wingedsheep.engine.state.components.identity.TokenComponent
 import com.wingedsheep.sdk.core.AbilityFlag
 import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.model.EntityId
@@ -761,13 +763,63 @@ object CombatMath {
         chumpBlocks: Boolean = true,
         stackOnTramplers: Boolean = false,
     ): Int {
-        val opponentAttackers = projected.getBattlefieldControlledBy(opponentId).filter { entityId ->
+        val opponentAttackers = nextTurnAttackers(state, projected, opponentId)
+        if (opponentAttackers.isEmpty()) return 0
+        return calculateDamageThroughOptimalBlocking(state, projected, opponentAttackers, myBlockers, chumpBlocks, stackOnTramplers)
+    }
+
+    /**
+     * The creatures [opponentId] can swing with on its next turn: no defender, and untapped by
+     * then — a tapped one untaps unless it doesn't untap during its controller's untap step.
+     */
+    fun nextTurnAttackers(state: GameState, projected: ProjectedState, opponentId: EntityId): List<EntityId> =
+        projected.getBattlefieldControlledBy(opponentId).filter { entityId ->
             projected.isCreature(entityId) &&
                 Keyword.DEFENDER.name !in projected.getKeywords(entityId) &&
                 (state.getEntity(entityId)?.has<TappedComponent>() != true || !projected.doesntUntapDuringUntapStep(entityId))
         }
-        if (opponentAttackers.isEmpty()) return 0
-        return calculateDamageThroughOptimalBlocking(state, projected, opponentAttackers, myBlockers, chumpBlocks, stackOnTramplers)
+
+    /**
+     * Combat damage [sourceId] can still deal [defenderId] before [defenderId] loses to commander
+     * damage (CR 903.10a — the format's threshold, 21 in Commander, from one commander over the
+     * game). Null when the format has no commander damage or [sourceId] is not a commander (a
+     * token copy of one never is).
+     *
+     * Commander damage is a second life total per opposing commander, and the AI's lethal checks
+     * read only the first: production game `1cca8ef9` died at 11 life to a sixteenth point of
+     * commander damage it could have chump-blocked.
+     */
+    fun commanderDamageRoom(state: GameState, sourceId: EntityId, defenderId: EntityId): Int? {
+        val threshold = state.format.commanderDamageThreshold ?: return null
+        val source = state.getEntity(sourceId) ?: return null
+        if (!source.has<CommanderComponent>() || source.has<TokenComponent>()) return null
+        return threshold - state.commanderDamageOf(sourceId, defenderId)
+    }
+
+    /**
+     * Whether one of [attackers] alone, through [defenderBlockers]' best blocks, deals [defenderId]
+     * the commander damage it still has room for ([commanderDamageRoom]) — the commander-damage
+     * twin of "this attack is lethal", which life totals cannot see. [dealtSoFar] is commander
+     * damage the caller expects before this swing that the state does not hold yet (this combat's,
+     * when pricing the attack after it). False outside commander formats.
+     */
+    fun commanderDamageLethal(
+        state: GameState,
+        projected: ProjectedState,
+        attackers: List<EntityId>,
+        defenderId: EntityId,
+        defenderBlockers: List<EntityId>,
+        chumpBlocks: Boolean = true,
+        stackOnTramplers: Boolean = false,
+        dealtSoFar: (EntityId) -> Int = { 0 },
+    ): Boolean {
+        if (state.format.commanderDamageThreshold == null) return false
+        return attackers.any { attacker ->
+            val room = (commanderDamageRoom(state, attacker, defenderId) ?: return@any false) - dealtSoFar(attacker)
+            room <= 0 || calculateDamageThroughOptimalBlocking(
+                state, projected, listOf(attacker), defenderBlockers, chumpBlocks, stackOnTramplers,
+            ) >= room
+        }
     }
 
     /**
