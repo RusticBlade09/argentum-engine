@@ -1148,6 +1148,66 @@
     ]
 }
 
+// DOT-7 Repair Squad
+{
+    "name": "DOT-7 Repair Squad",
+    "manaCost": "{3}{W}",
+    "typeLine": "Artifact Creature — Robot",
+    "oracleText": "Flying\n{1}{W}: Untap target creature. Activate only as a sorcery and only once each turn.",
+    "creatureStats": {
+        "power": 3,
+        "toughness": 3
+    },
+    "keywords": [
+        "FLYING"
+    ],
+    "script": {
+        "activatedAbilities": [
+            {
+                "id": "DOT-7 Repair Squad:1",
+                "cost": {
+                    "type": "CostAtomWrapper",
+                    "atom": {
+                        "type": "AtomMana",
+                        "cost": "{1}{W}"
+                    }
+                },
+                "effect": {
+                    "type": "TapUntap",
+                    "target": {
+                        "type": "BoundVariable",
+                        "name": "t0"
+                    },
+                    "tap": false
+                },
+                "targetRequirements": [
+                    {
+                        "type": "TargetObject",
+                        "filter": {
+                            "baseFilter": "creature"
+                        },
+                        "id": "t0"
+                    }
+                ],
+                "timing": "SorcerySpeed",
+                "restrictions": [
+                    "OncePerTurn"
+                ],
+                "descriptionOverride": "{1}{W}: Untap target creature. Activate only as a sorcery and only once each turn."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "12",
+        "artist": "Colin Searle",
+        "flavorText": "The DOT-7s are designed to make repairs in any conditions too dangerous for humanoids.",
+        "imageUri": "https://cards.scryfall.io/normal/front/f/c/fca1528c-84cc-42d2-99ae-9f10f0e28743.jpg?1786005749"
+    },
+    "colorIdentityOverride": [
+        "WHITE"
+    ]
+}
+
 // Dahar Master
 {
     "name": "Dahar Master",
