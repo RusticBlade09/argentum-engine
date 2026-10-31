@@ -19,6 +19,7 @@ import com.wingedsheep.sdk.scripting.TimingRule
 import com.wingedsheep.sdk.scripting.costs.CostAtom
 import com.wingedsheep.sdk.scripting.effects.AddCountersEffect
 import com.wingedsheep.sdk.scripting.effects.AddDynamicCountersEffect
+import com.wingedsheep.sdk.scripting.effects.AttachEquipmentEffect
 import com.wingedsheep.sdk.scripting.effects.CardDestination
 import com.wingedsheep.sdk.scripting.effects.CardSource
 import com.wingedsheep.sdk.scripting.effects.Effect
@@ -293,7 +294,7 @@ object AiReadingAudit {
             val sink = Sink()
             val reqs = listOfNotNull(trigger.targetRequirement) + trigger.additionalTargetRequirements
             abilityPolarity(trigger.effect, reqs, lookup, sink) {
-                TargetPolarityAnalyzer.forRequirements(trigger.effect, reqs, lookup)
+                TargetPolarityAnalyzer.forRequirements(trigger.effect, reqs, lookup, source = card)
             }
             intent(trigger.effect, sink)
             modal(trigger.effect, sink)
@@ -358,7 +359,7 @@ object AiReadingAudit {
                 sink += gap(Check.POLARITY, "target $target: no effect acts on this target", "(no effect)", null, target, mode)
                 continue
             }
-            val leaves = EffectWalker.leaves(effect)
+            val leaves = EffectWalker.payoffLeaves(effect)
             val probes = leaves.map { leaf ->
                 leaf to (TargetPolarityAnalyzer.forRequirements(leaf, reqs, lookup).getOrNull(slot) ?: TargetPolarity.UNKNOWN)
             }
@@ -393,20 +394,20 @@ object AiReadingAudit {
         }
         val unread = "no intent: the AI doesn't know what this effect is for"
         val before = sink.findings.size
-        val leaves = EffectWalker.leaves(root)
+        val leaves = EffectWalker.payoffLeaves(root)
         val unreadLeaves = leaves.filterNot(::needsNoIntent)
         labels(unreadLeaves.filterNot { it is ForEachEffect }).forEach { (label, leaf) ->
             sink += gap(Check.INTENT, unread, label, step(leaves, leaf))
         }
         for (each in unreadLeaves.filterIsInstance<ForEachEffect>()) {
-            labels(EffectWalker.leaves(each.body).filterNot(::needsNoIntent)).forEach { (label, _) ->
+            labels(EffectWalker.payoffLeaves(each.body).filterNot(::needsNoIntent)).forEach { (label, _) ->
                 sink += gap(Check.INTENT, unread, "ForEach>$label", step(leaves, each))
             }
         }
         // Every untagged step needed no tag: say so, so the ability reads as understood rather
         // than as one nobody asked about.
         if (sink.findings.size == before) {
-            sink += Finding(Check.INTENT, read = true, reason = "needs no intent: it only puts counters on its source or its controller")
+            sink += Finding(Check.INTENT, read = true, reason = "needs no intent: it only grows or attaches its own source, or adds counters for its controller")
         }
     }
 
@@ -539,6 +540,10 @@ object AiReadingAudit {
      * training) flagged, which errs toward flagging.
      */
     private fun needsNoIntent(leaf: Effect): Boolean {
+        // Equip / fortify / reconfigure moves the source onto a host and does nothing of its own:
+        // what the Equipment is *for* is the card's reading of its "equipped creature" statics
+        // (CardIntentAnalyzer tags those), and which creature gets it is the polarity check.
+        if (leaf is AttachEquipmentEffect) return true
         val (counter, target) = when (leaf) {
             is AddCountersEffect -> leaf.counterType to leaf.target
             is AddDynamicCountersEffect -> leaf.counterType to leaf.target

@@ -42,6 +42,9 @@ add up to more than the number of flagged cards. A card is **read fully** when i
 Two label shapes need explaining:
 
 - `ForEach>X` is the effect `X` inside a "for each …" body.
+- An "if you do" gate (`you may pay {E}. If you do, …`, `you may discard a card. If you do, …`) is
+  read through to its payoff, so a flag on one names the effect behind the gate, never
+  `GatedEffect`. Only a gate an opponent decides (the punisher shape) is still a `GatedEffect` leaf.
 - `Pipeline(<from>→<to>)` is a lowered library, graveyard or hand pipeline (gather, select, move,
   plus bookkeeping) named as one type by where its cards come from and go to. Its stages mean
   nothing alone.
