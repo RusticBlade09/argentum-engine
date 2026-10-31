@@ -68,37 +68,39 @@ function preloadSecondaryScreens() {
  * The in-game interaction overlays. None takes props beyond the epoch key — each reads its own
  * store slice — so memoizing the group keeps App's own re-render on every server message (it
  * watches gameState and legalActions to drive combat mode) from re-rendering all of them.
+ * Each key is `<overlay>:<epoch>`: the epoch remounts the overlay when the interaction changes, and
+ * the prefix keeps the siblings' keys distinct, which React requires within one fragment.
  */
 const InGameOverlays = memo(function InGameOverlays({ interactionEpoch }: { interactionEpoch: string | null }) {
   return (
     <>
       {/* X cost selection overlay (when casting spells with X in cost) */}
-      <XCostSelector key={interactionEpoch} />
+      <XCostSelector key={`XCostSelector:${interactionEpoch}`} />
 
       {/* Blight X variable additional cost overlay (e.g., Soul Immolation) */}
-      <BlightVariableSelector key={interactionEpoch} />
-      <PayXLifeSelector key={interactionEpoch} />
+      <BlightVariableSelector key={`BlightVariableSelector:${interactionEpoch}`} />
+      <PayXLifeSelector key={`PayXLifeSelector:${interactionEpoch}`} />
 
       {/* Choose-N modal (Spree / "choose one or more") mode-selection panel */}
-      <ModalModeSelector key={interactionEpoch} />
+      <ModalModeSelector key={`ModalModeSelector:${interactionEpoch}`} />
 
       {/* Convoke selection overlay (when casting spells with Convoke) */}
-      <ConvokeSelector key={interactionEpoch} />
+      <ConvokeSelector key={`ConvokeSelector:${interactionEpoch}`} />
 
       {/* Tap-for-generic selection overlay (improvise CR 702.126 / waterbend costs) */}
-      <TapForGenericSelector key={interactionEpoch} />
+      <TapForGenericSelector key={`TapForGenericSelector:${interactionEpoch}`} />
 
       {/* Harmonize creature-tap overlay (when casting from graveyard via Harmonize) */}
-      <HarmonizeSelector key={interactionEpoch} />
+      <HarmonizeSelector key={`HarmonizeSelector:${interactionEpoch}`} />
 
       {/* Tap-for-power selection overlay (crewing Vehicles / saddling Mounts) */}
-      <TapForPowerSelector key={interactionEpoch} />
+      <TapForPowerSelector key={`TapForPowerSelector:${interactionEpoch}`} />
 
       {/* Delve selection overlay (when casting spells with Delve) */}
-      <DelveSelector key={interactionEpoch} />
+      <DelveSelector key={`DelveSelector:${interactionEpoch}`} />
 
       {/* Damage distribution overlay (for DividedDamageEffect spells like Forked Lightning) */}
-      <DamageDistributionModal key={interactionEpoch} />
+      <DamageDistributionModal key={`DamageDistributionModal:${interactionEpoch}`} />
 
       {/* Decision overlay (for pending decisions like discard to hand size) */}
       <DecisionUI />

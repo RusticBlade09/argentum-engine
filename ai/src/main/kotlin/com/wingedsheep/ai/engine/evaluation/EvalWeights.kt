@@ -51,6 +51,8 @@ data class EvaluationWeights(
         pendingLandDropIsMana: Boolean = false,
         surplusAwareLands: Boolean = false,
         libraryClock: Boolean = false,
+        surplusLandsReadTheHand: Boolean = false,
+        oneShotManaIsMana: Boolean = false,
     ): BoardEvaluator = CompositeBoardEvaluator(
         listOfNotNull(
             life to LifeDifferential,
@@ -59,6 +61,7 @@ data class EvaluationWeights(
             ),
             cardAdvantage to CardAdvantage.Bound(
                 topdeckPenalty, landDropIsNotCardLoss, priceLandsInHandAsMana, surplusAwareLands,
+                surplusLandsReadTheHand = surplusLandsReadTheHand,
             ),
             threatAssessment to BoardFeature { state, projected, playerId ->
                 ThreatAssessment.score(
@@ -69,6 +72,8 @@ data class EvaluationWeights(
             tempo to Tempo,
             // In life units, so on [life]'s weight: an empty library is a near-loss like 0 life.
             if (libraryClock) life to LibraryClock else null,
+            // In land drops, so on [tempo]'s weight: a Treasure is a share of the next land.
+            if (oneShotManaIsMana) tempo to OneShotMana(intents) else null,
         )
     )
 
@@ -136,10 +141,11 @@ object EvalWeights {
 
     /**
      * [landDropIsNotCardLoss], [sequenceLandsByUsableMana], [discountedRaceClock],
-     * [creatureValuation], [priceLandsInHandAsMana], [evasionAfterAttacking], [pendingLandDropIsMana]
-     * and [surplusAwareLands] reach only the composite fallback: the raw Phase 9 vectors price
-     * `myHandSize` linearly, so a land drop already costs them one fitted coefficient with no cliff
-     * to step off, and changing what any of them count would silently invalidate the fit.
+     * [creatureValuation], [priceLandsInHandAsMana], [evasionAfterAttacking], [pendingLandDropIsMana],
+     * [surplusAwareLands] and [surplusLandsReadTheHand] reach only the composite fallback: the raw
+     * Phase 9 vectors price `myHandSize` linearly, so a land drop already costs them one fitted
+     * coefficient with no cliff to step off, and changing what any of them count would silently
+     * invalidate the fit.
      */
     fun resolveEvaluator(
         id: String,
@@ -153,13 +159,15 @@ object EvalWeights {
         pendingLandDropIsMana: Boolean = false,
         surplusAwareLands: Boolean = false,
         libraryClock: Boolean = false,
+        surplusLandsReadTheHand: Boolean = false,
+        oneShotManaIsMana: Boolean = false,
     ): BoardEvaluator =
         apprenticeWeights[id]?.takeIf(RawEvaluationWeights::isValid)?.toEvaluator(intents)
             ?: rawResourceWeights[id]?.takeIf(RawEvaluationWeights::isValid)?.toEvaluator(intents)
             ?: resolve(id).toEvaluator(
                 intents, landDropIsNotCardLoss, sequenceLandsByUsableMana, discountedRaceClock,
                 creatureValuation, priceLandsInHandAsMana, evasionAfterAttacking, pendingLandDropIsMana,
-                surplusAwareLands, libraryClock,
+                surplusAwareLands, libraryClock, surplusLandsReadTheHand, oneShotManaIsMana,
             )
 
     /** Whether [id] selects a complete, finite raw vector rather than the composite fallback. */

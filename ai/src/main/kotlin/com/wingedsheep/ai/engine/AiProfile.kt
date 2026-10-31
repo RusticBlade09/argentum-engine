@@ -954,6 +954,19 @@ data class AiProfile(
      */
     val libraryClock: Boolean = false,
     /**
+     * Price **mana banked in a permanent that sacrifices itself to make it** — Treasure, Gold, an
+     * Eldrazi Spawn — as mana: the evaluator's `OneShotMana` term, half the next land drop on the
+     * controller's land curve, and a full land drop's worth when it is the mana a spell in our own
+     * hand is one short of. Clue, Food and Blood pay out a card or life, not mana, and stay out.
+     *
+     * #4116 (choose-N modal modes): a mode that makes a Treasure scored as nothing worth having —
+     * [Tempo][com.wingedsheep.ai.engine.evaluation.Tempo] counts lands only, and the board prior
+     * read the token as a 0.7-point mana rock whatever the hand held. Gala Greeters' alliance
+     * trigger took 2 life at 20 over a Treasure with a four-drop in hand on three lands.
+     * `TreasureValueAiTest` pins it.
+     */
+    val oneShotManaIsMana: Boolean = false,
+    /**
      * Cast **enablers before what they discount**: in our own main phase a spell scores as at
      * least the best spell it makes cheaper (or castable), judged from the position right after it
      * — the same credit [landDropUnlocksSpells] gives a land.
@@ -986,24 +999,23 @@ data class AiProfile(
      */
     val fetchedLandDropFollowUp: Boolean = false,
     /**
-     * Don't typecycle a spell for a land the hand has no use for: when the lands already in hand
-     * cover this turn's land drop and the next, and every other spell in hand is castable off the
-     * lands those drops reach, a cycle that finds a land is floored below passing.
+     * Price a land in hand by the land drops the hand is actually waiting on, not by the next two
+     * drops whatever the hand holds. Refines [surplusAwareLands]: a land past this turn's drop is a
+     * whole card only while the lands before it fall short of the costliest spell in hand (or of a
+     * developed four-land board); past that it is surplus, a tenth of a card. The next turn's drop
+     * always counts. Own hand only — it reads the cards' mana values.
      *
      * Off the 2026-10-31 AI-vs-humans review: `b1a69afb` turn 7, three lands in play and Swamp,
      * Mountain and Apex Witchstalker in hand — its only spell — the AI basic-landcycled the 6/4 and
-     * ended the game with two Swamps in hand. The leaf read the swap as neutral (a land in hand
-     * counts as a card, like the spell it replaced), so a playout or two decided it; and with the
-     * land drop unused, [fetchedLandDropFollowUp] credited the cycle with playing the land it
-     * fetched, though a land already in hand made that same drop.
-     *
-     * By effect, not by card: any typecycling whose search put a land in hand (basic landcycling,
-     * Plainscycling, …). It leaves the case [fetchedLandDropFollowUp] was written for alone — no
-     * land in hand, or one that covers only this turn while the spells in hand need the next land
-     * (`FetchedLandDropFollowUpTest`'s Noble Templar positions). Pinned by the Apex Witchstalker
-     * case in that test.
+     * ended the game with two Swamps in hand. The leaf read the swap as card-neutral: a third land
+     * in hand counted as a whole card, like the spell it replaced. #4113 floored that one cycle in
+     * the Strategist; this prices the hand right instead, so every line that trades a spell or a
+     * board for a land nothing needs — a modal fetch over a fight, a draw, a land returned to hand —
+     * sees the same thing. Pinned by `SurplusLandsReadTheHandTest` (Bushwhack fetching a seventh
+     * land over killing the opponent's only creature) and `FetchedLandDropFollowUpTest`'s
+     * Witchstalker case. Needs [surplusAwareLands].
      */
-    val landcyclingNeedsAUse: Boolean = false,
+    val surplusLandsReadTheHand: Boolean = false,
     /**
      * Credit a line that **returns one of our own permanents to our hand** with casting it again
      * the same turn, and aim such a self-bounce at the permanent whose recast is worth most.
@@ -2398,9 +2410,10 @@ data class AiProfile(
             threatAwareDefender = true,
             borrowedCreaturesGoHome = true,
             curveAwareMulligan = true,
-            landcyclingNeedsAUse = true,
+            surplusLandsReadTheHand = true,
             lookDigsForLand = true,
             libraryClock = true,
+            oneShotManaIsMana = true,
             rollouts = PRODUCTION_CANDIDATE_EXPIRING.rollouts?.copy(staticPriorPlayouts = 1.0),
         )
 
@@ -2565,6 +2578,16 @@ data class AiProfile(
         val PRODUCTION_CANDIDATE_SURPLUSLANDS = PRODUCTION_CANDIDATE_EXPIRING.copy(
             id = "production-candidate-surpluslands",
             surplusAwareLands = true,
+        )
+
+        /**
+         * [oneShotManaIsMana] on top of [PRODUCTION_CANDIDATE_EXPIRING] — the last pinned candidate
+         * [LIVE] builds on — so `just arena production-candidate-expiring
+         * production-candidate-oneshotmana` measures this flag and nothing else. [LIVE] ships it.
+         */
+        val PRODUCTION_CANDIDATE_ONESHOTMANA = PRODUCTION_CANDIDATE_EXPIRING.copy(
+            id = "production-candidate-oneshotmana",
+            oneShotManaIsMana = true,
         )
 
         /**
