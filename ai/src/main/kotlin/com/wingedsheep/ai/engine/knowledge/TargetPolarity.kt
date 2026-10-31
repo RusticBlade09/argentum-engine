@@ -62,6 +62,8 @@ import com.wingedsheep.sdk.scripting.effects.MarkExileOnDeathEffect
 import com.wingedsheep.sdk.scripting.effects.ModalEffect
 import com.wingedsheep.sdk.scripting.effects.Mode
 import com.wingedsheep.sdk.scripting.effects.ModifyStatsEffect
+import com.wingedsheep.sdk.scripting.effects.SetBaseStatsEffect
+import com.wingedsheep.sdk.scripting.effects.FightEffect
 import com.wingedsheep.sdk.scripting.effects.MoveToZoneEffect
 import com.wingedsheep.sdk.scripting.effects.MoveUntilSourceLeavesEffect
 import com.wingedsheep.sdk.scripting.effects.PreventDamageEffect
@@ -213,7 +215,7 @@ object TargetPolarityAnalyzer {
      * host. [TargetPolarity.UNKNOWN] when nothing in it acts on the host, or its leaves disagree.
      */
     fun forAttachedHost(effect: Effect, definitions: CardLookup = NO_DEFINITIONS): TargetPolarity {
-        val readings = EffectWalker.leaves(effect).flatMap { leaf ->
+        val readings = EffectWalker.payoffLeaves(effect).flatMap { leaf ->
             classify(leaf, definitions).filter { (target, _) -> target in HOST_TARGETS }.map { it.second }
         }
         return combine(readings)
@@ -229,7 +231,7 @@ object TargetPolarityAnalyzer {
         if (effect == null) return requirements.map { TargetPolarity.UNKNOWN }
         val perSlot = List(requirements.size) { mutableListOf<TargetPolarity>() }
         val recursions = mutableSetOf<Int>()
-        for (leaf in EffectWalker.leaves(effect)) {
+        for (leaf in EffectWalker.payoffLeaves(effect)) {
             // "Destroy up to two target artifacts and/or enchantments" (Force of Vigor) runs its
             // body once per target, each seeing its target as `ContextTarget(0)`. With one slot
             // that is every target of that slot, so the body reads as the slot's; with several,
@@ -243,7 +245,7 @@ object TargetPolarityAnalyzer {
             val space = (leaf as? ForEachEffect)?.space
             if (space is IterationSpace.TargetsOf) {
                 val iterated = requirements.indexOfFirst { it.id == space.group }
-                for (inner in EffectWalker.leaves(leaf.body)) {
+                for (inner in EffectWalker.payoffLeaves(leaf.body)) {
                     for ((target, polarity) in classify(inner, definitions)) {
                         val slot = if (target == EffectTarget.IterationEntity) iterated.takeIf { it >= 0 }
                             else slotOf(target, requirements)
@@ -340,6 +342,15 @@ object TargetPolarityAnalyzer {
             is TapUntapEffect -> leaf.target to
                 if (leaf.tap) TargetPolarity.HARMFUL else TargetPolarity.BENEFICIAL
             is ModifyStatsEffect -> leaf.target to statsPolarity(leaf.powerModifier, leaf.toughnessModifier)
+            // "Target creature has base power and toughness 0/0 until end of turn" (Multiply by
+            // Zero). A larger base names nothing, so the slot's other effects decide it: "becomes a
+            // 4/4 and gains indestructible" on a creature of ours is the indestructible's call.
+            is SetBaseStatsEffect -> leaf.target to (baseStatsPolarity(leaf.power, leaf.toughness) ?: return emptyList())
+            // "<fighter> fights target creature": the creature fought is dealt damage, the victim's
+            // half of the fight. The fighter's half names nothing: its power is the weapon and the
+            // damage dealt back is the price, so which creature of ours fights best is a board
+            // question, not a side of the table.
+            is FightEffect -> leaf.target2 to TargetPolarity.HARMFUL
             is RegenerateEffect -> leaf.target to TargetPolarity.BENEFICIAL
             is PreventDamageEffect -> leaf.target to when {
                 !leaf.preventDamage -> null
@@ -388,6 +399,19 @@ object TargetPolarityAnalyzer {
         return listOf(target to (reading ?: TargetPolarity.UNKNOWN))
     }
 
+    /**
+     * A base-P/T change by what it is set to: a 1/1 or smaller shrinks nearly anything it lands on
+     * — the same line [staticPolarity] draws for the Cursed Role's static. A larger base is a gift
+     * or a curse depending on the creature, and a dynamic one depends on the board, so both stay
+     * unread. A side left null is unchanged.
+     */
+    private fun baseStatsPolarity(power: DynamicAmount?, toughness: DynamicAmount?): TargetPolarity? {
+        val set = listOfNotNull(power, toughness)
+        if (set.isEmpty()) return null
+        val small = set.all { (it as? DynamicAmount.Fixed)?.amount?.let { amount -> amount <= 1 } == true }
+        return if (small) TargetPolarity.HARMFUL else null
+    }
+
     private fun statsPolarity(power: DynamicAmount, toughness: DynamicAmount): TargetPolarity? {
         // A dynamic "+X/+X" reads like a fixed one when X cannot go negative — see [AmountSign].
         return when (statsSign(power, toughness)) {
@@ -420,7 +444,9 @@ object TargetPolarityAnalyzer {
     }
 
     private val BENEFICIAL_COUNTERS = setOf(
-        CounterType.SHIELD,
+        // Loyalty is what a planeswalker spends and what damage takes away: more is always better
+        // for its controller (Teyo's "put a loyalty counter on it if it's a planeswalker").
+        CounterType.SHIELD, CounterType.LOYALTY,
         CounterType.FLYING, CounterType.FIRST_STRIKE, CounterType.DOUBLE_STRIKE, CounterType.VIGILANCE,
         CounterType.LIFELINK, CounterType.INDESTRUCTIBLE, CounterType.DEATHTOUCH, CounterType.TRAMPLE,
         CounterType.HEXPROOF, CounterType.REACH, CounterType.HASTE, CounterType.MENACE, CounterType.SHADOW,
@@ -462,7 +488,7 @@ object TargetPolarityAnalyzer {
         val abilityEffects = card.script.triggeredAbilities.map { it.effect } +
             card.script.activatedAbilities.map { it.effect }
         for (effect in abilityEffects) {
-            for (leaf in EffectWalker.leaves(effect)) {
+            for (leaf in EffectWalker.payoffLeaves(effect)) {
                 for ((target, polarity) in classify(leaf, definitions)) {
                     // "Enchanted creature" and "enchanted permanent" (Flood the Engine's "tap
                     // enchanted permanent") both name the object the Aura is cast on.
@@ -497,7 +523,7 @@ object TargetPolarityAnalyzer {
      */
     private fun grantedTriggerPolarity(ability: TriggeredAbility): TargetPolarity {
         val readings = mutableListOf<TargetPolarity>()
-        for (leaf in EffectWalker.leaves(ability.effect)) {
+        for (leaf in EffectWalker.payoffLeaves(ability.effect)) {
             val classified = classify(leaf)
             val reading = when {
                 classified.isNotEmpty() -> classified.map { (target, polarity) ->
