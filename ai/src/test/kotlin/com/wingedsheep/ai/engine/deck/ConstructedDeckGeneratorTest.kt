@@ -165,6 +165,25 @@ class ConstructedDeckGeneratorTest : FunSpec({
         gen.generate(listOf("RPT"), DeckFormat.MODERN).values.sum() shouldBe deckSize
     }
 
+    test("reads a set's own cards' legality from the registry, not the raw set config") {
+        // The live server builds a set's booster `cards` from the raw set definitions, which carry
+        // no legalFormats; only the registry's copies are stamped with Scryfall legality. Read
+        // as-is, every card the set prints itself fell out of the legal pool and the build ran on
+        // the set's reprint rows alone.
+        val stamped = pool("AAA")
+        val raw = stamped.map { it.copy(legalFormats = emptySet()) }
+        val registry = CardRegistry()
+        registry.register(stamped)
+        registry.register(basics())
+        val gen = ConstructedDeckGenerator(
+            BoosterGenerator(mapOf("AAA" to BoosterGenerator.SetConfig("AAA", "Set AAA", raw, basics()))),
+            registry,
+            Random(SEED),
+        )
+
+        gen.generate(listOf("AAA"), DeckFormat.MODERN).values.sum() shouldBe deckSize
+    }
+
     test("builds a 100-card singleton deck for the Highlander formats") {
         // A wide mono-green pool: a singleton deck needs one distinct card per nonland slot.
         val wide = (1..90).map { i ->
