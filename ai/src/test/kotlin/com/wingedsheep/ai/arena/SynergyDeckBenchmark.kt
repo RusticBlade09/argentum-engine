@@ -83,10 +83,10 @@ class SynergyDeckBenchmark : FunSpec({
         val decided = results.sumOf { it.get().second }
         if (decided == 0) {
             println("No decided games.")
-            return@test
+        } else {
+            val rate = wins.toDouble() / decided
+            val stderr = sqrt(rate * (1 - rate) / decided)
+            println("Synergy-aware build won $wins of $decided decided games: ${pct(rate)} ± ${pct(1.96 * stderr)} (95%)")
         }
-        val rate = wins.toDouble() / decided
-        val stderr = sqrt(rate * (1 - rate) / decided)
-        println("Synergy-aware build won $wins of $decided decided games: ${pct(rate)} ± ${pct(1.96 * stderr)} (95%)")
     }
 })
