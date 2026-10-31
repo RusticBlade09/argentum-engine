@@ -406,7 +406,7 @@ val engineSerializersModule = SerializersModule {
         subclass(CounterUnlessCollectEvidenceContinuation::class)
         subclass(CounterUnlessPlayerCountersContinuation::class)
         subclass(WardCostChoiceContinuation::class)
-        subclass(WardTapPermanentsSubCostContinuation::class)
+        subclass(TapPermanentsSubCostContinuation::class)
         subclass(AddDynamicManaContinuation::class)
         subclass(AddManaPipsContinuation::class)
         subclass(SelectFromCollectionContinuation::class)
