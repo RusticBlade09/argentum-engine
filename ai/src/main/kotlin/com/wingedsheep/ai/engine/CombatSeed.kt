@@ -454,7 +454,10 @@ object CombatSeed {
         return best ?: legal.firstOrNull()
     }
 
-    /** Whether everything that may attack [seat] kills it through its untapped blockers. */
+    /**
+     * Whether everything that may attack [seat] kills it through its untapped blockers — on life,
+     * or with one of our commanders' damage.
+     */
     private fun canKill(state: GameState, projected: ProjectedState, legalAction: LegalAction, seat: EntityId): Boolean {
         val life = state.lifeTotal(seat)
         val reach = legalAction.validAttackers.orEmpty().filter { seat in legalAction.attackTargetsFor(it) }.let { reach ->
@@ -462,9 +465,10 @@ object CombatSeed {
             val lone = legalAction.loneAttackers.orEmpty()
             if (reach.size > 1) reach.filter { it !in lone }.ifEmpty { reach.take(1) } else reach
         }
-        return CombatMath.isLethalAttack(
-            state, projected, reach, CombatMath.getOpponentUntappedCreatures(state, projected, seat), life,
-        )
+        val blockers = CombatMath.getOpponentUntappedCreatures(state, projected, seat)
+        // One commander's damage reaching the format's threshold kills at any life (CR 903.10a).
+        return CombatMath.isLethalAttack(state, projected, reach, blockers, life) ||
+            CombatMath.commanderDamageLethal(state, projected, reach, seat, blockers)
     }
 
     /** The seat with the highest [seatThreat]; ties go to the lowest life, then turn order. */
