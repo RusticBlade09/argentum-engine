@@ -2381,7 +2381,10 @@ data class AiProfile(
             surplusAwareLands = true,
             holdFlashPermanentsForAmbush = true,
             landDropUnlocksSpells = true,
-            creatureValuation = PRODUCTION_CANDIDATE_EXPIRING.creatureValuation.copy(expiringStatsNeedAFight = true),
+            creatureValuation = PRODUCTION_CANDIDATE_EXPIRING.creatureValuation.copy(
+                expiringStatsNeedAFight = true,
+                statsReadTheBoard = true,
+            ),
             activatedPumpsNeedAPlannedAttack = true,
             attackPlaneswalkers = true,
             defendPlaneswalkers = true,
@@ -2588,6 +2591,16 @@ data class AiProfile(
         val PRODUCTION_CANDIDATE_ONESHOTMANA = PRODUCTION_CANDIDATE_EXPIRING.copy(
             id = "production-candidate-oneshotmana",
             oneShotManaIsMana = true,
+        )
+
+        /**
+         * [CreatureValuation.statsReadTheBoard] on top of [PRODUCTION_CANDIDATE_EXPIRING] — the last
+         * pinned candidate [LIVE] builds on — so `just arena production-candidate-expiring
+         * production-candidate-statsread` measures this flag and nothing else. [LIVE] ships it.
+         */
+        val PRODUCTION_CANDIDATE_STATSREAD = PRODUCTION_CANDIDATE_EXPIRING.copy(
+            id = "production-candidate-statsread",
+            creatureValuation = PRODUCTION_CANDIDATE_EXPIRING.creatureValuation.copy(statsReadTheBoard = true),
         )
 
         /**
