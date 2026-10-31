@@ -479,7 +479,7 @@ function TrendCharts({
     })
   }, [report.series, trendWindow.size])
   const tick = (d: string) => tickLabel(d, report.bucket)
-  const select = (state: { activeLabel?: string | number } | null) => {
+  const select = (state: { activeLabel?: string | number | undefined } | null) => {
     if (state?.activeLabel != null) onSelectBucket(String(state.activeLabel))
   }
   const selectedLine = selectedBucket && (
