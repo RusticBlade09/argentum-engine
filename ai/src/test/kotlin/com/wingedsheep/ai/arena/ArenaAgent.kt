@@ -178,6 +178,15 @@ object ArenaAgents {
             "live-without-crackback-stress",
             AiProfile.LIVE.copy(id = "live-without-crackback-stress", stressCrackBack = false),
         ),
+        // LIVE reading each candidate's playouts raw again, without its static leaf as a prior playout:
+        // `just arena live-without-static-prior live 300` prices `RolloutSettings.staticPriorPlayouts`.
+        ArenaAgent(
+            "live-without-static-prior",
+            AiProfile.LIVE.copy(
+                id = "live-without-static-prior",
+                rollouts = AiProfile.LIVE.rollouts?.copy(staticPriorPlayouts = 0.0),
+            ),
+        ),
         // Selection counts by value: searches take what they may, scry/surveil send away only the
         // cards not worth drawing. `just arena production production-selectcount 300` prices it
         // alone; `just arena production-candidate-expiring production-candidate-selectcount 300`
