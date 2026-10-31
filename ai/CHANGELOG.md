@@ -28,7 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
-- Crews Vehicles and saddles Mounts when the attack it buys beats the attack without it, tapping the creatures that give up least (summoning-sick ones first), instead of never riding at all
+- #4094 Crews Vehicles and saddles Mounts when the attack it buys beats the attack without it, tapping the creatures that give up least (summoning-sick ones first), instead of never riding at all
 - #4092 Refuses a generated constructed deck its pool can't really fill (under 4/5 of the spell slots or under 8 creatures in 60) and falls back to another deck, instead of seating a 44-land pile with no creatures
 - #4085 Returning its own permanent to hand (Rescue Girl, First Responder) now picks the permanent worth recasting, like an enters-trigger creature, instead of a land or a token, and counts that recast as the reason to activate
 - #4019 Facing a constructed deck with no single-set identity (a Standard deck spread over many sets), builds a fresh deck for the format that deck was built for — the one its saved or starter deck declares, else the narrowest of Standard to Vintage it is legal in — instead of a 40-card sealed pool from a random set; a deck from one or a few sets is still answered out of those sets, now to its declared format
