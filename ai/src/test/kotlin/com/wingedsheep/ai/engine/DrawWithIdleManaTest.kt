@@ -39,11 +39,13 @@ class DrawWithIdleManaTest : ScenarioTestBase() {
     // `precombatPumpsForThePlan` off too: the g2 board (Bears facing a Hill Giant, Giant Growth in
     // hand) is one where a precombat pump changes the attack plan, so with it on the without-flag
     // agent casts the trick instead of cracking Omashu City and the control stops isolating this
-    // flag.
+    // flag. Likewise the static leaf as a prior playout (`RolloutSettings.staticPriorPlayouts`):
+    // it holds Omashu City here on its own, so the control reads its playouts raw.
     private val liveWithoutFlag = AiProfile.LIVE.copy(
         id = "live-without-idledraw",
         drawWithIdleMana = false,
         precombatPumpsForThePlan = false,
+        rollouts = AiProfile.LIVE.rollouts?.copy(staticPriorPlayouts = 0.0),
     )
 
     private fun decide(

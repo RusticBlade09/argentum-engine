@@ -2298,6 +2298,7 @@ data class AiProfile(
             blockTriggersKill = true,
             stressCrackBack = true,
             threatAwareDefender = true,
+            rollouts = PRODUCTION_CANDIDATE_EXPIRING.rollouts?.copy(staticPriorPlayouts = 1.0),
         )
 
         /**

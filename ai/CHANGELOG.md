@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- #4105 Stops passing main phases with castable creatures when a single lost rollout outvotes the board: each candidate's playouts are read with its static evaluation counted as one more playout
 - #4102 In Commander games, counts commander damage as lethal: chump-blocks a commander about to reach the commander-damage threshold, keeps home the blocker that stops it next turn, and aims at a seat its own commander can finish
 - #4100 In multiplayer, attacks the opponent it can kill, else the one with the biggest board, instead of always the lowest life total
 - #4099 Won't attack away blockers when one activated ability visible on the opponent's board (removal on a blocker, a pump) would make the swing back lethal, and counts idle blockers ganging up on a trampler instead of reading every crack-back past one as lethal

@@ -83,12 +83,16 @@ class FetchedLandDropFollowUpTest : ScenarioTestBase() {
             game.findPermanents("Plains").size shouldBe 3
         }
 
-        test("with a land already in hand, the land is played first") {
+        test("with a land already in hand, that land is played and the idle mana still cycles for the next") {
+            // The Mountain is this turn's drop either way; what the two leftover lands buy is the
+            // cycle, which banks the fifth land the 5-drops in hand need next turn. Which of the two
+            // goes first is a tie the search may break either way.
             val game = position(landInHand = true)
+            game.letAiPlayOutMain()
 
-            val action = game.choice()
-            action.shouldBeInstanceOf<PlayLand>()
-            game.nameOf(action) shouldBe "Mountain"
+            game.findPermanents("Mountain").size shouldBe 2
+            game.isInGraveyard(1, "Noble Templar") shouldBe true
+            game.findCardsInHand(1, "Plains").size shouldBe 1
         }
 
         test("with the land drop already used, it does not cycle for a land it cannot play") {
