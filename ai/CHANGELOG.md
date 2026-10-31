@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- #4099 Won't attack away blockers when one activated ability visible on the opponent's board (removal on a blocker, a pump) would make the swing back lethal, and counts idle blockers ganging up on a trampler instead of reading every crack-back past one as lethal
 - #4097 Keeps its blockers home when only they stop a lethal swing back: the crack-back no longer counts an opposing creature that won't untap, an attack plan the simulator can't score is no longer submitted unscored, and a plan whose crack-back is lethal earns no credit for our next swing
 - #4094 Crews Vehicles and saddles Mounts when the attack it buys beats the attack without it, tapping the creatures that give up least (summoning-sick ones first), instead of never riding at all
 - #4092 Refuses a generated constructed deck its pool can't really fill (under 4/5 of the spell slots or under 8 creatures in 60) and falls back to another deck, instead of seating a 44-land pile with no creatures
