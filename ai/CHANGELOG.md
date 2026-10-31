@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- #4158 Values power and toughness by what they do against the board: huge stats taper off (a 1000/1000 is worth under twice a 20/20), and a creature is worth more for each opposing creature it would beat in a fight (kill and survive) or survive, and when it is out of reach of the burn they've shown
 - #4163 Drafts and builds limited decks for synergy: a pick or a slot is worth more when it feeds a payoff already taken, a payoff with too little fuel is worth less, and the deck score counts payoffs the deck keeps fed
 - #4162 Equips the creature an Equipment helps most: equip, fortify, reconfigure and "attach it to target creature" triggers read what the Equipment does to the creature it equips, so the cheap target pick and the simulated shortlist start from our best creature instead of our worst
 - #4159 Values a payoff by the fuel beside it — Blood Artist next to a sacrifice outlet and bodies, Ajani's Pridemate beside lifelinkers, a prowess creature with instants in hand — so it kills a fed engine over the 1/1s feeding it, counts the engine toward whether a removal spell is worth spending, and values its own engine the same way; Commander decks find their theme cards by what they feed or cash in rather than by matching rules-text words
