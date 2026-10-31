@@ -1,5 +1,6 @@
 package com.wingedsheep.ai.engine.knowledge
 
+import com.wingedsheep.sdk.core.CounterType
 import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.model.CardDefinition
@@ -423,6 +424,9 @@ object CardIntentAnalyzer {
             }
         }
 
+        is AddCountersEffect -> counterTags(effect.counterType, effect.target)
+        is AddDynamicCountersEffect -> counterTags(effect.counterType, effect.target)
+
         is TapUntapEffect -> if (effect.tap) setOf(IntentTag.TAPPER) else emptySet()
         is TapUntapCollectionEffect -> if (effect.tap) setOf(IntentTag.TAPPER) else emptySet()
 
@@ -477,6 +481,27 @@ object CardIntentAnalyzer {
         else -> emptySet()
     }
 
+    /**
+     * Counters put on [target]: +1/+1 is a [IntentTag.PUMP] that never wears off, -1/-1 on someone
+     * else's creature is removal by another name, and a keyword counter reads as the keyword does.
+     *
+     * A counter on the card's own source or on a player is left untagged, as the audit leaves it:
+     * a creature growing itself has no target to choose and no window to time, and tagging a
+     * self-grown flash creature [IntentTag.PUMP] would make [AmbushWindow] stop holding it.
+     */
+    private fun counterTags(type: CounterType, target: EffectTarget): Set<IntentTag> {
+        if (!hitsAnotherPermanent(target)) return emptySet()
+        type.ptDelta?.let { (power, toughness) ->
+            return when {
+                toughness < 0 && power <= 0 -> removalTags(target)
+                power >= 0 && toughness >= 0 && (power > 0 || toughness > 0) -> setOf(IntentTag.PUMP)
+                else -> emptySet()
+            }
+        }
+        if (type == CounterType.SHIELD) return setOf(IntentTag.PROTECTION)
+        return keywordTags(type.name)
+    }
+
     /** Spot removal or a wrath, depending on whether the effect names a group. */
     private fun removalTags(target: EffectTarget): Set<IntentTag> =
         if (targetsAGroup(target)) setOf(IntentTag.REMOVAL, IntentTag.SWEEPER)
@@ -518,6 +543,8 @@ object CardIntentAnalyzer {
 
         is DividedDamageEffect -> effect.totalDamage
         is ModifyStatsEffect -> fixed(effect.toughnessModifier)?.takeIf { it < 0 }?.let { -it }
+        is AddCountersEffect ->
+            effect.counterType.ptDelta?.second?.takeIf { it < 0 && hitsAnotherPermanent(effect.target) }?.let { -it * effect.count }
         // The largest creature any one mode answers, the union [tagsOf] reads for the tags.
         is ModalEffect -> effect.modes.flatMap { EffectWalker.leaves(it.effect) }.mapNotNull { reachOf(it) }.maxOrNull()
         else -> null
