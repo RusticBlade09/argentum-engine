@@ -325,7 +325,7 @@ def check_setup() -> dict[str, bool]:
     with Spinner("Checking your setup"):
         have = {t: shutil.which(t) is not None for t in ("git", "just", "jq", "claude", "codex")}
         jv = java_major()
-        have["java"] = jv is not None and jv >= 21
+        have["java"] = jv is not None and jv >= 25
         versions = {t: version(t) for t in ("claude", "codex") if have[t]}
         have["gh"] = shutil.which("gh") is not None and run(["gh", "auth", "status"]).returncode == 0
 
@@ -335,7 +335,7 @@ def check_setup() -> dict[str, bool]:
         if not have[tool]:
             problems.append(f"{bold(tool)} is missing — {hint}")
     if not have["java"]:
-        problems.append(f"{bold('JDK 21+')} is needed" + (f" (found {jv})" if jv else "") + " — https://adoptium.net")
+        problems.append(f"{bold('JDK 25+')} is needed" + (f" (found {jv})" if jv else "") + " — https://adoptium.net")
     if not (have["claude"] or have["codex"]):
         problems.append(f"{bold('Claude Code')} (https://claude.com/claude-code) or {bold('Codex')} "
                         "(https://github.com/openai/codex) — the agent that does the work")
