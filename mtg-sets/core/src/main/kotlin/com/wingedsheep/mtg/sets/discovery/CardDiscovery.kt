@@ -82,7 +82,7 @@ object CardDiscovery {
             .use { scanResult ->
                 ClassIndex(
                     classNamesByPackage = scanResult.allClasses.groupBy({ it.packageName }, { it.name }),
-                    setClassNames = scanResult.getClassesImplementing(MtgSet::class.java.name)
+                    setClassNames = scanResult.getAllClassesImplementing(MtgSet::class.java.name)
                         .filter { !it.isInterface && !it.isAbstract }
                         .map { it.name },
                 )
