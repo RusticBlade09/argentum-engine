@@ -1315,6 +1315,19 @@ data class AiProfile(
      */
     val borrowedCreaturesGoHome: Boolean = false,
     /**
+     * Keep a seven-card opening hand of 2–5 lands only when it can cast something in its colours —
+     * and, with exactly two lands, only when it has early plays off those two lands (see
+     * [OpeningHandReader]). Without it the engine AI kept any 2–5-lander, whatever its curve.
+     *
+     * Off the 2026-10-31 AI-vs-humans review: `088bcff0` kept two lands with five spells costing
+     * 3–6 and sat on three lands until turn 11; `844df659` kept Swamp, Forest and five spells of mana
+     * value 3+ on the draw and was mana-screwed. Six-card and smaller keeps, Momir Basic, and the
+     * forced keep after two mulligans are untouched. Read by
+     * [EngineAiPlayerController.decideMulligan] (the arena skips mulligans, so it has no arena
+     * variant). Pinned by `EngineAiMulliganCurveTest`.
+     */
+    val curveAwareMulligan: Boolean = false,
+    /**
      * Read a blocker whose block trigger destroys the attacker it blocks as a killer, the way
      * deathtouch is read.
      *
@@ -2316,6 +2329,7 @@ data class AiProfile(
             stressCrackBack = true,
             threatAwareDefender = true,
             borrowedCreaturesGoHome = true,
+            curveAwareMulligan = true,
             rollouts = PRODUCTION_CANDIDATE_EXPIRING.rollouts?.copy(staticPriorPlayouts = 1.0),
         )
 
