@@ -1121,6 +1121,22 @@ data class AiProfile(
      */
     val topOrBottomWeighsTheDraw: Boolean = false,
     /**
+     * Scry and surveil dig for a land when the hand is short of one: with a spell in hand costing
+     * more than the lands in play and in hand add up to, a looked-at card stays on top only when
+     * it is worth at least an average draw from the library ([CardSelectionValue], as a card drawn
+     * later) — the comparison [topOrBottomWeighsTheDraw] makes — instead of clearing the fixed
+     * keep threshold [selectionCountsByValue] uses. Needs [selectionCountsByValue] and
+     * [castabilityAwareCardSelection].
+     *
+     * Off the 2026-10-31 AI-vs-humans review: `e8c9a92d` turns 6 and 8, two lands in play, none in
+     * hand and six spells waiting (a five-drop and a three-drop among them), Eye of Jace's upkeep
+     * surveil kept a three-mana creature on top, then a second one; the third land came on turn 10.
+     * Each spell, priced alone, cleared the threshold — the threshold never asked what a fresh draw,
+     * half of them lands, was worth to that hand. A flooded hand is untouched (no spell is out of
+     * reach, so the fixed threshold still mills the spare land). Pinned by `LookDigsForLandTest`.
+     */
+    val lookDigsForLand: Boolean = false,
+    /**
      * Score an attack plan by the **race**: our next swing as well as theirs, each attack's defence
      * charged once, and the crack-back checked against the block the defender would rather not make.
      *
@@ -2350,6 +2366,7 @@ data class AiProfile(
             borrowedCreaturesGoHome = true,
             curveAwareMulligan = true,
             landcyclingNeedsAUse = true,
+            lookDigsForLand = true,
             rollouts = PRODUCTION_CANDIDATE_EXPIRING.rollouts?.copy(staticPriorPlayouts = 1.0),
         )
 

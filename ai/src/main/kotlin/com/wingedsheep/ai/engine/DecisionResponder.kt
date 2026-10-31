@@ -132,6 +132,14 @@ class DecisionResponder(
      * which always resolved to the first option, the top.
      */
     private val topOrBottomWeighsTheDraw: Boolean = false,
+    /**
+     * [AiProfile.lookDigsForLand]: under [selectionCountsByValue], a scry or surveil by a hand
+     * short of lands ([CardSelectionValue.landShort]) keeps a card on top only when it is worth at
+     * least an average draw from the library, not merely [LOOK_KEEP_THRESHOLD] — so a spell that
+     * would queue behind the spells already waiting on lands goes, to dig for the land. Off keeps
+     * the fixed threshold.
+     */
+    private val lookDigsForLand: Boolean = false,
 ) {
     private val priors: ChoicePriors? = if (informedChoices) ChoicePriors(simulator.cardRegistry) else null
 
@@ -725,7 +733,8 @@ class DecisionResponder(
 
     /**
      * Scry / surveil: send away exactly the looked-at cards not worth drawing — every card whose
-     * [CardSelectionValue] falls below [LOOK_KEEP_THRESHOLD], widened to the decision's minimum
+     * [CardSelectionValue] falls below [LOOK_KEEP_THRESHOLD] (or, under [lookDigsForLand] with a
+     * hand short of lands, below an average draw), widened to the decision's minimum
      * with the least valuable cards and capped at its maximum. Zero is a legal and common answer.
      */
     private fun cardsBelowKeepThreshold(
@@ -735,7 +744,12 @@ class DecisionResponder(
     ): List<EntityId> {
         val value = CardSelectionValue.of(state, playerId, intents, drawnLater = true)
         val scored = decision.options.map { it to value.score(it) }.sortedBy { it.second }
-        val count = scored.count { it.second < LOOK_KEEP_THRESHOLD }
+        // Short of lands, the card on top is weighed against what replaces it — a random draw,
+        // with a land's chance in it — as a top-or-bottom choice is ([topOrBottomByDraw]).
+        val keepLine = if (lookDigsForLand && value.landShort) {
+            maxOf(LOOK_KEEP_THRESHOLD, value.averageDraw())
+        } else LOOK_KEEP_THRESHOLD
+        val count = scored.count { it.second < keepLine }
             .coerceIn(decision.minSelections.coerceAtMost(decision.maxSelections), decision.maxSelections)
         return scored.take(count).map { it.first }
     }
