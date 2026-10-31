@@ -1082,6 +1082,12 @@ export type GameStore = {
   /** The last forced question this client answered for the player, shown as a brief notice. */
   autoAnswerNotice: import('./handlers/autoAnswer').AutoAnswerNotice | null
   dismissAutoAnswerNotice: () => void
+  /**
+   * Automatic ordering just put several of the player's triggers on the stack in an order they
+   * could have chosen — a tip shown once, the first time it happens.
+   */
+  triggerOrderNotice: { key: number; count: number } | null
+  dismissTriggerOrderNotice: () => void
   /** A forced question is waiting to be answered for the player (see `autoAnswer.ts`). */
   autoAnswerPending: boolean
   createGame: (deckList: Record<string, number>, setCode?: string) => void

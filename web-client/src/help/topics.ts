@@ -1163,11 +1163,11 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     summary:
       'Auto passes for you whenever you have nothing worth doing. Stops pauses on opponent spells and abilities, on combat damage, and in a declare attackers step where nothing attacks. Full Control gives you priority at every single step.',
     body: [
-      { kind: 'p', text: 'The button cycles Auto → Stops → Full Control. Auto is right for most games; switch to Full Control when you need a specific window, such as responding in your own upkeep. Games start in Auto unless you pick another starting mode in Preferences.' },
+      { kind: 'p', text: 'The button cycles Auto → Stops → Full Control. Auto is right for most games; switch to Full Control when you need a specific window, such as responding in your own upkeep. Full Control also lets you order your own simultaneous triggers. Games start in Auto unless you pick another starting mode in Preferences.' },
       { kind: 'p', text: 'Auto never passes when you have a decision that matters — it is a convenience, not a rules shortcut.' },
       { kind: 'p', text: 'In Auto and Stops your own spells and abilities pass straight to your opponent. To respond to one of your own — Overkill on the creature whose Jaws of Defeat trigger is waiting, say — switch that kind on under Hold priority over my own in Preferences, or play that turn in Full Control.' },
     ],
-    related: ['stops', 'yields', 'preferences', 'own-stack-stops'],
+    related: ['stops', 'yields', 'preferences', 'own-stack-stops', 'trigger-order'],
   },
   {
     id: 'stops',
@@ -1302,15 +1302,16 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'playing',
     title: 'Ordering your triggers',
     summary:
-      'When several of your abilities trigger at once, they go on the stack in the order they triggered. Turn off Order my triggers automatically (Preferences → Gameplay) to choose the order yourself — scry before you draw, make the token before the counters go out.',
+      'When several of your abilities trigger at once, they go on the stack in the order they triggered. Switch to Full Control for the turn that needs it, or turn off Order my triggers automatically (Preferences → Gameplay), to choose the order yourself — scry before you draw, make the token before the counters go out.',
     body: [
-      { kind: 'p', text: 'With it off, the game stops before your triggers go on the stack and lists them top to bottom in the order they will resolve: the top one resolves first. Drag a row, use its arrows, or press Alt+↑/↓ on it, then Put on the stack. Reset order puts them back in the suggested order.' },
+      { kind: 'p', text: 'Full Control always lets you order them, whatever the preference says — the priority-mode button is the quickest way in, and switching back to Auto or Stops returns to your preference. The first time the game orders your triggers for you where the order could matter, a short notice says so; Always let me order turns the preference off.' },
+      { kind: 'p', text: 'When you order them, the game stops before your triggers go on the stack and lists them top to bottom in the order they will resolve: the top one resolves first. Drag a row, use its arrows, or press Alt+↑/↓ on it, then Put on the stack. Reset order puts them back in the suggested order.' },
       { kind: 'p', text: 'An ability that checks this turn as it resolves — Infusion’s “if you gained life this turn” — is marked checks as it resolves and starts at the bottom, so it sees the life your other triggers gain first. Automatic ordering does the same.' },
       { kind: 'p', text: 'You are only asked when the order can matter. A single trigger, or several copies of the same ability that choose no targets (two Soul Wardens seeing one creature enter), goes straight on the stack. Abilities that need targets pick them after you set the order, one by one.' },
       { kind: 'p', text: 'If your opponent’s abilities triggered at the same moment, the player whose turn it is orders theirs first, so the other player’s end up on top and resolve first.' },
       { kind: 'tip', text: 'Tick Don’t ask again in the prompt to go back to automatic ordering; it takes effect straight away.' },
     ],
-    related: ['preferences', 'decisions', 'yields'],
+    related: ['preferences', 'decisions', 'yields', 'priority-modes'],
   },
   {
     id: 'yields',
