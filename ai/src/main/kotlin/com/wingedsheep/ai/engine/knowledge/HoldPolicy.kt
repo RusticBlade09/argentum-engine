@@ -143,6 +143,12 @@ class HoldPolicy(
      */
     private val tapToGrowAtTheirEndStep: Boolean = false,
     /**
+     * [AiProfile.borrowedCreaturesGoHome][com.wingedsheep.ai.engine.AiProfile.borrowedCreaturesGoHome]
+     * — refuse an until-end-of-turn steal once the turn has no fight left for the borrowed creature
+     * ([ExpiringGrantWindow], `PayoffKind.BORROW`).
+     */
+    private val borrowedCreaturesGoHome: Boolean = false,
+    /**
      * The profile's `EvaluationWeights.boardPresence`, so [RemovalPatience] can quote its discount
      * in the same currency as the board value it compares against. The default is the compiled
      * fallback's, which is what every profile that does not opt in would have used anyway.
@@ -215,6 +221,17 @@ class HoldPolicy(
             val resolves = definition?.let { castEffects(it, cast) }
             if (resolves != null && ExpiringGrantWindow.castBuysNothing(
                     state, playerId, resolves, cast.targets + cast.modeTargetsOrdered.flatten(), intents,
+                )
+            ) {
+                return TimingVerdict.NoWindow
+            }
+        }
+        // A creature borrowed until end of turn after the turn's last fight goes home unused.
+        if (borrowedCreaturesGoHome && cast != null) {
+            val resolves = intents.definition(cardName)?.let { castEffects(it, cast) }
+            if (resolves != null && ExpiringGrantWindow.castBuysNothing(
+                    state, playerId, resolves, cast.targets + cast.modeTargetsOrdered.flatten(), intents,
+                    readBorrows = true, readShrinks = refuseWastedPayoffs,
                 )
             ) {
                 return TimingVerdict.NoWindow
@@ -333,7 +350,7 @@ class HoldPolicy(
         if (tapToGrowAtTheirEndStep && SelfTapGrowthWindow.holds(state, playerId, ability, activation)) {
             return TimingVerdict.NoWindow
         }
-        if (!(holdExpiringGrantsForCombat || refuseUnspendableGrants || refuseWastedPayoffs)) {
+        if (!(holdExpiringGrantsForCombat || refuseUnspendableGrants || refuseWastedPayoffs || borrowedCreaturesGoHome)) {
             return TimingVerdict.Neutral
         }
         val holds = ExpiringGrantWindow.holds(
@@ -344,6 +361,7 @@ class HoldPolicy(
             readShrinks = refuseWastedPayoffs,
             readRestrictions = refuseWastedPayoffs,
             lifelinkWaitsForBlocks = lifelinkWaitsForBlocks,
+            readBorrows = borrowedCreaturesGoHome,
         )
         return if (holds) TimingVerdict.NoWindow else TimingVerdict.Neutral
     }

@@ -296,6 +296,7 @@ class AIPlayer(
                 walkerEngines = if (profile.walkersPricedAsEngines) IntentCatalog.of(cardRegistry) else null,
                 stackChumpsOnTramplers = profile.stackChumpsOnTramplers,
                 attacksReadTheRace = profile.attacksReadTheRace,
+                borrowedCreaturesGoHome = profile.borrowedCreaturesGoHome,
                 raceWeight = EvalWeights.resolve(profile.evalWeightsId).threatAssessment,
                 pressWhenAhead = profile.pressWhenAhead,
                 anticipateCombatResponses = profile.anticipateCombatResponses,
@@ -366,6 +367,7 @@ class AIPlayer(
                     refuseWastedPayoffs = profile.refuseWastedPayoffs,
                     lifelinkWaitsForBlocks = profile.lifelinkWaitsForBlocks,
                     tapToGrowAtTheirEndStep = profile.tapToGrowAtTheirEndStep,
+                    borrowedCreaturesGoHome = profile.borrowedCreaturesGoHome,
                     convokeLandsFirst = profile.convokeLandsFirst,
                     // Same seam as `CombatAdvisor`'s `lifeWeight`: a raw Phase 9 profile resolves
                     // to the compiled fallback here, which is the right answer for a policy that

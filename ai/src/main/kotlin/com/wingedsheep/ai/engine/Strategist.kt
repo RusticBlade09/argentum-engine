@@ -251,6 +251,11 @@ class Strategist(
      */
     private val tapToGrowAtTheirEndStep: Boolean = false,
     /**
+     * [AiProfile.borrowedCreaturesGoHome] — passed straight through to [HoldPolicy], which hands
+     * it to [com.wingedsheep.ai.engine.knowledge.ExpiringGrantWindow].
+     */
+    private val borrowedCreaturesGoHome: Boolean = false,
+    /**
      * [AiProfile.convokeLandsFirst] — a convoke spell taps creatures only for what mana cannot
      * pay, cheapest creatures first. See [withAutomaticConvoke].
      */
@@ -292,6 +297,7 @@ class Strategist(
         refuseWastedPayoffs = refuseWastedPayoffs,
         lifelinkWaitsForBlocks = lifelinkWaitsForBlocks,
         tapToGrowAtTheirEndStep = tapToGrowAtTheirEndStep,
+        borrowedCreaturesGoHome = borrowedCreaturesGoHome,
         boardPresenceWeight = boardPresenceWeight,
         legalActions = simulator::getLegalActions,
     )

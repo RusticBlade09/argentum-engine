@@ -178,6 +178,11 @@ object ArenaAgents {
             "live-without-crackback-stress",
             AiProfile.LIVE.copy(id = "live-without-crackback-stress", stressCrackBack = false),
         ),
+        // LIVE reading a creature stolen until end of turn as ours: `just arena live-without-borrowed-go-home live 300`
+        ArenaAgent(
+            "live-without-borrowed-go-home",
+            AiProfile.LIVE.copy(id = "live-without-borrowed-go-home", borrowedCreaturesGoHome = false),
+        ),
         // LIVE reading each candidate's playouts raw again, without its static leaf as a prior playout:
         // `just arena live-without-static-prior live 300` prices `RolloutSettings.staticPriorPlayouts`.
         ArenaAgent(

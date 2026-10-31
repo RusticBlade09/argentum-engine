@@ -17,6 +17,7 @@ import com.wingedsheep.engine.legalactions.LegalAction
 import com.wingedsheep.engine.mechanics.combat.rules.BlockCheckContext
 import com.wingedsheep.engine.mechanics.combat.rules.BlockEvasionRule
 import com.wingedsheep.engine.mechanics.combat.rules.defaultBlockEvasionRules
+import com.wingedsheep.engine.mechanics.layers.Layer
 import com.wingedsheep.engine.mechanics.layers.ProjectedState
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
@@ -115,6 +116,13 @@ class CombatAdvisor(
      * ([evaluateAttackPlan]). [AiProfile.attacksReadTheRace] carries the argument.
      */
     private val attacksReadTheRace: Boolean = false,
+    /**
+     * Score every attack plan with each until-end-of-turn control change already ended: a
+     * creature borrowed for the turn is back with its owner's side by the crack-back, so it is no
+     * blocker of ours, and losing it in combat costs them, not us ([scoreAttackOutcome]).
+     * [AiProfile.borrowedCreaturesGoHome] carries the argument.
+     */
+    private val borrowedCreaturesGoHome: Boolean = false,
     /** The composite evaluator's `threatAssessment` coefficient — [followUpValue]'s weight. */
     private val raceWeight: Double = 1.2,
     /**
@@ -1730,10 +1738,19 @@ class CombatAdvisor(
         attackerMap: Map<EntityId, EntityId>,
         settleExpiring: Boolean,
     ): Double {
-        val postCombat = if (settleExpiring) {
-            simulated.copy(floatingEffects = simulated.floatingEffects.filter { it.duration != Duration.EndOfTurn })
-        } else {
-            simulated
+        val postCombat = when {
+            settleExpiring ->
+                simulated.copy(floatingEffects = simulated.floatingEffects.filter { it.duration != Duration.EndOfTurn })
+            // A creature stolen until end of turn goes home at cleanup, before anything this score
+            // prices happens: it cannot block the crack-back for us, and if it died attacking, the
+            // opponent lost it. Read as ours, it was a blocker to keep home and an asset to protect,
+            // and the AI cast Threaten and then declared no attack.
+            borrowedCreaturesGoHome -> simulated.copy(
+                floatingEffects = simulated.floatingEffects.filterNot {
+                    it.duration == Duration.EndOfTurn && it.effect.layer == Layer.CONTROL
+                },
+            )
+            else -> simulated
         }
         val postProjected = postCombat.projectedState
         // Under [attacksReadTheRace] the board is read as it stands at our next untap: the

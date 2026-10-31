@@ -9,6 +9,7 @@ import com.wingedsheep.engine.state.components.battlefield.TappedComponent
 import com.wingedsheep.engine.state.components.combat.AttackingComponent
 import com.wingedsheep.engine.state.components.combat.BlockedComponent
 import com.wingedsheep.engine.state.components.combat.BlockingComponent
+import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.identity.ControllerComponent
 import com.wingedsheep.engine.state.components.stack.ActivatedAbilityOnStackComponent
 import com.wingedsheep.engine.state.components.stack.ChosenTarget
@@ -20,12 +21,15 @@ import com.wingedsheep.sdk.scripting.AbilityCost
 import com.wingedsheep.sdk.scripting.ActivatedAbility
 import com.wingedsheep.sdk.scripting.Duration
 import com.wingedsheep.sdk.scripting.TimingRule
+import com.wingedsheep.sdk.scripting.costs.CostAtom
 import com.wingedsheep.sdk.scripting.effects.AddCountersEffect
 import com.wingedsheep.sdk.scripting.effects.CantAttackEffect
 import com.wingedsheep.sdk.scripting.effects.CantBlockEffect
 import com.wingedsheep.sdk.scripting.effects.ChooseOptionEffect
 import com.wingedsheep.sdk.scripting.effects.Effect
+import com.wingedsheep.sdk.scripting.effects.CreatePredefinedTokenEffect
 import com.wingedsheep.sdk.scripting.effects.ForEachEffect
+import com.wingedsheep.sdk.scripting.effects.GainControlEffect
 import com.wingedsheep.sdk.scripting.effects.GrantEvasionKeywordEffect
 import com.wingedsheep.sdk.scripting.effects.GrantKeywordEffect
 import com.wingedsheep.sdk.scripting.effects.IterationSpace
@@ -139,6 +143,12 @@ internal object ExpiringGrantWindow {
          * is lifelink defers through the declare-attackers step too — see [waitsForBlocks].
          */
         lifelinkWaitsForBlocks: Boolean = false,
+        /**
+         * [com.wingedsheep.ai.engine.AiProfile.borrowedCreaturesGoHome]: read an end-of-turn
+         * **control change** ("gain control of target creature until end of turn") as a payoff
+         * [nothingCanSpend] can judge — see [PayoffKind.BORROW].
+         */
+        readBorrows: Boolean = false,
     ): Boolean {
         if (ability.isManaAbility) return false
 
@@ -148,7 +158,7 @@ internal object ExpiringGrantWindow {
             return true
         }
 
-        if ((refuseUnspendable || readShrinks) && activation != null &&
+        if ((refuseUnspendable || readShrinks || readBorrows) && activation != null &&
             nothingCanSpend(
                 state, playerId, ability.effect,
                 sourceId = activation.sourceId,
@@ -158,6 +168,7 @@ internal object ExpiringGrantWindow {
                 intents = intents,
                 readGrants = refuseUnspendable,
                 readShrinks = readShrinks,
+                readBorrows = readBorrows,
             )
         ) {
             return true
@@ -248,10 +259,13 @@ internal object ExpiringGrantWindow {
         intents: IntentCatalog,
         readGrants: Boolean = true,
         readShrinks: Boolean = false,
+        readBorrows: Boolean = false,
     ): Boolean {
-        val payoffs = expiringPayoffs(effect, readShrinks) ?: return false
-        // Without [readGrants] only the shrink half is asked about; a grant is left to the leaf.
-        if (!readGrants && payoffs.any { it.kind != PayoffKind.SHRINK }) return false
+        val payoffs = expiringPayoffs(effect, readShrinks, readBorrows) ?: return false
+        // Without [readGrants] only the shrink half is asked about; a grant is left to the leaf —
+        // unless it rides on a borrow, where it lands on the creature the borrow is judged by.
+        val borrows = payoffs.any { it.kind == PayoffKind.BORROW }
+        if (!readGrants && !borrows && payoffs.any { it.kind != PayoffKind.SHRINK }) return false
         if (somethingOnTheStackThreatensUs(state, playerId, intents)) return false
 
         val projected = state.projectedState
@@ -275,6 +289,9 @@ internal object ExpiringGrantWindow {
                     }
                 }
                 PayoffKind.LAND -> affected.any { canStillMatter(state, projected, playerId, it) }
+                PayoffKind.BORROW -> affected.any { projected.isCreature(it) } &&
+                    (state.step in UNTIL_ATTACKERS_DECLARED || state.step in FIGHT_STILL_AHEAD ||
+                        controlsASacrificeOutlet(state, playerId, intents))
                 PayoffKind.SHRINK -> affected.any { id ->
                     killedBy(state, projected, id, payoff.toughnessLoss) ||
                         if (projected.getController(id) == playerId) {
@@ -319,6 +336,10 @@ internal object ExpiringGrantWindow {
         effects: List<Effect>,
         targets: List<ChosenTarget>,
         intents: IntentCatalog,
+        /** Read an end-of-turn control change as well — see [PayoffKind.BORROW]. */
+        readBorrows: Boolean = false,
+        /** Read an end-of-turn shrink — the reading this was added for. */
+        readShrinks: Boolean = true,
     ): Boolean = effects.isNotEmpty() && effects.all { effect ->
         nothingCanSpend(
             state, playerId, effect,
@@ -328,8 +349,27 @@ internal object ExpiringGrantWindow {
             pendingSelfGrant = false,
             intents = intents,
             readGrants = false,
-            readShrinks = true,
+            readShrinks = readShrinks,
+            readBorrows = readBorrows,
         )
+    }
+
+    /**
+     * Whether we control a permanent that can sacrifice a creature as a cost — the one thing that
+     * turns a creature borrowed past its last fight into something that outlives the turn
+     * ("Threaten, then sacrifice it"). A [PayoffKind.BORROW] with one in play is left to the leaf.
+     */
+    private fun controlsASacrificeOutlet(state: GameState, playerId: EntityId, intents: IntentCatalog): Boolean {
+        fun sacrifices(cost: AbilityCost): Boolean = when (cost) {
+            is AbilityCost.Atom -> cost.atom is CostAtom.Sacrifice || cost.atom is CostAtom.SacrificeAll
+            is AbilityCost.Composite -> cost.costs.any(::sacrifices)
+            else -> false
+        }
+        val projected = state.projectedState
+        return projected.getBattlefieldControlledBy(playerId).any { id ->
+            val name = state.getEntity(id)?.get<CardComponent>()?.name ?: return@any false
+            intents.definition(name)?.script?.activatedAbilities?.any { sacrifices(it.cost) } == true
+        }
     }
 
     /**
@@ -641,6 +681,17 @@ internal object ExpiringGrantWindow {
          * [com.wingedsheep.ai.engine.AiProfile.refuseWastedPayoffs].
          */
         SHRINK,
+
+        /**
+         * Control of a creature until end of turn — "gain control of target creature until end of
+         * turn" (Threaten, Involuntary Employment, Sibling Rivalry). It goes home at cleanup, so it
+         * buys only what the creature does before then: an attack or a block on our side, or a fight
+         * it is pulled out of on theirs. Once the last combat damage of the turn is dealt there is
+         * none left, and a borrow is spent on nothing — unless a sacrifice outlet of ours can turn
+         * it into something permanent. Read only under
+         * [com.wingedsheep.ai.engine.AiProfile.borrowedCreaturesGoHome].
+         */
+        BORROW,
     }
 
     /** One leaf of an ability whose payoff ends at cleanup, and where it lands. */
@@ -672,10 +723,20 @@ internal object ExpiringGrantWindow {
      *
      * An effect with no payoff left once those are skipped is not this shape either.
      */
-    private fun expiringPayoffs(effect: Effect, readShrinks: Boolean = false): List<Payoff>? {
+    private fun expiringPayoffs(effect: Effect, readShrinks: Boolean = false, readBorrows: Boolean = false): List<Payoff>? {
         val payoffs = mutableListOf<Payoff>()
+        // Leaves that are not payoffs of their own but ride on a borrow — see the end of the loop.
+        var borrowRiders = 0
         for (leaf in EffectWalker.leaves(effect)) {
             when {
+                readBorrows && leaf is GainControlEffect && leaf.duration == Duration.EndOfTurn ->
+                    payoffs += Payoff(PayoffKind.BORROW, leaf.target)
+                // "Untap that creature" readies the borrowed creature to fight; "create a Treasure"
+                // is a rider holding the card keeps — the same cast in a window with a fight left
+                // buys it too, so it is no reason to spend the card where the borrow buys nothing.
+                readBorrows && leaf is TapUntapEffect && !leaf.tap && leaf.target != EffectTarget.Self ->
+                    borrowRiders++
+                readBorrows && leaf is CreatePredefinedTokenEffect -> borrowRiders++
                 leaf is TapUntapEffect && leaf.tap && leaf.target == EffectTarget.Self -> Unit
                 leaf is ChooseOptionEffect -> Unit
                 leaf is ForEachEffect && leaf.space is IterationSpace.Group -> {
@@ -702,6 +763,7 @@ internal object ExpiringGrantWindow {
                 else -> return null
             }
         }
+        if (borrowRiders > 0 && payoffs.none { it.kind == PayoffKind.BORROW }) return null
         return payoffs.ifEmpty { null }
     }
 
