@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- #4116 Picks a "choose two" modal spell's modes by simulating each combination, aiming each mode by what it does (Ashling's Command draws for itself), instead of taking the first modes in printed order at the opponent
 - #4115 Aims a granted "draw a card" trigger, "becomes prepared" and "target player draws" at its own side, and when it cannot tell which side an effect is for, simulates its best target on each side instead of only the opponent's
 - #4114 Scry and surveil send a spell away to dig for a land when a spell in hand costs more than the lands in play and in hand, keeping a looked-at card only when it beats an average library draw
 - #4113 Keeps a spell instead of landcycling it when the lands already in hand cover this turn's and next turn's land drops and no other spell in hand needs the extra land

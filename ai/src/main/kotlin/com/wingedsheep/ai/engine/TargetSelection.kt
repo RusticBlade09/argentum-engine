@@ -15,6 +15,7 @@ import com.wingedsheep.engine.core.TriggeredAbilityContinuation
 import com.wingedsheep.engine.core.GameAction
 import com.wingedsheep.engine.legalactions.LegalAction
 import com.wingedsheep.engine.legalactions.ModalLegalEnumeration
+import com.wingedsheep.engine.legalactions.ModalEnumerationMode
 import com.wingedsheep.engine.handlers.effects.TargetResolutionUtils.toEntityId
 import com.wingedsheep.engine.legalactions.TargetInfo
 import com.wingedsheep.engine.state.GameState
@@ -464,27 +465,103 @@ object TargetSelection {
         val modal = action.modalEnumeration ?: return cast
         val modes = modal.modes.filter { it.available }.take(modal.chooseCount)
         if (modes.size < modal.minChooseCount) return cast
-
-        val orderedTargets = mutableListOf<List<ChosenTarget>>()
-        for (mode in modes) {
-            val chosen = mutableListOf<ChosenTarget>()
-            val chosenIds = mutableSetOf<EntityId>()
-            for (info in mode.targetRequirements) {
-                val candidates = info.validTargetsByPrefix?.get(chosen.joinToString(",") { it.toEntityId().toString() })
-                    ?: if (info.validTargetsByPrefix == null) info.validTargets else emptyList()
-                val available = if (info.mustDifferFromEarlier) {
-                    candidates.filterNot(chosenIds::contains)
-                } else {
-                    candidates
-                }
-                if (available.isEmpty() && info.minTargets == 0) continue
-                val selectedId = available.maxByOrNull { rank(state, it, playerId, intents) }
-                    ?: return cast
-                chosen += toChosenTarget(state, info, selectedId, playerId)
-                chosenIds += selectedId
-            }
-            orderedTargets += chosen
+        val orderedTargets = modes.map { mode ->
+            modeTargetVariants(state, cast, mode, playerId, intents, perSide = false).firstOrNull() ?: return cast
         }
+        return castWithModes(state, cast, modal, modes, orderedTargets)
+    }
+
+    /**
+     * The mode selections a choose-N modal [modal] can be cast with, most modes first, at most
+     * [cap] of them: every combination of its available modes (a multiset when the same mode may
+     * be chosen more than once, CR 700.2d) of each size from `chooseCount` down to
+     * `minChooseCount`. Choose two of four is six selections; the cap only bites on a wide
+     * "choose one or more", whose smaller selections are dropped first.
+     */
+    fun modeSelections(modal: ModalLegalEnumeration, cap: Int): List<List<ModalEnumerationMode>> {
+        val available = modal.modes.filter { it.available }
+        val result = mutableListOf<List<ModalEnumerationMode>>()
+        fun extend(from: Int, size: Int, prefix: List<ModalEnumerationMode>) {
+            if (result.size >= cap) return
+            if (prefix.size == size) {
+                result += prefix
+                return
+            }
+            for (i in from until available.size) {
+                extend(if (modal.allowRepeat) i else i + 1, size, prefix + available[i])
+                if (result.size >= cap) return
+            }
+        }
+        for (size in modal.chooseCount downTo maxOf(1, modal.minChooseCount)) extend(0, size, emptyList())
+        return result
+    }
+
+    /**
+     * Target lists worth trying for one [mode] of [cast], best first. Each slot is ranked by the
+     * polarity the mode's own effect gives it — "target player draws two cards" wants us, "deals 2
+     * damage to each creature target player controls" wants them — so the first list is the
+     * heuristic pick. With [perSide], a slot whose polarity can't be read also offers the best
+     * candidate of the other side ([simulationCandidates]), for a simulation to tell apart.
+     * Empty when a mandatory slot has nothing to take.
+     */
+    fun modeTargetVariants(
+        state: GameState,
+        cast: CastSpell,
+        mode: ModalEnumerationMode,
+        playerId: EntityId,
+        intents: IntentCatalog,
+        perSide: Boolean,
+        limit: Int = MODE_TARGET_VARIANTS,
+    ): List<List<ChosenTarget>> {
+        val requirements = mode.targetRequirements
+        val read = if (!intents.isEnabled) emptyList() else state.getEntity(cast.cardId)?.get<CardComponent>()?.name
+            ?.let { intents.spellModeTargetPolarities(it, listOf(mode.index), castsTransformed(state, cast)) }
+            .orEmpty()
+        val polarities = read.takeIf { it.size == requirements.size }.orEmpty()
+        val variants = mutableListOf<List<ChosenTarget>>()
+        fun extend(index: Int, chosen: List<ChosenTarget>, chosenIds: List<EntityId>) {
+            if (variants.size >= limit) return
+            if (index == requirements.size) {
+                variants += chosen
+                return
+            }
+            val info = requirements[index]
+            val polarity = polarities.getOrNull(index)
+            val candidates = info.validTargetsByPrefix?.get(chosen.joinToString(",") { it.toEntityId().toString() })
+                ?: if (info.validTargetsByPrefix == null) info.validTargets else emptyList()
+            val available = if (info.mustDifferFromEarlier) candidates.filterNot(chosenIds::contains) else candidates
+            if (available.isEmpty() && info.minTargets == 0) {
+                extend(index + 1, chosen, chosenIds)
+                return
+            }
+            val sign = if (polarity == TargetPolarity.BENEFICIAL) -1.0 else 1.0
+            val ranked = worthTargeting(state, info, available, playerId, polarity)
+                .sortedByDescending { sign * rank(state, it, playerId, intents) }
+            if (ranked.isEmpty()) {
+                // An optional slot whose every candidate is on the wrong side: leave it empty.
+                if (info.minTargets == 0) extend(index + 1, chosen, chosenIds)
+                return
+            }
+            val tried = if (perSide) simulationCandidates(state, ranked, 1, playerId, polarity) else ranked.take(1)
+            for (target in tried) {
+                extend(index + 1, chosen + toChosenTarget(state, info, target, playerId), chosenIds + target)
+            }
+        }
+        extend(0, emptyList(), emptyList())
+        return variants
+    }
+
+    /**
+     * [cast] with [modes] chosen and [orderedTargets] (one list per mode, in mode order) as their
+     * targets, paying any non-mana escalate cost the extra modes owe.
+     */
+    fun castWithModes(
+        state: GameState,
+        cast: CastSpell,
+        modal: ModalLegalEnumeration,
+        modes: List<ModalEnumerationMode>,
+        orderedTargets: List<List<ChosenTarget>>,
+    ): CastSpell {
         val withModes = cast.copy(
             chosenModes = modes.map { it.index },
             modeTargetsOrdered = orderedTargets,
@@ -492,6 +569,9 @@ object TargetSelection {
         )
         return payEscalateCost(state, withModes, modal, modes.size)
     }
+
+    /** How many target lists [modeTargetVariants] offers for one mode at most. */
+    const val MODE_TARGET_VARIANTS = 4
 
     /**
      * Pay a non-mana escalate cost (CR 702.120a) for the modes just chosen — one cost per mode

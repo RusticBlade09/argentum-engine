@@ -45,6 +45,7 @@ import com.wingedsheep.sdk.scripting.effects.UnprepareEffect
 import com.wingedsheep.sdk.scripting.effects.CantBeRegeneratedEffect
 import com.wingedsheep.sdk.scripting.effects.CantBlockEffect
 import com.wingedsheep.sdk.scripting.effects.CounterEffect
+import com.wingedsheep.sdk.scripting.effects.CreatePredefinedTokenEffect
 import com.wingedsheep.sdk.scripting.effects.CounterTargetSource
 import com.wingedsheep.sdk.scripting.effects.CreateAuraTokenEffect
 import com.wingedsheep.sdk.scripting.effects.DealDamageEffect
@@ -345,6 +346,11 @@ object TargetPolarityAnalyzer {
             is DrawCardsEffect -> if (leaf.target.isSlot()) leaf.target to TargetPolarity.BENEFICIAL else return emptyList()
             is GainLifeEffect -> if (leaf.target.isSlot()) leaf.target to TargetPolarity.BENEFICIAL else return emptyList()
             is LoseLifeEffect -> if (leaf.target.isSlot()) leaf.target to TargetPolarity.HARMFUL else return emptyList()
+            // "Target player creates two Treasure tokens" (Ashling's Command): a Treasure, Food,
+            // Clue or Gold is the controller's to use, and the board evaluator does not price one —
+            // so without this the slot is a coin toss between giving it to us or to them.
+            is CreatePredefinedTokenEffect -> leaf.controller?.takeIf { it.isSlot() }
+                ?.let { it to TargetPolarity.BENEFICIAL } ?: return emptyList()
             else -> return emptyList()
         }
         val (target, reading) = polarity

@@ -1833,6 +1833,10 @@ class Strategist(
         if (!budget.allowances.refineTargetsBySimulation && !forceTargetRefinement) {
             return heuristicTargets(state, action, playerId)
         }
+        if (action.modalEnumeration != null) {
+            return chooseModesBySimulation(state, action, baseAction, playerId, budget)
+                ?: heuristicTargets(state, action, playerId)
+        }
         val targetInfos = TargetSelection.fillableRequirements(action, useMeaningfulFilter)
             ?: return heuristicTargets(state, action, playerId)
 
@@ -1932,6 +1936,54 @@ class Strategist(
         return withSumGatedExilePayment(
             state, action, TargetSelection.applyTargets(baseAction, chosenTargets)
         )
+    }
+
+    /**
+     * The modes, and their targets, to cast a choose-N modal spell with ("choose two —"): every
+     * selection of its available modes ([TargetSelection.modeSelections]) with each mode's targets
+     * aimed by that mode's own effect, simulated, the best leaf kept. A mode slot whose side of the
+     * table can't be read is tried on both sides. The heuristic fallback takes the first N modes in
+     * printed order, which is how Ashling's Command came to make the opponent draw two.
+     *
+     * Bounded by [MAX_MODAL_SIMULATIONS] and the clock; null when nothing could be simulated, for
+     * the caller to fall back on the heuristic pick.
+     */
+    private fun chooseModesBySimulation(
+        state: GameState,
+        action: LegalAction,
+        baseAction: GameAction,
+        playerId: EntityId,
+        budget: DecisionBudget,
+    ): GameAction? {
+        val cast = baseAction as? CastSpell ?: return null
+        val modal = action.modalEnumeration ?: return null
+        val variantsByMode = mutableMapOf<Int, List<List<com.wingedsheep.engine.state.components.stack.ChosenTarget>>>()
+        fun variants(mode: com.wingedsheep.engine.legalactions.ModalEnumerationMode) = variantsByMode.getOrPut(mode.index) {
+            TargetSelection.modeTargetVariants(state, cast, mode, playerId, intents, perSide = targetPolarityFromEffect)
+        }
+        val trials = mutableListOf<CastSpell>()
+        for (modes in TargetSelection.modeSelections(modal, MAX_MODAL_SIMULATIONS)) {
+            val perMode = modes.map { variants(it) }
+            if (perMode.any { it.isEmpty() }) continue
+            // Every target combination when it fits, else each mode's heuristic pick only.
+            val combinations = perMode.fold(1) { n, v -> n * v.size }
+            val lists = if (combinations <= MAX_MODAL_SIMULATIONS) perMode else perMode.map { it.take(1) }
+            lists.fold(listOf(emptyList<List<com.wingedsheep.engine.state.components.stack.ChosenTarget>>())) { acc, options ->
+                acc.flatMap { prefix -> options.map { prefix + listOf(it) } }
+            }.forEach { trials += TargetSelection.castWithModes(state, cast, modal, modes, it) }
+        }
+        var best: CastSpell? = null
+        var bestScore = Double.NEGATIVE_INFINITY
+        for (trial in trials.take(MAX_MODAL_SIMULATIONS)) {
+            if (best != null && budget.expired()) break
+            val score = simulator.simulate(state, trial)
+                .scoreOrRankLast { leaf -> evaluator.evaluate(leaf, leaf.projectedState, playerId) }
+            if (best == null || score > bestScore) {
+                best = trial
+                bestScore = score
+            }
+        }
+        return best?.let { withSumGatedExilePayment(state, action, it) }
     }
 
     /** The cheap target pick — one heuristic choice per requirement, no simulation. */
@@ -2660,6 +2712,12 @@ class Strategist(
          * 1, so the rescue needs its own floor; this is the legacy cap.
          */
         const val RESCUE_TARGET_CANDIDATES = 8
+
+        /**
+         * Most mode-and-target combinations [chooseModesBySimulation] simulates for one choose-N
+         * modal spell: choose two of four is six selections, each with a few target lists.
+         */
+        const val MAX_MODAL_SIMULATIONS = 24
 
         /**
          * Crew/Saddle payment ([tapForPowerSelection]): a creature that couldn't attack this turn
