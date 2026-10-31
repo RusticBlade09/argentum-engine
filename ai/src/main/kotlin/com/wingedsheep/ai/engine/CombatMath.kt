@@ -405,9 +405,18 @@ object CombatMath {
          * it takes the hit rather than throw a creature away.
          */
         chumpBlocks: Boolean = true,
+        /**
+         * Let the blockers left over once every attacker has its blocker gang up on the tramplers,
+         * each soaking its toughness more of the overflow. Without it a trampler meets one blocker
+         * however many stand idle: a 7/7 trampler against five untapped creatures read as four
+         * damage through — "lethal" at 3 life whatever the AI did, so the crack-back stopped
+         * telling a chip attack from staying home (game `39e8aac6` turn 29).
+         */
+        stackOnTramplers: Boolean = false,
     ): Int {
         var totalDamage = 0
         val usedBlockers = mutableSetOf<EntityId>()
+        val trampleBlocks = mutableMapOf<EntityId, MutableList<EntityId>>()
 
         // Separate evasive from blockable
         val evasive = mutableListOf<EntityId>()
@@ -459,7 +468,7 @@ object CombatMath {
             if (hasTrample) {
                 // Opponent picks the highest-toughness blockers to minimize overflow
                 val bestBlockers = validBlockers.sortedByDescending { projected.getToughness(it) ?: 0 }.take(needed)
-                totalDamage += trampleOverflow(projected, attacker, bestBlockers)
+                trampleBlocks[attacker] = bestBlockers.toMutableList()
                 usedBlockers.addAll(bestBlockers)
             } else {
                 // Non-trampler: any blocker prevents all damage; opponent uses cheapest
@@ -467,6 +476,25 @@ object CombatMath {
                 // No damage gets through
             }
         }
+
+        if (stackOnTramplers) {
+            // Each idle body, biggest first, joins the trampler it can block that is still
+            // spilling the most over its blockers.
+            val idle = opponentBlockers.filter { it !in usedBlockers }
+                .sortedByDescending { projected.getToughness(it) ?: 0 }
+            for (blocker in idle) {
+                val target = trampleBlocks.entries
+                    .filter { (attacker, blockers) ->
+                        trampleOverflow(projected, attacker, blockers) > 0 &&
+                            blocker in getValidBlockersFor(state, projected, attacker, listOf(blocker)) &&
+                            (chumpBlocks || isWorthwhileBlock(state, projected, attacker, blocker))
+                    }
+                    .maxByOrNull { (attacker, blockers) -> trampleOverflow(projected, attacker, blockers) }
+                    ?: continue
+                target.value += blocker
+            }
+        }
+        totalDamage += trampleBlocks.entries.sumOf { (attacker, blockers) -> trampleOverflow(projected, attacker, blockers) }
 
         return totalDamage
     }
@@ -731,6 +759,7 @@ object CombatMath {
         opponentId: EntityId,
         myBlockers: List<EntityId>,
         chumpBlocks: Boolean = true,
+        stackOnTramplers: Boolean = false,
     ): Int {
         val opponentAttackers = projected.getBattlefieldControlledBy(opponentId).filter { entityId ->
             projected.isCreature(entityId) &&
@@ -738,7 +767,7 @@ object CombatMath {
                 (state.getEntity(entityId)?.has<TappedComponent>() != true || !projected.doesntUntapDuringUntapStep(entityId))
         }
         if (opponentAttackers.isEmpty()) return 0
-        return calculateDamageThroughOptimalBlocking(state, projected, opponentAttackers, myBlockers, chumpBlocks)
+        return calculateDamageThroughOptimalBlocking(state, projected, opponentAttackers, myBlockers, chumpBlocks, stackOnTramplers)
     }
 
     /**

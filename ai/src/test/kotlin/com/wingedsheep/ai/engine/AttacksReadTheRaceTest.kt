@@ -62,6 +62,31 @@ class AttacksReadTheRaceTest : ScenarioTestBase() {
     private fun TestGame.names(ids: Collection<EntityId>): List<String> =
         ids.map { state.getEntity(it)?.get<CardComponent>()?.name ?: it.value }
 
+    /**
+     * Game 39e8aac6 turn 29 at the AI's declare-attackers step: AI on 3, the opponent on 15 with a
+     * 7/7 trampler, a 2/2 and — with [livingLibrary] — a Living Library and nine lands, seven
+     * tapped from casting the trampler. Centaur Courser stands in for a 3/3 token.
+     */
+    private fun ruricThar(livingLibrary: Boolean): TestGame {
+        var builder = scenario().withRngSeed(SCENARIO_SEED).withPlayers()
+            .withLifeTotal(1, 3)
+            .withLifeTotal(2, 15)
+            .withCardOnBattlefield(1, "Centaur Courser")
+            .withCardOnBattlefield(1, "Tinybones, Pocket Nuisance")
+            .withCardOnBattlefield(1, "Tetsuko Umezawa, Fugitive")
+            .withCardOnBattlefield(1, "Diviner of Victory")
+            .withCardOnBattlefield(1, "Void Extrapolator", summoningSickness = true)
+            .withCardOnBattlefield(2, "Ruric Thar, Magecrusher")
+            .withCardOnBattlefield(2, "Simulacrum Shaper")
+            .withLandsOnBattlefield(1, "Island", 9)
+        if (livingLibrary) builder = builder.withCardOnBattlefield(2, "Living Library")
+        repeat(9) { i -> builder = builder.withCardOnBattlefield(2, "Forest", tapped = i < 7) }
+        repeat(6) { builder = builder.withCardInLibrary(1, "Island").withCardInLibrary(2, "Forest") }
+        // Threshold: the Extrapolator is a 3/3.
+        repeat(7) { builder = builder.withCardInGraveyard(1, "Island") }
+        return builder.build().advanceToDeclaration(1, Step.DECLARE_ATTACKERS)
+    }
+
     init {
         test("a vigilant fatty attacks into a smaller board") {
             val game = position(
@@ -169,6 +194,38 @@ class AttacksReadTheRaceTest : ScenarioTestBase() {
 
             val attackers = ready.attackersChosenBy(AiProfile.LIVE)
             withClue("attacked with ${ready.names(attackers)}") { attackers.shouldBeEmpty() }
+        }
+
+        // Game 39e8aac6 turn 29: at 3 life the AI sent its unblockable chip attackers (a 2/1, a
+        // 1/3 and a 1/1) at an opponent on 15, keeping a 3/3 and a summoning-sick 3/3 home against
+        // a 7/7 trampler and a 2/2. Two halves of the crack-back were wrong. It let one blocker
+        // meet the trampler however many stood idle, so even staying home read as four damage
+        // through — "lethal" at 3 whatever the AI did, and the attack won on board score. And it
+        // read creatures only: beside them sat Living Library ("{6}, Sacrifice this creature:
+        // shuffle target creature an opponent controls into its library") and nine lands that
+        // untap. In the game the opponent shuffled a 3/3 away, the trampler came in, and exactly
+        // three damage got through. Home, the 1/3 alone would have soaked it.
+        test("39e8aac6 turn 29: a visible removal ability on their board is in the crack-back") {
+            val ready = ruricThar(livingLibrary = true)
+            val tetsuko = ready.findPermanent("Tetsuko Umezawa, Fugitive")!!
+
+            val before = ready.attackersChosenBy(
+                AiProfile.LIVE.copy(id = "live-without-crackback-stress", stressCrackBack = false),
+            )
+            withClue("reproduction: attacked with ${ready.names(before)}") { before shouldContain tetsuko }
+
+            // The 2/1 alone may still go: home, the rest hold the trampler even with one of them
+            // shuffled away.
+            val attackers = ready.attackersChosenBy(AiProfile.LIVE)
+            withClue("attacked with ${ready.names(attackers)}") { attackers shouldNotContain tetsuko }
+        }
+
+        // The same board without the Library: what stays home holds the trampler and the 2/2
+        // off, so the chip attack still goes in.
+        test("39e8aac6 turn 29 without the removal ability: the chip attack still goes in") {
+            val ready = ruricThar(livingLibrary = false)
+            val attackers = ready.attackersChosenBy(AiProfile.LIVE)
+            withClue("attacked with ${ready.names(attackers)}") { attackers.shouldNotBeEmpty() }
         }
 
         test("still attacks when the opponent's blockers are all tapped and the swing back is survivable") {

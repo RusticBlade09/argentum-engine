@@ -142,10 +142,21 @@ class CombatAdvisor(
      * attack. [AiProfile.blockTriggersKill] carries the argument; needs [cardRegistry].
      */
     private val blockTriggersKill: Boolean = false,
+    /**
+     * Read an attack plan's crack-back as it can really come: idle blockers stack on tramplers, and
+     * each affordable activated ability of the opponent's that can change a fight is played out
+     * once, a plan whose swing back one of them makes lethal priced as lethal ([CrackBackStress]).
+     * [AiProfile.stressCrackBack] carries the argument; needs [cardRegistry].
+     */
+    stressCrackBack: Boolean = false,
 ) {
     /** See [anticipateCombatResponses]; null when off. */
     private val responses: CombatResponses? =
         if (anticipateCombatResponses && cardRegistry != null) CombatResponses(simulator, evaluator, cardRegistry) else null
+
+    /** See [stressCrackBack]; null when off. */
+    private val crackBackStress: CrackBackStress? =
+        if (stressCrackBack && cardRegistry != null) CrackBackStress(simulator, cardRegistry) else null
 
     /**
      * The engine's own block-legality rules, asked alongside [CombatMath.canBeBlockedBy]'s
@@ -1209,13 +1220,14 @@ class CombatAdvisor(
         playerId: EntityId,
         myBlockers: List<EntityId>,
         chumpBlocks: Boolean = true,
+        stackOnTramplers: Boolean = false,
     ): Int {
         val sides = state.sidesFor(playerId) ?: return 0
         // A creature that can't block is no defence, however untapped it is. Counting it made
         // attacking with one (Aesthir Glider) look like it opened the crack-back it never closed.
         val blockers = myBlockers.filterNot { projected.cantBlock(it) }
         return sides.opponents.maxOf { team ->
-            team.sumOf { CombatMath.estimateNextTurnDamage(state, projected, it, blockers, chumpBlocks) }
+            team.sumOf { CombatMath.estimateNextTurnDamage(state, projected, it, blockers, chumpBlocks, stackOnTramplers) }
         }
     }
 
@@ -1681,11 +1693,28 @@ class CombatAdvisor(
             postProjected.isCreature(entityId) &&
                 postCombat.getEntity(entityId)?.has<TappedComponent>() != true
         }
-        val nextTurnDamage = incomingNextTurnDamage(postCombat, postProjected, playerId, myBlockers)
         val myLife = postCombat.lifeTotal(playerId)
+        val stackOnTramplers = crackBackStress != null
+        val nextTurnDamage = incomingNextTurnDamage(
+            postCombat, postProjected, playerId, myBlockers, stackOnTramplers = stackOnTramplers,
+        ).let { onBoard ->
+            // The creatures alone let us survive it; the abilities beside them may not. A swing
+            // back one visible activation makes lethal is priced as lethal — a merely bigger one
+            // is left to the board, so the opponent's options never make the AI timid short of
+            // its life being on the line.
+            if (onBoard >= myLife) return@let onBoard
+            val stressed = crackBackStress?.worstCrackBack(state, postCombat, playerId, myLife) { answered ->
+                val answeredProjected = answered.projectedState
+                val blockers = myBlockers.filter { id ->
+                    answeredProjected.isCreature(id) && answered.getEntity(id)?.has<TappedComponent>() != true
+                }
+                incomingNextTurnDamage(answered, answeredProjected, playerId, blockers, stackOnTramplers = true)
+            }
+            if (stressed != null && stressed >= myLife) stressed else onBoard
+        }
         val lifeLost = if (priceCrackBackAsLife && crackBackWithoutChumps && nextTurnDamage < myLife) {
             val withoutChumps = incomingNextTurnDamage(
-                postCombat, postProjected, playerId, myBlockers, chumpBlocks = false,
+                postCombat, postProjected, playerId, myBlockers, chumpBlocks = false, stackOnTramplers = stackOnTramplers,
             )
             maxOf(nextTurnDamage, minOf(withoutChumps, myLife - 1))
         } else {
