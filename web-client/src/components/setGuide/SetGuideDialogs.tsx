@@ -10,7 +10,7 @@ import { Link } from 'react-router-dom'
 import { getArchetypesForSets } from '@/components/draft/SetSynergiesOverlay'
 import { SetIcon } from '@/components/ui/SetIcon'
 import { pageStyles } from '@/components/ui/PageShell'
-import { ArchetypeRow, ColorPips, MechanicChips, RatingMeter, RatingMeters, themeLabel } from './SetProfileParts'
+import { ArchetypeRow, ColorPips, MechanicChips, MechanicList, RatingMeter, RatingMeters, themeLabel, TipList } from './SetProfileParts'
 import { MAX_COMPARE, RATINGS, type GuideSet } from './setGuideModel'
 import styles from './SetGuide.module.css'
 
@@ -79,25 +79,29 @@ export function SetProfileDialog({
             <div className={styles.dialogColumns}>
               <div className={styles.prose}>
                 <section>
-                  <h3 className={styles.sectionTitle}>The set</h3>
-                  <p>{p.about}</p>
+                  <h3 className={styles.sectionTitle}>How games play</h3>
+                  <p>{p.gameplay}</p>
                 </section>
                 <section>
-                  <h3 className={styles.sectionTitle}>How it plays</h3>
-                  <p>{p.playstyle}</p>
+                  <h3 className={styles.sectionTitle}>How to win</h3>
+                  <TipList tips={p.tips} />
                 </section>
-                <p className={styles.tryIf}>Try it if you like {p.tryIf}.</p>
+                <section>
+                  <h3 className={styles.sectionTitle}>Mechanics in play</h3>
+                  <MechanicList mechanics={p.mechanics} />
+                </section>
               </div>
               <aside className={styles.factsAside}>
                 <RatingMeters profile={p} />
                 <div>
-                  <h3 className={styles.sectionTitle}>Mechanics</h3>
-                  <MechanicChips mechanics={p.mechanics} />
-                </div>
-                <div>
                   <h3 className={styles.sectionTitle}>Themes</h3>
                   <p className={styles.themeLine}>{p.themes.map(themeLabel).join(' · ')}</p>
                 </div>
+                <div>
+                  <h3 className={styles.sectionTitle}>Setting</h3>
+                  <p className={styles.themeLine}>{p.setting}</p>
+                </div>
+                <p className={styles.tryIf}>Try it if you like {p.tryIf}.</p>
               </aside>
             </div>
             {archetypes.length > 0 && (
@@ -182,6 +186,8 @@ export function SetCompareDialog({
             <tbody>
               {row('In a line', (s) => <span className={styles.compareTagline}>{s.profile!.tagline}</span>)}
               {RATINGS.map((r) => row(r.label, (s) => <RatingMeter ratingKey={r.key} value={s.profile![r.key]} />))}
+              {row('How games play', (s) => <span className={styles.compareProse}>{s.profile!.gameplay}</span>)}
+              {row('Top tip', (s) => <span className={styles.compareProse}>{s.profile!.tips[0]}</span>)}
               {row('Mechanics', (s) => <MechanicChips mechanics={s.profile!.mechanics} />)}
               {row('Themes', (s) => s.profile!.themes.map(themeLabel).join(' · '))}
               {row('Archetypes', (s) => {

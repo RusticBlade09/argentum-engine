@@ -1,6 +1,6 @@
 /**
- * The Set guide, at `/sets` — every fully playable set with what it is about, how its Limited games
- * play, and power / speed / complexity ratings, so a player can pick a set for sealed or draft
+ * The Set guide, at `/sets` — every fully playable set with how its Limited games play, what wins
+ * them, what its mechanics do to a game, and power / speed / complexity ratings, so a player can pick a set for sealed or draft
  * without knowing Magic's back catalogue.
  *
  * Two views over the same filtered list: a grid of profile tiles, and a map that places each set by
@@ -109,8 +109,8 @@ export function SetGuidePage() {
         <div>
           <h1 className={pageStyles.h1}>Find a set to play</h1>
           <p className={pageStyles.lede}>
-            {sets ? `${sets.length} sets` : 'Every set'} are ready for sealed and draft. Each plays differently — compare their
-            power, speed and complexity, and read what they are about.
+            {sets ? `${sets.length} sets` : 'Every set'} are ready for sealed and draft. Each plays differently — see how its games
+            unfold, what wins them and what its mechanics do, and compare power, speed and complexity.
           </p>
         </div>
         <Link to="/set-completion" className={styles.introLink}>

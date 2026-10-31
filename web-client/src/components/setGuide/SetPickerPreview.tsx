@@ -38,7 +38,7 @@ export function SetPickerPreview({ set }: { set: AvailableSet | undefined }) {
         <>
           <p className={styles.tagline}>{p.tagline}</p>
           <RatingMeters profile={p} />
-          <p className={styles.previewText}>{p.playstyle}</p>
+          <p className={styles.previewText}>{p.gameplay}</p>
           <MechanicChips mechanics={p.mechanics} />
           {archetypes.length > 0 && (
             <ul className={styles.previewArchetypes} aria-label="Archetypes">
