@@ -360,6 +360,7 @@ class AIPlayer(
                     activatedPumpsNeedAPlannedAttack = profile.activatedPumpsNeedAPlannedAttack,
                     enablersFirst = profile.enablersFirst,
                     fetchedLandDropFollowUp = profile.fetchedLandDropFollowUp,
+                    landcyclingNeedsAUse = profile.landcyclingNeedsAUse,
                     recastBouncedPermanents = profile.recastBouncedPermanents,
                     precombatPumpsForThePlan = profile.precombatPumpsForThePlan,
                     holdInstantSpeedDeploys = profile.holdInstantSpeedDeploys,

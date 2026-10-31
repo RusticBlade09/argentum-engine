@@ -183,6 +183,11 @@ object ArenaAgents {
             "live-without-borrowed-go-home",
             AiProfile.LIVE.copy(id = "live-without-borrowed-go-home", borrowedCreaturesGoHome = false),
         ),
+        // LIVE typecycling a spell for a land its hand already has: `just arena live-without-landcycling-use live 300`
+        ArenaAgent(
+            "live-without-landcycling-use",
+            AiProfile.LIVE.copy(id = "live-without-landcycling-use", landcyclingNeedsAUse = false),
+        ),
         // LIVE reading each candidate's playouts raw again, without its static leaf as a prior playout:
         // `just arena live-without-static-prior live 300` prices `RolloutSettings.staticPriorPlayouts`.
         ArenaAgent(

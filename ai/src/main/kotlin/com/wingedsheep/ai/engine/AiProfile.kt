@@ -968,6 +968,25 @@ data class AiProfile(
      */
     val fetchedLandDropFollowUp: Boolean = false,
     /**
+     * Don't typecycle a spell for a land the hand has no use for: when the lands already in hand
+     * cover this turn's land drop and the next, and every other spell in hand is castable off the
+     * lands those drops reach, a cycle that finds a land is floored below passing.
+     *
+     * Off the 2026-10-31 AI-vs-humans review: `b1a69afb` turn 7, three lands in play and Swamp,
+     * Mountain and Apex Witchstalker in hand — its only spell — the AI basic-landcycled the 6/4 and
+     * ended the game with two Swamps in hand. The leaf read the swap as neutral (a land in hand
+     * counts as a card, like the spell it replaced), so a playout or two decided it; and with the
+     * land drop unused, [fetchedLandDropFollowUp] credited the cycle with playing the land it
+     * fetched, though a land already in hand made that same drop.
+     *
+     * By effect, not by card: any typecycling whose search put a land in hand (basic landcycling,
+     * Plainscycling, …). It leaves the case [fetchedLandDropFollowUp] was written for alone — no
+     * land in hand, or one that covers only this turn while the spells in hand need the next land
+     * (`FetchedLandDropFollowUpTest`'s Noble Templar positions). Pinned by the Apex Witchstalker
+     * case in that test.
+     */
+    val landcyclingNeedsAUse: Boolean = false,
+    /**
      * Credit a line that **returns one of our own permanents to our hand** with casting it again
      * the same turn, and aim such a self-bounce at the permanent whose recast is worth most.
      *
@@ -2330,6 +2349,7 @@ data class AiProfile(
             threatAwareDefender = true,
             borrowedCreaturesGoHome = true,
             curveAwareMulligan = true,
+            landcyclingNeedsAUse = true,
             rollouts = PRODUCTION_CANDIDATE_EXPIRING.rollouts?.copy(staticPriorPlayouts = 1.0),
         )
 
