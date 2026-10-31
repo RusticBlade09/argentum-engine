@@ -1,6 +1,7 @@
 package com.wingedsheep.engine.state.components.player
 
 import com.wingedsheep.engine.state.Component
+import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.sdk.core.BendType
 import com.wingedsheep.sdk.core.CardType
 import com.wingedsheep.sdk.core.Color
@@ -1225,6 +1226,9 @@ data class CantCastSpellsComponent(
  * @property expiresAfterTurn For [PlayerEffectRemoval.EndOfYourNextTurn]: the ban ends at the
  *   cleanup of the first turn of [controllerId] numbered at or after this floor (the
  *   `Duration.EndOfYourNextTurn` mechanism). Null for every other removal.
+ * @property activeFromSpellCount The ban only binds once the player has cast this many spells this
+ *   turn ([GameState.playerSpellsCastThisTurn]) — "You can cast only one more spell this turn"
+ *   records the count at resolution plus one. Null binds at once.
  */
 @Serializable
 data class SpellCastRestriction(
@@ -1232,8 +1236,16 @@ data class SpellCastRestriction(
     val removeOn: PlayerEffectRemoval = PlayerEffectRemoval.EndOfTurn,
     val sourceId: EntityId? = null,
     val controllerId: EntityId? = null,
-    val expiresAfterTurn: Int? = null
-)
+    val expiresAfterTurn: Int? = null,
+    val activeFromSpellCount: Int? = null
+) {
+    fun bindsNow(state: GameState, playerId: EntityId): Boolean =
+        activeFromSpellCount == null || (state.playerSpellsCastThisTurn[playerId] ?: 0) >= activeFromSpellCount
+}
+
+/** The [CantCastSpellsComponent] bans on [playerId] that bind right now. */
+fun GameState.bindingCastBans(playerId: EntityId): List<SpellCastRestriction> =
+    getEntity(playerId)?.get<CantCastSpellsComponent>()?.restrictions.orEmpty().filter { it.bindsNow(this, playerId) }
 
 /**
  * Component indicating that a player can't search libraries — applied by
@@ -1636,6 +1648,15 @@ data class OpponentCreaturesExiledThisTurnComponent(
 ) : Component
 
 /**
+ * Marks that this player has cycled a card during the current turn. Set by the cycling handlers
+ * (plain and typecycling) and cleared at end of turn by CleanupPhaseManager; read to compute
+ * `CardCycledEvent.firstThisTurn` ("whenever you cycle another card for the first time each
+ * turn", Valiant Rescuer).
+ */
+@Serializable
+data object CycledThisTurnComponent : Component
+
+/**
  * Marks that this player has investigated (CR 701.16a) during the current turn. Set by the
  * `InvestigateExecutor` after each investigate and cleared at end of turn by CleanupPhaseManager;
  * read to compute `InvestigatedEvent.firstThisTurn` ("whenever you investigate for the first time
@@ -1715,6 +1736,15 @@ data class CardsCycledThisGameComponent(val countsByName: Map<String, Int> = emp
     fun record(cardName: String): CardsCycledThisGameComponent =
         CardsCycledThisGameComponent(countsByName + (cardName to (countsByName[cardName] ?: 0) + 1))
 }
+
+/**
+ * How many spells this player has cast this game. Never cleared. Written by `CastRecords`
+ * alongside the per-turn counts; backs
+ * [com.wingedsheep.sdk.scripting.values.DynamicAmount.SpellsCastThisGame] — "if this spell is the
+ * first spell you've cast this game" (Once Upon a Time).
+ */
+@Serializable
+data class SpellsCastThisGameComponent(val count: Int = 0) : Component
 
 /**
  * Tracks the number of permanents (tokens included) put into this player's hand from the

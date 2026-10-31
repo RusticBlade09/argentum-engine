@@ -416,12 +416,14 @@ class ObjectTriggerSubject internal constructor(
     /**
      * "Whenever this creature mutates" (CR 702.140d) — a mutating creature spell merged with this
      * permanent, whether it went over or under, and whether this card is the mutating one or an
-     * existing component. Self-only: the mutated permanent is the one whose abilities trigger.
+     * existing component. Under [Triggers.a] / [Triggers.another] the subject filter picks the
+     * merged permanent, which becomes the triggering entity: `Triggers.a(Creature.youControl())
+     * .mutates()` is "whenever a creature you control mutates" (Essence Symbiote).
      */
     fun mutates(): TriggerSpec {
-        only("mutates", TriggerBinding.SELF)
-        unfiltered("mutates")
-        return spec(MutateEvent)
+        only("mutates", TriggerBinding.SELF, TriggerBinding.ANY, TriggerBinding.OTHER)
+        if (binding == TriggerBinding.SELF) unfiltered("mutates")
+        return spec(MutateEvent(filter = filterOrAny))
     }
 
     /**
@@ -448,7 +450,9 @@ class ObjectTriggerSubject internal constructor(
      * "a player or permanent" (Loki, God of Mischief), `Player.You` for "you or another permanent you
      * control" (Valkmira, Protector's Shield); the subject's filter still narrows the object half. [ofBackupAbility] is "the target of a backup
      * ability" (Mirror-Shield Hoplite). [targetsOnlyIt] is "… that targets only it" — every target
-     * of the spell or ability is this object (Agrus Kos, Eternal Soldier).
+     * of the spell or ability is this object (Agrus Kos, Eternal Soldier). [batch] is the "one or
+     * more … become the target" template — once per targeting spell or ability, however many of
+     * its targets match (Leyline of Combustion); see [BecomesTargetEvent.batch].
      */
     fun becomesTarget(
         of: GameObjectFilter? = null,
@@ -461,6 +465,7 @@ class ObjectTriggerSubject internal constructor(
         players: Player? = null,
         ofBackupAbility: Boolean = false,
         targetsOnlyIt: Boolean = false,
+        batch: Boolean = false,
     ): TriggerSpec = spec(
         BecomesTargetEvent(
             targetFilter = filterOrAny,
@@ -474,6 +479,7 @@ class ObjectTriggerSubject internal constructor(
             sourceFilter = of,
             backupAbilitiesOnly = ofBackupAbility,
             targetsOnlyIt = targetsOnlyIt,
+            batch = batch,
         )
     )
 
@@ -486,7 +492,8 @@ class ObjectTriggerSubject internal constructor(
      * [CountersPlacedEvent.batch]; [orPlayer] widens the recipient to "a permanent **or player**"
      * (All Will Be One) — see [CountersPlacedEvent.includePlayers]; [perCounter] is "whenever **a**
      * [type] counter is put on" — once per counter (Flourishing Defenses), see
-     * [CountersPlacedEvent.perCounter].
+     * [CountersPlacedEvent.perCounter]; [nth] is "when the **twelfth** [type] counter is put on" —
+     * the placement that reaches that count (Midnight Clock), see [CountersPlacedEvent.nth].
      */
     fun getsCounters(
         type: CounterType? = null,
@@ -495,6 +502,7 @@ class ObjectTriggerSubject internal constructor(
         batch: Boolean = false,
         orPlayer: Boolean = false,
         perCounter: Boolean = false,
+        nth: Int? = null,
     ): TriggerSpec = spec(
         CountersPlacedEvent(
             counterType = type,
@@ -504,6 +512,7 @@ class ObjectTriggerSubject internal constructor(
             batch = batch,
             includePlayers = orPlayer,
             perCounter = perCounter,
+            nth = nth,
         )
     )
 
@@ -1134,9 +1143,13 @@ class PlayerTriggerSubject internal constructor(private val player: Player) {
     /**
      * "draws a card" — once per card (CR 121.2). [firstInDrawStep] skips (Orcish Bowmasters) or
      * keeps only (Wiretapping) the first card drawn in each of the drawer's own draw steps (CR 504.1).
+     * [cyclingOf] keeps only draws a cycling ability of a card matching it causes (CR 702.29a).
      */
-    fun draws(firstInDrawStep: DrawStepFirstCard = DrawStepFirstCard.INCLUDED): TriggerSpec =
-        spec(DrawEvent(player, firstInDrawStep = firstInDrawStep))
+    fun draws(
+        firstInDrawStep: DrawStepFirstCard = DrawStepFirstCard.INCLUDED,
+        cyclingOf: GameObjectFilter? = null,
+    ): TriggerSpec =
+        spec(DrawEvent(player, firstInDrawStep = firstInDrawStep, cyclingOf = cyclingOf))
 
     /** "draws their [n]th card each turn" — once, even when one multi-card draw crosses it (CR 121.5: no "draw", no count). */
     fun drawsNth(n: Int): TriggerSpec = spec(NthCardDrawnEvent(nthCard = n, player = player))
@@ -1168,8 +1181,12 @@ class PlayerTriggerSubject internal constructor(private val player: Player) {
     fun mills(card: GameObjectFilter? = null, batch: Boolean = false): TriggerSpec =
         spec(MillEvent(player = player, cardFilter = card, batch = batch))
 
-    /** "cycles a card". This card being cycled is [ObjectTriggerSubject.isCycled]. */
-    fun cycles(): TriggerSpec = spec(CycleEvent(player))
+    /**
+     * "cycles a card"; [firstTimeEachTurn] is "for the first time each turn" — the player's first
+     * cycle of the turn (Valiant Rescuer). This card being cycled is [ObjectTriggerSubject.isCycled].
+     */
+    fun cycles(firstTimeEachTurn: Boolean = false): TriggerSpec =
+        spec(CycleEvent(player, firstTimeEachTurn = firstTimeEachTurn))
 
     /**
      * "plays a land [from anywhere other than [fromZoneOtherThan]]" (CR 305.1) — the land-play action,

@@ -30,6 +30,34 @@ export interface Announcement {
 
 export const ANNOUNCEMENTS: readonly Announcement[] = [
   {
+    id: 'set-iko',
+    date: '2026-10-31',
+    kind: 'set',
+    setCode: 'IKO',
+    title: 'Ikoria: Lair of Behemoths is complete',
+    body:
+      "Ikoria is a world of colossal monsters: mutate one creature onto another to build a single towering threat that collects every ability underneath, while Humans bond with beasts by handing out flying, menace, trample and vigilance counters. Cycling keeps every hand smooth and feeds payoffs like Zenith Flare, and each two-colour pair has its own plan, from Sprite Dragon spells to Boneyard Lurker graveyard mutate.",
+    tryIf: 'building one huge monster, keyword counters and cycling',
+  },
+  {
+    id: 'set-thb',
+    date: '2026-10-31',
+    kind: 'set',
+    setCode: 'THB',
+    title: 'Theros Beyond Death is complete',
+    body:
+      "Descend into the Underworld of Theros, where the gods reward devotion: stack your colour's mana symbols to wake Heliod, Thassa or Purphoros, chain enchantments for constellation triggers, and give your heroes Auras that pay off every time they're targeted. Escape lets graveyard cards come back by exiling others, so long games turn on Uro, Kroxa and recurring Underworld creatures, while Sagas play out their story over several turns.",
+    tryIf: 'enchantments, Aura-boosted heroes and graveyard recursion',
+  },
+  {
+    id: 'feature-set-guide',
+    date: '2026-10-30',
+    kind: 'feature',
+    title: 'The Set guide: find a set to play',
+    body:
+      'Set guide, in the top bar, is a guide to every set you can draft or play sealed: what each is about, how its games play, and power, speed and complexity ratings. Filter for easy-to-learn or fast formats, see every set on one speed-by-complexity map, or put up to four side by side. The lobby’s set picker shows the same summary for whichever set you point at, and the play screen shows it under the set you chose.',
+  },
+  {
     id: 'set-m21',
     date: '2026-10-30',
     kind: 'set',

@@ -22,6 +22,11 @@ import kotlinx.serialization.Serializable
  * @property target Which spells/costs the modifier applies to.
  * @property modification How the cost is changed (reduce/increase, generic/colored, fixed/dynamic).
  * @property gating Optional extra restriction (e.g. only the first matching spell each turn).
+ *
+ * A [ProjectedStaticAbility], so a [GrantStaticAbility] can hand it to other permanents — Jubilant
+ * Skybonder's "creatures you control with flying have 'Spells your opponents cast that target this
+ * creature cost {2} more to cast'". Each holder's granted instance is its own modifier, read
+ * relative to the holder: a spell targeting two such creatures costs {4} more.
  */
 @SerialName("ModifySpellCost")
 @Serializable
@@ -31,7 +36,7 @@ data class ModifySpellCost(
     val gating: CostGating = CostGating.None,
     /** Optional additional life payment elected once per instance while announcing the spell. */
     val optionalLifePayment: Int? = null,
-) : StaticAbility {
+) : ProjectedStaticAbility {
     init { require(optionalLifePayment == null || optionalLifePayment > 0) }
 
     override val description: String = buildDescription()
@@ -1287,19 +1292,25 @@ enum class ActivatedAbilityReach {
  *   `{T}: Add …` at {2} more, which is the opposite of what the card says. The flag is the mirror of
  *   [PreventActivatedAbilities]'s `nonManaAbilitiesOnly`; the ability's own `isManaAbility` flag
  *   (CR 605.1a, enforced by `CardLinter`) is what the engine reads.
+ * @property loyaltyAbilitiesOnly Tax only loyalty abilities (the ability's `isPlaneswalkerAbility`
+ *   flag) — Eidolon of Obstruction's "Loyalty abilities of planeswalkers your opponents control cost
+ *   {1} more to activate". The tax is mana prepended to the loyalty cost ("{1}, +1:"); the loyalty
+ *   change itself is untouched.
  */
 @SerialName("IncreaseActivatedAbilityCost")
 @Serializable
 data class IncreaseActivatedAbilityCost(
     val filter: GroupFilter,
     val amount: DynamicAmount,
-    val excludeManaAbilities: Boolean = false
+    val excludeManaAbilities: Boolean = false,
+    val loyaltyAbilitiesOnly: Boolean = false
 ) : StaticAbility {
     override val description: String = buildString {
         append(filter.description.replaceFirstChar { it.uppercase() })
+        val kind = if (loyaltyAbilitiesOnly) "loyalty" else "activated"
         when (amount) {
-            is DynamicAmount.Fixed -> append("'s activated abilities cost {${amount.amount}} more to activate")
-            else -> append("'s activated abilities cost {X} more to activate, where X is ${amount.description}")
+            is DynamicAmount.Fixed -> append("'s $kind abilities cost {${amount.amount}} more to activate")
+            else -> append("'s $kind abilities cost {X} more to activate, where X is ${amount.description}")
         }
         if (excludeManaAbilities) append(" unless they're mana abilities")
     }

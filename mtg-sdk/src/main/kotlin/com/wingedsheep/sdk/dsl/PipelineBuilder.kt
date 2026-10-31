@@ -844,17 +844,20 @@ class PipelineBuilder private constructor(private val shared: Shared) {
      * Player names a card ([ChooseOptionEffect] over [OptionType.CARD_NAME]); with
      * [excludeBasicLandNames], "choose a card name other than a basic land card name"; with
      * [pool] = [CardNamePool.NONLAND], "choose a nonland card name"; with [chooser] =
-     * [Chooser.TargetPlayer], "target player chooses a card name" (Petra Sphinx).
+     * [Chooser.TargetPlayer], "target player chooses a card name" (Petra Sphinx). With
+     * [recordOnSource], the name is also recorded durably on the source permanent for a later
+     * resolution to read through `namedFromChosenComponent()` (Medomai's Prophecy).
      */
     fun chooseCardName(
         prompt: String? = null,
         excludeBasicLandNames: Boolean = false,
         pool: CardNamePool = CardNamePool.ANY,
         chooser: Chooser = Chooser.Controller,
+        recordOnSource: Boolean = false,
         name: String? = null
     ): ChosenSlot {
         val slot = ChosenSlot(slotKey("cardName", nextIndex(), name))
-        steps += Effects.ChooseCardName(slot.key, prompt, excludeBasicLandNames, pool, chooser)
+        steps += Effects.ChooseCardName(slot.key, prompt, excludeBasicLandNames, pool, chooser, recordOnSource)
         return slot
     }
 
@@ -863,6 +866,7 @@ class PipelineBuilder private constructor(private val shared: Shared) {
         optionType: OptionType,
         prompt: String? = null,
         excludedOptions: List<String> = emptyList(),
+        recordOnSource: Boolean = false,
         name: String? = null
     ): ChosenSlot {
         val slot = ChosenSlot(slotKey("chosen", nextIndex(), name))
@@ -870,7 +874,8 @@ class PipelineBuilder private constructor(private val shared: Shared) {
             optionType = optionType,
             storeAs = slot.key,
             prompt = prompt,
-            excludedOptions = excludedOptions
+            excludedOptions = excludedOptions,
+            recordOnSource = recordOnSource
         )
         return slot
     }
@@ -990,6 +995,7 @@ class PipelineBuilder private constructor(private val shared: Shared) {
      * @param filter only the cards in [from] matching this move; the rest stay where they are.
      * @param lookableInExile the controller may keep looking at face-down exiled cards.
      * @param attachTo the permanent an Aura/Equipment entering the battlefield attaches to.
+     * @param auraHostFilter narrows the host each entering Aura's controller chooses.
      * @param attackDefender what each card put onto the battlefield tapped and attacking attacks.
      */
     fun move(
@@ -1009,6 +1015,7 @@ class PipelineBuilder private constructor(private val shared: Shared) {
         markEnteredViaSourceAbility: Boolean = false,
         filter: GameObjectFilter? = null,
         attachTo: EffectTarget? = null,
+        auraHostFilter: GameObjectFilter? = null,
         attackDefender: EnteringAttackDefender = EnteringAttackDefender.JOIN_SOURCE,
         entersWith: EntersWithCharacteristics? = null
     ) {
@@ -1030,6 +1037,7 @@ class PipelineBuilder private constructor(private val shared: Shared) {
             markEnteredViaSourceAbility = markEnteredViaSourceAbility,
             filter = filter,
             attachTo = attachTo,
+            auraHostFilter = auraHostFilter,
             attackDefender = attackDefender,
             entersWith = entersWith
         )
@@ -1057,6 +1065,7 @@ class PipelineBuilder private constructor(private val shared: Shared) {
         markEnteredViaSourceAbility: Boolean = false,
         filter: GameObjectFilter? = null,
         attachTo: EffectTarget? = null,
+        auraHostFilter: GameObjectFilter? = null,
         entersWith: EntersWithCharacteristics? = null,
         name: String? = null
     ): CollectionSlot {
@@ -1079,6 +1088,7 @@ class PipelineBuilder private constructor(private val shared: Shared) {
             markEnteredViaSourceAbility = markEnteredViaSourceAbility,
             filter = filter,
             attachTo = attachTo,
+            auraHostFilter = auraHostFilter,
             entersWith = entersWith
         )
         return slot

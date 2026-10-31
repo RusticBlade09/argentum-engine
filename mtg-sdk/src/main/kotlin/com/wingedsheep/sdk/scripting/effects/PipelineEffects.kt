@@ -5,6 +5,7 @@ import com.wingedsheep.sdk.core.ManaCost
 import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.scripting.AdditionalCost
 import com.wingedsheep.sdk.scripting.CardNamePool
+import com.wingedsheep.sdk.scripting.ChoiceSlot
 import com.wingedsheep.sdk.scripting.GameObjectFilter
 import com.wingedsheep.sdk.scripting.conditions.Condition
 import com.wingedsheep.sdk.scripting.effects.ZonePlacement
@@ -1487,6 +1488,15 @@ data class MoveCollectionEffect(
      */
     val attachTo: EffectTarget? = null,
     /**
+     * For a move onto the battlefield without [attachTo]: narrows the host each Aura card's
+     * controller chooses as it enters (CR 303.4f) to permanents that also match this filter, "you"
+     * being the effect's controller — "return any number of Aura cards … attached to creatures you
+     * control" (Storm Herald), "only creatures can be enchanted this way" (Retether). Each Aura still
+     * needs a host its own enchant ability allows; one with no host in the intersection stays where
+     * it is (CR 303.4g). Null (the default) offers every host the Aura's enchant ability allows.
+     */
+    val auraHostFilter: GameObjectFilter? = null,
+    /**
      * What each card put onto the battlefield [ZonePlacement.TappedAndAttacking] attacks. The
      * default, [EnteringAttackDefender.JOIN_SOURCE], joins a defending player already in this
      * combat; [EnteringAttackDefender.CONTROLLER_CHOOSES] is a bare "tapped and attacking" as
@@ -1508,6 +1518,9 @@ data class MoveCollectionEffect(
             attackDefender == EnteringAttackDefender.JOIN_SOURCE ||
                 (destination as? CardDestination.ToZone)?.placement == ZonePlacement.TappedAndAttacking
         ) { "attackDefender needs a ToZone destination with placement = TappedAndAttacking" }
+        require(auraHostFilter == null || attachTo == null) {
+            "auraHostFilter narrows a chosen host; attachTo names the host outright — set one, not both"
+        }
     }
 
     override val description: String = buildString {
@@ -1528,6 +1541,7 @@ data class MoveCollectionEffect(
         // (Safe Haven, Oblivion Ring's cousins). Dropping it from the generated text loses the
         // one detail that distinguishes it from a plain return to the battlefield.
         if (underOwnersControl) append(" under its owner's control")
+        auraHostFilter?.let { append(" attached to ${it.description}") }
         if (lookableInExile) append(". You may look at those cards for as long as they remain exiled")
     }
 }
@@ -1577,7 +1591,20 @@ enum class OptionType {
      * free text. Pair the stored name with [com.wingedsheep.sdk.scripting.predicates.CardPredicate.NameEqualsChosen]
      * to match cards by it. Used by "name a card" effects (Desperate Research, etc.).
      */
-    CARD_NAME
+    CARD_NAME;
+
+    /**
+     * The durable cast-choices slot a choice of this type is recorded under when
+     * [ChooseOptionEffect.recordOnSource] is set — the slot the matching `EntersWithChoice` writes.
+     */
+    val recordSlot: ChoiceSlot
+        get() = when (this) {
+            CREATURE_TYPE -> ChoiceSlot.CREATURE_TYPE
+            COLOR -> ChoiceSlot.COLOR
+            BASIC_LAND_TYPE -> ChoiceSlot.LAND_TYPE
+            CARD_TYPE -> ChoiceSlot.CARD_TYPE
+            CARD_NAME -> ChoiceSlot.CARD_NAME
+        }
 }
 
 /**
@@ -1596,6 +1623,13 @@ enum class OptionType {
  *   ("choose a nonland card name" — Cranial Extraction). Ignored for every other option type.
  * @property chooser Who makes the choice — the controller by default, or another player the text
  *   names: "target player chooses a card name" (Petra Sphinx) is [Chooser.TargetPlayer].
+ * @property recordOnSource Also record the choice **durably on the source permanent**, under the
+ *   option type's [ChoiceSlot] ([OptionType.recordSlot]) in its cast-choices bag — the same slot the
+ *   as-enters `EntersWithChoice` writes, replacing any prior value. For a choice made by a resolving
+ *   ability that a *later* resolution reads back ("II — Choose a card name. III — When you cast a
+ *   spell with the chosen name …", Medomai's Prophecy): read it with
+ *   `GameObjectFilter.namedFromChosenComponent()` / `.ofChosenCardTypeComponent()`. With no source
+ *   permanent on the battlefield nothing is recorded; the pipeline variable is stored either way.
  */
 @SerialName("ChooseOption")
 @Serializable
@@ -1605,7 +1639,8 @@ data class ChooseOptionEffect(
     val prompt: String? = null,
     val excludedOptions: List<String> = emptyList(),
     val cardNamePool: CardNamePool = CardNamePool.ANY,
-    val chooser: Chooser = Chooser.Controller
+    val chooser: Chooser = Chooser.Controller,
+    val recordOnSource: Boolean = false
 ) : Effect {
     override val description: String = buildString {
         append("Choose ")

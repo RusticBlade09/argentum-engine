@@ -127,7 +127,7 @@ data class IsAllCreatureTypes(
 
 /**
  * The permanents matching [filter] **have the creature types of the object [source] names**,
- * replacing their own (CR 205.1b) while keeping every non-creature subtype.
+ * replacing their own (CR 205.1a) while keeping every non-creature subtype.
  *
  * The type half of the "copy some characteristics of another object" family: [source] is an
  * ordinary [com.wingedsheep.sdk.scripting.targets.EffectTarget.SingleEntity], so the same static reads a card
@@ -621,13 +621,22 @@ data class AnimateLandGroup(
  * Note: Combine with LoseAllAbilities and GrantActivatedAbility
  * separately for ability removal/granting.
  *
- * @property setCardTypes Card types to set (replaces ALL existing card types)
+ * @property setCardTypes Card types to set (replaces ALL existing card types). The subtypes of every
+ *   card type the object loses go with it unless a remaining type shares them (CR 205.1a) — the engine
+ *   prunes them, so "loses all other card types" needs no [setSubtypes].
  * @property setSubtypes Subtypes to set (replaces ALL existing subtypes). A non-empty set
  *   replaces all subtypes; an empty set leaves subtypes unchanged unless [clearSubtypes] is set.
  * @property setColors Colors to set (null = don't change, empty = colorless)
  * @property setName Name to set (null = don't change). Per CR 612.8 the object "loses any
  *   names it had and has only the specified name" — applied at Layer 3 (TEXT), before the
  *   type/color layers. Used by Witness Protection ("named Legitimate Businessperson").
+ * @property setCreatureSubtypes Creature types to set, replacing only the existing **creature** types
+ *   and leaving every card type, supertype and non-creature subtype in place (CR 205.1a). This is the
+ *   "is a [creature type]" wording with no card type named — Ichthyomorphosis's "is a blue Fish",
+ *   Lignify's "is a Treefolk": an enchanted artifact creature stays an artifact, an Equipment keeps
+ *   its Equipment subtype. Use it *instead of* `setCardTypes = {"CREATURE"}` + [setSubtypes], which
+ *   is the "is a [type] creature" wording that loses all other card types (Eaten by Piranhas).
+ *   Empty = don't change creature types.
  * @property clearSubtypes When true, removes all subtypes (used with `setSubtypes = emptySet()`
  *   to express "has no subtypes" — e.g. the Enduring cycle's enchantment-only return, which
  *   strips Sheep/Glimmer). Distinguishes "clear subtypes" from "don't change subtypes".
@@ -641,17 +650,26 @@ data class TransformPermanent(
     val setColors: Set<Color>? = null,
     val setName: String? = null,
     val clearSubtypes: Boolean = false,
-    val filter: GroupFilter = GroupFilter.attachedCreature()
+    val filter: GroupFilter = GroupFilter.attachedCreature(),
+    val setCreatureSubtypes: Set<String> = emptySet()
 ) : StaticAbility {
     override val description: String = buildString {
         append("is ")
         if (setColors?.isEmpty() == true) append("a colorless ")
         else if (setColors != null) append("a ${setColors.joinToString("/") { it.name.lowercase() }} ")
         if (setSubtypes.isNotEmpty()) append(setSubtypes.joinToString(" "))
+        if (setCreatureSubtypes.isNotEmpty()) append(setCreatureSubtypes.joinToString(" "))
         if (setCardTypes.isNotEmpty()) {
-            if (setSubtypes.isNotEmpty()) append(" ")
+            if (setSubtypes.isNotEmpty() || setCreatureSubtypes.isNotEmpty()) append(" ")
             append(setCardTypes.joinToString(" ") { it.lowercase() })
         }
         if (setName != null) append(" named $setName")
+    }
+
+    override fun applyTextReplacement(replacer: TextReplacer): StaticAbility {
+        val newFilter = filter.applyTextReplacement(replacer)
+        val newCreatureSubtypes = setCreatureSubtypes.map { replacer.replaceCreatureType(it) }.toSet()
+        return if (newFilter !== filter || newCreatureSubtypes != setCreatureSubtypes)
+            copy(filter = newFilter, setCreatureSubtypes = newCreatureSubtypes) else this
     }
 }

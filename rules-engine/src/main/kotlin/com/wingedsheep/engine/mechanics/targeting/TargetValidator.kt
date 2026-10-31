@@ -1,6 +1,5 @@
 package com.wingedsheep.engine.mechanics.targeting
 
-import com.wingedsheep.engine.mechanics.ManaValues
 import com.wingedsheep.engine.handlers.effects.TargetResolutionUtils.toEntityId
 
 import com.wingedsheep.engine.handlers.SourceTypeTargeting
@@ -335,30 +334,25 @@ class TargetValidator(
                 }
             }
 
-            // "... with total mana value N or less" — the summed mana value of the chosen card
-            // targets may not exceed the resolved cap (Fire Lord Sozin's "total mana value X or
-            // less"; XValue resolves against the paid [xValue]). CR 601.2c. Cards and permanents
-            // count (Kairi's "nonland permanents with total mana value 6 or less"); players add 0.
-            val totalManaCap = (requirement as? TargetObject)?.totalManaValueAtMost
-            if (totalManaCap != null && targetsForReq.isNotEmpty()) {
-                val cap = try {
-                    amountEvaluator.evaluate(
-                        state,
-                        totalManaCap,
-                        EffectContext(sourceId = sourceId, controllerId = casterId, xValue = xValue)
-                    ).coerceAtLeast(0)
-                } catch (_: Exception) {
-                    Int.MAX_VALUE
-                }
-                val summedManaValue = targetsForReq.sumOf { target ->
+            // "... with total mana value / power N or less" — the summed value of the chosen targets
+            // may not exceed the resolved cap (Fire Lord Sozin's "total mana value X or less", XValue
+            // resolving against the paid [xValue]; Nethroi's "total power 10 or less"). CR 601.2c.
+            // Cards and permanents count their current value; players add 0.
+            val totalCap = (requirement as? TargetObject)?.totalAtMost
+            if (totalCap != null && targetsForReq.isNotEmpty()) {
+                val cap = TotalCaps.resolve(
+                    state, totalCap, amountEvaluator,
+                    EffectContext(sourceId = sourceId, controllerId = casterId, xValue = xValue)
+                ) ?: Int.MAX_VALUE
+                val total = targetsForReq.sumOf { target ->
                     when (target) {
-                        is ChosenTarget.Card -> ManaValues.of(state, target.cardId)
-                        is ChosenTarget.Permanent -> ManaValues.of(state, target.entityId)
+                        is ChosenTarget.Card -> TotalCaps.valueOf(state, target.cardId, totalCap.property)
+                        is ChosenTarget.Permanent -> TotalCaps.valueOf(state, target.entityId, totalCap.property)
                         else -> 0
                     }
                 }
-                if (summedManaValue > cap) {
-                    return "Targets must have total mana value $cap or less"
+                if (total > cap) {
+                    return "Targets must have total ${totalCap.property.description} $cap or less"
                 }
             }
 
@@ -532,10 +526,11 @@ class TargetValidator(
         if (hexproofError != null) return hexproofError
 
         // Protection / hexproof from a kind of source — spells, permanents cast this turn,
-        // activated or triggered abilities (Emrakul, the World Anew; Volatile Stormdrake).
+        // activated or triggered abilities, a mana-value parity (Emrakul, the World Anew; Volatile
+        // Stormdrake; Lavabrink Venturer). A spell's announced X counts toward its mana value.
         if (target is ChosenTarget.Permanent) {
             SourceKindProtection.targetingError(
-                state, target.entityId, sourceId, casterId, targetingSourceType, predicateEvaluator
+                state, target.entityId, sourceId, casterId, targetingSourceType, predicateEvaluator, xValue
             )?.let { return it }
         }
 

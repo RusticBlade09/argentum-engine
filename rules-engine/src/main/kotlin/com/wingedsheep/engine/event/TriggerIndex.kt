@@ -496,6 +496,7 @@ class TriggerIndex(
             is com.wingedsheep.engine.core.SubgameEndedEvent,
             is com.wingedsheep.engine.core.TurnSkippedEvent,
             is com.wingedsheep.engine.core.AbilityAutoAnsweredEvent,
+            is com.wingedsheep.engine.core.TriggersOrderedAutomaticallyEvent,
             is com.wingedsheep.engine.core.AbilityCounteredEvent,
             is com.wingedsheep.engine.core.AbilityFizzledEvent,
             is com.wingedsheep.engine.core.AbilityResolvedEvent,

@@ -165,7 +165,7 @@ import com.wingedsheep.sdk.scripting.PlayersCantActivateAbilities
 import com.wingedsheep.sdk.scripting.PlayersCantCastSpells
 import com.wingedsheep.sdk.scripting.PreventActivatedAbilities
 import com.wingedsheep.sdk.scripting.PreventCycling
-import com.wingedsheep.sdk.scripting.SuppressEntersTriggers
+import com.wingedsheep.sdk.scripting.SuppressZoneChangeTriggers
 import com.wingedsheep.sdk.scripting.ConvertEmptyingMana
 import com.wingedsheep.sdk.scripting.PreventManaPoolEmptying
 import com.wingedsheep.sdk.scripting.RetainUnspentColoredMana
@@ -387,6 +387,13 @@ class StaticAbilityHandler(
         if (allStaticAbilities.any { it is com.wingedsheep.sdk.scripting.ControlOpponentsLibrarySearches }) {
             result = result.with(com.wingedsheep.engine.state.components.battlefield.ControlsOpponentsLibrarySearchesComponent)
         }
+
+        // "Your devotion to each color … is increased by one" (Altar of the Pantheon) — read where
+        // devotion is counted. A marker, not a layer effect: the gods read devotion in Layer 4.
+        allStaticAbilities.filterIsInstance<com.wingedsheep.sdk.scripting.ModifyDevotion>()
+            .sumOf { it.amount }.takeIf { it != 0 }?.let {
+                result = result.with(com.wingedsheep.engine.state.components.battlefield.IncreasesDevotionComponent(it))
+            }
 
         // Global Layer 3 color-word change (Swirl the Mists): read by TextChanges, which scans the
         // battlefield for this marker and reads the source's chosen color live.
@@ -721,6 +728,14 @@ class StaticAbilityHandler(
             ))
         }
 
+        // Layer 4 (TYPE): "is a [creature type]" — replace only the creature types (CR 205.1a).
+        if (ability.setCreatureSubtypes.isNotEmpty()) {
+            effects.add(ContinuousEffectData(
+                modification = Modification.SetCreatureSubtypes(ability.setCreatureSubtypes),
+                affectsFilter = filter
+            ))
+        }
+
         // Layer 5 (COLOR): Set colors (empty set = colorless)
         val colors = ability.setColors
         if (colors != null) {
@@ -945,6 +960,12 @@ class StaticAbilityHandler(
                     affectsFilter = convertGroupFilter(ability.filter)
                 )
             }
+            is com.wingedsheep.sdk.scripting.LethalDamageDeterminedByPower -> {
+                ContinuousEffectData(
+                    modification = Modification.SetLethalDamageByPower,
+                    affectsFilter = convertGroupFilter(ability.filter)
+                )
+            }
             is MustBlock -> {
                 ContinuousEffectData(
                     modification = Modification.SetMustBlock,
@@ -1101,7 +1122,10 @@ class StaticAbilityHandler(
             }
             is CantReceiveCounters -> {
                 ContinuousEffectData(
-                    modification = Modification.GrantKeyword(com.wingedsheep.sdk.core.AbilityFlag.CANT_RECEIVE_COUNTERS.name),
+                    modification = Modification.GrantKeyword(
+                        ability.counterType?.let(ProjectedState::cantReceiveCountersKeyword)
+                            ?: com.wingedsheep.sdk.core.AbilityFlag.CANT_RECEIVE_COUNTERS.name
+                    ),
                     affectsFilter = convertGroupFilter(ability.filter)
                 )
             }
@@ -1366,9 +1390,9 @@ class StaticAbilityHandler(
             is com.wingedsheep.sdk.scripting.ExtraOnceOnlyActivations,
             is PreventCycling,
 
-            // Trigger detection (TriggerDetector.suppressEntersTriggers) — not a continuous
+            // Trigger detection (TriggerDetector.suppressZoneChangeTriggers) — not a continuous
             // projection effect; consulted as a final filter over the batch's pending triggers:
-            is SuppressEntersTriggers,
+            is SuppressZoneChangeTriggers,
 
             // Turn-based actions (BeginningPhaseManager / CleanupPhaseManager):
             is DamagePersistsThroughCleanup,
@@ -1409,6 +1433,7 @@ class StaticAbilityHandler(
             is com.wingedsheep.sdk.scripting.PlayersCantPayLifeForCosts,
             is com.wingedsheep.sdk.scripting.PlayersCantSearchLibraries,
             is com.wingedsheep.sdk.scripting.ControlOpponentsLibrarySearches,
+            is com.wingedsheep.sdk.scripting.ModifyDevotion,
             is com.wingedsheep.sdk.scripting.GrantCantLoseGameFromLife,
             is GrantHexproofToController,
             is GrantProtectionToController,

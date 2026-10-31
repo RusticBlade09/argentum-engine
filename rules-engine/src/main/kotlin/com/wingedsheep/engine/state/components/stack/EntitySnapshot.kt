@@ -164,6 +164,16 @@ data class EntitySnapshot(
      */
     val attachmentIds: List<EntityId> = emptyList(),
     /**
+     * [attachmentIds] with each attachment's controller and subtypes frozen too, so "for each Aura
+     * **you controlled** that was attached to it" (Hateful Eidolon) counts the Auras as they were,
+     * not as their owners' graveyard cards — the last-known leg of
+     * [com.wingedsheep.sdk.scripting.values.EntityNumericProperty.AttachmentCount]. A separate field
+     * rather than a replacement because persisted snapshots carry [attachmentIds].
+     */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val attachments: List<AttachmentLki> = emptyList(),
+    /**
      * True if this permanent had at least one Aura attached when it left the battlefield (CR 303.4).
      * Last-known counterpart to [com.wingedsheep.sdk.scripting.predicates.StatePredicate.IsEnchanted];
      * see [wasModified] for the last-known
@@ -335,6 +345,14 @@ data class EntitySnapshot(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val manaValue: Int? = null,
     /**
+     * How many times the permanent had mutated (CR 702.140c) as it last existed on the battlefield,
+     * so "the number of times this creature has mutated" still reads it once it has left (CR 608.2h)
+     * Null when it never mutated.
+     */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val timesMutated: Int? = null,
+    /**
      * Base power at capture — the layer-7b value after copy effects, characteristic-defining
      * abilities and "base power is N" effects, before counters and modifiers (CR 613.4b). Frozen
      * because off the battlefield only the printed value is readable, yet "if its power was
@@ -374,6 +392,7 @@ data class EntitySnapshot(
                 battlefieldEntryTimestamp = state.getEntity(entityId)
                     ?.get<com.wingedsheep.engine.state.components.battlefield.BattlefieldEntryTimestampComponent>()?.timestamp,
                 manaValue = permanentManaValue(state, entityId),
+                timesMutated = timesMutatedOf(state, entityId).takeIf { it > 0 },
                 power = projected.getPower(entityId),
                 toughness = projected.getToughness(entityId),
                 basePower = projected.getBasePower(entityId),
@@ -417,6 +436,14 @@ val EntitySnapshot.chosenSubtype: String?
     get() = textChoices[com.wingedsheep.sdk.scripting.ChoiceSlot.CREATURE_TYPE]
         ?: textChoices[com.wingedsheep.sdk.scripting.ChoiceSlot.PLANESWALKER_TYPE]
 
+/**
+ * How many mutating spells have merged with [entityId] (CR 702.140c): each merge adds exactly one
+ * component to its pile, the host being the remaining one. Zero for a permanent that never mutated.
+ */
+fun timesMutatedOf(state: GameState, entityId: EntityId): Int =
+    state.getEntity(entityId)?.get<com.wingedsheep.engine.mechanics.MergedComponent>()
+        ?.let { it.componentIds.size - 1 } ?: 0
+
 /** The non-zero counters on [entityId]. */
 private fun countersOf(state: GameState, entityId: EntityId): Map<CounterType, Int> =
     state.getEntity(entityId)?.get<CountersComponent>()?.counters?.filterValues { it > 0 } ?: emptyMap()
@@ -437,6 +464,7 @@ fun captureEntitySnapshots(
         wasFaceDown = state?.getEntity(id)?.has<com.wingedsheep.engine.state.components.identity.FaceDownComponent>() == true,
         name = state?.getEntity(id)?.get<CardComponent>()?.name,
         manaValue = state?.let { permanentManaValue(it, id) },
+        timesMutated = state?.let { timesMutatedOf(it, id) }?.takeIf { it > 0 },
         power = projected.getPower(id),
         toughness = projected.getToughness(id),
         basePower = projected.getBasePower(id),
@@ -543,11 +571,43 @@ fun captureLastKnown(state: GameState, entityId: EntityId): EntitySnapshot {
         wasCast = container?.has<com.wingedsheep.engine.state.components.battlefield.WasCastComponent>() == true,
         castFromZone = container?.let(::castFromZoneOf),
         attachmentIds = attachmentIdsOf(state, entityId),
+        attachments = attachmentLkiOf(state, entityId),
         // The cost strips the cast-choices bag too; "the last noted …" reads it from here.
         numberChoices = numberChoicesOf(state, entityId),
         textChoices = textChoicesOf(state, entityId),
     )
 }
+
+/**
+ * One attachment of a permanent as it last existed on the battlefield: which object it was, who
+ * controlled it, and its projected subtypes (Aura / Equipment / Curse). See
+ * [EntitySnapshot.attachments].
+ */
+@Serializable
+data class AttachmentLki(
+    val entityId: EntityId,
+    val controllerId: EntityId?,
+    val subtypes: Set<String>,
+) {
+    fun hasSubtype(subtype: Subtype): Boolean = subtypes.any { it.equals(subtype.value, ignoreCase = true) }
+}
+
+/**
+ * The attachments of [entityId] right now, each with its projected controller and subtypes
+ * (printed subtypes when unprojected) — the value frozen into [EntitySnapshot.attachments].
+ */
+fun attachmentLkiOf(state: GameState, entityId: EntityId?): List<AttachmentLki> =
+    attachmentIdsOf(state, entityId).map { id ->
+        val projectedSubtypes = state.projectedState.getSubtypes(id)
+        AttachmentLki(
+            entityId = id,
+            controllerId = state.projectedState.getController(id),
+            subtypes = projectedSubtypes.ifEmpty {
+                state.getEntity(id)?.get<CardComponent>()?.typeLine?.subtypes?.mapTo(mutableSetOf()) { it.value }
+                    ?: emptySet()
+            },
+        )
+    }
 
 /**
  * The Auras/Equipment attached to [entityId] right now, in attachment order — the value frozen into

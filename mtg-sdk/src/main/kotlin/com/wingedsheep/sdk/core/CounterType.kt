@@ -200,6 +200,12 @@ value class CounterType(val name: String) {
         val FUSE = CounterType("FUSE")
 
         /**
+         * Foreshadow counter (IKO — Ominous Seas). A pure tally: one goes on each time its controller
+         * draws a card, and removing eight of them pays for an 8/8 Kraken token.
+         */
+        val FORESHADOW = CounterType("FORESHADOW")
+
+        /**
          * Luck counter (TSP — Gemstone Caverns). A marker: the land begins the game with one when put
          * onto the battlefield from an opening hand, and taps for any color while it has one.
          */
@@ -900,6 +906,26 @@ value class CounterType(val name: String) {
          */
         val NIGHT = CounterType("NIGHT")
 
+        /**
+         * Task counter (THB — Heliod's Punishment). A passive countdown with no inherent rule: the
+         * Aura enters with four, and the "{T}" ability it grants the enchanted creature removes one,
+         * then destroys the Aura once none are left.
+         */
+        val TASK = CounterType("TASK")
+
+        /**
+         * Hour counter (ELD — Midnight Clock). A passive tally with no inherent rule: the Clock gains
+         * one each upkeep and from its activated ability, and "when the twelfth hour counter is put
+         * on" it (`getsCounters(HOUR, nth = 12)`) it resets your hand and exiles itself.
+         */
+        val HOUR = CounterType("HOUR")
+
+        /**
+         * Knowledge counter (ELD — The Magic Mirror). A passive tally with no inherent rule: the
+         * Mirror gains one each upkeep, then its controller draws a card for each.
+         */
+        val KNOWLEDGE = CounterType("KNOWLEDGE")
+
         /** Every counter kind the SDK names, in declaration order. */
         val KNOWN: List<CounterType> = listOf(
             PLUS_ONE_PLUS_ONE,
@@ -960,6 +986,7 @@ value class CounterType(val name: String) {
             COIN,
             FLOOD,
             FUSE,
+            FORESHADOW,
             LUCK,
             CHORUS,
             DREAM,
@@ -1059,6 +1086,9 @@ value class CounterType(val name: String) {
             VOYAGE,
             GHOSTFORM,
             NIGHT,
+            TASK,
+            HOUR,
+            KNOWLEDGE,
         )
 
         /**

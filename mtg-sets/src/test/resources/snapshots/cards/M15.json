@@ -1059,6 +1059,66 @@
     ]
 }
 
+// Frost Lynx
+{
+    "name": "Frost Lynx",
+    "manaCost": "{2}{U}",
+    "typeLine": "Creature — Elemental Cat",
+    "oracleText": "When this creature enters, tap target creature an opponent controls. That creature doesn't untap during its controller's next untap step.",
+    "creatureStats": {
+        "power": 2,
+        "toughness": 2
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Frost Lynx:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Composite",
+                    "effects": [
+                        {
+                            "type": "TapUntap",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            }
+                        },
+                        {
+                            "type": "GrantKeyword",
+                            "keyword": "DOESNT_UNTAP",
+                            "target": {
+                                "type": "BoundVariable",
+                                "name": "t0"
+                            },
+                            "duration": "UntilAfterAffectedControllersNextUntap"
+                        }
+                    ]
+                },
+                "targetRequirement": {
+                    "type": "TargetObject",
+                    "filter": {
+                        "baseFilter": "creature ctrl:opponent"
+                    },
+                    "id": "t0"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "55",
+        "artist": "Izzy",
+        "flavorText": "It readily attacks much larger prey, knowing retaliation is impossible.",
+        "imageUri": "https://cards.scryfall.io/normal/front/6/1/619268d2-f7a8-48cd-b17b-197e82474b13.jpg"
+    },
+    "colorIdentityOverride": [
+        "BLUE"
+    ]
+}
+
 // Geist of the Moors
 {
     "name": "Geist of the Moors",
@@ -1226,6 +1286,90 @@
     },
     "colorIdentityOverride": [
         "RED"
+    ]
+}
+
+// Heliod's Pilgrim
+{
+    "name": "Heliod's Pilgrim",
+    "manaCost": "{2}{W}",
+    "typeLine": "Creature — Human Cleric",
+    "oracleText": "When this creature enters, you may search your library for an Aura card, reveal it, put it into your hand, then shuffle.",
+    "creatureStats": {
+        "power": 1,
+        "toughness": 2
+    },
+    "script": {
+        "triggeredAbilities": [
+            {
+                "id": "Heliod's Pilgrim:1",
+                "trigger": {
+                    "type": "ZoneChangeEvent",
+                    "to": "Battlefield"
+                },
+                "effect": {
+                    "type": "Gated",
+                    "gate": "Gate.MayDecide",
+                    "then": {
+                        "type": "Composite",
+                        "effects": [
+                            {
+                                "type": "GatherCards",
+                                "source": {
+                                    "type": "FromZone",
+                                    "zone": "Library",
+                                    "filter": "Aura"
+                                },
+                                "storeAs": "searchable",
+                                "search": true
+                            },
+                            {
+                                "type": "SelectFromCollection",
+                                "from": "searchable",
+                                "selection": {
+                                    "type": "ChooseUpTo",
+                                    "count": {
+                                        "type": "Fixed",
+                                        "amount": 1
+                                    }
+                                },
+                                "storeSelected": "found",
+                                "prompt": "Search your library for an Aura card to put into your hand",
+                                "selectedLabel": "Put into your hand"
+                            },
+                            {
+                                "type": "MoveCollection",
+                                "from": "found",
+                                "destination": {
+                                    "type": "ToZone",
+                                    "zone": "Hand"
+                                },
+                                "revealed": true
+                            },
+                            "ShuffleLibrary",
+                            "EmitLibrarySearchedEvent"
+                        ]
+                    },
+                    "descriptionOverride": "When this creature enters, you may search your library for an Aura card, reveal it, put it into your hand, then shuffle."
+                },
+                "descriptionOverride": "When this creature enters, you may search your library for an Aura card, reveal it, put it into your hand, then shuffle."
+            }
+        ]
+    },
+    "metadata": {
+        "collectorNumber": "14",
+        "artist": "Izzy",
+        "flavorText": "The blessings of Heliod are apparent for all to see.",
+        "imageUri": "https://cards.scryfall.io/normal/front/7/e/7ea54b97-9182-4d46-9d70-3cc7f9b18ada.jpg?1783939202",
+        "rulings": [
+            {
+                "date": "2014-07-18",
+                "text": "Enchantment creatures with bestow from the Theros block aren't Aura cards in your library. You can't find one with Heliod's Pilgrim."
+            }
+        ]
+    },
+    "colorIdentityOverride": [
+        "WHITE"
     ]
 }
 

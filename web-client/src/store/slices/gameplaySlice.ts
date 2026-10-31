@@ -119,6 +119,8 @@ export interface GameplaySliceActions {
   setError: (error: ErrorState) => void
   clearError: () => void
   dismissAutoAnswerNotice: () => void
+  triggerOrderNotice: { key: number; count: number } | null
+  dismissTriggerOrderNotice: () => void
 }
 
 export type GameplaySlice = GameplaySliceState & GameplaySliceActions
@@ -147,6 +149,7 @@ export const createGameplaySlice: SliceCreator<GameplaySlice> = (set, get) => ({
   spectatorNames: [],
   autoAnswerNotice: null,
   autoAnswerPending: false,
+  triggerOrderNotice: null,
 
   // Actions
   createGame: (deckList, setCode) => {
@@ -716,4 +719,5 @@ export const createGameplaySlice: SliceCreator<GameplaySlice> = (set, get) => ({
   },
 
   dismissAutoAnswerNotice: () => set({ autoAnswerNotice: null }),
+  dismissTriggerOrderNotice: () => set({ triggerOrderNotice: null }),
 })

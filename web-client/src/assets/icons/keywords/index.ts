@@ -140,6 +140,7 @@ export const counterManaClass: Record<string, string> = {
   COIN: 'counter-charge',
   FLOOD: 'counter-flood',
   FUSE: 'counter-charge',
+  FORESHADOW: 'counter-flood',
   LUCK: 'counter-charge',
   CHORUS: 'counter-charge',
   DREAM: 'counter-charge',
@@ -234,4 +235,7 @@ export const counterManaClass: Record<string, string> = {
   VOYAGE: 'counter-lore',
   GHOSTFORM: 'counter-lore',
   NIGHT: 'counter-time',
+  TASK: 'counter-time',
+  HOUR: 'counter-time',
+  KNOWLEDGE: 'counter-lore',
 }

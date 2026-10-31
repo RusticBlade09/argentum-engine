@@ -171,6 +171,12 @@ wholeGame, autoAnswer }`. A triggered/activated ability on the stack carries its
 in its `ClientCard`, so the stack-item context menu can target it. When a yield auto-answers a
 may-question, the server emits an `abilityAutoAnswered` log event (shown only to the controller).
 
+Trigger ordering (CR 603.3b): `{ "type": "setTriggerOrdering", "manual": true }` asks the server to
+let this player order their own simultaneous triggers (an `OrderTriggersDecision`). A player in Full
+Control is asked regardless of this setting. When automatic ordering places several of a player's
+triggers in an order they could have chosen, the server emits a `triggersOrderedAutomatically` event
+(`{ count }`, shown only to that player); the client turns the first one into a one-time tip.
+
 ### B3. Deck Tracker (`deck` on the client state)
 
 The state update carries the viewer's own decklist as `deck` — one entry per distinct card,
@@ -270,7 +276,7 @@ Set-level metadata for the deckbuilder, pickers, and the **Set Completion** view
 plain HTTP JSON.
 
 **List sets** — `GET /api/sets` → `[{ "code", "name", "releaseDate" }]` (every catalogued set).
-**Booster-ready** — `GET /api/sets/booster-ready` → `[{ "setCode", "setName", "implementedCount", "incomplete" }]`
+**Booster-ready** — `GET /api/sets/booster-ready` → `[{ "setCode", "setName", "implementedCount", "incomplete", "releaseDate", "extensionSet" }]` (the Set guide reads this list)
 (subset draftable for sealed/draft).
 
 **Set coverage** — `GET /api/sets/coverage` → per-set card-implementation coverage, newest release

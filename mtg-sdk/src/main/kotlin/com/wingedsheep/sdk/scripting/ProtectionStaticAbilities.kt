@@ -149,9 +149,11 @@ data class GrantHexproofFromToGroup(
             is ProtectionScope.Color, is ProtectionScope.Colors, is ProtectionScope.NonColor,
             ProtectionScope.Monocolored, ProtectionScope.Multicolored, is ProtectionScope.CardType,
             ProtectionScope.Spells, ProtectionScope.PermanentsCastThisTurn, ProtectionScope.RingBearers,
-            ProtectionScope.ActivatedAbilities, ProtectionScope.TriggeredAbilities -> true
+            ProtectionScope.ActivatedAbilities, ProtectionScope.TriggeredAbilities,
+            is ProtectionScope.ManaValueParity -> true
             is ProtectionScope.Subtype, is ProtectionScope.Supertype, is ProtectionScope.ChosenCardType,
-            is ProtectionScope.ChosenCardName, ProtectionScope.Everything, ProtectionScope.EachOpponent -> false
+            is ProtectionScope.ChosenCardName, ProtectionScope.Everything, ProtectionScope.EachOpponent,
+            is ProtectionScope.ManaValueOtherThan -> false
         }
     }
 }
@@ -200,7 +202,8 @@ data class GrantProtectionFromToGroup(
             is ProtectionScope.Subtype, is ProtectionScope.Supertype,
             ProtectionScope.EachOpponent, is ProtectionScope.ChosenCardType,
             ProtectionScope.Spells, ProtectionScope.PermanentsCastThisTurn, ProtectionScope.RingBearers,
-            ProtectionScope.ActivatedAbilities, ProtectionScope.TriggeredAbilities -> true
+            ProtectionScope.ActivatedAbilities, ProtectionScope.TriggeredAbilities,
+            is ProtectionScope.ManaValueParity, is ProtectionScope.ManaValueOtherThan -> true
             is ProtectionScope.Color, is ProtectionScope.CardType,
             is ProtectionScope.NonColor, ProtectionScope.Monocolored, ProtectionScope.Everything,
             is ProtectionScope.ChosenCardName -> false
@@ -264,15 +267,24 @@ data class GrantProtectionFromLinkedExiledCardTypes(
 }
 
 /**
- * Prevents a permanent from having counters put on it.
- * Used for Auras like Blossombind.
+ * Prevents matching permanents from having counters put on them — every kind (Blossombind,
+ * Solemnity), or only [counterType] when it is set ("Creatures your opponents control can't have
+ * +1/+1 counters put on them" — Blightbeetle; Melira's "-1/-1 counters").
+ *
+ * A typed prohibition stops only placements of that kind: a creature that would enter with
+ * +1/+1 counters enters without them, other kinds still go on, and counters it already has stay
+ * (unlike [MaxCounters] at zero, there is no state-based removal). A cost that would put that kind
+ * on it can't be paid (CR 614.17b).
  */
 @SerialName("CantReceiveCounters")
 @Serializable
 data class CantReceiveCounters(
-    val filter: GroupFilter = GroupFilter.attachedCreature()
+    val filter: GroupFilter = GroupFilter.attachedCreature(),
+    val counterType: CounterType? = null
 ) : StaticAbility {
-    override val description: String = "${filter.description} can't have counters put on it"
+    override val description: String =
+        if (counterType == null) "${filter.description} can't have counters put on it"
+        else "${filter.description} can't have ${counterType.printed} counters put on it"
     override fun applyTextReplacement(replacer: TextReplacer): StaticAbility {
         val newFilter = filter.applyTextReplacement(replacer)
         return if (newFilter !== filter) copy(filter = newFilter) else this
@@ -440,6 +452,8 @@ data class GrantProtectionToController(
             ProtectionScope.RingBearers -> "Ring-bearers"
             ProtectionScope.ActivatedAbilities -> "activated abilities"
             ProtectionScope.TriggeredAbilities -> "triggered abilities"
+            is ProtectionScope.ManaValueParity -> "each ${s.parity.displayName} mana value"
+            is ProtectionScope.ManaValueOtherThan -> "each mana value other than ${s.value}"
         }
 }
 

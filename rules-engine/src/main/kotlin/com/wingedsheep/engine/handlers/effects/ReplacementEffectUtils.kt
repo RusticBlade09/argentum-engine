@@ -36,7 +36,7 @@ object ReplacementEffectUtils {
     fun isExtraTurnPrevented(state: GameState): Boolean {
         for (entityId in state.getBattlefield()) {
             val container = state.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
             for (effect in replacementComponent.replacementEffects) {
                 if (effect is PreventExtraTurns) return true
             }
@@ -96,6 +96,8 @@ object ReplacementEffectUtils {
         if (count <= 0) return count
         // A capped recipient can't get more of this kind this turn: the placement doesn't happen.
         if (isCounterPlacementLocked(state, targetId, counterType)) return 0
+        // A kind-scoped "can't have +1/+1 counters put on it" (Blightbeetle): that kind doesn't go on.
+        if (!state.projectedState.canReceiveCounters(targetId, counterType)) return 0
 
         val additions = mutableListOf<Int>()
         var doublings = 0
@@ -108,7 +110,7 @@ object ReplacementEffectUtils {
         for (entityId in sourceIds + listOfNotNull(entrantSelfSource)) {
             val selfEntry = entityId == entrantSelfSource
             val container = (if (selfEntry) state else sources).getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = (if (selfEntry) state else sources).activeReplacementSource(entityId) ?: continue
             // A stolen source works for its new controller (layer 2): read the projected controller.
             val sourceControllerId = (if (selfEntry) null else sources.projectedState.getController(entityId))
                 ?: container.get<ControllerComponent>()?.playerId ?: continue
@@ -323,7 +325,7 @@ object ReplacementEffectUtils {
         var cap: Int? = null
         for (entityId in replacementSourceState.getBattlefield()) {
             val container = replacementSourceState.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = replacementSourceState.activeReplacementSource(entityId) ?: continue
             // "You" is the source's current (projected) controller — a stolen Melira protects its thief.
             val sourceControllerId = replacementSourceState.projectedState.getController(entityId) ?: continue
             for (effect in replacementComponent.replacementEffects) {

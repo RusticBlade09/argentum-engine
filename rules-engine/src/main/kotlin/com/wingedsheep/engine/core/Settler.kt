@@ -247,6 +247,8 @@ class Settler(
             if (!resuming) {
                 // A player who orders their own triggers (CR 603.3b) is asked before any of them
                 // chooses targets; the wave waits, in APNAP order, until every answer is in.
+                // Players who leave the order to the game hear that it chose one where it could matter.
+                events += TriggerOrdering.automaticallyOrdered(state, waiting)
                 val ordering = TriggerOrdering.ask(state.copy(pendingTriggers = emptyList(), triggersBeingPlaced = waiting))
                 if (ordering != null) return ExecutionResult.propagatePause(ordering.state, events + ordering.events)
             }

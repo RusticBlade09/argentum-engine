@@ -1200,6 +1200,19 @@ data class AbilityAutoAnsweredEvent(
 ) : GameEvent
 
 /**
+ * Automatic trigger ordering put [count] of [playerId]'s simultaneous triggered abilities on the
+ * stack in an order they could have chosen differently (CR 603.3b) — the player had not turned on
+ * ordering their own triggers, and the abilities weren't interchangeable copies. It carries no rules
+ * effect; the controller's client uses it to point out, once, that they can choose the order.
+ */
+@Serializable
+@SerialName("TriggersOrderedAutomaticallyEvent")
+data class TriggersOrderedAutomaticallyEvent(
+    val playerId: EntityId,
+    val count: Int
+) : GameEvent
+
+/**
  * A player committed a crime (CR Outlaws of Thunder Junction). Emitted at the same time
  * as [SpellCastEvent], [AbilityActivatedEvent], or [AbilityTriggeredEvent] when at least
  * one initial target is an opponent, a permanent/spell/ability an opponent controls, or
@@ -1808,7 +1821,16 @@ data class CountersAddedEvent(
      * `null` for the few paths that don't attribute a placer (saga lore counters, poison counters on
      * players); a null placer never matches a placer-restricted trigger.
      */
-    val placedBy: EntityId? = null
+    val placedBy: EntityId? = null,
+    /**
+     * How many [counterType] counters [entityId] had immediately after *this* placement, or null
+     * when the emitter didn't record it. Read by the ordinal "when the Nth counter is put on"
+     * template ([com.wingedsheep.sdk.scripting.EventPattern.CountersPlacedEvent.nth]); like
+     * [CountersRemovedEvent.remainingCount] it can't be re-derived at detection time when one
+     * resolution makes several placements on the same permanent, so the matcher falls back to the
+     * live count only when this is null.
+     */
+    val totalCount: Int? = null
 ) : GameEvent
 
 /**
@@ -1878,6 +1900,9 @@ data class CardsDrawnEvent(
     /** Additional players entitled to this identity at the moment of the draw. */
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val identityViewers: Set<EntityId> = emptySet(),
+    /** The card whose cycling ability caused these draws (`EventPattern.DrawEvent.cyclingOf`), else null. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val cycledCardId: EntityId? = null,
 ) : GameEvent
 
 /**
@@ -2528,6 +2553,8 @@ data class BecomesTargetEvent(
  *   cost (Webstrike Elite's "Cycling {X}{G}{G}"). A "when you cycle this card" trigger reads it as
  *   `DynamicAmount.XValue` via `TriggerContext.xValue`, so "destroy … with mana value X" and
  *   "create X tokens" resolve against the X that was actually paid. Null for ordinary cycling.
+ * @property firstThisTurn true when this is [playerId]'s first cycle this turn — read before
+ *   the cycle marks `CycledThisTurnComponent`; backs `CycleEvent.firstTimeEachTurn`.
  */
 @Serializable
 @SerialName("CardCycledEvent")
@@ -2535,7 +2562,8 @@ data class CardCycledEvent(
     val playerId: EntityId,
     val cardId: EntityId,
     val cardName: String,
-    val xValue: Int? = null
+    val xValue: Int? = null,
+    val firstThisTurn: Boolean = true
 ) : GameEvent
 
 /**

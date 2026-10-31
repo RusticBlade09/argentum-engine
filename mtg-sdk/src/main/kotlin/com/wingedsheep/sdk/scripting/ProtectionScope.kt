@@ -167,4 +167,47 @@ sealed interface ProtectionScope {
     @SerialName("ProtectionScope.TriggeredAbilities")
     @Serializable
     data object TriggeredAbilities : ProtectionScope
+
+    /**
+     * From each mana value of a [parity] — "protection from each mana value of the chosen
+     * quality" (Lavabrink Venturer, with one conditional grant per choice). Mana value is a
+     * characteristic (CR 202.3), so this covers every leg of protection (CR 702.16b–f): spells
+     * whose mana value has the quality (a spell's {X} counts as the number chosen for it, CR
+     * 202.3e), abilities from sources whose mana value does, and damage, enchanting/equipping and
+     * blocking by such objects. Zero is even, so tokens that aren't copies and face-down
+     * permanents (mana value 0, CR 708.2a and 202.3a) are even. A source with no mana value at all — an
+     * emblem — never matches.
+     *
+     * Its own type rather than an axis on [CardType] or [Subtype], which name type-line words,
+     * or on [Monocolored]/[Multicolored], which are colour counts.
+     */
+    @SerialName("ProtectionScope.ManaValueParity")
+    @Serializable
+    data class ManaValueParity(val parity: Parity) : ProtectionScope
+
+    /**
+     * From each mana value other than [value] — "protection from each mana value other than the
+     * chosen number" (Haktos the Unscarred, with one conditional grant per number it can choose).
+     * Covers every leg of protection exactly as [ManaValueParity] does (CR 702.16b–f): a spell's
+     * {X} counts as the number chosen for it (CR 202.3e), and tokens that aren't copies and
+     * face-down permanents have mana value 0, so they match unless [value] is 0. A source with no
+     * mana value at all — an emblem — never matches.
+     *
+     * Its own type rather than an axis on [ManaValueParity]: a parity names half of all mana
+     * values, this names all but one, and neither is a type-line word ([CardType], [Subtype]).
+     * Granted statics only — `GrantProtectionFromToGroup` and `GrantProtectionToController`; a
+     * printed [KeywordAbility.Protection] and every hexproof spelling reject it.
+     */
+    @SerialName("ProtectionScope.ManaValueOtherThan")
+    @Serializable
+    data class ManaValueOtherThan(val value: Int) : ProtectionScope
+}
+
+/** Odd or even — "choose odd or even. (Zero is even.)" */
+@Serializable
+enum class Parity(val displayName: String) {
+    ODD("odd"),
+    EVEN("even");
+
+    fun matches(value: Int): Boolean = (value % 2 == 0) == (this == EVEN)
 }

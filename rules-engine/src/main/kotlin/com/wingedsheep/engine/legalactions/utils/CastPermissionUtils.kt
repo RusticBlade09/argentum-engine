@@ -12,6 +12,7 @@ import com.wingedsheep.engine.mechanics.CastCharacteristics
 import com.wingedsheep.engine.handlers.effects.permanent.types.buildCardComponentForDfcFace
 import com.wingedsheep.engine.handlers.effects.permanent.types.dfcBackFaceManaValue
 import com.wingedsheep.sdk.core.Zone
+import com.wingedsheep.engine.state.ZoneKey
 import com.wingedsheep.sdk.core.TypeLine
 import com.wingedsheep.sdk.model.CreatureStats
 
@@ -30,11 +31,14 @@ import com.wingedsheep.engine.state.components.battlefield.EnteredThisTurnCompon
 import com.wingedsheep.engine.state.components.battlefield.GraveyardPlayPermissionUsedComponent
 import com.wingedsheep.engine.state.components.battlefield.LoyaltyAllowance
 import com.wingedsheep.engine.state.components.battlefield.TappedComponent
+import com.wingedsheep.engine.state.components.battlefield.TimestampComponent
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.identity.ControllerComponent
 import com.wingedsheep.engine.state.components.identity.EmblemActivatedAbilityComponent
 import com.wingedsheep.engine.state.components.identity.FaceDownComponent
 import com.wingedsheep.engine.state.components.player.CantCastSpellsComponent
+import com.wingedsheep.engine.state.components.player.bindingCastBans
+import com.wingedsheep.engine.state.components.player.CantCastFromNonHandZonesComponent
 import com.wingedsheep.engine.state.components.player.EquipActivationsThisTurnComponent
 import com.wingedsheep.sdk.core.ManaCost
 import com.wingedsheep.sdk.model.EntityId
@@ -184,13 +188,30 @@ class CastPermissionUtils(
     fun reasonCannotCast(
         state: GameState, playerId: EntityId, spellCardId: EntityId,
         action: CastSpell = CastSpell(playerId, spellCardId)
+    ): String? = castFaceZoneFailure(state, action) ?: castProhibition(state, playerId, spellCardId, action)
+
+    /**
+     * [reasonCannotCast] without the face/zone shape of the proposed cast: only the prohibitions —
+     * bans, [PlayersCantCastSpells], hand-only casting, per-turn limits, Mana Maze, the legendary
+     * sorcery rule. A cast an effect makes while resolving asks this before its half or face is
+     * chosen, so a split card or Room is still offered when nothing forbids it.
+     */
+    fun castProhibition(
+        state: GameState, playerId: EntityId, spellCardId: EntityId,
+        action: CastSpell = CastSpell(playerId, spellCardId)
     ): String? {
         proposedSpellRestriction(state, action)?.let { return it }
         // "… and can't play it" on this very hand object (Firestorm Phoenix).
         if (com.wingedsheep.engine.mechanics.HandObjectRestrictions.isCantBePlayed(state, spellCardId)) {
             return "That card can't be played right now"
         }
-        castFaceZoneFailure(state, action)?.let { return it }
+        // Avatar's Wrath: "your opponents can't cast spells from anywhere other than their hands"
+        // for a duration — any non-hand cast (flashback, foretell, cascade from exile, …).
+        if (state.getEntity(playerId)?.has<CantCastFromNonHandZonesComponent>() == true &&
+            spellCardId !in state.getZone(ZoneKey(playerId, Zone.HAND))
+        ) {
+            return "You can't cast spells from anywhere other than your hand right now"
+        }
         if (hasReachedSpellCastLimit(state, playerId)) {
             return "You can't cast another spell this turn"
         }
@@ -239,7 +260,7 @@ class CastPermissionUtils(
         state: GameState, action: CastSpell,
         staticRestrictionPresent: Boolean = true,
     ): String? {
-        val bans = state.getEntity(action.playerId)?.get<CantCastSpellsComponent>()?.restrictions.orEmpty()
+        val bans = state.bindingCastBans(action.playerId)
         if (bans.any { it.spellFilter == GameObjectFilter.Any }) return BANNED
         val statics = if (staticRestrictionPresent) {
             applicablePlayersCantCastSpells(state, action.playerId, action.cardId)
@@ -944,6 +965,7 @@ class CastPermissionUtils(
         isManaAbility: Boolean = false,
         chosenTargetIds: List<EntityId>? = emptyList(),
         abilityKeyword: com.wingedsheep.sdk.core.Keyword? = null,
+        isLoyaltyAbility: Boolean = false,
     ): AbilityCost {
         if (sourceId == null) return cost
         val reduced =
@@ -951,7 +973,7 @@ class CastPermissionUtils(
         val (net, manaFloor) =
             sumActivatedAbilityCostModifications(
                 state, sourceId, activatorId, onceOnlyKind, isManaAbility, chosenTargetIds,
-                abilityKeyword
+                abilityKeyword, isLoyaltyAbility
             )
         if (net == 0) return reduced
         // net > 0 reduces (floored), net < 0 taxes. A reduction can only shrink mana that is
@@ -1065,7 +1087,8 @@ class CastPermissionUtils(
      * A `onceOnlyKind` reduction contributes nothing unless the ability is of that [onceOnlyKind],
      * and a `keyword` one unless
      * [abilityKeyword] (the ability's `ActivatedAbility.keyword`) is that keyword. An `excludeManaAbilities` *increase*
-     * contributes nothing when [isManaAbility] is set (Suppression Field). An
+     * contributes nothing when [isManaAbility] is set (Suppression Field), and a `loyaltyAbilitiesOnly`
+     * one unless [isLoyaltyAbility] is (Eidolon of Obstruction). An
      * `onlyIfTargetIsSource` reduction contributes only when [chosenTargetIds] include the static's
      * own source (see [applyActivatedAbilityCostReduction] for the `null` enumeration case).
      */
@@ -1077,6 +1100,7 @@ class CastPermissionUtils(
         isManaAbility: Boolean,
         chosenTargetIds: List<EntityId>?,
         abilityKeyword: com.wingedsheep.sdk.core.Keyword?,
+        isLoyaltyAbility: Boolean,
     ): Pair<Int, Int> {
         var net = 0
         var floor = 0
@@ -1126,6 +1150,8 @@ class CastPermissionUtils(
                         // abilities" (CR 605): a board-wide tax that skipped this would price every
                         // land's `{T}: Add …` at {2} more.
                         if (ability.excludeManaAbilities && isManaAbility) continue
+                        // Eidolon of Obstruction taxes only loyalty abilities (CR 606).
+                        if (ability.loyaltyAbilitiesOnly && !isLoyaltyAbility) continue
                         if (!activatedAbilityReductionApplies(state, entityId, ability.filter, sourceId)) continue
                         val owner = controllerId ?: continue
                         net -= evaluator.evaluate(
@@ -1713,8 +1739,14 @@ class CastPermissionUtils(
         // and therefore reference the same ActivatedAbility instance (same `id`), so the
         // duplicate grants are functionally identical: the same one-shot ability surfaced as
         // two buttons confuses the UI and adds nothing in play (you can only tap once anyway).
-        // Collapse them to a single entry, keeping the first granter we found.
-        return result.distinctBy { it.ability.id }
+        // Collapse them to a single entry. The granter kept is the one with the latest layer
+        // timestamp (renewed when an Aura or Equipment becomes attached): two Heliod's Punishments
+        // on one creature leave it only the ability of the most recently attached one, so
+        // activating it ticks down only that Aura's counters (ruling 2020-01-24). Ties keep the
+        // first granter found.
+        return result.groupBy { it.ability.id }.values.map { grants ->
+            grants.maxBy { state.getEntity(it.granterId)?.get<TimestampComponent>()?.timestamp ?: Long.MIN_VALUE }
+        }
     }
 
     /**

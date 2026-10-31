@@ -122,6 +122,8 @@ sealed interface KeywordAbility {
             // printed keyword (GrantProtectionFromToGroup / GrantProtectionToController).
             require(scope !is ProtectionScope.ChosenCardType) { "Protection from the chosen card type is a granted static" }
             require(scope !is ProtectionScope.ChosenCardName) { "Protection from the chosen card name is a granted static" }
+            // "Each mana value other than the chosen number" (Haktos) hangs off a choice too.
+            require(scope !is ProtectionScope.ManaValueOtherThan) { "Protection from each mana value other than N is a granted static" }
         }
 
         override val keyword: Keyword? = when (scope) {
@@ -147,6 +149,8 @@ sealed interface KeywordAbility {
             is ProtectionScope.RingBearers -> "Protection from Ring-bearers"
             is ProtectionScope.ActivatedAbilities -> "Protection from activated abilities"
             is ProtectionScope.TriggeredAbilities -> "Protection from triggered abilities"
+            is ProtectionScope.ManaValueParity -> "Protection from each ${scope.parity.displayName} mana value"
+            is ProtectionScope.ManaValueOtherThan -> "Protection from each mana value other than ${scope.value}"
         }
     }
 
@@ -171,6 +175,7 @@ sealed interface KeywordAbility {
         init {
             require(scope !is ProtectionScope.ChosenCardType) { "Hexproof from the chosen card type is not supported" }
             require(scope !is ProtectionScope.ChosenCardName) { "Hexproof from the chosen card name is not supported" }
+            require(scope !is ProtectionScope.ManaValueOtherThan) { "Hexproof from each mana value other than N is not supported" }
         }
 
         override val description: String = when (scope) {
@@ -192,6 +197,8 @@ sealed interface KeywordAbility {
             is ProtectionScope.RingBearers -> "Hexproof from Ring-bearers"
             is ProtectionScope.ActivatedAbilities -> "Hexproof from activated abilities"
             is ProtectionScope.TriggeredAbilities -> "Hexproof from triggered abilities"
+            is ProtectionScope.ManaValueParity -> "Hexproof from each ${scope.parity.displayName} mana value"
+            is ProtectionScope.ManaValueOtherThan -> "Hexproof from each mana value other than ${scope.value}"
         }
     }
 

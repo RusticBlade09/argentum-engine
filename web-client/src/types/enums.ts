@@ -606,6 +606,7 @@ export enum CounterType {
   COIN = 'COIN',
   FLOOD = 'FLOOD',
   FUSE = 'FUSE',
+  FORESHADOW = 'FORESHADOW',
   LUCK = 'LUCK',
   CHORUS = 'CHORUS',
   DREAM = 'DREAM',
@@ -711,6 +712,9 @@ export enum CounterType {
   VOYAGE = 'VOYAGE',
   GHOSTFORM = 'GHOSTFORM',
   NIGHT = 'NIGHT',
+  TASK = 'TASK',
+  HOUR = 'HOUR',
+  KNOWLEDGE = 'KNOWLEDGE',
 }
 
 export const CounterTypeDisplayNames: Record<CounterType, string> = {
@@ -768,6 +772,7 @@ export const CounterTypeDisplayNames: Record<CounterType, string> = {
   [CounterType.COIN]: 'Coin',
   [CounterType.FLOOD]: 'Flood',
   [CounterType.FUSE]: 'Fuse',
+  [CounterType.FORESHADOW]: 'Foreshadow',
   [CounterType.LUCK]: 'Luck',
   [CounterType.CHORUS]: 'Chorus',
   [CounterType.DREAM]: 'Dream',
@@ -871,6 +876,9 @@ export const CounterTypeDisplayNames: Record<CounterType, string> = {
   [CounterType.VOYAGE]: 'Voyage',
   [CounterType.GHOSTFORM]: 'Ghostform',
   [CounterType.NIGHT]: 'Night',
+  [CounterType.TASK]: 'Task',
+  [CounterType.HOUR]: 'Hour',
+  [CounterType.KNOWLEDGE]: 'Knowledge',
 }
 
 /**

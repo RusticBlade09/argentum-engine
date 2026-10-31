@@ -387,6 +387,16 @@ class CostCalculator(
                 }
             }
         }
+        // Granted ones (a GrantStaticAbility — Jubilant Skybonder's flyers) exist only in
+        // projection, paired with their holder so "this creature" reads relative to it. A printed
+        // instance projects only when it carries an optional life payment, which is read through
+        // [optionalPayments] instead, so skipping those here never double-counts a printed one.
+        val projected = state.projectedState
+        for (entityId in state.getBattlefield()) {
+            for (ability in projected.getStaticAbilities(entityId)) {
+                if (ability is ModifySpellCost && ability.optionalLifePayment == null) results += entityId to ability
+            }
+        }
         // Emblems are synthetic, non-battlefield sources. Their owned statics remain active
         // after the permanent that created them leaves, and each emblem contributes separately.
         for ((entityId, container) in state.entities) {
@@ -1957,6 +1967,7 @@ class CostCalculator(
             CardPredicate.ManaValueIsEven -> manaValue % 2 == 0
             CardPredicate.ManaValueIsOdd -> manaValue % 2 != 0
             CardPredicate.HasXInManaCost -> cardDef.manaCost.hasX
+            CardPredicate.HasRepeatedManaSymbol -> cardDef.manaCost.hasRepeatedSymbol
             is CardPredicate.ManaCostIs -> cardDef.manaCost == predicate.manaCost
             is CardPredicate.ColoredManaSymbolsAtLeast ->
                 cardDef.manaCost.coloredSymbolCount(predicate.colors.toSet()) >= predicate.min

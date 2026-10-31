@@ -402,6 +402,15 @@ object DynamicAmounts {
          */
         fun distinctValues(property: CardNumericProperty): DynamicAmount =
             DynamicAmount.AggregateZone(player, zone, filter, Aggregation.DISTINCT_VALUES, property)
+
+        /**
+         * The number of different mana costs among the matched cards — e.g. over
+         * `GameObjectFilter.Nonland` in your graveyard for "a +1/+1 counter on it for each
+         * different mana cost among nonland cards in your graveyard" (Embodiment of Agonies).
+         * Compares printed symbols, not mana value; cards with no mana cost count for nothing.
+         */
+        fun distinctManaCosts(): DynamicAmount =
+            DynamicAmount.AggregateZone(player, zone, filter, Aggregation.DISTINCT_MANA_COSTS)
     }
 
     // =========================================================================
@@ -1078,6 +1087,14 @@ object DynamicAmounts {
     /** The total number of spells cast during the immediately preceding turn. */
     fun spellsCastLastTurn(): DynamicAmount = DynamicAmount.SpellsCastLastTurn
 
+    /**
+     * Spells [player] has cast this game, from any zone, countered or not. Zero while a spell is
+     * being cast means it is the first: "if this spell is the first spell you've cast this game"
+     * (Once Upon a Time).
+     */
+    fun spellsCastThisGame(player: Player = Player.You): DynamicAmount =
+        DynamicAmount.SpellsCastThisGame(player)
+
     /** Spells [player] cast during their own last turn (Arboria). */
     fun spellsCastDuringTheirLastTurn(player: Player): DynamicAmount =
         DynamicAmount.TurnTracking(player, TurnTracker.SPELLS_CAST_DURING_THEIR_LAST_TURN)
@@ -1270,6 +1287,19 @@ object DynamicAmounts {
         DynamicAmount.EntityProperty(
             EffectTarget.Self,
             EntityNumericProperty.AttachmentCount(AttachmentKind.AURA)
+        )
+
+    /**
+     * Number of Auras attached to the triggering permanent, optionally only those [controller]
+     * controls — "draw a card for each Aura **you controlled** that was attached to it" (Hateful
+     * Eidolon), "if an Aura you controlled was attached to it" (Dawn Evangel, as `>= 1`). A dies
+     * trigger reads it from last-known information: the Auras and their controllers as the
+     * creature last existed on the battlefield.
+     */
+    fun aurasAttachedToTriggering(controller: Player = Player.Any): DynamicAmount =
+        DynamicAmount.EntityProperty(
+            EffectTarget.TriggeringEntity,
+            EntityNumericProperty.AttachmentCount(AttachmentKind.AURA, controller)
         )
 
     /**

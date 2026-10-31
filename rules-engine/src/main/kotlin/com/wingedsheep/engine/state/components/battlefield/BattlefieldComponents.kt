@@ -1390,6 +1390,16 @@ data class ForbidsLibrarySearchComponent(
 data object ControlsOpponentsLibrarySearchesComponent : Component
 
 /**
+ * Marks a permanent whose static abilities raise its controller's devotion to each color and each
+ * combination of colors by [amount] — [com.wingedsheep.sdk.scripting.ModifyDevotion] (Altar of the
+ * Pantheon). Read where devotion is counted (`DynamicAmountEvaluator`, `DynamicAmount.DevotionTo`);
+ * leaves with the permanent and is ignored while it is face down. Losing its abilities doesn't stop
+ * it: the Altar's ruling (2020-01-24) keeps the bonus, as it applies before any ability-removing effect.
+ */
+@Serializable
+data class IncreasesDevotionComponent(val amount: Int) : Component
+
+/**
  * Marks a permanent as granting the Station-using-toughness effect to creatures its
  * controller controls. When a creature with this component's controller taps for a
  * Station ability and its toughness > power, it contributes toughness instead of power.
@@ -1745,6 +1755,19 @@ data class HasBecomeTappedComponent(
  */
 @Serializable
 data class EntryTapStateComponent(val enteredTapped: Boolean) : Component
+
+/**
+ * How many times this permanent has become untapped during this battlefield visit — the clock
+ * behind "for as long as <source> remains tapped" (CR 611.2b). An activated ability records its
+ * source's count as it goes on the stack; an effect it creates with a source-tapped
+ * [com.wingedsheep.sdk.scripting.Duration] holds only while the count still matches, so a source
+ * that untaps before the ability resolves leaves the effect inert even if it is tapped again by
+ * then (Entrancing Lyre ruling). Absent means zero. Bumped only by the
+ * [com.wingedsheep.engine.core.untapOrConsumeStun] atom; stripped as the permanent leaves the
+ * battlefield, since what returns is a new object (CR 400.7).
+ */
+@Serializable
+data class UntapCountComponent(val count: Int) : Component
 
 /**
  * Marks a permanent as having dealt combat damage to a player since entering the battlefield.

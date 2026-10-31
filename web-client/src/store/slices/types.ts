@@ -286,9 +286,16 @@ export interface DecisionSelectionState {
   /** Transient warning shown when the user tries an illegal toggle (e.g. clicking past max
    * on a multi-select step). Cleared on the next successful toggle. */
   warning?: string | null
-  /** "... with total mana value N or less": the picks' summed mana value may not exceed `cap`;
-   * `values` holds each option's mana value. */
-  manaValueCap?: { readonly cap: number; readonly values: Readonly<Record<EntityId, number>> } | null
+  /** "... with total mana value / power N or less": for each cap, the picks' summed value may not
+   * exceed `cap`; `values` holds each option's value and `label` names it ("mana value", "power"). */
+  totalCaps?: readonly SelectionTotalCap[] | null
+}
+
+/** One aggregate cap on a decision selection — see [DecisionSelectionState.totalCaps]. */
+export interface SelectionTotalCap {
+  readonly label: string
+  readonly cap: number
+  readonly values: Readonly<Record<EntityId, number>>
 }
 
 /**
@@ -1075,6 +1082,12 @@ export type GameStore = {
   /** The last forced question this client answered for the player, shown as a brief notice. */
   autoAnswerNotice: import('./handlers/autoAnswer').AutoAnswerNotice | null
   dismissAutoAnswerNotice: () => void
+  /**
+   * Automatic ordering just put several of the player's triggers on the stack in an order they
+   * could have chosen — a tip shown once, the first time it happens.
+   */
+  triggerOrderNotice: { key: number; count: number } | null
+  dismissTriggerOrderNotice: () => void
   /** A forced question is waiting to be answered for the player (see `autoAnswer.ts`). */
   autoAnswerPending: boolean
   createGame: (deckList: Record<string, number>, setCode?: string) => void
@@ -1182,6 +1195,8 @@ export type GameStore = {
     secondCommander?: string | null,
     /** The deck's companion (CR 702.139), a sideboard card; null for none. */
     companion?: string | null,
+    /** The format the deck was built for, or null; see `SubmitQuickGameLobbyDeckMessage.deckFormat`. */
+    deckFormat?: string | null,
   ) => void
   setQuickGameLobbyReady: (ready: boolean) => void
   setQuickGameLobbySetCode: (setCodes: readonly string[]) => void

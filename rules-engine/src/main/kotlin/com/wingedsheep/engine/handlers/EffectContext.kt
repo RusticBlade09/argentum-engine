@@ -86,6 +86,13 @@ data class EffectContext(
      * synthesized abilities that carry no such restriction.
      */
     val sourceFaceChanges: Int? = null,
+    /**
+     * The source's untap clock as the resolving activated ability went on the stack
+     * ([com.wingedsheep.engine.state.components.stack.ActivatedAbilityOnStackComponent.sourceUntapCount]),
+     * stamped onto every floating effect it creates with a source-tapped duration. Null for spells,
+     * triggers and synthesized abilities, whose source-tapped effects gate on the tapped state alone.
+     */
+    val sourceUntapCount: Int? = null,
     /** Battlefield visit of the resolving ability's source. */
     val sourceBattlefieldTimestamp: Long? = null,
     /**
@@ -207,7 +214,7 @@ data class EffectContext(
     val modeTargetRequirementsOrdered: List<List<TargetRequirement>> = emptyList(),
     val modeTargetsOrdered: List<List<ChosenTarget>> = emptyList(),
     val modeTargetRequirements: Map<Int, List<TargetRequirement>> = emptyMap(),
-    /** Number of cards exiled as an additional cost (for ExileVariableCards) */
+    /** Number of cards exiled as an additional cost (for an exiling AdditionalCost.VariableCards) */
     val exiledCardCount: Int = 0,
     /** X chosen for [com.wingedsheep.sdk.scripting.AdditionalCost.BlightVariable] */
     val additionalCostBlightAmount: Int = 0,

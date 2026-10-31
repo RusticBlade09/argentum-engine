@@ -150,7 +150,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       ] },
       { kind: 'h', text: 'Side column' },
       { kind: 'ul', items: [
-        'Public Lobbies — open lobbies anyone may join, with an online-player count. Refreshes every few seconds.',
+        'Open lobbies — public lobbies anyone may join, newest first, with an online-player count. Each shows the table (1v1, Free-for-All, tournament…), what is being played, who is hosting and who has joined, and how many seats are left. Seats taken by AI players are marked apart from people — square pips and a robot badge — so you can tell a table of humans from one padded with AI. With many lobbies, filter by 1v1 / Multiplayer / Tournaments or search by host, set or format. Refreshes every few seconds.',
         'Live Games — games in progress, each with a Spectate button.',
         'A Learn to Play row, and for guests a reminder of what a free account adds.',
       ] },
@@ -821,7 +821,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       ] },
       { kind: 'p', text: 'In a lobby, + Add AI adds a seat and the host removes one with ×. Each AI seat has its own deck chooser: Auto (the server rolls a deck, or the AI builds from its pool), From sets, or Pick a deck — any saved, example or pasted deck. Commander needs a picked Commander deck, so the AI’s commander can start in the command zone.' },
       { kind: 'p', text: 'Want a different timer, pack count or deck size, or AI seats with chosen decks? Under the launch panel’s Play button, “Open a lobby to change them” opens the same game as a lobby instead of starting it. Change what you like, then press Start.' },
-      { kind: 'p', text: 'On Auto, the AI matches the deck you bring. Play a starter deck or your own list and the AI plays from the same set or sets: another starter deck from them when there is one — Boros Mice meets one of the other Bloomburrow tribes — otherwise a deck built from those sets, 60 cards against a 60-card deck and a sealed pool against a 40-card one. The AI seat’s row in the lobby names the sets it will use. Choose From sets or Pick a deck to decide yourself.' },
+      { kind: 'p', text: 'On Auto, the AI matches the deck you bring. Play a starter deck or your own list and the AI plays from the same set or sets: another starter deck from them when there is one — Boros Mice meets one of the other Bloomburrow tribes — otherwise a deck built from those sets, 60 cards against a 60-card deck and a sealed pool against a 40-card one. Bring a constructed deck drawn from many sets — a Standard deck, say — and the AI builds a fresh deck for the format yours was built for, so a Standard deck meets a different Standard deck each game. That is the format your saved deck or starter deck names (a Highlander deck meets a Highlander deck); a pasted list is matched to the narrowest of Standard, Pioneer, Modern, Legacy and Vintage it is legal in. The AI seat’s row in the lobby names the sets or the format it will use. Choose From sets or Pick a deck to decide yourself.' },
       { kind: 'p', text: 'There is a single AI strength; it is not adjustable. In a draft or sealed event the AI drafts and builds its own deck from what it is dealt.' },
       { kind: 'tip', text: 'Against the AI, the game-over screen offers Play Again, which rebuilds the same game in one click.' },
     ],
@@ -846,13 +846,32 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     summary:
       'Three to eight players: either one shared game — Free-for-All, Two-Headed Giant or Team vs. Team — or a round-robin bracket of 1v1 matches with standings. Choose “Anyone” to list the lobby publicly so strangers can join.',
     body: [
-      { kind: 'p', text: 'Everyone joins with the same invite code, or from Public Lobbies on the home screen when the lobby’s visibility is Public. A lobby holds as many seats as its table allows; the host starts once everyone has arrived.' },
+      { kind: 'p', text: 'Everyone joins with the same invite code, or from Open lobbies on the home screen when the lobby’s visibility is Public. A lobby holds as many seats as its table allows; the host starts once everyone has arrived.' },
       { kind: 'p', text: 'A group can bring their own decks or share a limited pool: sealed and draft both work at a multiplayer table as well as in a bracket.' },
     ],
     related: ['table-free-for-all', 'table-two-headed-giant', 'table-team-vs-team', 'event-round-robin', 'lobby-screen'],
   },
 
   // ── Draft & Sealed ─────────────────────────────────────────────────────
+  {
+    id: 'set-guide',
+    section: 'limited',
+    title: 'Choosing a set: the Set guide',
+    summary:
+      'Set guide, in the home screen’s top bar, lists every set that is fully playable for sealed and draft, with how its games play, what wins them, and power, speed and complexity ratings to compare them by. The play screen links to it under its set choice.',
+    body: [
+      { kind: 'p', text: 'Each set has a short summary on its tile — how a game of it feels and what decides it — a “Try it if you like” line, three five-step meters and its theme tags. The ratings compare the sets here with each other as Limited formats, not with Magic as a whole: Power is how strong the cards are, Speed how quickly games tend to end, Complexity how much there is to keep track of.' },
+      { kind: 'ul', items: [
+        'Quick filters answer the usual questions — Easy to learn, Fast & aggressive, Slow & grindy, High power, Before 2008 — and theme chips narrow it to sets built around creature types, graveyards, spells, artifacts and so on. Search also matches mechanics and tips, so `foretell` finds Kaldheim. Hover a theme tag or mechanic to see what it means for a game.',
+        'Click a set to read about it up close: how its games play, three tips for drafting and playing it, what each of its mechanics does to a game, its draft archetypes, and a line on its world.',
+        '+ Compare on up to four sets, then Compare, puts them side by side. The address bar keeps the comparison, so it can be shared.',
+        'Map lays every set out by speed and complexity, coloured by power, for a feel of the whole catalogue at once.',
+      ] },
+      { kind: 'tip', text: 'The lobby’s set picker shows the same pitch and ratings for whichever set you point at, so you can decide without leaving the lobby.' },
+      { kind: 'p', text: 'Sets that are only partly implemented are not in the guide; Implementation progress, linked from its header, shows how far each one has come.' },
+    ],
+    related: ['set-completion', 'draft-archetypes', 'draft-formats'],
+  },
   {
     id: 'draft-picking',
     section: 'limited',
@@ -1144,11 +1163,11 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     summary:
       'Auto passes for you whenever you have nothing worth doing. Stops pauses on opponent spells and abilities, on combat damage, and in a declare attackers step where nothing attacks. Full Control gives you priority at every single step.',
     body: [
-      { kind: 'p', text: 'The button cycles Auto → Stops → Full Control. Auto is right for most games; switch to Full Control when you need a specific window, such as responding in your own upkeep. Games start in Auto unless you pick another starting mode in Preferences.' },
+      { kind: 'p', text: 'The button cycles Auto → Stops → Full Control. Auto is right for most games; switch to Full Control when you need a specific window, such as responding in your own upkeep. Full Control also lets you order your own simultaneous triggers. Games start in Auto unless you pick another starting mode in Preferences.' },
       { kind: 'p', text: 'Auto never passes when you have a decision that matters — it is a convenience, not a rules shortcut.' },
       { kind: 'p', text: 'In Auto and Stops your own spells and abilities pass straight to your opponent. To respond to one of your own — Overkill on the creature whose Jaws of Defeat trigger is waiting, say — switch that kind on under Hold priority over my own in Preferences, or play that turn in Full Control.' },
     ],
-    related: ['stops', 'yields', 'preferences', 'own-stack-stops'],
+    related: ['stops', 'yields', 'preferences', 'own-stack-stops', 'trigger-order'],
   },
   {
     id: 'stops',
@@ -1283,24 +1302,30 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'playing',
     title: 'Ordering your triggers',
     summary:
-      'When several of your abilities trigger at once, they go on the stack in the order they triggered. Turn off Order my triggers automatically (Preferences → Gameplay) to choose the order yourself — scry before you draw, make the token before the counters go out.',
+      'When several of your abilities trigger at once, they go on the stack in the order they triggered. Switch to Full Control for the turn that needs it, or turn off Order my triggers automatically (Preferences → Gameplay), to choose the order yourself — scry before you draw, make the token before the counters go out.',
     body: [
-      { kind: 'p', text: 'With it off, the game stops before your triggers go on the stack and lists them top to bottom in the order they will resolve: the top one resolves first. Drag a row, use its arrows, or press Alt+↑/↓ on it, then Put on the stack. Reset order puts them back in the suggested order.' },
+      { kind: 'p', text: 'Full Control always lets you order them, whatever the preference says — the priority-mode button is the quickest way in, and switching back to Auto or Stops returns to your preference. The first time the game orders your triggers for you where the order could matter, a short notice says so; Always let me order turns the preference off.' },
+      { kind: 'p', text: 'When you order them, the game stops before your triggers go on the stack and lists them top to bottom in the order they will resolve: the top one resolves first. Drag a row, use its arrows, or press Alt+↑/↓ on it, then Put on the stack. Reset order puts them back in the suggested order.' },
       { kind: 'p', text: 'An ability that checks this turn as it resolves — Infusion’s “if you gained life this turn” — is marked checks as it resolves and starts at the bottom, so it sees the life your other triggers gain first. Automatic ordering does the same.' },
       { kind: 'p', text: 'You are only asked when the order can matter. A single trigger, or several copies of the same ability that choose no targets (two Soul Wardens seeing one creature enter), goes straight on the stack. Abilities that need targets pick them after you set the order, one by one.' },
       { kind: 'p', text: 'If your opponent’s abilities triggered at the same moment, the player whose turn it is orders theirs first, so the other player’s end up on top and resolve first.' },
       { kind: 'tip', text: 'Tick Don’t ask again in the prompt to go back to automatic ordering; it takes effect straight away.' },
     ],
-    related: ['preferences', 'decisions', 'yields'],
+    related: ['preferences', 'decisions', 'yields', 'priority-modes'],
   },
   {
     id: 'yields',
     section: 'playing',
     title: 'Yields — stop being asked',
     summary:
-      'Right-click (or long-press) an ability on the stack to open its yield menu: yield until end of turn, always yield, always answer Yes, always answer No, or revoke.',
+      'Tell the game to stop asking about a repeating ability: auto-pass it on the stack, or always answer its “you may” Yes or No. Every copy of the ability follows the same yield.',
     body: [
-      { kind: 'p', text: 'This is the fix for a repeating optional trigger asking you the same question every turn. Active yields are listed in a panel while they are in force, so you can revoke one at any time.' },
+      { kind: 'p', text: 'This is the fix for a repeating trigger asking you the same question every turn. There are three ways in:' },
+      { kind: 'p', text: '• When an ability asks “you may…”, tick Remember my answer under the Yes/No buttons. The answer you give becomes automatic for the rest of the game.' },
+      { kind: 'p', text: '• When an ability is on top of the stack, press the Yield… button under it. Choose Auto-pass this turn, Auto-pass all game, Always answer Yes or Always answer No.' },
+      { kind: 'p', text: '• Right-click any ability on the stack for the same menu.' },
+      { kind: 'p', text: 'An ability you are yielding to shows a small marker on the stack (Auto-pass, Always yes or Always no). All of them are listed in the Active yields panel in the bottom-right corner while they are in force. Click a marker to change it, or press × in the panel to be asked again.' },
+      { kind: 'tip', text: 'Yields never choose targets, order triggers, pick modes or pay costs for you. They only pass priority or answer a plain “you may”.' },
     ],
     shortcuts: ['stack-yield-menu'],
     related: ['priority-modes', 'trigger-order'],
@@ -1632,7 +1657,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'cards',
     title: 'Which cards are implemented',
     summary:
-      'Set Completion, on the home screen under Build & Browse, lists every set and how much of it the engine can actually play. Useful before committing to a deck or picking a set to draft.',
+      'Set Completion, under Sets in the home screen’s top bar, lists every set and how much of it the engine can actually play. Useful before committing to a deck or picking a set to draft.',
     body: [
       { kind: 'p', text: 'The deckbuilder only ever offers implemented cards, so a deck you build there always works. This page is the other direction: it tells you what is missing from a set you had in mind.' },
       { kind: 'p', text: 'Open a set to get its full card list, each card marked implemented or missing. A handful come back “not planned” — cards needing something the engine will never carry, like ante or physical dexterity — and those are left out of every total, so the percentage measures what there is any intention of building.' },
@@ -1647,7 +1672,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
       ] },
       { kind: 'p', text: 'The second tab, Assay Explorer, is a different question about the same corpus: not which cards are written, but how much of Magic’s printed text the engine can read at all.' },
     ],
-    related: ['card-browser', 'deckbuilder', 'assay-ready', 'assay-explorer'],
+    related: ['set-guide', 'card-browser', 'deckbuilder', 'assay-ready', 'assay-explorer'],
   },
   {
     id: 'assay-ready',

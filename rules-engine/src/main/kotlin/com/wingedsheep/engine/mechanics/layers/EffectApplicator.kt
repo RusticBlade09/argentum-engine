@@ -254,7 +254,7 @@ internal class EffectApplicator(
                 }
                 is Modification.SetCreatureSubtypesFrom -> {
                     // "Has the creature types of [that object]" (Duplicant). Same replace-only-the-
-                    // creature-types semantics as SetCreatureSubtypes above (CR 205.1b — non-creature
+                    // creature-types semantics as SetCreatureSubtypes above (CR 205.1a — non-creature
                     // subtypes are untouched), but the set is read from the referenced object on every
                     // projection pass instead of being baked in at conversion time.
                     //
@@ -315,8 +315,20 @@ internal class EffectApplicator(
                 }
                 is Modification.SetCardTypes -> {
                     val cardTypeStrings = setOf("CREATURE", "ARTIFACT", "ENCHANTMENT", "LAND", "PLANESWALKER", "INSTANT", "SORCERY", "BATTLE", "KINDRED")
+                    val lostAType = values.types.any { it in cardTypeStrings && it !in mod.types }
                     values.types.removeAll { it in cardTypeStrings }
                     values.types.addAll(mod.types)
+                    // CR 205.1a: subtypes correlated with a removed card type go with it, unless they
+                    // are also subtypes of a type the object still has (an enchantment creature
+                    // turned into an enchantment keeps Aura/Saga, loses its creature types).
+                    if (lostAType) {
+                        val orphaned = values.subtypes.filter { subtype ->
+                            val owners = com.wingedsheep.sdk.core.Subtype.correlatedCardTypes(subtype)
+                            owners.isNotEmpty() && owners.none { it.name in values.types }
+                        }
+                        values.subtypes.removeAll(orphaned.toSet())
+                        values.types.removeAll(orphaned.toSet())
+                    }
                 }
                 is Modification.SetAllSubtypes -> {
                     values.subtypes.clear()
@@ -432,6 +444,9 @@ internal class EffectApplicator(
                 }
                 is Modification.SetAttacksWithoutTapping -> {
                     values.attacksWithoutTapping = true
+                }
+                is Modification.SetLethalDamageByPower -> {
+                    values.lethalDamageByPower = true
                 }
                 is Modification.SetSuspected -> {
                     values.isSuspected = true

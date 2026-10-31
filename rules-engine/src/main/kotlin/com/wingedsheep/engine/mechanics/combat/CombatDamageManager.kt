@@ -46,6 +46,9 @@ import com.wingedsheep.sdk.core.CounterType
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.AssignUnblockedCombatDamageToDefendingCreature
 import com.wingedsheep.sdk.scripting.DivideCombatDamageFreely
+import com.wingedsheep.sdk.scripting.DamageCantBePrevented
+import com.wingedsheep.sdk.scripting.EventPattern
+import com.wingedsheep.sdk.scripting.events.DamageType
 import com.wingedsheep.sdk.scripting.effects.RedirectScope
 
 /**
@@ -69,9 +72,9 @@ internal class CombatDamageManager(
     private val predicateEvaluator = zones.predicateEvaluator
 
     private val damageModifiers: List<CombatDamageModifier> = listOf(
-        PreventAllCombatDamageModifier(),
-        PreventAllDamageFromSourceModifier(),
-        PreventCombatDamageToAndByModifier(),
+        PreventAllCombatDamageModifier(predicateEvaluator = predicateEvaluator),
+        PreventAllDamageFromSourceModifier(predicateEvaluator = predicateEvaluator),
+        PreventCombatDamageToAndByModifier(predicateEvaluator = predicateEvaluator),
         PreventCombatDamageFromGroupModifier(predicateEvaluator = predicateEvaluator),
         ProtectionModifier(predicateEvaluator = predicateEvaluator),
         PlayerProtectionModifier(predicateEvaluator = predicateEvaluator),
@@ -134,7 +137,9 @@ internal class CombatDamageManager(
     }
 
     private fun assignAndDealCombatDamage(state: GameState, firstStrike: Boolean): ExecutionResult {
-        if (isAllCombatDamagePrevented(state)) {
+        // Fog short-circuits the whole step — unless some combat damage can't be prevented
+        // (Questing Beast, Sunspine Lynx), in which case the per-assignment modifiers decide.
+        if (isAllCombatDamagePrevented(state) && !anyCombatDamageMayBeUnpreventable(state)) {
             return ExecutionResult.success(state)
         }
 
@@ -1068,7 +1073,7 @@ internal class CombatDamageManager(
         // Combat damage must consult them too; the whole amount moves to the new recipient, which
         // then runs the full pipeline itself (amplification, prevention, …).
         val (staticRedirectTo, staticRedirectSource) =
-            if (DamageUtils.isDamagePreventionDisabled(state, assignment.targetId, assignment.sourceId, predicateEvaluator = predicateEvaluator)) {
+            if (DamageUtils.isDamagePreventionDisabled(state, assignment.targetId, assignment.sourceId, isCombatDamage = true, predicateEvaluator = predicateEvaluator)) {
                 null to null
             } else {
                 DamageUtils.findStaticDamageRedirect(
@@ -1135,7 +1140,7 @@ internal class CombatDamageManager(
         }
         val gainsByController = linkedMapOf<EntityId, Int>()
         val surviving = assignments.filter { assignment ->
-            if (DamageUtils.isDamagePreventionDisabled(state, assignment.targetId, assignment.sourceId, predicateEvaluator = predicateEvaluator)) {
+            if (DamageUtils.isDamagePreventionDisabled(state, assignment.targetId, assignment.sourceId, isCombatDamage = true, predicateEvaluator = predicateEvaluator)) {
                 return@filter true
             }
             val (controllerId, gainsLife) = DamageUtils.groupPreventionShieldController(
@@ -1212,8 +1217,8 @@ internal class CombatDamageManager(
             val cantBePrevented = assignments
                 .filter { it.targetId == targetId }
                 .let { hits ->
-                    hits.isEmpty() && DamageUtils.isDamagePreventionDisabled(state, targetId, predicateEvaluator = predicateEvaluator) ||
-                        hits.any { DamageUtils.isDamagePreventionDisabled(state, targetId, it.sourceId, predicateEvaluator = predicateEvaluator) }
+                    hits.isEmpty() && DamageUtils.isDamagePreventionDisabled(state, targetId, isCombatDamage = true, predicateEvaluator = predicateEvaluator) ||
+                        hits.any { DamageUtils.isDamagePreventionDisabled(state, targetId, it.sourceId, isCombatDamage = true, predicateEvaluator = predicateEvaluator) }
                 }
             val shielded = applyShieldCounterToDamage(newState, targetId, cantBePrevented)
             if (shielded != null) {
@@ -1257,6 +1262,11 @@ internal class CombatDamageManager(
         preventionLifeGains: MutableMap<EntityId, Int>
     ): GameState {
         var newState = state
+        // CR 615.12: unpreventable damage (Questing Beast, Sunspine Lynx) skips every prevention
+        // shield below, mirroring DamageUtils.dealDamageToTarget's noncombat path.
+        val cantBePrevented = DamageUtils.isDamagePreventionDisabled(
+            state, targetId, sourceId, isCombatDamage = true, predicateEvaluator = predicateEvaluator
+        )
 
         // Replace with counters (Force Bubble)
         val counterResult = DamageUtils.applyReplaceDamageWithCounters(zones, newState, targetId, amplifiedAmount, sourceId, isCombatDamage = true)
@@ -1268,7 +1278,7 @@ internal class CombatDamageManager(
 
         // Replace combat damage to a player → prevent + mill (The Mindskinner's unblockable
         // attacker, Angel of Suffering). Unpreventable damage still mills, then is dealt below.
-        val millResult = DamageUtils.applyReplaceDamageWithMill(zones, newState, targetId, amplifiedAmount, sourceId)
+        val millResult = DamageUtils.applyReplaceDamageWithMill(zones, newState, targetId, amplifiedAmount, sourceId, cantBePrevented)
         if (millResult != null) {
             newState = millResult.state
             events.addAll(millResult.events)
@@ -1277,7 +1287,7 @@ internal class CombatDamageManager(
 
         // Deflection / reflection shields (Deflecting Palm prevents; Eye for an Eye reflects but
         // lets the damage proceed).
-        when (val deflect = DamageUtils.checkDeflectDamageShield(
+        if (!cantBePrevented) when (val deflect = DamageUtils.checkDeflectDamageShield(
             newState, targetId, amplifiedAmount, sourceId, isCombatDamage = true, isPlayerRecipient = true
         )) {
             is com.wingedsheep.engine.handlers.effects.DeflectOutcome.Prevented -> {
@@ -1294,7 +1304,8 @@ internal class CombatDamageManager(
         }
 
         // "Prevent all damage from chosen source" shields (Samite Ministration)
-        val preventFromSourceResult = DamageUtils.checkPreventFromSourceShield(newState, targetId, amplifiedAmount, sourceId, predicateEvaluator = predicateEvaluator)
+        val preventFromSourceResult = if (cantBePrevented) null
+            else DamageUtils.checkPreventFromSourceShield(newState, targetId, amplifiedAmount, sourceId, predicateEvaluator = predicateEvaluator)
         if (preventFromSourceResult != null) {
             newState = preventFromSourceResult.state
             events.addAll(preventFromSourceResult.events)
@@ -1694,7 +1705,7 @@ internal class CombatDamageManager(
             // 702.2). Trample is already removed by combat damage assignment, so any damage that
             // reaches this creature was assigned to it — the leftover above lethal is excess.
             val lethalNeeded = if (projected.hasKeyword(sourceId, Keyword.DEATHTOUCH)) 1
-            else ((projected.getToughness(targetId) ?: 0) -
+            else (projected.lethalDamageThreshold(targetId) -
                 (newState.getEntity(targetId)?.get<DamageComponent>()?.amount ?: 0)).coerceAtLeast(0)
             val excess = (amount - lethalNeeded).coerceAtLeast(0)
             if (hasWither) {
@@ -1963,7 +1974,7 @@ internal class CombatDamageManager(
                             .merge(attackerId, amplified) { a, b -> a + b }
                     } else {
                         val damageCantBePrevented =
-                            DamageUtils.isDamagePreventionDisabled(state, targetId, attackerId, predicateEvaluator = predicateEvaluator)
+                            DamageUtils.isDamagePreventionDisabled(state, targetId, attackerId, isCombatDamage = true, predicateEvaluator = predicateEvaluator)
                         val attackerColors = projected.getColors(attackerId)
                         val attackerTypes = projected.getTypes(attackerId)
                         val protectedFromOpponent = !damageCantBePrevented &&
@@ -2097,6 +2108,22 @@ internal class CombatDamageManager(
     // =========================================================================
     // Damage Prevention Helpers (used by pre-checks)
     // =========================================================================
+
+    /**
+     * Cheap over-approximation: could *any* combat damage this step be unpreventable? True when a
+     * turn-wide or per-recipient shutoff is live, or a [DamageCantBePrevented] on the battlefield
+     * isn't noncombat-only. Only gates the Fog early-out; the modifiers judge each assignment.
+     */
+    private fun anyCombatDamageMayBeUnpreventable(state: GameState): Boolean {
+        if (state.damageCantBePreventedThisTurn) return true
+        if (state.findEntitiesWith<DamageUnpreventableThisTurnComponent>().isNotEmpty()) return true
+        return state.getBattlefield().any { entityId ->
+            state.activeReplacementSource(entityId)?.replacementEffects?.any { effect ->
+                effect is DamageCantBePrevented &&
+                    (effect.appliesTo as? EventPattern.DamageEvent)?.damageType != DamageType.NonCombat
+            } == true
+        }
+    }
 
     private fun isAllCombatDamagePrevented(state: GameState): Boolean {
         return state.floatingEffects.any { floatingEffect ->

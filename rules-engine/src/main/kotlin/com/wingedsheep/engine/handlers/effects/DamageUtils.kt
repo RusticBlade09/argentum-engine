@@ -234,7 +234,7 @@ object DamageUtils {
 
         // Check for global "damage can't be prevented" effects (Sunspine Lynx, Leyline of Punishment)
         @Suppress("NAME_SHADOWING")
-        val cantBePrevented = cantBePrevented || isDamagePreventionDisabled(state, targetId, sourceId, predicateEvaluator = zones.predicateEvaluator)
+        val cantBePrevented = cantBePrevented || isDamagePreventionDisabled(state, targetId, sourceId, isCombatDamage, predicateEvaluator = zones.predicateEvaluator)
 
         // Check for damage redirection (Glarecaster, Zealous Inquisitor). Whippoorwill's clause
         // shuts this half off too — "…or dealt instead to another permanent or player" — so a
@@ -581,7 +581,7 @@ object DamageUtils {
                 // exactly as for marked damage, before the counters change the toughness.
                 val witherLethalNeeded =
                     if (sourceId != null && sourceHasDeathtouch(zones.cardRegistry, newState, projected, sourceId)) 1
-                    else ((projected.getToughness(targetId) ?: 0) -
+                    else (projected.lethalDamageThreshold(targetId) -
                         (newState.getEntity(targetId)?.get<DamageComponent>()?.amount ?: 0)).coerceAtLeast(0)
                 creatureExcessDamage = (effectiveAmount - witherLethalNeeded).coerceAtLeast(0)
                 // CR 702.80a / 122.6a: the -1/-1 counters are put on the creature by the wither
@@ -627,9 +627,10 @@ object DamageUtils {
                 // lethal. With deathtouch, any amount of damage greater than 1 is excess —
                 // lethal collapses to a flat 1 regardless of marked damage (CR 120.4a refs
                 // 702.2).
-                val toughness = projected.getToughness(targetId) ?: 0
+                // Lethal is judged by toughness, or by power under a lethal-damage-by-power rule
+                // modification (Zilortha) — CR 120.6.
                 val lethalNeeded = if (hasDeathtouch) 1
-                else (toughness - currentDamage).coerceAtLeast(0)
+                else (projected.lethalDamageThreshold(targetId) - currentDamage).coerceAtLeast(0)
                 creatureExcessDamage = (effectiveAmount - lethalNeeded).coerceAtLeast(0)
                 // "Excess damage is dealt to that creature's controller instead" (Gandalf's
                 // Sanction): the creature is marked only with the lethal portion; the excess is
@@ -1681,13 +1682,20 @@ object DamageUtils {
      * end gets the unscoped answer only. That is deliberately the safe direction: an unknown
      * instance never blanks a prevention shield or a protection keyword it might not cover.
      *
+     * The pattern's `damageType` scopes it the same way: Questing Beast's and Frenzied Baloth's
+     * "**combat** damage … can't be prevented" leaves a burn spell's damage preventable. A
+     * combat- or noncombat-only pattern needs [isCombatDamage] to judge, and a caller that doesn't
+     * pass it gets the safe answer (not disabled) from that pattern.
+     *
      * @param recipientId the entity being damaged, when the caller knows it
      * @param sourceId the source dealing the damage, when the caller knows it
+     * @param isCombatDamage whether the damage instance is combat damage, when the caller knows it
      */
     fun isDamagePreventionDisabled(
         state: GameState,
         recipientId: EntityId? = null,
         sourceId: EntityId? = null,
+        isCombatDamage: Boolean? = null,
         predicateEvaluator: PredicateEvaluator
     ): Boolean {
         // Turn-scoped "Damage can't be prevented this turn" (Fear, Fire, Foes!).
@@ -1703,11 +1711,17 @@ object DamageUtils {
         val projected = state.projectedState
         for (entityId in state.getBattlefield()) {
             val container = state.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
 
             for (effect in replacementComponent.replacementEffects) {
                 if (effect !is DamageCantBePrevented) continue
                 val pattern = effect.appliesTo as? EventPattern.DamageEvent ?: continue
+                val typeMatches = when (pattern.damageType) {
+                    DamageType.Any -> true
+                    DamageType.Combat -> isCombatDamage == true
+                    DamageType.NonCombat -> isCombatDamage == false
+                }
+                if (!typeMatches) continue
                 // Unscoped: the printed "damage can't be prevented" with no source or recipient
                 // clause. Answers for every instance, including the ones this call knows nothing about.
                 if (pattern.source == GameObjectFilter.Any && pattern.recipient == Recipient.Any) {
@@ -1798,7 +1812,7 @@ object DamageUtils {
         // CR 615.12 — when damage can't be prevented, prevention shields aren't reduced and prevent
         // nothing. When any battlefield "damage can't be prevented" (Spider-Punk) or the "this turn"
         // one-shot (Fear, Fire, Foes!) is active, no shield applies and the damage passes through in full.
-        if (isDamagePreventionDisabled(state, targetId, sourceId, predicateEvaluator = predicateEvaluator)) {
+        if (isDamagePreventionDisabled(state, targetId, sourceId, isCombatDamage, predicateEvaluator = predicateEvaluator)) {
             val (riderState, _) = applyStaticDamageReduction(
                 state, targetId, amount, isCombatDamage, sourceId, predicateEvaluator, unpreventable = true
             )
@@ -2088,7 +2102,7 @@ object DamageUtils {
         for (entityId in state.getBattlefield()) {
             if (entityId in appliedRedirects) continue
             val container = state.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
             val sourceControllerId = replacementHostController(state, entityId) ?: continue
 
             for (effect in replacementComponent.replacementEffects) {
@@ -2459,7 +2473,7 @@ object DamageUtils {
                 remainingCount = present - removed, byDamagePrevention = true
             ))
             val disabled = preventionDisabled ?: isDamagePreventionDisabled(
-                state, targetId, sourceId, predicateEvaluator = predicateEvaluator
+                state, targetId, sourceId, isCombatDamage, predicateEvaluator = predicateEvaluator
             ).also { preventionDisabled = it }
             if (!disabled) remaining -= removed
         }
@@ -2505,7 +2519,7 @@ object DamageUtils {
 
         for (entityId in state.getBattlefield()) {
             val container = state.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
             val hostControllerId = replacementHostController(state, entityId) ?: continue
 
             for (effect in replacementComponent.replacementEffects) {
@@ -2568,7 +2582,7 @@ object DamageUtils {
 
         for (entityId in attachedIds) {
             val container = state.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
             val hostControllerId = replacementHostController(state, entityId) ?: continue
             // The forward link is what [damageSourceMatches] reads when the damage actually
             // resolves, so the badge agrees with the replacement rather than with the index alone.
@@ -2642,7 +2656,7 @@ object DamageUtils {
         for (entityId in state.getBattlefield()) {
             if (remainingDamage <= 0) break
             val container = state.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
             val sourceControllerId = replacementHostController(state, entityId) ?: continue
 
             for (effect in replacementComponent.replacementEffects) {
@@ -2746,7 +2760,7 @@ object DamageUtils {
 
         for (entityId in state.getBattlefield()) {
             val container = state.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
             val sourceControllerId = replacementHostController(state, entityId) ?: continue
 
             for (effect in replacementComponent.replacementEffects) {
@@ -2804,7 +2818,7 @@ object DamageUtils {
         // "rounded down" half of the wording, and it is what takes a 1-damage source to 0.
         for (entityId in state.getBattlefield()) {
             val container = state.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
             val sourceControllerId = replacementHostController(state, entityId) ?: continue
 
             for (effect in replacementComponent.replacementEffects) {
@@ -2863,7 +2877,7 @@ object DamageUtils {
         // Check for ModifyDamageAmount replacement effects (Valley Flamecaller)
         for (entityId in state.getBattlefield()) {
             val container = state.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
             val sourceControllerId = replacementHostController(state, entityId) ?: continue
 
             for (effect in replacementComponent.replacementEffects) {
@@ -3006,7 +3020,7 @@ object DamageUtils {
         // prevention shields still apply afterward to the capped amount.
         for (entityId in state.getBattlefield()) {
             val container = state.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
             val sourceControllerId = replacementHostController(state, entityId) ?: continue
 
             for (effect in replacementComponent.replacementEffects) {
@@ -3047,7 +3061,7 @@ object DamageUtils {
         // amount (a source dealing 0 isn't dealing damage, so it isn't raised).
         for (entityId in state.getBattlefield()) {
             val container = state.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
             val sourceControllerId = replacementHostController(state, entityId) ?: continue
 
             for (effect in replacementComponent.replacementEffects) {
@@ -3321,7 +3335,7 @@ object DamageUtils {
         // Battlefield permanents, then emblems (which sit in no zone the battlefield scan sees).
         for (entityId in state.getBattlefield().asSequence() + state.emblemReplacementHolders.asSequence()) {
             val container = state.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
             val sourceControllerId = replacementHostController(state, entityId) ?: continue
 
             for (effect in replacementComponent.replacementEffects) {
@@ -3406,7 +3420,7 @@ object DamageUtils {
 
         for (entityId in state.getBattlefield()) {
             val container = state.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
             val hostControllerId = replacementHostController(state, entityId) ?: continue
 
             for (effect in replacementComponent.replacementEffects) {
@@ -3475,7 +3489,7 @@ object DamageUtils {
 
         for (entityId in state.getBattlefield()) {
             val container = state.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
             val sourceControllerId = replacementHostController(state, entityId) ?: continue
 
             for (effect in replacementComponent.replacementEffects) {
@@ -3700,7 +3714,7 @@ object DamageUtils {
 
         for (entityId in state.getBattlefield()) {
             val container = state.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
             val sourceControllerId = replacementHostController(state, entityId) ?: continue
 
             for (effect in replacementComponent.replacementEffects) {

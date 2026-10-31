@@ -2,7 +2,7 @@ import { ErrorCode, GameOverReason, ZoneType } from './enums'
 import { EntityId } from './entities'
 import { DecisionResponse, GameAction } from './actions'
 import { ClientEvent } from './events'
-import { ClientGameState, ClientCard, ClientZone, ClientPlayer, ClientCombatState, ClientCommanderDamage, ClientDeckCard, ClientRestrictedManaEntry } from './gameState'
+import { ClientGameState, ClientCard, ClientZone, ClientPlayer, ClientCombatState, ClientCommanderDamage, ClientDeckCard, ClientRestrictedManaEntry, ClientAbilityIdentity } from './gameState'
 
 // ============================================================================
 // Server Messages (received from server)
@@ -372,6 +372,8 @@ export interface DecisionContext {
   readonly subjectEntityId?: EntityId
   /** Validated resolution targets; render their identities from the masked state. */
   readonly targetIds?: readonly EntityId[]
+  /** Definition-scoped identity of the card ability asking, when there is one (yield key). */
+  readonly abilityIdentity?: ClientAbilityIdentity | null
 }
 
 /**
@@ -491,6 +493,11 @@ export interface YesNoDecision extends PendingDecisionBase {
    * is the only answer. Absent means true.
    */
   readonly yesAvailable?: boolean
+  /**
+   * A pure "you may" of a card ability that an Always Yes / Always No yield on
+   * `context.abilityIdentity` would answer — so the prompt can offer "remember my answer".
+   */
+  readonly canRememberAnswer?: boolean
 }
 
 /**
@@ -524,11 +531,14 @@ export interface TargetRequirementInfo {
   /** When true, every chosen card target must be owned by the same player ("from a single graveyard"). */
   readonly sameOwner?: boolean
   /**
-   * When set, the combined mana value of the chosen card targets may not exceed this cap
-   * ("any number of target creature cards with total mana value X or less" — Fire Lord Sozin).
-   * Already resolved to a concrete number server-side.
+   * When set, the summed value of the chosen targets may not exceed this cap ("any number of target
+   * creature cards with total power 10 or less" — Nethroi; "… total mana value X or less" — Fire
+   * Lord Sozin). Resolved server-side; `totalCapLabel` names the property and `targetValues` holds
+   * each candidate's share — all three set together.
    */
-  readonly totalManaValueAtMost?: number | null
+  readonly totalCap?: number | null
+  readonly totalCapLabel?: string | null
+  readonly targetValues?: Readonly<Record<EntityId, number>> | null
   /**
    * True for "another target" wording: a pick here must differ from every target chosen for an
    * earlier requirement. Absent/false lets separate "target" instances choose the same object
@@ -1428,6 +1438,11 @@ export interface AdditionalCostInfo {
   readonly tapBatchMaxActivations?: number
   readonly validDiscardTargets?: readonly EntityId[]
   readonly discardCount?: number
+  /**
+   * Upper bound for a variable discard ("discard X cards", Channeled Force): pick
+   * discardCount..discardMaxCount cards. Absent means exactly discardCount.
+   */
+  readonly discardMaxCount?: number
   /**
    * Cards in your hand that could pay a reveal-from-hand additional cost ("reveal an Elf card from
    * your hand or pay {3}"), and how many to pick. Distinct from `validBeholdTargets` because
@@ -3757,6 +3772,11 @@ export interface SubmitQuickGameLobbyDeckMessage {
    * listed there, checks against the deck, and reveals outside the game at game start.
    */
   readonly companion?: string
+  /**
+   * The format the deck was built for (a saved deck's or an example's), upper-case. The server
+   * keeps it only when the deck is legal there, and an AI on Auto builds a deck for it.
+   */
+  readonly deckFormat?: string
 }
 
 export interface SetQuickGameLobbyReadyMessage {
@@ -3845,6 +3865,7 @@ export function createSubmitQuickGameLobbyDeckMessage(
   secondCommander?: string | null,
   secondCommanderPrinting?: PrintingRef,
   companion?: string | null,
+  deckFormat?: string | null,
 ): SubmitQuickGameLobbyDeckMessage {
   return {
     type: 'submitQuickGameLobbyDeck',
@@ -3856,6 +3877,7 @@ export function createSubmitQuickGameLobbyDeckMessage(
     ...(commander && secondCommander && secondCommanderPrinting ? { secondCommanderPrinting } : {}),
     ...(sideboard && Object.keys(sideboard).length > 0 ? { sideboard } : {}),
     ...(companion ? { companion } : {}),
+    ...(deckFormat ? { deckFormat: deckFormat.toUpperCase() } : {}),
   }
 }
 export function createSetQuickGameLobbyReadyMessage(ready: boolean): SetQuickGameLobbyReadyMessage {

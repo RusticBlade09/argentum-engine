@@ -46,7 +46,8 @@ import com.wingedsheep.engine.state.components.identity.PlayWithFixedAlternative
 import com.wingedsheep.engine.state.components.identity.MadnessExiledComponent
 import com.wingedsheep.sdk.scripting.GameObjectFilter
 import com.wingedsheep.engine.state.components.stack.EntitySnapshot
-import com.wingedsheep.sdk.scripting.SuppressEntersTriggers
+import com.wingedsheep.sdk.scripting.SuppressZoneChangeTriggers
+import com.wingedsheep.sdk.scripting.ZoneChangeTriggerCause
 import com.wingedsheep.sdk.scripting.TriggeredAbility
 import com.wingedsheep.engine.state.components.identity.RoomComponent
 import com.wingedsheep.engine.state.components.identity.RoomFaceId
@@ -418,6 +419,11 @@ class TriggerDetector(
         // many matching permanents were tapped simultaneously; the per-event path skips batch taps.
         detectTapBatchTriggers(state, events, triggers, index)
 
+        // Detect "whenever you and/or one or more permanents you control become the target of a
+        // spell or ability …" batching triggers (BecomesTargetEvent(batch = true), e.g. Leyline of
+        // Combustion). Fires once per targeting spell or ability; the per-event path skips them.
+        detectBecomesTargetBatchTriggers(state, events, triggers, index)
+
         // Detect "whenever one or more [players] lose [exactly N] life" batching triggers
         // (LifeLossEvent(batch = true), e.g. Ob Nixilis, Captive Kingpin). Fires once per life-loss
         // occurrence (simultaneous damage summed per player); the per-event path skips them.
@@ -529,11 +535,11 @@ class TriggerDetector(
         // as an attacker, it must be sacrificed at end of combat.
         detectDecayedAttackTriggers(state, events, triggers)
 
-        // Torpor Orb family (SuppressEntersTriggers): remove every pending trigger that a
-        // matching permanent entering the battlefield caused (CR 603.6 enters-the-battlefield
-        // triggers). Runs after all ETB detection paths so it covers the per-permanent, "one or
-        // more permanents entered" batch, and duplicated (Panharmonicon) copies uniformly.
-        suppressEntersTriggers(state, events, triggers)
+        // Torpor Orb / Hushbringer family (SuppressZoneChangeTriggers): remove every pending
+        // trigger that a matching permanent entering the battlefield or dying caused. Runs after
+        // all ETB and death detection paths so it covers the per-permanent and batch paths and
+        // duplicated (Panharmonicon) copies uniformly.
+        suppressZoneChangeTriggers(state, events, triggers)
 
         // Rule 603.4: an ability whose intervening-if is false doesn't trigger at all, so drop
         // those first — a failing instance must not take a simultaneous instance's once-per-turn
@@ -981,44 +987,59 @@ class TriggerDetector(
     }
 
     /**
-     * Torpor Orb family ([com.wingedsheep.sdk.scripting.SuppressEntersTriggers]): strip every
-     * pending trigger that a *matching permanent entering the battlefield* caused.
+     * Torpor Orb / Hushbringer family ([SuppressZoneChangeTriggers]): strip every pending trigger
+     * that a *matching permanent entering the battlefield* or *dying* caused, per each lock's
+     * [SuppressZoneChangeTriggers.causes].
      *
-     * Per Torpor Orb's Gatherer rulings this suppresses both the entering permanent's own
-     * enters-the-battlefield triggers and any other permanent's "whenever a [...] enters" trigger
-     * whose triggering object is that permanent — the gate is whether the entering object matches a
-     * [SuppressEntersTriggers.filter] in projected state (continuous effects apply), not what the
-     * watching trigger's text names. Replacement effects (enters with counters/tapped) and
-     * "as it enters" choices are untouched because they never become [PendingTrigger]s.
-     * A suppressor that has lost all abilities in projected state (Infinite Coursework on Karn,
-     * Argent Defender) is inert: the lock is the permanent's own ability.
+     * **Entering.** Per Torpor Orb's Gatherer rulings this suppresses both the entering permanent's
+     * own enters-the-battlefield triggers and any other permanent's "whenever a [...] enters"
+     * trigger whose triggering object is that permanent — the gate is whether the entering object
+     * matches [SuppressZoneChangeTriggers.filter] in projected state (continuous effects apply), not
+     * what the watching trigger's text names. Only locks on the battlefield now count.
+     *
+     * **Dying.** Per Hushbringer's rulings: every dies / put-into-a-graveyard-from-the-battlefield /
+     * leaves-the-battlefield trigger the death caused, per-object and batched alike, with the dying
+     * object matched by its last-known information. Those abilities look back in time, so a lock
+     * that left the battlefield in this same batch (Hushbringer dying alongside the others, or itself)
+     * still counts. A "put into a graveyard from anywhere" trigger does not look back: only a lock
+     * still on the battlefield stops it, and never for the dying card's own ability.
+     *
+     * Replacement effects (enters with counters/tapped, exile instead of dying) and "as it enters"
+     * choices are untouched because they never become [PendingTrigger]s. A lock that has lost all
+     * abilities (Infinite Coursework on Karn, Argent Defender) is inert: the lock is the permanent's
+     * own ability.
      *
      * Operates as a final filter over the already-detected batch, so it covers the per-permanent
-     * ETB path ([detectTriggersForEvent]), the "one or more permanents entered" batch path
-     * ([detectPermanentsEnteredBatchTriggers]), and the Panharmonicon-style duplicates uniformly.
+     * paths ([detectTriggersForEvent], the simultaneous-departure look-back), the batch paths
+     * ([detectPermanentsEnteredBatchTriggers], [detectCreaturesDiedBatchTriggers],
+     * [detectAnyToGraveyardBatchTriggers]), and Panharmonicon-style duplicates uniformly.
      */
-    private fun suppressEntersTriggers(
+    private fun suppressZoneChangeTriggers(
         state: GameState,
         events: List<EngineGameEvent>,
         triggers: MutableList<PendingTrigger>
     ) {
         if (triggers.isEmpty()) return
 
-        // Which permanents entered the battlefield in this batch.
-        val enteredIds = events.asSequence()
-            .filterIsInstance<ZoneChangeEvent>()
+        val zoneChanges = events.filterIsInstance<ZoneChangeEvent>()
+        // Which permanents entered the battlefield, and which died, in this batch.
+        val enteredIds = zoneChanges.asSequence()
             .filter { it.toZone == Zone.BATTLEFIELD }
             .map { it.entityId }
             .toSet()
-        if (enteredIds.isEmpty()) return
+        val deaths = zoneChanges.asSequence()
+            .filter { it.isBattlefieldDeparture && it.toZone == Zone.GRAVEYARD && it.lastKnown != null }
+            .associateBy { it.entityId }
+        if (enteredIds.isEmpty() && deaths.isEmpty()) return
 
-        // Active suppressors (filter + the granting permanent's projected controller, which is the
-        // reference player for the filter's controller predicate so `youControl()` scopes correctly).
+        // Active locks: on the battlefield now, plus — for the look-back dying case — any that left
+        // the battlefield in this batch, read off their departure snapshot. The lock's controller
+        // is the reference player for the filter's controller predicate so `youControl()` scopes.
         val projected = state.projectedState
         data class Suppressor(
-            val filter: GameObjectFilter,
-            val abilitiesOf: GameObjectFilter?,
-            val controllerId: EntityId
+            val ability: SuppressZoneChangeTriggers,
+            val controllerId: EntityId,
+            val departed: Boolean
         )
         val suppressors = mutableListOf<Suppressor>()
         for (permanentId in state.getBattlefield()) {
@@ -1027,10 +1048,23 @@ class TriggerDetector(
             val cardDef = container.get<CardComponent>()
                 ?.let { cardRegistry.getCard(it.cardDefinitionId) } ?: continue
             for (ability in cardDef.script.staticAbilities) {
-                if (ability is SuppressEntersTriggers) {
+                if (ability is SuppressZoneChangeTriggers) {
                     val controller = projected.getController(permanentId)
                         ?: container.get<ControllerComponent>()?.playerId ?: continue
-                    suppressors.add(Suppressor(ability.filter, ability.abilitiesOf, controller))
+                    suppressors.add(Suppressor(ability, controller, departed = false))
+                }
+            }
+        }
+        if (deaths.isNotEmpty()) {
+            for (event in zoneChanges) {
+                val lastKnown = event.lastKnown ?: continue
+                if (!event.isBattlefieldDeparture || lastKnown.wasFaceDown || lastKnown.lostAllAbilities) continue
+                val cardDef = (lastKnown.cardDefinitionId ?: state.getEntity(event.entityId)
+                    ?.get<CardComponent>()?.cardDefinitionId)?.let { cardRegistry.getCard(it) } ?: continue
+                for (ability in cardDef.script.staticAbilities) {
+                    if (ability is SuppressZoneChangeTriggers && ZoneChangeTriggerCause.DYING in ability.causes) {
+                        suppressors.add(Suppressor(ability, lastKnown.controllerId ?: event.ownerId, departed = true))
+                    }
                 }
             }
         }
@@ -1040,47 +1074,115 @@ class TriggerDetector(
         // otherwise only those of a battlefield permanent matching `abilitiesOf` (Elesh Norn).
         val battlefield = state.getBattlefield().toSet()
         fun scopes(s: Suppressor, sourceId: EntityId): Boolean {
-            val abilitiesOf = s.abilitiesOf ?: return true
+            val abilitiesOf = s.ability.abilitiesOf ?: return true
             return sourceId in battlefield && predicateEvaluator.matches(
                 state, projected, sourceId, abilitiesOf, PredicateContext(controllerId = s.controllerId)
             )
         }
 
         // An entered permanent whose entry, for a trigger of [sourceId], is suppressed by at
-        // least one active suppressor.
+        // least one active battlefield lock covering entering.
         val entryCache = HashMap<Pair<EntityId, Int>, Boolean>()
-        fun isSuppressed(entityId: EntityId, sourceId: EntityId): Boolean {
+        fun isEntrySuppressed(entityId: EntityId, sourceId: EntityId): Boolean {
             if (entityId !in enteredIds) return false
             return suppressors.withIndex().any { (i, s) ->
-                scopes(s, sourceId) && entryCache.getOrPut(entityId to i) {
-                    predicateEvaluator.matches(
-                        state, projected, entityId, s.filter,
-                        PredicateContext(controllerId = s.controllerId)
-                    )
-                }
+                !s.departed && ZoneChangeTriggerCause.ENTERING in s.ability.causes &&
+                    scopes(s, sourceId) && entryCache.getOrPut(entityId to i) {
+                        predicateEvaluator.matches(
+                            state, projected, entityId, s.ability.filter,
+                            PredicateContext(controllerId = s.controllerId)
+                        )
+                    }
+            }
+        }
+
+        // A death that, for a trigger of [sourceId] of the given [shape], is suppressed by at
+        // least one lock covering dying: matched against the dead object's last-known information.
+        val deathCache = HashMap<Pair<EntityId, Int>, Boolean>()
+        fun isDeathSuppressed(entityId: EntityId, sourceId: EntityId, shape: DeathTriggerShape): Boolean {
+            val death = deaths[entityId] ?: return false
+            if (shape == DeathTriggerShape.FROM_ANYWHERE && sourceId == entityId) return false
+            return suppressors.withIndex().any { (i, s) ->
+                ZoneChangeTriggerCause.DYING in s.ability.causes &&
+                    (shape == DeathTriggerShape.LOOK_BACK || !s.departed) &&
+                    scopes(s, sourceId) && deathCache.getOrPut(entityId to i) {
+                        predicateEvaluator.matchesSnapshot(
+                            state, death.lastKnown!!, s.ability.filter,
+                            PredicateContext(controllerId = s.controllerId)
+                        )
+                    }
             }
         }
 
         val iterator = triggers.listIterator()
         while (iterator.hasNext()) {
             val trigger = iterator.next()
-            if (!trigger.isEntryCaused()) continue
             val ctx = trigger.triggerContext
-            val captured = ctx.capturedEntityIds
-            if (captured != null) {
-                // Batch trigger: strip the suppressed entries; drop the whole trigger if none
-                // of the permanents that caused it survive.
-                val survivors = captured.filterNot { isSuppressed(it, trigger.sourceId) }
+            if (enteredIds.isNotEmpty() && trigger.isEntryCaused()) {
+                val captured = ctx.capturedEntityIds
+                if (captured != null) {
+                    // Batch trigger: strip the suppressed entries; drop the whole trigger if none
+                    // of the permanents that caused it survive.
+                    val survivors = captured.filterNot { isEntrySuppressed(it, trigger.sourceId) }
+                    when {
+                        survivors.isEmpty() -> iterator.remove()
+                        survivors.size != captured.size ->
+                            iterator.set(trigger.copy(triggerContext = ctx.copy(capturedEntityIds = survivors)))
+                    }
+                } else {
+                    val triggeringId = ctx.triggeringEntityId ?: trigger.sourceId
+                    if (isEntrySuppressed(triggeringId, trigger.sourceId)) iterator.remove()
+                }
+                continue
+            }
+            if (deaths.isEmpty()) continue
+            val shape = deathTriggerShape(trigger.ability.trigger) ?: continue
+            val causes = trigger.graveyardBatchCauseIds
+            if (causes != null) {
+                // Batched graveyard trigger: it still fires if any cause survives the lock (a
+                // milled card, a noncreature artifact, an unsuppressed death).
+                val survivors = causes.filterNot { isDeathSuppressed(it, trigger.sourceId, shape) }
                 when {
                     survivors.isEmpty() -> iterator.remove()
-                    survivors.size != captured.size ->
-                        iterator.set(trigger.copy(triggerContext = ctx.copy(capturedEntityIds = survivors)))
+                    survivors.size != causes.size -> iterator.set(
+                        trigger.copy(
+                            graveyardBatchCauseIds = survivors,
+                            // "the total power of those creatures" counts only the deaths that
+                            // still caused it.
+                            triggerContext = if (ctx.diedBatchTotalPower == null) ctx else ctx.copy(
+                                diedBatchTotalPower = survivors.sumOf { deaths[it]?.lastKnown?.power ?: 0 }
+                            )
+                        )
+                    )
                 }
             } else {
                 val triggeringId = ctx.triggeringEntityId ?: trigger.sourceId
-                if (isSuppressed(triggeringId, trigger.sourceId)) iterator.remove()
+                if (isDeathSuppressed(triggeringId, trigger.sourceId, shape)) iterator.remove()
             }
         }
+    }
+
+    /** How a trigger reacts to a death, for [suppressZoneChangeTriggers]'s dying lock. */
+    private enum class DeathTriggerShape {
+        /** A leaves-the-battlefield ability (dies, put into a graveyard from the battlefield, leaves). */
+        LOOK_BACK,
+        /** A "put into a graveyard from anywhere" ability — no look-back. */
+        FROM_ANYWHERE
+    }
+
+    /** Whether [pattern] is one a death can fire, and how; null for every other pattern. */
+    private fun deathTriggerShape(pattern: EventPattern): DeathTriggerShape? = when (pattern) {
+        is EventPattern.ZoneChangeEvent -> when {
+            pattern.from == Zone.BATTLEFIELD && pattern.excludeTo != Zone.GRAVEYARD &&
+                (pattern.to == null || pattern.to == Zone.GRAVEYARD) -> DeathTriggerShape.LOOK_BACK
+            pattern.from == null && pattern.to == Zone.GRAVEYARD -> DeathTriggerShape.FROM_ANYWHERE
+            else -> null
+        }
+        is EventPattern.CreatureDealtDamageBySourceDiesEvent,
+        is EventPattern.CreaturesYouControlDiedEvent -> DeathTriggerShape.LOOK_BACK
+        is EventPattern.CardsPutIntoGraveyardEvent -> DeathTriggerShape.FROM_ANYWHERE
+        is EventPattern.AnyOf -> pattern.events.mapNotNull { deathTriggerShape(it) }.minOrNull()
+        else -> null
     }
 
     /** The captured permanents' copiable values at trigger time; see [TriggerContext.capturedEntitySnapshots]. */
@@ -1252,7 +1354,10 @@ class TriggerDetector(
                 // A cast watcher scopes the caster, not the triggering object: the spell stays the
                 // triggering entity (and the caster the triggering player) of a player-watched cast.
                 val watchedTriggering = delayed.watchedEntityId
-                    .takeUnless { specEvent is com.wingedsheep.sdk.scripting.EventPattern.SpellCastEvent }
+                    .takeUnless {
+                        specEvent is com.wingedsheep.sdk.scripting.EventPattern.SpellCastEvent ||
+                            specEvent is com.wingedsheep.sdk.scripting.EventPattern.NthSpellCastEvent
+                    }
                 if (delayed.fireOnce) firedOnceIds.add(delayed.id)
                 val pending = PendingTrigger(
                     ability = TriggeredAbility.create(
@@ -1338,7 +1443,11 @@ class TriggerDetector(
             // spell-cast matcher so the spell filter and casting-player predicate are honored.
             // A watched entity on a cast trigger is the one player it watches — "that player gets
             // two rad counters whenever they cast a spell" (Nuka-Nuke Launcher).
-            is com.wingedsheep.sdk.scripting.EventPattern.SpellCastEvent ->
+            // "When you cast a spell with the chosen name for the first time this turn" (Medomai's
+            // Prophecy III) is the ordinal form: the canonical matcher counts the caster's matching
+            // casts this turn, including any made before the delayed trigger existed.
+            is com.wingedsheep.sdk.scripting.EventPattern.SpellCastEvent,
+            is com.wingedsheep.sdk.scripting.EventPattern.NthSpellCastEvent ->
                 (watchedEntityId == null || (event as? SpellCastEvent)?.casterId == watchedEntityId) &&
                     matcher.matchesTrigger(specEvent, spec.binding, event, sourceId, controllerId, state)
             is com.wingedsheep.sdk.scripting.EventPattern.SpellCopiedEvent ->
@@ -2859,10 +2968,11 @@ class TriggerDetector(
                     else -> error("CardsPutIntoGraveyardEvent: unsupported player ${trigger.player}")
                 }
 
-                // Check if any of the moved cards match the filter
-                val hasMatch = ownerEvents.any { event ->
-                    cardMatchesGraveyardBatchFilter(state, event.entityId, trigger.filter)
-                }
+                // Which of the moved cards match the filter
+                val matchingIds = ownerEvents
+                    .filter { event -> cardMatchesGraveyardBatchFilter(state, event.entityId, trigger.filter) }
+                    .map { it.entityId }
+                val hasMatch = matchingIds.isNotEmpty()
                 if (hasMatch && trigger.firstTimeEachTurn &&
                     matchedGraveyardEarlierThisTurn(state, controllerId, ownerEvents, trigger.filter)
                 ) continue
@@ -2874,7 +2984,8 @@ class TriggerDetector(
                             sourceId = entry.entityId,
                             sourceName = entry.cardComponent.name,
                             controllerId = controllerId,
-                            triggerContext = TriggerContext()
+                            triggerContext = TriggerContext(),
+                            graveyardBatchCauseIds = matchingIds
                         )
                     )
                 }
@@ -3381,6 +3492,55 @@ class TriggerDetector(
     }
 
     /**
+     * Detect "one or more … become the target of a spell or ability" batching triggers
+     * (`BecomesTargetEvent(batch = true)` — Leyline of Combustion).
+     *
+     * A spell or ability emits one engine `BecomesTargetEvent` per distinct target as it is put on
+     * the stack, so the events are grouped by the targeting object and the trigger fires once per
+     * group in which at least one target passes every per-target axis (the same matcher the
+     * per-event path uses). Two spells targeting in the same event list are two groups, so two
+     * firings. The first matching target is the triggering entity, and its event supplies the
+     * targeting object ("that spell or ability") the payoff reads.
+     */
+    private fun detectBecomesTargetBatchTriggers(
+        state: GameState,
+        events: List<EngineGameEvent>,
+        triggers: MutableList<PendingTrigger>,
+        index: TriggerIndex
+    ) {
+        val targetEvents = events.filterIsInstance<com.wingedsheep.engine.core.BecomesTargetEvent>()
+        if (targetEvents.isEmpty()) return
+        val byTargetingObject = targetEvents.groupBy { it.sourceEntityId }
+
+        for (entry in index.getEntitiesForCategory(TriggerCategory.BECOMES_TARGET)) {
+            for (ability in entry.abilities) {
+                val trigger = ability.trigger
+                if (trigger !is EventPattern.BecomesTargetEvent || !trigger.batch) continue
+                // "One or more … become the target" is an observer wording (ANY binding).
+                if (ability.binding != TriggerBinding.ANY) continue
+                val perTarget = trigger.copy(batch = false)
+
+                for (group in byTargetingObject.values) {
+                    val first = group.firstOrNull { event ->
+                        matcher.matchesBecomesTargetTrigger(
+                            perTarget, TriggerBinding.ANY, event, entry.entityId, entry.controllerId, state
+                        )
+                    } ?: continue
+                    triggers.add(
+                        PendingTrigger(
+                            ability = ability,
+                            sourceId = entry.entityId,
+                            sourceName = entry.cardComponent.name,
+                            controllerId = entry.controllerId,
+                            triggerContext = TriggerContext.fromEvent(first)
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    /**
      * Detect "whenever one or more [players] lose life" / "… each lose exactly N life" batching
      * triggers (`LifeLossEvent(batch = true)` — Ob Nixilis, Captive Kingpin).
      *
@@ -3559,15 +3719,10 @@ class TriggerDetector(
      * per-permanent path uses, so the two multiplicities can never disagree about which placements
      * count (the shape [DamageTriggerDetector.detectDamageObserverBatchTriggers] uses).
      *
-     * A permanent that can't have counters put on it (`ProjectedState.canReceiveCounters`) stays out
-     * of the batch only when the executor doing the placing checks that prohibition before emitting:
-     * [com.wingedsheep.engine.handlers.effects.permanent.counters.AddCountersExecutor] and its
-     * single-target siblings do, but `AddCountersToCollectionExecutor` and
-     * `DistributeCountersAmongTargetsExecutor` — the multi-recipient paths this batch template most
-     * often observes — do not, and a no-op placement from those would enter the batch. That gap is
-     * per-executor and pre-dates this pass (the counters are wrongly added to the component too, not
-     * just reported), so this is not the place to fix it; it is recorded here so no one reads a
-     * guarantee into the batch that the engine doesn't provide.
+     * A permanent that can't have counters put on it (`ProjectedState.canReceiveCounters`, all kinds
+     * or the placed kind) stays out of the batch: every placing executor runs the placement through
+     * `ReplacementEffectUtils.applyCounterPlacementModifiers`, which refuses a prohibited placement,
+     * and emits nothing for a placement that came to zero.
      *
      * Separate resolutions are separate detection passes and so separate batches: two effects each
      * placing counters in the same turn fire the trigger twice.
@@ -4266,7 +4421,8 @@ class TriggerDetector(
                 sourceId = sourceId,
                 sourceName = sourceName,
                 controllerId = controllerId,
-                triggerContext = TriggerContext(diedBatchTotalPower = batchTotalPower)
+                triggerContext = TriggerContext(diedBatchTotalPower = batchTotalPower),
+                graveyardBatchCauseIds = matchingDeaths.map { it.entityId }
             )
         )
     }

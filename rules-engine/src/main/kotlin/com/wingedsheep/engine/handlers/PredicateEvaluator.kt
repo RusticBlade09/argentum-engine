@@ -67,6 +67,8 @@ import com.wingedsheep.engine.state.components.stack.TriggeredAbilityOnStackComp
 import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.core.Subtype
 import com.wingedsheep.sdk.core.Zone
+import com.wingedsheep.sdk.core.ManaCost
+import com.wingedsheep.sdk.model.CardLayout
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.predicates.CardPredicate
 import com.wingedsheep.sdk.scripting.predicates.ControllerPredicate
@@ -120,6 +122,32 @@ class PredicateEvaluator(
             com.wingedsheep.sdk.scripting.values.ManaColorSet.CommanderIdentity, state, state.projectedState,
             sourceId = null, controllerId = playerId, cardRegistry = registry, predicateEvaluator = this,
         )
+    }
+
+    /**
+     * [entityId]'s mana cost as CR 202.1 reads it in its current zone, or null when it has none
+     * (CR 202.1b: a land, a card printed with no mana symbols, a token that wasn't given one, a
+     * face-down permanent). A printed {0} is a mana cost and is returned. A split card off the
+     * stack combines its halves' costs (CR 709.4b — Fire // Ice is {2}{U}{R}), read off its
+     * definition because the card component carries a single cost; a Room on the battlefield has
+     * only its unlocked halves' costs (CR 709.5).
+     */
+    fun manaCostOf(state: GameState, entityId: EntityId): ManaCost? {
+        val entity = state.getEntity(entityId) ?: return null
+        if (entity.has<FaceDownComponent>()) return null
+        val card = entity.get<CardComponent>() ?: return null
+        // A Room keeps its RoomComponent after it leaves the battlefield, but CR 709.5 only
+        // hides a locked half's cost on a permanent; elsewhere both halves combine (709.4b).
+        val room = entity.get<RoomComponent>()?.takeIf { entityId in state.getBattlefield() }
+        val cost = when {
+            room != null -> room.unlockedFaces.fold(ManaCost.ZERO) { acc, face -> acc + face.manaCost }
+            entityId !in state.stack -> cardRegistry?.getCard(card.cardDefinitionId)
+                ?.takeIf { it.layout == CardLayout.SPLIT && it.cardFaces.size >= 2 }
+                ?.cardFaces?.fold(ManaCost.ZERO) { acc, face -> acc + face.manaCost }
+                ?: card.manaCost
+            else -> card.manaCost
+        }
+        return cost.takeIf { it.symbols.isNotEmpty() }
     }
 
     internal fun duringManaAbilityQuery(entityId: EntityId): PredicateEvaluator =
@@ -262,7 +290,12 @@ class PredicateEvaluator(
      * [com.wingedsheep.sdk.scripting.ReduceActivatedAbilityCost], reads snapshots built by
      * `activationSourceSnapshot`, which populates every field this function answers directly except
      * the combat and tap status (its filters never ask about those — the snapshot is a per-turn
-     * identity, so it must not vary with tapping); a third caller must do one or the other.
+     * identity, so it must not vary with tapping). The third,
+     * [com.wingedsheep.sdk.scripting.conditions.PlayerAttackedWithCreaturesThisTurn], reads the
+     * attack record's `declaredAs` snapshots from `AttackPhaseManager.declaredAttackerSnapshots`:
+     * taken just before declaration, they populate types, subtypes, colors, keywords, controller
+     * and token-ness but leave tap, combat and battlefield-entry status at their defaults ("attacked
+     * with a tapped creature" is not a shape any card prints). A further caller must do one or the other.
      */
     fun matchesSnapshot(
         state: GameState,
@@ -387,6 +420,10 @@ class PredicateEvaluator(
             // A departed object is the effect's source only if it is that very object; with no
             // source context the question has no answer.
             StatePredicate.IsSource -> context.sourceId?.let { it == snapshot.entityId }
+            // Commander-ness belongs to the card (CR 903.3), not to one battlefield visit, so the
+            // card's own designation answers it — "if you attacked with your commander" (Neriv).
+            StatePredicate.IsCommander -> state.getEntity(snapshot.entityId)
+                ?.has<com.wingedsheep.engine.state.components.identity.CommanderComponent>()
             is StatePredicate.Not -> matchesSnapshotState(state, snapshot, predicate.predicate, context, onBattlefield)?.not()
             is StatePredicate.And -> {
                 val results = predicate.predicates.map { matchesSnapshotState(state, snapshot, it, context, onBattlefield) }
@@ -492,6 +529,7 @@ class PredicateEvaluator(
             is CardPredicate.HasSubtypeInEachStoredGroup,
             is CardPredicate.HasSubtypeInStoredList,
             CardPredicate.HasXInManaCost,
+            CardPredicate.HasRepeatedManaSymbol,
             is CardPredicate.ManaCostIs,
             CardPredicate.IsActivatedAbility,
             CardPredicate.IsLoyaltyAbility,
@@ -1054,28 +1092,28 @@ class PredicateEvaluator(
                 projectedValues?.isFaceDown != true && !card.manaCost.isEmpty() && spent.couldPay(card.manaCost)
             }
             is CardPredicate.ManaValueAtMostDynamic -> {
-                val cap = evaluateDynamicCap(state, predicate.amount, context) ?: return false
+                val cap = evaluateDynamicCap(state, predicate.amount, context, entityId) ?: return false
                 val cmc = if (projectedValues?.isFaceDown == true) 0 else ManaValues.of(state, entityId, card)
                 cmc <= cap
             }
             is CardPredicate.ManaValueEqualsDynamic -> {
-                val want = evaluateDynamicCap(state, predicate.amount, context) ?: return false
+                val want = evaluateDynamicCap(state, predicate.amount, context, entityId) ?: return false
                 val cmc = if (projectedValues?.isFaceDown == true) 0 else ManaValues.of(state, entityId, card)
                 cmc == want
             }
             is CardPredicate.PowerEqualsDynamic -> {
-                val want = evaluateDynamicCap(state, predicate.amount, context) ?: return false
+                val want = evaluateDynamicCap(state, predicate.amount, context, entityId) ?: return false
                 // No power at all (a noncreature spell) never matches — `null == want` is false.
                 (projectedValues?.power ?: amounts.offBattlefieldStat(state, entityId, isPower = true, projected)) == want
             }
             is CardPredicate.PowerAtMostDynamic -> {
-                val cap = evaluateDynamicCap(state, predicate.amount, context) ?: return false
+                val cap = evaluateDynamicCap(state, predicate.amount, context, entityId) ?: return false
                 // No power at all (a noncreature spell) never matches.
                 val power = projectedValues?.power ?: amounts.offBattlefieldStat(state, entityId, isPower = true, projected) ?: return false
                 power <= cap
             }
             is CardPredicate.ToughnessEqualsDynamic -> {
-                val want = evaluateDynamicCap(state, predicate.amount, context) ?: return false
+                val want = evaluateDynamicCap(state, predicate.amount, context, entityId) ?: return false
                 (projectedValues?.toughness ?: amounts.offBattlefieldStat(state, entityId, isPower = false, projected)) == want
             }
             CardPredicate.ManaValueIsEven -> {
@@ -1091,6 +1129,8 @@ class PredicateEvaluator(
                 // (Rule 708.2 — no mana cost) never match.
                 if (projectedValues?.isFaceDown == true) false else card.manaCost.hasX
             }
+            CardPredicate.HasRepeatedManaSymbol ->
+                if (projectedValues?.isFaceDown == true) false else card.manaCost.hasRepeatedSymbol
             is CardPredicate.ManaCostIs ->
                 // Printed symbols, not mana value: {U} is not {1}, and no mana cost is not {0}.
                 if (projectedValues?.isFaceDown == true) false else card.manaCost == predicate.manaCost
@@ -1184,7 +1224,10 @@ class PredicateEvaluator(
                     val x = context?.xValue ?: return context?.resolution == null
                     return compareAmounts(value, predicate.operator, x)
                 }
-                val effectContext = context?.toEffectContext() ?: return false
+                // The candidate's controller is Player.Candidate, as in [evaluateDynamicCap].
+                val effectContext = context?.toEffectContext()
+                    ?.copy(candidatePlayerId = TargetResolutionUtils.controllerOf(state, entityId, projected))
+                    ?: return false
                 val amount = amounts.evaluate(state, predicate.amount, effectContext, projected)
                 compareAmounts(value, predicate.operator, amount)
             }
@@ -1341,16 +1384,19 @@ class PredicateEvaluator(
             // exiling on every blue and every black spell, so no single index names "a card exiled
             // with Circu". Printed names on both sides — a card in exile and a card in a hand or
             // library have no battlefield projection a Layer-3 rename could have touched. Fails
-            // closed with no source in context.
+            // closed with no source in context. A split card off the stack has both halves' names,
+            // so names compare half by half: an exiled "Spite // Malice" shares a name with a
+            // "Spite" half being cast (Ashiok's Erasure's split-card ruling), and vice versa.
             CardPredicate.SharesNameWithLinkedExile -> {
                 val sourceId = context?.sourceId ?: return false
                 val exiledNames = com.wingedsheep.engine.handlers.effects.linkedexile.LinkedExileLookup
                     .exiledCards(state, sourceId)
                     .mapNotNull { state.getEntity(it)?.get<CardComponent>()?.name?.takeIf { n -> n.isNotBlank() } }
+                    .flatMap { splitCardNames(it) }
                     .toSet()
                 if (exiledNames.isEmpty()) return false
                 val entityName = projected.getName(entityId)?.takeIf { it.isNotBlank() } ?: card.name
-                entityName.isNotBlank() && entityName in exiledNames
+                entityName.isNotBlank() && splitCardNames(entityName).any { it in exiledNames }
             }
 
             is CardPredicate.SharesNameWith -> {
@@ -1802,14 +1848,21 @@ class PredicateEvaluator(
      * snapshot threaded through, its LKI branch found nothing here and fell through to base
      * characteristics — a pending "copy your next spell" rider capped on its dead source's power
      * read the printed value instead of the pumped one.
+     *
+     * The controller of the [candidate] being matched is bound as the candidate player, so a cap
+     * phrased relative to the object under test reads *that* object's controller — "target spell
+     * with mana value less than or equal to the number of cards in **its controller's** graveyard"
+     * (Drown in the Loch) is `cardsInYourGraveyard(Player.Candidate)`, evaluated once per candidate.
      */
     private fun evaluateDynamicCap(
         state: GameState,
         amount: DynamicAmount,
         context: PredicateContext?,
+        candidate: EntityId,
     ): Int? {
         context ?: return null
-        return amounts.evaluate(state, amount, context.toEffectContext())
+        val candidatePlayer = TargetResolutionUtils.controllerOf(state, candidate)
+        return amounts.evaluate(state, amount, context.toEffectContext().copy(candidatePlayerId = candidatePlayer))
     }
 
     /**
@@ -2847,6 +2900,7 @@ class PredicateEvaluator(
             // A cast-spell record stores the resolved mana value, not the printed cost, so we
             // cannot recover whether {X} was in the printed cost — nor its colored pips.
             CardPredicate.HasXInManaCost -> false
+            CardPredicate.HasRepeatedManaSymbol -> false
             is CardPredicate.ManaCostIs -> false
             is CardPredicate.ColoredManaSymbolsAtLeast -> false
 
@@ -2945,6 +2999,10 @@ class PredicateEvaluator(
         }
     }
 }
+
+/** A split card's names, one per half ("Spite // Malice" → Spite, Malice); any other name alone. */
+private fun splitCardNames(name: String): List<String> =
+    if (" // " in name) name.split(" // ").map { it.trim() } else listOf(name)
 
 /** Every creature type, as a set: a Changeling's subtypes off the battlefield. */
 private val ALL_CREATURE_TYPE_SET: Set<String> = Subtype.ALL_CREATURE_TYPES.toSet()

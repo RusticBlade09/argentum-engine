@@ -1200,6 +1200,14 @@ object Effects {
     fun MoveUntilSourceLeaves(target: EffectTarget, destination: Zone): Effect =
         com.wingedsheep.sdk.scripting.effects.MoveUntilSourceLeavesEffect(target, destination)
 
+    /**
+     * Move out of a zone and return immediately when [anchor] — another permanent, usually a
+     * target — leaves the battlefield ("exile target creature until target enchantment you
+     * control leaves the battlefield"). Nothing moves if the anchor is already gone.
+     */
+    fun MoveUntilLeaves(target: EffectTarget, destination: Zone, anchor: EffectTarget): Effect =
+        com.wingedsheep.sdk.scripting.effects.MoveUntilSourceLeavesEffect(target, destination, anchor)
+
     /** Exile and link to this source; a separate printed return ability must retrieve the card. */
     fun ExileUntilLeaves(target: EffectTarget): Effect =
         ExileUntilLeavesEffect(target)
@@ -2414,9 +2422,26 @@ object Effects {
         target: EffectTarget = EffectTarget.ContextTarget(0),
         count: Int = 1,
         kindFrom: com.wingedsheep.sdk.scripting.effects.CounterKindSource =
-            com.wingedsheep.sdk.scripting.effects.CounterKindSource.RECIPIENT
+            com.wingedsheep.sdk.scripting.effects.CounterKindSource.RECIPIENT,
+        atRandom: Boolean = false
     ): Effect =
-        com.wingedsheep.sdk.scripting.effects.AddCountersOfChosenKindEffect(target, count, kindFrom)
+        com.wingedsheep.sdk.scripting.effects.AddCountersOfChosenKindEffect(target, count, kindFrom, atRandom = atRandom)
+
+    /**
+     * "Choose a kind of counter [at random] that [target] doesn't have on it from among [kinds].
+     * Put [count] counter(s) of that kind on it" (Crystalline Giant) — the printed-list form of
+     * [AddCountersOfChosenKind] (`kindFrom = LISTED_ABSENT`). Candidates are read at resolution;
+     * none left is a no-op.
+     */
+    fun AddCounterOfAbsentKind(
+        kinds: List<CounterType>,
+        target: EffectTarget = EffectTarget.Self,
+        count: Int = 1,
+        atRandom: Boolean = false
+    ): Effect =
+        com.wingedsheep.sdk.scripting.effects.AddCountersOfChosenKindEffect(
+            target, count, com.wingedsheep.sdk.scripting.effects.CounterKindSource.LISTED_ABSENT, kinds, atRandom
+        )
 
     /**
      * "Remove [count] counter(s) of that kind from [target]" — the kind an enclosing
@@ -6415,13 +6440,15 @@ object Effects {
 
     /**
      * Target player can't cast spells this turn.
-     * Used for cards like Xantid Swarm.
+     * Used for cards like Xantid Swarm. [moreAllowed] lets that many more spells through first
+     * ("You can cast only one more spell this turn" — Irencrag Feat).
      */
     fun CantCastSpells(
         target: EffectTarget,
         duration: Duration = Duration.EndOfTurn,
-        spellFilter: GameObjectFilter = GameObjectFilter.Any
-    ): Effect = CantCastSpellsEffect(target, duration, spellFilter)
+        spellFilter: GameObjectFilter = GameObjectFilter.Any,
+        moreAllowed: Int = 0
+    ): Effect = CantCastSpellsEffect(target, duration, spellFilter, moreAllowed)
 
     /**
      * Target player(s) can't search libraries for the duration (default: this turn). Pass
@@ -7754,14 +7781,16 @@ object Effects {
         prompt: String? = null,
         excludeBasicLandNames: Boolean = false,
         pool: CardNamePool = CardNamePool.ANY,
-        chooser: Chooser = Chooser.Controller
+        chooser: Chooser = Chooser.Controller,
+        recordOnSource: Boolean = false
     ): Effect = ChooseOptionEffect(
         optionType = OptionType.CARD_NAME,
         storeAs = storeAs,
         prompt = prompt,
         excludedOptions = if (excludeBasicLandNames) BASIC_LAND_CARD_NAMES else emptyList(),
         cardNamePool = pool,
-        chooser = chooser
+        chooser = chooser,
+        recordOnSource = recordOnSource
     )
 
     /**

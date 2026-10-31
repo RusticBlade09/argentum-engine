@@ -26,7 +26,6 @@ import com.wingedsheep.engine.mechanics.mana.ManaSolver
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.ZoneKey
 import com.wingedsheep.engine.state.components.battlefield.CountersComponent
-import com.wingedsheep.engine.state.components.battlefield.TappedComponent
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.player.ManaPoolComponent
 import com.wingedsheep.sdk.core.ManaCost
@@ -511,7 +510,7 @@ class SacrificeAndPayContinuationResumer(
         val events = mutableListOf<GameEvent>()
         for (permanentId in selected) {
             val container = newState.getEntity(permanentId) ?: continue
-            if (!newState.projectedState.canReceiveCounters(permanentId)) continue
+            if (!newState.projectedState.canReceiveCounters(permanentId, counterType)) continue
             val counters = container.get<CountersComponent>() ?: CountersComponent()
             val modifiedCount = ReplacementEffectUtils.applyCounterPlacementModifiers(
                 newState, permanentId, counterType, continuation.requiredCounters, placerId = placerId,
@@ -1161,11 +1160,8 @@ class SacrificeAndPayContinuationResumer(
             floatingEffects = newState.floatingEffects.filter { floatingEffect ->
                 when (floatingEffect.duration) {
                     is Duration.WhileSourceTapped,
-                    is Duration.WhileSourceTappedAndAffectedPowerAtMostSource -> {
-                        val sourceId = floatingEffect.sourceId
-                        sourceId != null && newState.getBattlefield().contains(sourceId) &&
-                            newState.getEntity(sourceId)?.has<TappedComponent>() == true
-                    }
+                    is Duration.WhileSourceTappedAndAffectedPowerAtMostSource ->
+                        com.wingedsheep.engine.mechanics.durations.GrantDurationGate.sourceTapped(newState, floatingEffect)
                     else -> true
                 }
             }

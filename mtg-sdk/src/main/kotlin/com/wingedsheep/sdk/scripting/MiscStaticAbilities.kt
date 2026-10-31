@@ -12,6 +12,7 @@ import com.wingedsheep.sdk.scripting.filters.unified.GroupFilter
 import com.wingedsheep.sdk.scripting.references.Player
 import com.wingedsheep.sdk.scripting.targets.EffectTarget
 import com.wingedsheep.sdk.scripting.text.TextReplacer
+import com.wingedsheep.sdk.scripting.util.numberToWord
 import com.wingedsheep.sdk.scripting.values.DynamicAmount
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -446,6 +447,38 @@ data class CreaturesDamagedBySourceAreDoomed(
             if (exileInsteadOfDying) add("are exiled instead of dying this turn")
         }
         append(clauses.joinToString(" and "))
+    }
+}
+
+/**
+ * "Lethal damage dealt to [filter] is determined by their power rather than their toughness"
+ * (Zilortha, Strength Incarnate) — a rule modification, not an ability the creatures gain.
+ *
+ * Every place the engine asks whether damage is lethal reads the matching creature's power instead
+ * of its toughness: the lethal-damage state-based action (CR 704.5g), lethal damage when assigning
+ * trample or multi-blocker combat damage (CR 702.19b), and excess damage (CR 120.4a — Flame Spill,
+ * Hell to Pay). A creature with 0 or less power still needs 1 damage marked on it (704.5g destroys
+ * only a creature with damage marked); the 0-toughness state-based action (704.5f) is not about
+ * damage and is untouched. Deathtouch still makes any damage lethal.
+ *
+ * Lowered to a projected flag ([GroupFilter] resolved on projected state, so the affected set is
+ * live) that a later "loses all abilities" on an affected creature does not remove — only the
+ * source losing its abilities or leaving ends it. Read through
+ * `ProjectedState.lethalDamageThreshold`. Closest neighbours: [AssignDamageEqualToToughness] swaps
+ * power for toughness on the *dealing* side (how much a creature assigns), not the receiving side;
+ * [CantBlock] is the same "group gets a rule flag" shape for a different rule.
+ */
+@SerialName("LethalDamageDeterminedByPower")
+@Serializable
+data class LethalDamageDeterminedByPower(
+    val filter: GroupFilter = GroupFilter.AllCreaturesYouControl
+) : StaticAbility {
+    override val description: String =
+        "Lethal damage dealt to ${filter.description} is determined by their power rather than their toughness"
+
+    override fun applyTextReplacement(replacer: TextReplacer): StaticAbility {
+        val newFilter = filter.applyTextReplacement(replacer)
+        return if (newFilter !== filter) copy(filter = newFilter) else this
     }
 }
 
@@ -1339,51 +1372,86 @@ data class PayLifeForColoredMana(
 }
 
 /**
- * Permanents matching [filter] entering the battlefield don't cause abilities to trigger
- * (CR 603.6 enters-the-battlefield triggers are suppressed).
+ * The zone changes a [SuppressZoneChangeTriggers] lock covers: a matching permanent *entering*
+ * the battlefield (Torpor Orb) and/or a matching permanent *dying* — being put into a graveyard
+ * from the battlefield (Hushbringer).
+ */
+@Serializable
+enum class ZoneChangeTriggerCause(val phrase: String) {
+    ENTERING("entering the battlefield"),
+    DYING("dying")
+}
+
+/**
+ * Permanents matching [filter] entering the battlefield and/or dying (per [causes]) don't cause
+ * abilities to trigger.
  *
  * Models the Torpor Orb family — Torpor Orb / Hushwing Gryff ("Creatures entering don't cause
- * abilities to trigger.") with `filter = GameObjectFilter.Creature`, and Tocatli Honor Guard
+ * abilities to trigger.") with `filter = GameObjectFilter.Creature`, Tocatli Honor Guard
  * ("Creatures entering the battlefield under your control don't cause abilities to trigger") with
- * `filter = GameObjectFilter.Creature.youControl()`.
+ * `filter = GameObjectFilter.Creature.youControl()`, and Hushbringer ("Creatures entering or dying
+ * don't cause abilities to trigger.") with `causes = setOf(ENTERING, DYING)`.
  *
- * This suppresses **every** triggered ability that the matching permanent's entry would cause —
- * the entering permanent's own enters-the-battlefield triggers *and* any other permanent's
+ * **Entering** suppresses every triggered ability that the matching permanent's entry would
+ * cause — the entering permanent's own enters-the-battlefield triggers *and* any other permanent's
  * "whenever a [...] enters" trigger whose triggering object is that permanent (per Torpor Orb's
  * Gatherer rulings). The gate is whether the *entering object* matches [filter] in projected state
  * (continuous effects apply — e.g. with March of the Machines an artifact enters as a creature and
  * is suppressed), not what the watching trigger's text names.
  *
+ * **Dying** suppresses, per Hushbringer's rulings, every ability that triggers on a matching
+ * permanent being put into a graveyard from the battlefield — "dies", "is put into a graveyard from
+ * the battlefield" and "leaves the battlefield" abilities, the batched "one or more creatures die"
+ * shapes included. The dying object is matched against [filter] by its last-known information (an
+ * animated land that dies counts as a creature). These are leaves-the-battlefield abilities, so the
+ * lock looks back in time: a creature dying at the same time as the lock's source (including the
+ * source itself) is still suppressed. An ability that triggers on a card being put into a graveyard
+ * "from anywhere" is not a look-back ability: it is stopped only while the lock's source is still
+ * on the battlefield, and never when it is the dying card's own ability. Abilities that trigger on
+ * the event that caused the death ("whenever you sacrifice a creature") are untouched.
+ *
  * Deliberately **not** affected, matching the rulings:
- *  - Replacement effects (enters with counters, enters tapped) — those are not triggered abilities
- *    and run through the replacement layer, which this never touches.
+ *  - Replacement effects (enters with counters, enters tapped, Leyline of the Void exiling a card
+ *    that would die) — those are not triggered abilities and run through the replacement layer,
+ *    which this never touches.
  *  - "As [this] enters the battlefield" choices (`EntersWithChoice`) — not triggered abilities.
- *  - Triggers caused by anything other than a matching permanent entering (leaves-the-battlefield
- *    triggers, attack triggers, etc.).
+ *  - Triggers caused by any zone change outside [causes], and by any other event (attack
+ *    triggers, sacrifice triggers, etc.).
  *
  * The engine evaluates this as a final filtering pass over the batch's pending triggers, so it
- * covers the per-permanent ETB path, the "one or more permanents entered" batch path, and any
+ * covers the per-permanent paths, the "one or more permanents entered / died" batch paths, and any
  * duplicated (Panharmonicon-style) copies uniformly. Multiple copies are redundant.
  *
- * @property filter Which entering permanents have their entry suppressed (matched via projected
- *   state). Defaults to [GameObjectFilter.Creature].
+ * @property filter Which entering/dying permanents have their zone change suppressed. Defaults to
+ *   [GameObjectFilter.Creature].
  * @property abilitiesOf When set, only triggered abilities *of permanents* matching this filter are
  *   suppressed — matched in projected state against the trigger's source, with this ability's
  *   controller as the reference player, and only while that source is on the battlefield (a
  *   graveyard card's "whenever a creature enters" is not an ability of a permanent). `null`
  *   (default) suppresses every ability, the Torpor Orb shape. Elesh Norn, Mother of Machines —
  *   "Permanents entering don't cause abilities of permanents your opponents control to trigger" —
- *   is `SuppressEntersTriggers(GameObjectFilter.Permanent, abilitiesOf = GameObjectFilter.Permanent.opponentControls())`.
+ *   is `SuppressZoneChangeTriggers(GameObjectFilter.Permanent, abilitiesOf = GameObjectFilter.Permanent.opponentControls())`.
+ * @property causes Which zone changes the lock covers; defaults to entering only.
  */
-@SerialName("SuppressEntersTriggers")
+@SerialName("SuppressZoneChangeTriggers")
 @Serializable
-data class SuppressEntersTriggers(
+data class SuppressZoneChangeTriggers(
     val filter: GameObjectFilter = GameObjectFilter.Creature,
-    val abilitiesOf: GameObjectFilter? = null
+    val abilitiesOf: GameObjectFilter? = null,
+    val causes: Set<ZoneChangeTriggerCause> = setOf(ZoneChangeTriggerCause.ENTERING)
 ) : StaticAbility {
-    override val description: String =
-        if (abilitiesOf == null) "${filter.description} entering the battlefield don't cause abilities to trigger"
-        else "${filter.description} entering the battlefield don't cause abilities of ${abilitiesOf.description} to trigger"
+    init {
+        require(causes.isNotEmpty()) { "SuppressZoneChangeTriggers needs at least one cause" }
+    }
+
+    override val description: String = buildString {
+        append(filter.description)
+        append(" ")
+        append(ZoneChangeTriggerCause.entries.filter { it in causes }.joinToString(" or ") { it.phrase })
+        append(" don't cause abilities")
+        if (abilitiesOf != null) append(" of ${abilitiesOf.description}")
+        append(" to trigger")
+    }
     override fun applyTextReplacement(replacer: TextReplacer): StaticAbility {
         val newFilter = filter.applyTextReplacement(replacer)
         val newAbilitiesOf = abilitiesOf?.applyTextReplacement(replacer)
@@ -1505,19 +1573,30 @@ data class SkipStepOrPhase(
 }
 
 /**
- * Removes the maximum hand size limit for the controller.
- * Used for cards like Thought Vessel and Reliquary Tower: "You have no maximum hand size."
+ * Removes the maximum hand size limit for a scoped set of players, by default the controller.
+ * Used for cards like Thought Vessel and Reliquary Tower: "You have no maximum hand size";
+ * `NoMaximumHandSize(Player.Each)` is Folio of Fancies' "Players have no maximum hand size."
  *
  * The engine reads it from each permanent's *projected* static abilities
- * (`com.wingedsheep.engine.core.MaximumHandSize`), so it applies to whoever controls a
- * permanent that has it — printed, gained from a resolved effect, or granted by
+ * (`com.wingedsheep.engine.core.MaximumHandSize`), with [player] resolved relative to the
+ * holder's controller — so it applies to whoever controls a permanent that has it (or every
+ * player in scope) whether it is printed, gained from a resolved effect, or granted by
  * [GrantStaticAbility] ("Enchanted creature has 'You have no maximum hand size'", Nerd Rage) —
  * and stops applying when that permanent loses its abilities.
+ *
+ * @property player Who has no maximum hand size, relative to the holder's controller
+ *   (`You` / `EachOpponent` / `Each`).
  */
 @SerialName("NoMaximumHandSize")
 @Serializable
-data object NoMaximumHandSize : ProjectedStaticAbility {
-    override val description: String = "You have no maximum hand size"
+data class NoMaximumHandSize(val player: Player = Player.You) : ProjectedStaticAbility {
+    override val description: String
+        get() = when (player) {
+            Player.You -> "You have no maximum hand size"
+            Player.Each -> "Players have no maximum hand size"
+            Player.EachOpponent -> "Each opponent has no maximum hand size"
+            else -> "${player.description.replaceFirstChar { it.uppercase() }} has no maximum hand size"
+        }
 }
 
 /**
@@ -1566,6 +1645,29 @@ data class SetMaximumHandSize(
         val newAmount = amount.applyTextReplacement(replacer)
         return if (newAmount !== amount) copy(amount = newAmount) else this
     }
+}
+
+/**
+ * "Your devotion to each color and each combination of colors is increased by [amount]" (Altar of
+ * the Pantheon). Raises every devotion count (CR 700.5) its holder's controller has — devotion to
+ * one color, to a combination, and to a chosen color alike — by [amount], once per count however
+ * many colors it names, while the holder is on the battlefield face up. Per the Altar's ruling the
+ * bonus survives the holder losing its abilities. Read where devotion is counted
+ * (`DynamicAmountEvaluator`'s `DynamicAmount.DevotionTo` branch), so a Theros god's "isn't a
+ * creature" threshold, Nykthos's mana and every "equal to your devotion" amount see it.
+ *
+ * It isn't a Rule 613 effect: `StaticAbilityHandler` stamps it as a marker on the printed card as
+ * it enters, because devotion is read in the middle of projection (Layer 4, by the gods) — before
+ * Layer 6 has assembled projected static abilities. Printed only; it cannot sit behind an
+ * "as long as …" gate or be granted.
+ *
+ * @property amount How much each devotion count rises by (positive).
+ */
+@SerialName("ModifyDevotion")
+@Serializable
+data class ModifyDevotion(val amount: Int = 1) : StaticAbility {
+    override val description: String =
+        "Your devotion to each color and each combination of colors is increased by ${numberToWord(amount)}"
 }
 
 /**

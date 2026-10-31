@@ -2478,13 +2478,13 @@
                     "abilities": [
                         {
                             "type": "TransformPermanent",
-                            "setSubtypes": [
-                                "Bear"
-                            ],
                             "filter": {
                                 "baseFilter": "permanent",
                                 "scope": "Self"
-                            }
+                            },
+                            "setCreatureSubtypes": [
+                                "Bear"
+                            ]
                         },
                         {
                             "type": "SetBasePowerToughnessStatic",
@@ -13082,7 +13082,10 @@
                                     },
                                     "id": "t0",
                                     "dynamicMaxCount": "CastX",
-                                    "totalManaValueAtMost": "CastX"
+                                    "totalAtMost": {
+                                        "property": "MANA_VALUE",
+                                        "amount": "CastX"
+                                    }
                                 }
                             ],
                             "description": "Return up to X target creature cards with total mana value X or less from your graveyard to the battlefield. They gain haste until end of turn."

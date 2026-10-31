@@ -322,6 +322,9 @@ class GameSession(
 
     /** Per-player priority mode setting (AUTO = smart auto-pass, STOPS = stop on opponent stack + combat damage, FULL_CONTROL = never auto-pass) */
     private val priorityModes = java.util.concurrent.ConcurrentHashMap<EntityId, PriorityMode>()
+
+    /** Players whose preference is to order their own triggers; Full Control asks them regardless. */
+    private val prefersManualTriggerOrdering = java.util.concurrent.ConcurrentHashMap.newKeySet<EntityId>()
     private val stopOverrides = java.util.concurrent.ConcurrentHashMap<EntityId, StopOverrideSettings>()
 
     // Compact replay recording — see [com.wingedsheep.gameserver.replay.CompactReplay]. Instead of
@@ -1347,6 +1350,7 @@ class GameSession(
     fun setPriorityMode(playerId: EntityId, mode: PriorityMode) {
         priorityModes[playerId] = mode
         logger.info("Player $playerId set priority mode to $mode")
+        applyTriggerOrdering(playerId)
     }
 
     /**
@@ -1434,10 +1438,23 @@ class GameSession(
     }
 
     /**
-     * Set whether [playerId] orders their own simultaneous triggers (CR 603.3b). Like a yield it
-     * lives on the GameState and changes what the engine asks, so it is recorded for replay too.
+     * Set whether [playerId] prefers to order their own simultaneous triggers (CR 603.3b). A player
+     * in Full Control orders them whatever the preference says: they asked to see every choice.
      */
-    fun setManualTriggerOrdering(playerId: EntityId, manual: Boolean) = synchronized(stateLock) {
+    fun setManualTriggerOrdering(playerId: EntityId, manual: Boolean) {
+        if (manual) prefersManualTriggerOrdering += playerId else prefersManualTriggerOrdering -= playerId
+        applyTriggerOrdering(playerId)
+    }
+
+    /**
+     * Put [playerId]'s effective trigger ordering — their preference, or Full Control — on the
+     * GameState. Like a yield it changes what the engine asks, so it is recorded for replay too.
+     * Full Control only implies it for a person: an AI seat in Full Control keeps automatic order.
+     */
+    private fun applyTriggerOrdering(playerId: EntityId) = synchronized(stateLock) {
+        val humanInFullControl = getPriorityMode(playerId) == PriorityMode.FULL_CONTROL &&
+            players[playerId]?.webSocketSession !is com.wingedsheep.gameserver.ai.AiWebSocketSession
+        val manual = playerId in prefersManualTriggerOrdering || humanInFullControl
         val state = gameState ?: return@synchronized
         if (state.ordersOwnTriggers(playerId) == manual) return@synchronized
         gameState = state.withManualTriggerOrdering(playerId, manual)

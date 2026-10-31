@@ -375,8 +375,10 @@ class StateProjector {
                 projectedValues[effect.sourceId]?.lostAllAbilities == true) continue
             // "Can't block" is a rules effect, not a characteristic: it applies once Layer 6 has
             // settled who still has which ability (CR 613.11), so a lose-all-abilities effect
-            // strips a static's restriction whatever the two timestamps are.
-            if (effect.modification is Modification.SetCantBlock) {
+            // strips a static's restriction whatever the two timestamps are. Zilortha's "lethal
+            // damage … is determined by their power" is the same kind of rules effect.
+            if (effect.modification is Modification.SetCantBlock ||
+                effect.modification is Modification.SetLethalDamageByPower) {
                 deferredCantBlock += effect to startedBeforeAbility
                 continue
             }
@@ -391,7 +393,8 @@ class StateProjector {
         }
         // A static ability's effect exists only while its source has the ability (CR 604.2): a
         // Craven Giant that lost all abilities can block, and so can a creature whose "can't
-        // block" came from an enchantment that lost its abilities. A restriction created by a
+        // block" came from an enchantment that lost its abilities (likewise a Zilortha that lost
+        // its abilities no longer judges lethal damage by power). A restriction created by a
         // resolved spell or ability is independent of anyone's abilities (CR 611.2a), as is one
         // belonging to an effect that started applying before Layer 6 (CR 613.6).
         for ((effect, startedBeforeAbility) in deferredCantBlock) {
@@ -590,6 +593,7 @@ class StateProjector {
                 isSuspected = v.isSuspected,
                 cantAttack = v.cantAttack,
                 attacksWithoutTapping = v.attacksWithoutTapping,
+                lethalDamageByPower = v.lethalDamageByPower,
                 canAttackAsThoughHasty = v.canAttackAsThoughHasty,
                 cantBlock = v.cantBlock,
                 cantBeTurnedFaceUp = v.cantBeTurnedFaceUp,
@@ -996,19 +1000,11 @@ class StateProjector {
 
         // 2. Collect floating effects (from resolved spells like Giant Growth)
         for (floating in state.floatingEffects) {
-            if (floating.duration is Duration.WhileSourceTapped) {
-                val sourceId = floating.sourceId
-                if (sourceId == null || !state.getBattlefield().contains(sourceId) ||
-                    state.getEntity(sourceId)?.has<TappedComponent>() != true) {
-                    continue
-                }
-            }
-            if (floating.duration is Duration.WhileSourceTappedAndAffectedPowerAtMostSource) {
-                val sourceId = floating.sourceId
-                if (sourceId == null || !state.getBattlefield().contains(sourceId) ||
-                    state.getEntity(sourceId)?.has<TappedComponent>() != true) {
-                    continue
-                }
+            if ((floating.duration is Duration.WhileSourceTapped ||
+                    floating.duration is Duration.WhileSourceTappedAndAffectedPowerAtMostSource) &&
+                !GrantDurationGate.sourceTapped(state, floating)
+            ) {
+                continue
             }
             if (floating.duration is Duration.WhileSourceOnBattlefield) {
                 val sourceId = floating.sourceId
@@ -1027,13 +1023,10 @@ class StateProjector {
             }
             // Seasinger — both halves at once. The battlefield and tapped halves are checkable
             // here; the source-controller half joins WhileYouControlSource's post-Layer-2 sweep.
-            if (floating.duration is Duration.WhileYouControlSourceAndSourceTapped) {
-                val sourceId = floating.sourceId
-                if (sourceId == null || !state.getBattlefield().contains(sourceId) ||
-                    state.getEntity(sourceId)?.has<TappedComponent>() != true
-                ) {
-                    continue
-                }
+            if (floating.duration is Duration.WhileYouControlSourceAndSourceTapped &&
+                !GrantDurationGate.sourceTapped(state, floating)
+            ) {
+                continue
             }
             // "for as long as [the source Aura/Equipment] remains attached to it" — gate the whole
             // effect on the source still being on the battlefield (CR 611.2b). The per-affected

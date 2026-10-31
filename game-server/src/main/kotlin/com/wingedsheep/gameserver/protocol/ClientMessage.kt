@@ -702,6 +702,13 @@ sealed interface ClientMessage {
          * it isn't listed there. The deck validator checks its condition.
          */
         val companion: String? = null,
+        /**
+         * The format the deck was built for — a saved deck's or an example's — as a
+         * [com.wingedsheep.sdk.core.DeckFormat] name. A client claim: kept only when the deck is
+         * legal there, and then what an AI seat on Auto builds its own deck for. A string rather
+         * than the enum so a saved deck's stale or free-form value is dropped, not a decode error.
+         */
+        val deckFormat: String? = null,
     ) : ClientMessage
 
     /** Toggle this player's ready flag. The server starts the game when both players are ready. */

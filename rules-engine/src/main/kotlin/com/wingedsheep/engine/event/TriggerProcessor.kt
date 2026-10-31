@@ -2,6 +2,7 @@ package com.wingedsheep.engine.event
 
 import com.wingedsheep.sdk.scripting.AbilityTriggerCause
 import com.wingedsheep.engine.mechanics.targeting.withTargetConstraints
+import com.wingedsheep.engine.mechanics.targeting.withTotalCap
 import com.wingedsheep.engine.handlers.TargetingSourceType
 import com.wingedsheep.engine.handlers.DependentTargetSelection
 import com.wingedsheep.engine.core.*
@@ -501,11 +502,13 @@ class TriggerProcessor(
                     com.wingedsheep.engine.mechanics.targeting.NumericTargetEquality.groups(state, allLegalTargets[index].orEmpty(), it)
                 },
                 sameOwner = (req as? com.wingedsheep.sdk.scripting.targets.TargetObject)?.sameOwner == true,
-                totalManaValueAtMost = resolveTotalManaValueAtMost(state, trigger, req),
                 differentNames = (req as? com.wingedsheep.sdk.scripting.targets.TargetObject)?.differentNames == true,
                 differentControllers =
                     (req as? com.wingedsheep.sdk.scripting.targets.TargetObject)?.differentControllers == true
             ).withTargetConstraints(state, req, allLegalTargets[index].orEmpty())
+                .withTotalCap(state, req, allLegalTargets[index].orEmpty(), amountEvaluator) {
+                    triggerTargetContext(trigger)
+                }
         }
 
         // Create the target selection decision. The hint banner tells the player *what*
@@ -892,9 +895,11 @@ class TriggerProcessor(
                         req.unlimited && req.dynamicMaxCount != null -> minOf(req.count, legalTargetsMap[index].orEmpty().size)
                         req.unlimited -> legalTargetsMap[index].orEmpty().size
                         else -> req.count
-                    },
-                    totalManaValueAtMost = resolveModeTotalManaValueAtMost(state, ability, req)
+                    }
                 ).withTargetConstraints(state, req, legalTargetsMap[index].orEmpty())
+                    .withTotalCap(state, req, legalTargetsMap[index].orEmpty(), amountEvaluator) {
+                        modeEffectContext(ability)
+                    }
             }
 
             if (requirementInfos.any { it.minTargets > it.maxTargets }) {
@@ -1024,15 +1029,6 @@ class TriggerProcessor(
             targetRequirements = flatRequirements,
             triggerCause = triggerCause
         )
-    }
-
-    /** [resolveTotalManaValueAtMost] for a mode's requirement, read against the ability going on the stack. */
-    private fun resolveModeTotalManaValueAtMost(
-        state: GameState,
-        ability: TriggeredAbilityOnStackComponent,
-        requirement: TargetRequirement
-    ): Int? = com.wingedsheep.engine.mechanics.targeting.resolveTotalManaValueCap(state, requirement, amountEvaluator) {
-        modeEffectContext(ability)
     }
 
     /** The context a mode's target-time amounts read: the ability going on the stack. */
@@ -1458,28 +1454,17 @@ class TriggerProcessor(
         }
     }
 
-    /**
-     * Resolve a [TargetObject.totalManaValueAtMost] aggregate cap ("...with total mana value X or
-     * less") to a concrete integer at decision-build time — e.g. Fire Lord Sozin's cap reflecting
-     * the X just paid, or a reflexive trigger's action-half payment (CR 603.12) via
-     * [PendingTrigger.carriedPipeline]. `null` when the requirement carries no such cap.
-     */
-    private fun resolveTotalManaValueAtMost(
-        state: GameState,
-        trigger: PendingTrigger,
-        requirement: TargetRequirement
-    ): Int? = com.wingedsheep.engine.mechanics.targeting.resolveTotalManaValueCap(state, requirement, amountEvaluator) {
-        EffectContext(
-            sourceId = trigger.sourceId,
-            objectReferences = trigger.objectReferences,
-            controllerId = trigger.controllerId,
-            triggeringEntityId = trigger.triggerContext.triggeringEntityId,
-            triggeringPlayerId = trigger.triggerContext.triggeringPlayerId,
-            xValue = trigger.triggerContext.xValue,
-            triggerContext = trigger.triggerContext,
-            pipeline = targetingPipeline(trigger),
-        )
-    }
+    /** The context a trigger's target-time amounts read (caps resolved as its targets are chosen). */
+    private fun triggerTargetContext(trigger: PendingTrigger): EffectContext = EffectContext(
+        sourceId = trigger.sourceId,
+        objectReferences = trigger.objectReferences,
+        controllerId = trigger.controllerId,
+        triggeringEntityId = trigger.triggerContext.triggeringEntityId,
+        triggeringPlayerId = trigger.triggerContext.triggeringPlayerId,
+        xValue = trigger.triggerContext.xValue,
+        triggerContext = trigger.triggerContext,
+        pipeline = targetingPipeline(trigger),
+    )
 
     /**
      * Has this source's controller already taken [abilityId]'s "Do this only once each turn" action

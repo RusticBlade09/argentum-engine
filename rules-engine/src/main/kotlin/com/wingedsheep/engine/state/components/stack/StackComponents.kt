@@ -187,6 +187,14 @@ data class SpellOnStackComponent(
      */
     val exiledAsCostSnapshots: List<EntitySnapshot> = emptyList(),
     /**
+     * Permanents tapped to pay this spell's additional cost (`CostAtom.TapPermanents`, or a
+     * variable tap cost), recorded at payment time (CR 601.2h). The spell counterpart of
+     * [ActivatedAbilityOnStackComponent.tappedPermanents] — read at resolution by
+     * `EffectTarget.TappedAsCost` (Swallow Whole's "the creature tapped to pay this spell's
+     * additional cost"). Convoke taps are not costs of this kind; they live in [convokedCreatures].
+     */
+    val tappedPermanents: List<EntityId> = emptyList(),
+    /**
      * Last-known-info snapshots (Rule 113.7a) for entities chosen at cost-pay time
      * that may later leave the battlefield before the spell resolves. Populated
      * when an [com.wingedsheep.sdk.scripting.AdditionalCost.ChooseEntity] step
@@ -523,6 +531,13 @@ data class ActivatedAbilityOnStackComponent(
      * reflexive triggers) that carry no restriction.
      */
     val sourceFaceChanges: Int? = null,
+    /**
+     * The source permanent's [com.wingedsheep.engine.state.components.battlefield.UntapCountComponent]
+     * clock the moment this ability was put onto the stack. Effects it creates "for as long as
+     * <source> remains tapped" hold only while the clock still reads this, so a source that
+     * untapped before resolution leaves them inert (CR 611.2b). Null for synthesized abilities.
+     */
+    val sourceUntapCount: Int? = null,
     val sourceBattlefieldTimestamp: Long? = null,
     val objectReferences: com.wingedsheep.engine.handlers.ObjectReferenceEnvironment =
         com.wingedsheep.engine.handlers.ObjectReferenceEnvironment(),
