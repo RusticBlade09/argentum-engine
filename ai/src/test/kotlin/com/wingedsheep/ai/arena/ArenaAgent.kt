@@ -167,6 +167,12 @@ object ArenaAgents {
         // LIVE without the opponent's combat responses: `just arena live-without-responses live 300`
         // prices the opponent-ability model on its own.
         ArenaAgent("live-without-responses", AiProfile.LIVE.copy(id = "live-without-responses", anticipateCombatResponses = false)),
+        // LIVE with the crack-back read off creatures only: `just arena live-without-crackback-stress live 300`
+        // prices reading the opponent's visible abilities into the swing back.
+        ArenaAgent(
+            "live-without-crackback-stress",
+            AiProfile.LIVE.copy(id = "live-without-crackback-stress", stressCrackBack = false),
+        ),
         // Selection counts by value: searches take what they may, scry/surveil send away only the
         // cards not worth drawing. `just arena production production-selectcount 300` prices it
         // alone; `just arena production-candidate-expiring production-candidate-selectcount 300`

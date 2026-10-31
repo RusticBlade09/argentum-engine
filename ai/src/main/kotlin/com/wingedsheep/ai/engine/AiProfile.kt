@@ -1299,6 +1299,30 @@ data class AiProfile(
      * `BlockTriggersKillTest`.
      */
     val blockTriggersKill: Boolean = false,
+    /**
+     * Read an attack plan's crack-back as the swing back can really come: our idle blockers gang up
+     * on a trampler, and the opponent's visible activated abilities are played out.
+     *
+     * 2026-10-31 review of games against people, game `39e8aac6` turn 29: at 3 life the AI sent its
+     * unblockable chip attackers at an opponent on 15, facing a 7/7 trampler, a 2/2, and Living
+     * Library ("{6}, Sacrifice this creature: shuffle target creature an opponent controls into its
+     * library") beside nine lands that untap. The estimate let one blocker meet the trampler however
+     * many stood idle, so staying home read as lethal too and the attack won on board score; and it
+     * read creatures only, so the Library was invisible. The opponent shuffled a blocker away and
+     * the trampler dealt exactly 3.
+     *
+     * With this on, the attack scorer's crack-back stacks idle blockers on tramplers
+     * ([CombatMath.calculateDamageThroughOptimalBlocking]'s `stackOnTramplers`), and when that
+     * crack-back leaves us alive, plays out each activated ability the opponent's permanents can
+     * afford on their turn (their permanents untapped) that can change a fight — removal, a pump,
+     * damage to a creature — once, on the creatures it can hit, re-estimating the swing back on what
+     * it leaves ([com.wingedsheep.ai.engine.CrackBackStress]). A plan one such answer makes lethal
+     * is priced as lethal; a merely bigger crack-back is not charged, so the opponent's options
+     * never hold back an attack that doesn't put our life on the line. Visible information only:
+     * nothing in the opponent's hand is assumed. Blocks and the danger check are unchanged. Pinned
+     * by `AttacksReadTheRaceTest`; `just arena live-without-crackback-stress live 300` prices it.
+     */
+    val stressCrackBack: Boolean = false,
     /** Non-null profiles may only be selected automatically for this set. Arena selection stays explicit. */
     val restrictedToSet: String? = null,
 ) {
@@ -2259,6 +2283,7 @@ data class AiProfile(
             tapToGrowAtTheirEndStep = true,
             minimalLethalInPods = true,
             blockTriggersKill = true,
+            stressCrackBack = true,
         )
 
         /**
