@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- #PR Drafts and builds limited decks for creature types: beside a lord or tribal payoff (Goblin King, "whenever another Elf enters") a creature of that type, a changeling or a maker of its tokens is worth more, and a tribal payoff with too few members is worth less; Commander decks also find their tribe in the commander's abilities, not only its text
 - #4163 Drafts and builds limited decks for synergy: a pick or a slot is worth more when it feeds a payoff already taken, a payoff with too little fuel is worth less, and the deck score counts payoffs the deck keeps fed
 - #4162 Equips the creature an Equipment helps most: equip, fortify, reconfigure and "attach it to target creature" triggers read what the Equipment does to the creature it equips, so the cheap target pick and the simulated shortlist start from our best creature instead of our worst
 - #4159 Values a payoff by the fuel beside it — Blood Artist next to a sacrifice outlet and bodies, Ajani's Pridemate beside lifelinkers, a prowess creature with instants in hand — so it kills a fed engine over the 1/1s feeding it, counts the engine toward whether a removal spell is worth spending, and values its own engine the same way; Commander decks find their theme cards by what they feed or cash in rather than by matching rules-text words

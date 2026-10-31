@@ -2,6 +2,7 @@ package com.wingedsheep.ai.engine.knowledge
 
 import com.wingedsheep.sdk.core.CounterType
 import com.wingedsheep.sdk.core.Keyword
+import com.wingedsheep.sdk.core.Subtype
 import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.model.CardDefinition
 import com.wingedsheep.sdk.model.CardScript
@@ -56,9 +57,28 @@ enum class SynergyAxis {
     GRAVEYARD,
 }
 
-/** Which axes a card [feeds] and which it [rewards]. Empty on both sides for most cards. */
-data class SynergyProfile(val feeds: Set<SynergyAxis>, val rewards: Set<SynergyAxis>) {
-    val isEmpty: Boolean get() = feeds.isEmpty() && rewards.isEmpty()
+/**
+ * Which axes a card [feeds] and which it [rewards], and the same for creature types: the [tribes]
+ * it is or makes (every one, for a changeling: [everyTribe]) and the [tribesRewarded] it asks for
+ * ([CreatureTypeSynergy]). The axis sets are empty for most cards; every creature has a tribe.
+ */
+data class SynergyProfile(
+    val feeds: Set<SynergyAxis>,
+    val rewards: Set<SynergyAxis>,
+    val tribes: Set<Subtype> = emptySet(),
+    val tribesRewarded: Set<Subtype> = emptySet(),
+    val everyTribe: Boolean = false,
+) {
+    val isEmpty: Boolean
+        get() = feeds.isEmpty() && rewards.isEmpty() && tribes.isEmpty() && tribesRewarded.isEmpty() && !everyTribe
+
+    /** Rewards an axis or asks for a creature type: a card whose value hangs on the rest of the deck. */
+    val isPayoff: Boolean get() = rewards.isNotEmpty() || tribesRewarded.isNotEmpty()
+
+    /** Feeds an axis or is (or makes) some creature type. */
+    val isFeeder: Boolean get() = feeds.isNotEmpty() || tribes.isNotEmpty() || everyTribe
+
+    fun feedsTribe(tribe: Subtype): Boolean = everyTribe || tribe in tribes
 
     /** Axes on which this card and [other] complete each other, in either direction. */
     fun sharedWith(other: SynergyProfile): Set<SynergyAxis> =
@@ -115,7 +135,13 @@ object SynergyAxes {
             if (card.typeLine.isInstant || card.typeLine.isSorcery) add(SynergyAxis.SPELLS)
             if (Keyword.LIFELINK in card.keywords) add(SynergyAxis.LIFEGAIN)
         }
-        return if (rewards.isEmpty() && feeds.isEmpty()) SynergyProfile.NONE else SynergyProfile(feeds, rewards)
+        return SynergyProfile(
+            feeds = feeds,
+            rewards = rewards,
+            tribes = CreatureTypeSynergy.fed(card),
+            tribesRewarded = CreatureTypeSynergy.rewarded(card),
+            everyTribe = CreatureTypeSynergy.everyType(card),
+        ).takeUnless { it.isEmpty } ?: SynergyProfile.NONE
     }
 
     // ── Rewards ────────────────────────────────────────────────────────────────

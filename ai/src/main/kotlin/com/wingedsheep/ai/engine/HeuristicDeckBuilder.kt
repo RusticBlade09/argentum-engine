@@ -388,7 +388,7 @@ internal fun bestSynergySwap(
     var best: Pair<PoolSlot, PoolSlot>? = null
     var bestGain = MIN_SWAP_GAIN
     for (out in selected) for (inn in candidates) {
-        if (keepPayoffs && SynergyAxes.of(out.card).rewards.isNotEmpty()) continue
+        if (keepPayoffs && SynergyAxes.of(out.card).isPayoff) continue
         if (inn.card.name == out.card.name || !sameRole(inn.card, out.card)) continue
         val gain = worth(selected.map { if (it == out) inn else it }) - current
         if (gain > bestGain) { bestGain = gain; best = out to inn }
