@@ -1200,6 +1200,19 @@ data class AbilityAutoAnsweredEvent(
 ) : GameEvent
 
 /**
+ * Automatic trigger ordering put [count] of [playerId]'s simultaneous triggered abilities on the
+ * stack in an order they could have chosen differently (CR 603.3b) — the player had not turned on
+ * ordering their own triggers, and the abilities weren't interchangeable copies. It carries no rules
+ * effect; the controller's client uses it to point out, once, that they can choose the order.
+ */
+@Serializable
+@SerialName("TriggersOrderedAutomaticallyEvent")
+data class TriggersOrderedAutomaticallyEvent(
+    val playerId: EntityId,
+    val count: Int
+) : GameEvent
+
+/**
  * A player committed a crime (CR Outlaws of Thunder Junction). Emitted at the same time
  * as [SpellCastEvent], [AbilityActivatedEvent], or [AbilityTriggeredEvent] when at least
  * one initial target is an opponent, a permanent/spell/ability an opponent controls, or

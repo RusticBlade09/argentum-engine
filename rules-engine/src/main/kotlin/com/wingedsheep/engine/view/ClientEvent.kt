@@ -427,6 +427,17 @@ sealed interface ClientEvent {
             else "Auto-answered No to $sourceName (yield)"
     ) : ClientEvent
 
+    /**
+     * Automatic ordering put [count] of the viewer's simultaneous triggered abilities on the stack
+     * in an order they could have chosen (CR 603.3b). The client points out, once, that they can.
+     */
+    @Serializable
+    @SerialName("triggersOrderedAutomatically")
+    data class TriggersOrderedAutomatically(
+        val count: Int,
+        override val description: String = "Your $count triggered abilities went on the stack in the order they triggered"
+    ) : ClientEvent
+
     // =========================================================================
     // State Change Events
     // =========================================================================
@@ -1479,6 +1490,10 @@ object ClientEventTransformer {
                         answer = event.answer
                     )
                 } else null
+
+            // Only the player whose triggers the game ordered hears about it; it's their preference.
+            is TriggersOrderedAutomaticallyEvent ->
+                if (event.playerId == viewingPlayerId) ClientEvent.TriggersOrderedAutomatically(event.count) else null
 
             is TappedEvent -> ClientEvent.PermanentTapped(
                 permanentId = event.entityId,
