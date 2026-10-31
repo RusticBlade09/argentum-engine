@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- #4110 Attacks with a creature it stole until end of turn instead of keeping it home as if it were its own, and no longer casts a steal once the turn has no combat left for the borrowed creature
 - #4108 Holds an until-end-of-turn shrink spell instead of casting it on a creature that can no longer fight this turn (a tapped attacker on its own turn), and holds a flash creature when the other instant in hand costs more than all its mana
 - #4105 Stops passing main phases with castable creatures when a single lost rollout outvotes the board: each candidate's playouts are read with its static evaluation counted as one more playout
 - #4102 In Commander games, counts commander damage as lethal: chump-blocks a commander about to reach the commander-damage threshold, keeps home the blocker that stops it next turn, and aims at a seat its own commander can finish
