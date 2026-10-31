@@ -1449,9 +1449,12 @@ class GameSession(
     /**
      * Put [playerId]'s effective trigger ordering — their preference, or Full Control — on the
      * GameState. Like a yield it changes what the engine asks, so it is recorded for replay too.
+     * Full Control only implies it for a person: an AI seat in Full Control keeps automatic order.
      */
     private fun applyTriggerOrdering(playerId: EntityId) = synchronized(stateLock) {
-        val manual = playerId in prefersManualTriggerOrdering || getPriorityMode(playerId) == PriorityMode.FULL_CONTROL
+        val humanInFullControl = getPriorityMode(playerId) == PriorityMode.FULL_CONTROL &&
+            players[playerId]?.webSocketSession !is com.wingedsheep.gameserver.ai.AiWebSocketSession
+        val manual = playerId in prefersManualTriggerOrdering || humanInFullControl
         val state = gameState ?: return@synchronized
         if (state.ordersOwnTriggers(playerId) == manual) return@synchronized
         gameState = state.withManualTriggerOrdering(playerId, manual)
