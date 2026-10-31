@@ -91,6 +91,15 @@ class RandomDeckResolverTest : FunSpec({
         card("ZZZ Common $it", "{${it % 4}}{G}", Rarity.COMMON, allFormats - DeckFormat.STANDARD)
     }
 
+    /**
+     * Set THN: four instants and nothing else — the shape of a set the corpus barely covers, whose
+     * own pool can't fill a 60-card deck's spell slots, let alone its creature count.
+     */
+    val thinSet = listOf("Strike", "Crescendo", "Shield", "Web").map {
+        CardDefinition.instant("THN $it", ManaCost.parse("{1}{G}"), "")
+            .copy(legalFormats = allFormats - DeckFormat.STANDARD)
+    }
+
     fun resolver(): RandomDeckResolver {
         val configs = listOf("AAA", "BBB").associateWith { code ->
             BoosterGenerator.SetConfig(
@@ -99,7 +108,7 @@ class RandomDeckResolverTest : FunSpec({
                 cards = pool(code),
                 basicLands = basics,
             )
-        }
+        } + ("THN" to BoosterGenerator.SetConfig("THN", "Set THN", thinSet, basics))
         val booster = BoosterGenerator(configs)
         val registry = CardRegistry()
         configs.values.forEach { registry.register(it.cards) }
@@ -315,6 +324,24 @@ class RandomDeckResolverTest : FunSpec({
 
         deck.deckList.values.sum() shouldBe sealedSize
         deck.deckList.keys.filterNot { it.startsWith("Forest") }.forEach { it.startsWith("AAA") shouldBe true }
+    }
+
+    test("Auto facing a 60-card deck from a set too thin to build from gets a format-wide constructed deck") {
+        // The ea90c6f3 shape: the human's list reads as one set whose pool is four instants. The
+        // set-matched build is refused (it would be 44 lands and no creatures), and the answer is
+        // a constructed deck for the list's format — not a thin pile, and not a 40-card sealed pool.
+        val thinList = thinSet.associate { it.name to 4 } + ("Forest" to 44)
+        resolver().matchingSets(thinList) shouldBe listOf("THN")
+
+        val deck = resolver().resolveAgainst(
+            AiDeckSpec.Auto, format = null, fallbackSetCode = "AAA", commanderRules = false,
+            opponentDeck = thinList,
+        )
+
+        deck.deckList.values.sum() shouldBe constructedSize
+        val spells = deck.deckList.filterKeys { !it.startsWith("Forest") }
+        (spells.values.sum() >= 28) shouldBe true
+        spells.keys.any { !it.startsWith("THN") } shouldBe true
     }
 
     test("the host's own set choice beats matching the human's deck") {
