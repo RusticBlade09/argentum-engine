@@ -29,7 +29,7 @@ class AnticipateCombatResponsesTest : ScenarioTestBase() {
         val WITHOUT = AiProfile.LIVE.copy(id = "live-without-responses", anticipateCombatResponses = false)
     }
 
-    private data class Permanent(val name: String, val tapped: Boolean = false)
+    private data class Permanent(val name: String, val tapped: Boolean = false, val token: Boolean = false)
 
     private fun TestGame.names(ids: Collection<EntityId>): List<String> =
         ids.map { state.getEntity(it)?.get<CardComponent>()?.name ?: it.value }
@@ -39,7 +39,7 @@ class AnticipateCombatResponsesTest : ScenarioTestBase() {
     private fun attackPosition(ours: List<Permanent>, theirs: List<Permanent>): TestGame {
         var builder = scenario().withRngSeed(SCENARIO_SEED).withPlayers()
         ours.forEach { builder = builder.withCardOnBattlefield(1, it.name, tapped = it.tapped) }
-        theirs.forEach { builder = builder.withCardOnBattlefield(2, it.name, tapped = it.tapped) }
+        theirs.forEach { builder = builder.withCardOnBattlefield(2, it.name, tapped = it.tapped, isToken = it.token) }
         return builder.build().advanceToDeclaration(1, Step.DECLARE_ATTACKERS)
     }
 
@@ -51,6 +51,18 @@ class AnticipateCombatResponsesTest : ScenarioTestBase() {
         Permanent("Grizzly Bears"),
         Permanent("Leonin Sun Standard"),
     ) + List(plains) { Permanent("Plains", tapped = plainsTapped) }
+
+    /**
+     * The defender's side of a logged game: Tenured Tethermage ("Tap two untapped artifacts you
+     * control: Put two +1/+1 counters on this creature") beside [untappedArtifacts] untapped
+     * artifacts — Heartwood tokens and a Medic's Kitesail — and two Heartwoods that entered tapped.
+     */
+    private fun tethermageBoard(untappedArtifacts: Boolean) = listOf(
+        Permanent("Tenured Tethermage"),
+        Permanent("Medic's Kitesail", tapped = !untappedArtifacts),
+    ) + List(3) { Permanent("Heartwood", tapped = !untappedArtifacts, token = true) } +
+        List(2) { Permanent("Heartwood", tapped = true, token = true) } +
+        listOf(Permanent("Forest"), Permanent("Mountain", tapped = true), Permanent("Plains", tapped = true), Permanent("Forest", tapped = true))
 
     // ── Blocking: seat 1 attacks with what the test declares, seat 2 is the AI ──
 
@@ -124,6 +136,32 @@ class AnticipateCombatResponsesTest : ScenarioTestBase() {
                 ours = listOf(Permanent("Hill Giant")),
             )
             withClue("blocked with ${game.names(after.keys)}") { after.keys.shouldBeEmpty() }
+        }
+
+        // A 3/2 into a 1/1 reads as a free three damage — until the defender taps its artifacts
+        // twice before blocks: two +1/+1 counters each time make the Tethermage a 5/5 that eats
+        // the attacker and keeps the counters.
+        test("doesn't attack into a +1/+1-counter pump the defender can afford") {
+            val game = attackPosition(
+                ours = listOf(Permanent("Divining Duelist"), Permanent("Living Library")),
+                theirs = tethermageBoard(untappedArtifacts = true),
+            )
+            val duelist = game.findPermanent("Divining Duelist")!!
+
+            val before = game.attackersChosenBy(WITHOUT)
+            withClue("reproduction: attacked with ${game.names(before)}") { before shouldContain duelist }
+
+            val after = game.attackersChosenBy(AiProfile.LIVE)
+            withClue("attacked with ${game.names(after)}") { after shouldNotContain duelist }
+        }
+
+        test("attacks past the same Tethermage when its artifacts are tapped") {
+            val game = attackPosition(
+                ours = listOf(Permanent("Divining Duelist"), Permanent("Living Library")),
+                theirs = tethermageBoard(untappedArtifacts = false),
+            )
+            val after = game.attackersChosenBy(AiProfile.LIVE)
+            withClue("attacked with ${game.names(after)}") { after shouldContain game.findPermanent("Divining Duelist")!! }
         }
 
         test("blocks the same attacker when its controller is tapped out") {
