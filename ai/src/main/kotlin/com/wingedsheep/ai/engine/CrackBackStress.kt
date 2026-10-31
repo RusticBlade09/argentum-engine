@@ -132,7 +132,8 @@ internal class CrackBackStress(
                     listOf(TargetSelection.fillHeuristically(state, bound, opponent, fillPartialRequirements = true))
                 }
             }
-            for (action in targeted) {
+            for (target in targeted) {
+                val action = SelectionCostPayment.withPlainCosts(state, offer, target)
                 out += action
                 // A repeatable pump is tried at the most the mana allows.
                 val repeats = minOf(offer.maxRepeatableActivations ?: 1, MAX_REPEATS)

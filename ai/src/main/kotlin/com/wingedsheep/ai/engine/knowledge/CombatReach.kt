@@ -1,6 +1,9 @@
 package com.wingedsheep.ai.engine.knowledge
 
+import com.wingedsheep.sdk.core.CounterType
 import com.wingedsheep.sdk.scripting.ActivatedAbility
+import com.wingedsheep.sdk.scripting.effects.AddCountersEffect
+import com.wingedsheep.sdk.scripting.effects.AddDynamicCountersEffect
 import com.wingedsheep.sdk.scripting.effects.AnimateLandEffect
 import com.wingedsheep.sdk.scripting.effects.BecomeCreatureEffect
 import com.wingedsheep.sdk.scripting.effects.DealDamageEffect
@@ -31,8 +34,8 @@ import java.util.IdentityHashMap
  */
 internal enum class CombatReach {
     /**
-     * Changes how a fight resolves once blocks are in: power and toughness either way, a granted
-     * keyword (first strike, deathtouch, indestructible, trample, lifelink…), damage to a creature,
+     * Changes how a fight resolves once blocks are in: power and toughness either way — until end
+     * of turn or as +1/+1 / -1/-1 counters — a granted keyword (first strike, deathtouch, indestructible, trample, lifelink…), damage to a creature,
      * removal, regeneration or damage prevention, taking a creature out of combat.
      */
     FIGHT,
@@ -75,11 +78,18 @@ internal enum class CombatReach {
                 is ForEachEffect -> EffectWalker.leaves(leaf.body).forEach { visit(it, reach) }
                 is ModifyStatsEffect, is GrantKeywordEffect, is DividedDamageEffect, is FightEffect,
                 is RegenerateEffect, is PreventDamageEffect, is RemoveFromCombatEffect -> reach += FIGHT
+                // "Tap two artifacts: put two +1/+1 counters on this creature" grows a blocker the
+                // same as a pump does, and keeps it grown; a -1/-1 counter shrinks one.
+                is AddCountersEffect -> if (changesStats(leaf.counterType)) reach += FIGHT
+                is AddDynamicCountersEffect -> if (changesStats(leaf.counterType)) reach += FIGHT
                 // Damage aimed only at a player is a clock, not a combat answer.
                 is DealDamageEffect -> if (leaf.target !is EffectTarget.PlayerRef) reach += FIGHT
                 is AnimateLandEffect, is BecomeCreatureEffect, is MassAnimateEffect -> reach += BLOCKER
                 else -> Unit
             }
         }
+
+        /** A counter that moves power or toughness (CR 122.1a): +1/+1, -1/-1, +2/+0 and kin. */
+        private fun changesStats(counter: CounterType): Boolean = counter.ptDelta != null
     }
 }

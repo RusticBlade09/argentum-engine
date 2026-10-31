@@ -34,7 +34,7 @@ import com.wingedsheep.sdk.scripting.Duration
  * classic trick window). At each window the opponent is offered every non-mana activated ability
  * its permanents can afford right now — the engine's own legal actions, so mana, tap costs,
  * summoning sickness, sacrifice costs and once-per-turn limits are the rules' answer rather than a
- * model of them — narrowed to the ones whose effect can touch a fight ([CombatReach]), with their
+ * model of them, with a selection cost paid as the AI would pay its own ([SelectionCostPayment]) — narrowed to the ones whose effect can touch a fight ([CombatReach]), with their
  * targets drawn from the creatures in the fight and repeatable pumps tried at each affordable
  * count. Each is simulated through the rest of combat, and the opponent takes the one that leaves
  * the AI worst off, *if* it beats passing by [MIN_GAIN]: a trick that is possible but bad for them
@@ -260,7 +260,10 @@ internal class CombatResponses(
                     listOf(TargetSelection.fillHeuristically(state, bound, responder, fillPartialRequirements = true))
                 }
             }
-            for (action in targeted) {
+            for (target in targeted) {
+                // "Tap two untapped artifacts", "sacrifice a creature": the engine never picks a
+                // selection cost for the activator, so an unpaid one would be refused.
+                val action = SelectionCostPayment.withPlainCosts(state, offer, target)
                 out += action
                 // A repeatable pump is worth trying at every count the mana allows: one +1/+1 can
                 // change nothing where two win the fight, so stopping at the first would miss it.
