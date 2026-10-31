@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- Values a payoff by the fuel beside it — Blood Artist next to a sacrifice outlet and bodies, Ajani's Pridemate beside lifelinkers, a prowess creature with instants in hand — so it kills a fed engine over the 1/1s feeding it, counts the engine toward whether a removal spell is worth spending, and values its own engine the same way; Commander decks find their theme cards by what they feed or cash in rather than by matching rules-text words
 - #4151 Generated Commander decks now fill role quotas — about ten ramp (fixing ramp first for three-plus colours), eight interaction, seven card draw — and 25 cards on the commander's tribe, keywords or theme, and play 36 lands with the pool's on-colour duals instead of 38 basics split by pips
 - #4150 Reads "choose one" spells (charms, commands): in hand a charm is worth what any of its modes does, and a cast is judged by the modes it chose — it no longer spends a charm's team pump at the opponent's end step or its counter mode on an empty stack, and sees a tax-counter mode's tax
 - #4150 Reads +1/+1 counters put on another creature as a pump and -1/-1 counters on an opponent's creature as removal, so it flashes in a creature like Little Bear before combat when the counter makes its attack lethal; still holds a flash creature in its own upkeep, and one whose ETB only taps a blocker when it has nothing to attack with

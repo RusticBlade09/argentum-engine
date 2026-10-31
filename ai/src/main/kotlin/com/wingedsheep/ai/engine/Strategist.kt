@@ -128,6 +128,8 @@ class Strategist(
      * hands it to [com.wingedsheep.ai.engine.knowledge.RemovalPatience].
      */
     private val holdRemovalForBetterTargets: Boolean = false,
+    /** [AiProfile.payoffsReadTheirFuel] — passed through to [HoldPolicy]'s removal bar. */
+    private val payoffsReadTheirFuel: Boolean = false,
     /**
      * [AiProfile.holdCountersForBetterSpells] — passed straight through to [HoldPolicy], which
      * hands it to [com.wingedsheep.ai.engine.knowledge.CounterPatience].
@@ -289,6 +291,7 @@ class Strategist(
         intents,
         tricksWaitForBlocks = combatTricksWaitForBlocks,
         holdRemovalForBetterTargets = holdRemovalForBetterTargets,
+        payoffsReadTheirFuel = payoffsReadTheirFuel,
         holdCountersForBetterSpells = holdCountersForBetterSpells,
         cashCantripsInTheEndStep = cashCantripsInTheEndStep,
         holdFlashPermanentsForAmbush = holdFlashPermanentsForAmbush,

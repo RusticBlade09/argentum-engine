@@ -967,6 +967,19 @@ data class AiProfile(
      */
     val oneShotManaIsMana: Boolean = false,
     /**
+     * Price a **payoff by the fuel beside it**: the evaluator's `SynergyPresence` term, three quarters
+     * of a board point per unit of fuel (up to four) for every permanent that rewards a resource — creatures
+     * dying, tokens, creatures entering, life gain, instants and sorceries, +1/+1 counters, the
+     * graveyard — counting the controller's other permanents that feed it and, for our own seat
+     * only, half a unit per feeder in hand. Read structurally by `SynergyAxes`.
+     *
+     * Without it a Blood Artist beside four tokens and one on an empty board are the same 0/1, so
+     * removal has no reason to aim at an assembled engine, nothing tells the AI to keep its only
+     * sacrifice outlet, and casting the payoff ahead of the cards that feed it earns nothing until
+     * the rollout happens to reach the triggers. `SynergyPresenceAiTest` pins it.
+     */
+    val payoffsReadTheirFuel: Boolean = false,
+    /**
      * Cast **enablers before what they discount**: in our own main phase a spell scores as at
      * least the best spell it makes cheaper (or castable), judged from the position right after it
      * — the same credit [landDropUnlocksSpells] gives a land.
@@ -2414,6 +2427,7 @@ data class AiProfile(
             lookDigsForLand = true,
             libraryClock = true,
             oneShotManaIsMana = true,
+            payoffsReadTheirFuel = true,
             rollouts = PRODUCTION_CANDIDATE_EXPIRING.rollouts?.copy(staticPriorPlayouts = 1.0),
         )
 
@@ -2588,6 +2602,16 @@ data class AiProfile(
         val PRODUCTION_CANDIDATE_ONESHOTMANA = PRODUCTION_CANDIDATE_EXPIRING.copy(
             id = "production-candidate-oneshotmana",
             oneShotManaIsMana = true,
+        )
+
+        /**
+         * [payoffsReadTheirFuel] on top of [PRODUCTION_CANDIDATE_EXPIRING] — the last pinned
+         * candidate [LIVE] builds on — so `just arena production-candidate-expiring
+         * production-candidate-synergy` measures this flag and nothing else. [LIVE] ships it.
+         */
+        val PRODUCTION_CANDIDATE_SYNERGY = PRODUCTION_CANDIDATE_EXPIRING.copy(
+            id = "production-candidate-synergy",
+            payoffsReadTheirFuel = true,
         )
 
         /**

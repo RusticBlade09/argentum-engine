@@ -3,6 +3,9 @@ package com.wingedsheep.ai.engine.deck
 import com.wingedsheep.ai.engine.knowledge.CardIntentAnalyzer
 import com.wingedsheep.ai.engine.knowledge.EffectWalker
 import com.wingedsheep.ai.engine.knowledge.IntentTag
+import com.wingedsheep.ai.engine.knowledge.SynergyAxes
+import com.wingedsheep.ai.engine.knowledge.SynergyAxis
+import com.wingedsheep.ai.engine.knowledge.SynergyProfile
 import com.wingedsheep.ai.engine.producedColors
 import com.wingedsheep.sdk.core.Color
 import com.wingedsheep.sdk.core.Keyword
@@ -99,11 +102,11 @@ internal object CommanderDeckRoles {
  *  - **Tribes.** A creature type its rules text names ("other Elves you control") is the deck's
  *    theme; one it merely *is* is a lean.
  *  - **Keywords.** A keyword its text rewards ("creatures you control with flying") or it shares.
- *  - **Themes.** What its abilities do or pay off — tokens, lifegain, sacrifice, recursion,
- *    +1/+1 counters, artifacts, enchantments, instants and sorceries. Read from its
- *    [CardIntentAnalyzer] tags where the analyzer has them and from the payoff words of its text
- *    ("whenever you gain life", "whenever a creature you control dies") where it doesn't, because a
- *    payoff is a trigger condition the analyzer doesn't tag.
+ *  - **Themes.** The resources it makes or cashes in — creatures dying, tokens, creatures entering,
+ *    life gain, instants and sorceries, +1/+1 counters, the graveyard — read structurally by
+ *    [SynergyAxes]: a candidate scores on every axis where one of the two feeds what the other
+ *    rewards. Artifacts and enchantments, which are a card type rather than a resource, are still
+ *    read off the commander's text.
  *
  * [score] is a small count of how many of those a candidate hits; the generator turns it into a
  * sampling weight, so a strong card off-theme still makes the deck and an on-theme card beats an
@@ -139,27 +142,17 @@ internal class CommanderSynergy(commander: CardDefinition) {
         .filter { it.isEvergreenCombat() }
         .toSet()
 
-    private val themes: Set<IntentTag> = buildSet {
-        addAll(CardIntentAnalyzer.analyze(commander).tags.filter { it in THEME_TAGS })
-        if (IntentTag.ANTHEM in CardIntentAnalyzer.analyze(commander).tags) add(IntentTag.TOKEN_MAKER)
-        if (Regex("""\bgains? life\b|\byou gain\b""").containsMatchIn(text)) add(IntentTag.LIFEGAIN)
-        if ("token" in text) add(IntentTag.TOKEN_MAKER)
-        if (Regex("""\bdies\b|\bsacrifice""").containsMatchIn(text)) {
-            add(IntentTag.SACRIFICE_OUTLET)
-            add(IntentTag.TOKEN_MAKER)
-        }
-        if ("graveyard" in text) add(IntentTag.RECURSION)
+    private val axes: SynergyProfile = SynergyAxes.of(commander).let {
+        // Every creature commander "feeds" creatures-entering once, by being cast; that is not a theme.
+        it.copy(feeds = it.feeds - SynergyAxis.CREATURES_ENTER)
     }
 
-    private val rewardsCounters = "+1/+1 counter" in text
     private val rewardsArtifacts = Regex("""\bartifacts?\b""").containsMatchIn(text)
     private val rewardsEnchantments = Regex("""\benchantments?\b""").containsMatchIn(text)
-    private val rewardsSpells = Regex("""instant (or|and) sorcery|noncreature spell""").containsMatchIn(text)
 
     /** True when the commander asks for anything at all; a vanilla legend scores every card 0. */
     val hasTheme: Boolean = namedTribes.isNotEmpty() || ownTribes.isNotEmpty() || rewardedKeywords.isNotEmpty() ||
-        sharedKeywords.isNotEmpty() || themes.isNotEmpty() || rewardsCounters || rewardsArtifacts ||
-        rewardsEnchantments || rewardsSpells
+        sharedKeywords.isNotEmpty() || !axes.isEmpty || rewardsArtifacts || rewardsEnchantments
 
     /**
      * How much [card] does what the commander wants — 0 for nothing, roughly 1 per independent
@@ -180,13 +173,9 @@ internal class CommanderSynergy(commander: CardDefinition) {
         }
         if (card.keywords.any { it in rewardedKeywords }) score += 2.5
         else if (card.keywords.any { it in sharedKeywords }) score += 0.5
-        if (themes.isNotEmpty()) {
-            score += CardIntentAnalyzer.analyze(card).tags.count { it in themes }.coerceAtMost(2)
-        }
-        if (rewardsCounters && "+1/+1 counter" in cardText) score += 1.0
+        if (!axes.isEmpty) score += axes.sharedWith(SynergyAxes.of(card)).size.coerceAtMost(MAX_THEME_AXES)
         if (rewardsArtifacts && card.typeLine.isArtifact) score += 1.0
         if (rewardsEnchantments && card.typeLine.isEnchantment) score += 1.0
-        if (rewardsSpells && (card.typeLine.isInstant || card.typeLine.isSorcery)) score += 1.0
         return score
     }
 
@@ -195,10 +184,8 @@ internal class CommanderSynergy(commander: CardDefinition) {
 
 
     private companion object {
-        /** Intent tags that are a deck *theme* when the commander has them — not just a job. */
-        val THEME_TAGS = setOf(
-            IntentTag.TOKEN_MAKER, IntentTag.LIFEGAIN, IntentTag.SACRIFICE_OUTLET, IntentTag.RECURSION,
-        )
+        /** Theme axes one candidate can score on; past two it is already a theme card. */
+        const val MAX_THEME_AXES = 2
 
         /** Keywords too common to call a shared one synergy — every third creature has one. */
         fun Keyword.isEvergreenCombat(): Boolean = this in setOf(
