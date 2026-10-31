@@ -29,12 +29,17 @@ import com.wingedsheep.ai.insight.CombatPlan
 import com.wingedsheep.ai.insight.CombatPlanTrace
 import com.wingedsheep.engine.core.ActivateAbility
 import com.wingedsheep.engine.core.CastSpell
+import com.wingedsheep.engine.core.CrewVehicle
 import com.wingedsheep.engine.core.DeclareAttackers
 import com.wingedsheep.engine.core.DeclareBlockers
 import com.wingedsheep.engine.core.GameAction
 import com.wingedsheep.engine.core.PaymentStrategy
 import com.wingedsheep.engine.core.PassPriority
 import com.wingedsheep.engine.core.PlayLand
+import com.wingedsheep.engine.core.SaddleMount
+import com.wingedsheep.engine.state.components.battlefield.SummoningSicknessComponent
+import com.wingedsheep.engine.state.components.battlefield.TappedComponent
+import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.engine.handlers.costs.GraveyardTotalExileResolver
 import com.wingedsheep.engine.legalactions.LegalAction
 import com.wingedsheep.engine.legalactions.MeaningfulActionFilter
@@ -985,6 +990,7 @@ class Strategist(
             if (deployed > 0.0) "deployed, not spent %+.2f".format(deployed) else null,
             if (fuel > 0.0) "loyalty is only fuel %+.2f".format(fuel) else null,
         ).joinToString("; ").ifEmpty { null }
+        rideForTheAttack(state, action, playerId, leafState, passScore)?.let { return it }
         val cardName = resolveCardName(state, action) ?: return AdjustedScore(leafScore, creditNote)
 
         // A precombat pump the attack plan needs is priced by the attack it buys, ahead of the
@@ -1182,6 +1188,62 @@ class Strategist(
         }
         val gain = withPump.value - without.value
         return gain.takeIf { it > SCORE_EPSILON }
+    }
+
+    /**
+     * Crew N / Saddle N on our own turn, priced by the attack it buys — or null to leave the leaf's
+     * score alone (the opponent's turn, where a crewed Vehicle can block; a nested simulation; a
+     * plan that can't be read).
+     *
+     * The leaf can't see why we crew: a crewed Vehicle reads as one more creature on the board, and
+     * a saddled Mount as nothing at all, since "whenever this attacks while saddled" pays out only
+     * in combat. Both last until end of turn and both tap the crew, which then can't block on the
+     * opponent's turn. So on our turn the only reason to ride is the attack: in our precombat main
+     * the attack planner is asked, from both sides of the activation, whether it sends the Vehicle
+     * or Mount and what that attack is worth over the one without it (the same pricing
+     * [pumpThatBuysTheAttack] gives a pump). A ride the plan doesn't send, or that buys nothing,
+     * and any ride later in our turn, once attackers can no longer be declared, is floored below
+     * passing.
+     */
+    private fun rideForTheAttack(
+        state: GameState,
+        action: LegalAction,
+        playerId: EntityId,
+        leafState: GameState,
+        passScore: Double,
+    ): AdjustedScore? {
+        val ride = when (val gameAction = action.action) {
+            is CrewVehicle -> gameAction.vehicleId
+            is SaddleMount -> gameAction.mountId
+            else -> return null
+        }
+        if (!state.isActiveTurnFor(playerId) || simulator.resolvingNestedDecision) return null
+        val floor = AdjustedScore(passScore - 1.0, "rides into no attack — floored below passing", floored = true)
+        if (state.step != Step.PRECOMBAT_MAIN) {
+            // Before attacks (untap, upkeep, draw, beginning of combat) the ride still has its
+            // attack ahead of it; only once declarations are past is it certainly for nothing.
+            return if (state.step.ordinal >= Step.DECLARE_ATTACKERS.ordinal) floor else null
+        }
+        if (state.stack.isNotEmpty() || leafState.gameOver || leafState.pendingDecision != null) return null
+        // A Vehicle that came in this turn (or is tapped, or can't attack) rides into nothing; the
+        // planner has no attack to read off it when it is the only would-be attacker, so say so here.
+        val leafProjected = leafState.projectedState
+        val rideEntity = leafState.getEntity(ride) ?: return null
+        val rideCanAttack = leafProjected.isCreature(ride) &&
+            !rideEntity.has<TappedComponent>() &&
+            !leafProjected.cantAttack(ride) &&
+            Keyword.DEFENDER.name !in leafProjected.getKeywords(ride) &&
+            (!rideEntity.has<SummoningSicknessComponent>() ||
+                Keyword.HASTE.name in leafProjected.getKeywords(ride) ||
+                leafProjected.canAttackAsThoughHasty(ride))
+        if (!rideCanAttack) return floor
+        val withRide = combatAdvisor.plannedAttackFrom(leafState, playerId) { budgetPolicy.budgetForDecision(it, playerId) }
+            ?: return null
+        if (ride !in withRide.attackers) return floor
+        val without = plannedAttack(state, playerId) ?: return null
+        val gain = withRide.value - without.value
+        if (gain <= SCORE_EPSILON) return floor
+        return AdjustedScore(passScore + gain, "ride buys the attack %+.2f".format(gain))
     }
 
     /** Our creatures an until-end-of-turn effect created between [root] and [leaf] lands on. */
@@ -1828,6 +1890,19 @@ class Strategist(
      * projected controller/type/counter legality.
      */
     private fun withAutomaticPayments(state: GameState, action: LegalAction): GameAction {
+        // Crew N / Saddle N: the enumerator offers the activation with no creatures named, and the
+        // handler refuses an empty crew, so these were "illegal once materialized" and silently
+        // dropped — the AI never crewed a Vehicle or saddled a Mount (2026-10-31 review, game
+        // 556300fa: Surgehacker Mech sat uncrewed for six turns beside a 3/2 and a 1/1).
+        when (val raw = action.action) {
+            is CrewVehicle -> if (raw.crewCreatures.isEmpty()) {
+                return tapForPowerSelection(state, action)?.let { raw.copy(crewCreatures = it) } ?: raw
+            }
+            is SaddleMount -> if (raw.saddleCreatures.isEmpty()) {
+                return tapForPowerSelection(state, action)?.let { raw.copy(saddleCreatures = it) } ?: raw
+            }
+            else -> Unit
+        }
         val gameAction = withAutomaticTapForGeneric(action, withAutomaticConvoke(state, action))
         val info = action.additionalCostInfo ?: return gameAction
         val existing = when (gameAction) {
@@ -1885,6 +1960,64 @@ class Strategist(
             is ActivateAbility -> gameAction.copy(costPayment = payment)
             else -> gameAction
         }
+    }
+
+    /**
+     * The creatures to tap for a Crew N or Saddle N activation: the selection whose total
+     * contribution reaches N while giving up the least, or null when none reaches it.
+     *
+     * A creature is priced at its board value, discounted when it couldn't attack this turn anyway
+     * (summoning sick, or barred from attacking) — tapping it gives up only its blocking. So a
+     * fresh 2/2 crews before the 3/3 that could swing alongside the Vehicle, and two 1/1s crew a
+     * crew-2 Vehicle before a 5/5 does. Contributors at zero power can't help and are skipped.
+     * Small boards are searched exhaustively; a wide one is filled cheapest-per-power first and
+     * then trimmed of any member the total no longer needs.
+     */
+    private fun tapForPowerSelection(state: GameState, action: LegalAction): List<EntityId>? {
+        val required = action.tapForPowerRequired ?: return null
+        val contributors = action.tapForPowerCreatures.orEmpty().filter { it.power > 0 }
+        if (contributors.sumOf { it.power } < required) return null
+        val projected = state.projectedState
+        val costs = contributors.map { creature ->
+            val card = state.getEntity(creature.entityId)?.get<CardComponent>()
+            val value = card?.let {
+                BoardPresence.permanentValue(state, projected, creature.entityId, it, intents)
+            } ?: 0.0
+            maxOf(0.0, value) * (if (creature.canAttack) 1.0 else IDLE_CREW_DISCOUNT) + CREW_MEMBER_COST
+        }
+        val n = contributors.size
+        if (n <= EXHAUSTIVE_CREW_CANDIDATES) {
+            var best = -1
+            var bestCost = Double.MAX_VALUE
+            for (mask in 1 until (1 shl n)) {
+                var power = 0
+                var cost = 0.0
+                for (i in 0 until n) if (mask and (1 shl i) != 0) {
+                    power += contributors[i].power
+                    cost += costs[i]
+                }
+                if (power >= required && cost < bestCost) {
+                    best = mask
+                    bestCost = cost
+                }
+            }
+            return (0 until n).filter { best and (1 shl it) != 0 }.map { contributors[it].entityId }
+        }
+        val order = (0 until n).sortedBy { costs[it] / contributors[it].power }
+        val chosen = mutableListOf<Int>()
+        var total = 0
+        for (i in order) {
+            if (total >= required) break
+            chosen += i
+            total += contributors[i].power
+        }
+        for (i in chosen.sortedByDescending { costs[it] }) {
+            if (total - contributors[i].power >= required) {
+                chosen -= i
+                total -= contributors[i].power
+            }
+        }
+        return chosen.map { contributors[it].entityId }
     }
 
     /**
@@ -2459,6 +2592,17 @@ class Strategist(
          * 1, so the rescue needs its own floor; this is the legacy cap.
          */
         const val RESCUE_TARGET_CANDIDATES = 8
+
+        /**
+         * Crew/Saddle payment ([tapForPowerSelection]): a creature that couldn't attack this turn
+         * costs this fraction of its board value to tap; every member also costs a flat
+         * [CREW_MEMBER_COST] so equal-value selections prefer fewer bodies.
+         */
+        const val IDLE_CREW_DISCOUNT = 0.5
+        const val CREW_MEMBER_COST = 0.01
+
+        /** Up to this many crew candidates, every subset is tried (2^n); beyond it, greedy. */
+        const val EXHAUSTIVE_CREW_CANDIDATES = 12
 
         /** Where the avatar tops out — the recommended stopping point. See [momirXCandidates]. */
         const val MOMIR_TARGET_X = 8
