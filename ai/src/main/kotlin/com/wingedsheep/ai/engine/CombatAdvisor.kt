@@ -311,7 +311,12 @@ class CombatAdvisor(
         // Which defender each attacker may legally take (CR 508.1b–c) — the engine lists it per
         // attacker, and every plan below is built from and checked against that list.
         val canAttack = { attacker: EntityId, defender: EntityId -> defender in legalAction.attackTargetsFor(attacker) }
-        if (seed.lethal) {
+        // The seed's lethal check is printed-board math. An opponent holding a combat response
+        // (an untapped pump, a blocker-maker) can answer it, so under [anticipateCombatResponses]
+        // that alpha strike goes through local search like any plan — the seed is its start, and
+        // a kill the responses can't stop still scores as one.
+        val lethalThroughResponses = responses?.respondersAt(state, playerId).isNullOrEmpty()
+        if (seed.lethal && lethalThroughResponses) {
             return DeclareAttackers(
                 playerId,
                 legalizeAttackerPlan(
@@ -1698,7 +1703,12 @@ class CombatAdvisor(
             0.0
         }
 
-        val followUp = if (attacksReadTheRace) followUpValue(postCombat, postProjected, playerId) else 0.0
+        // Our next swing is worth nothing to a plan whose crack-back kills us before it comes.
+        val followUp = if (attacksReadTheRace && nextTurnDamage < myLife) {
+            followUpValue(postCombat, postProjected, playerId)
+        } else {
+            0.0
+        }
 
         val pressure = if (pressWhenAhead && nextTurnDamage < myLife) {
             pressureValue(state, atOurUntap, playerId)
@@ -1820,14 +1830,22 @@ class CombatAdvisor(
         defendersFor: (EntityId) -> List<EntityId> = { listOfNotNull(defenderFor(it)) },
     ) {
         val deadline = budget.combatDeadlineNanos
-        // Baseline: use current board evaluation. Attack plans must beat this.
+        // Baseline: use current board evaluation. Attack plans must beat this. When the empty
+        // declaration can't be simulated, the board as it stands is scored the same way — with
+        // the crack-back — so the plans are measured against a like-for-like baseline.
         val noAttackScore = evaluateAttackPlan(state, playerId, opponentId, emptyMap())
-            ?: evaluator.evaluate(state, state.projectedState, playerId)
+            ?: scoreAttackOutcome(state, state, playerId, emptyMap(), settleExpiring = false)
         trace?.recordAttack(emptyMap(), noAttackScore)
         var currentScore = if (attackerMap.isEmpty()) {
             noAttackScore
         } else {
-            evaluateAttackPlan(state, playerId, opponentId, attackerMap) ?: return
+            // A seed that can't be simulated is unscored, not proven: a lethal one never reaches
+            // here, so search from no attack rather than submit it on the heuristic's word.
+            evaluateAttackPlan(state, playerId, opponentId, attackerMap) ?: run {
+                if (mandatoryAttackers.isNotEmpty()) return
+                attackerMap.clear()
+                noAttackScore
+            }
         }
         trace?.recordAttack(attackerMap, currentScore)
 

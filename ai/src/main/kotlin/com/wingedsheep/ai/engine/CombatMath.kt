@@ -1,5 +1,6 @@
 package com.wingedsheep.ai.engine
 
+import com.wingedsheep.engine.core.doesntUntapDuringUntapStep
 import com.wingedsheep.engine.mechanics.layers.ProjectedState
 import com.wingedsheep.engine.mechanics.targeting.ColorProtection
 import com.wingedsheep.engine.mechanics.targeting.TypeQualityProtection
@@ -716,8 +717,13 @@ object CombatMath {
 
     /**
      * Estimate damage the opponent could deal on their next attack through our optimal blocking.
-     * Includes all non-defender creatures (they'll untap on their turn) regardless of current
-     * tapped state, giving a conservative (worst-case) estimate.
+     * Includes every non-defender creature that will be untapped for it — tapped ones too, since
+     * they untap on their turn — giving a conservative (worst-case) estimate.
+     *
+     * The exception is a tapped creature that doesn't untap during its controller's untap step
+     * (an Infinite Coursework on it): it can't attack next turn. Counting it made staying home
+     * read as lethal in game `ee882769`, and with every plan "dead" the AI attacked away the
+     * blockers that would have kept it alive.
      */
     fun estimateNextTurnDamage(
         state: GameState,
@@ -728,7 +734,8 @@ object CombatMath {
     ): Int {
         val opponentAttackers = projected.getBattlefieldControlledBy(opponentId).filter { entityId ->
             projected.isCreature(entityId) &&
-                Keyword.DEFENDER.name !in projected.getKeywords(entityId)
+                Keyword.DEFENDER.name !in projected.getKeywords(entityId) &&
+                (state.getEntity(entityId)?.has<TappedComponent>() != true || !projected.doesntUntapDuringUntapStep(entityId))
         }
         if (opponentAttackers.isEmpty()) return 0
         return calculateDamageThroughOptimalBlocking(state, projected, opponentAttackers, myBlockers, chumpBlocks)
