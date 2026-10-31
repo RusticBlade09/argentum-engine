@@ -3204,7 +3204,10 @@ wrappers: Word of Command composes it inside `WithManaAbilitySources` and
   (the latter evaluated at resolution, e.g. `CreateTreasure(DynamicAmounts.sourcePower(), tapped = true)`
   for Goldvein Hydra's "create a number of tapped Treasure tokens equal to its power"). `controller`
   (Int overload) redirects the tokens, e.g. `EffectTarget.TargetController` for "its controller creates
-  two Treasure tokens" (An Offer You Can't Refuse). `imageUri` overrides the token art (see the
+  two Treasure tokens" (An Offer You Can't Refuse). A `controller` that resolves to no player —
+  `TargetController` after an "up to one target" chose none — creates no token (this holds for every
+  token-making effect, `CreateToken` and `Investigate` included); it never falls back to you (Cavalier
+  of Dawn). `imageUri` overrides the token art (see the
   set-specific-art note below).
 - `CreateFood(count?, controller?)` — Food tokens. `count` accepts an `Int` or a `DynamicAmount` (the latter evaluated at resolution, e.g. `CreateFood(DynamicAmount.Divide(DynamicAmount.CastX, DynamicAmount.Fixed(2), roundUp = true))` for The Goose Mother's "create half X Food tokens, rounded up").
 - `CreateEldraziSpawn(count?, controller?, imageUri?)` — 0/1 colorless Eldrazi Spawn creature tokens
@@ -9539,6 +9542,17 @@ Triggers.you.casts(GameObjectFilter.Noncreature or
   redirect makes it one. Pre-existing and orthogonal to the player axis, so it is pinned rather than
   fixed by `BecomesTargetPlayerAndAbilityAxesTest`, which characterizes current-and-wrong behaviour —
   when a later unit fixes it, invert that test rather than deleting it.
+- `Triggers.a(filter).becomesTarget(..., batch = true)` — the "**one or more** … become the target" template
+  (CR 603.2c): fires **once per targeting spell or ability**, however many of its targets match. Sets
+  `BecomesTargetEvent(batch = true)`; every other axis still decides which targets count, and one is
+  enough. ANY-bound only; a dedicated batch pass in `TriggerDetector` groups the per-target engine events
+  by the targeting object (the per-event path skips batch triggers). The first matching target is the
+  triggering entity; the targeting object is `EffectTarget.TargetingSource` / `Player.ControllerOfCause`.
+  Leyline of Combustion — "Whenever you and/or at least one permanent you control becomes the target of a
+  spell or ability an opponent controls, this enchantment deals 2 damage to that player" —
+  `Triggers.a(Permanent.youControl()).becomesTarget(byOpponent = true, players = Player.You, batch = true)`
+  + `Effects.DealDamage(2, EffectTarget.PlayerRef(Player.ControllerOfCause))`. Contrast Valkmira's per-target
+  "you or another permanent you control becomes the target", which fires once per matching target.
 - `Triggers.a(filter.youControl()).becomesTarget(byOpponent = true, includeSpellTargets)` — your creature
   gets targeted by an opponent's spell or ability. Permanent-only unless `includeSpellTargets = true`
   (Surrak), which also fires when an opponent targets a matching creature spell you control.
@@ -10191,6 +10205,13 @@ Dominant back faces that "stay" instead self-exile on their final chapter, dodgi
   `batch` or `firstTimeEachTurn` (both fire at most once). Flourishing Defenses:
   `Triggers.a(GameObjectFilter.Creature).getsCounters(CounterType.MINUS_ONE_MINUS_ONE, perCounter = true)`
   + `optional = true` + `Effects.CreateToken(1/1 green Elf Warrior)`.
+  **The Nth counter.** `nth = N` (`CountersPlacedEvent.nth`) is the ordinal "when the **twelfth**
+  <type> counter is put on ~" template: it fires for the placement that takes the recipient's count
+  of that kind from below N to N or more — one placement jumping from eleven to thirteen fires it,
+  the thirteenth counter alone doesn't, and a count that is reset and climbs back fires it again.
+  The count after the placement is read from `CountersAddedEvent.totalCount` (live count when an
+  emitter didn't record it). Needs a named `type`; not combinable with `batch`, `perCounter` or
+  `firstTimeEachTurn`. Midnight Clock: `Triggers.self.getsCounters(CounterType.HOUR, nth = 12)`.
 - `Triggers.self.getsCounters()` — "whenever you put one or more counters on ~" (any kind, SELF-bound).
   Aragorn, Company Leader.
 - `Triggers.<subject>.losesCounters(type, lastRemoved, byDamagePrevention, by)`
@@ -10434,6 +10455,17 @@ Dominant back faces that "stay" instead self-exile on their final chapter, dodgi
     control on your next attack). With `fireOnce = false` (default) it fires on every matching event
     until expiry (double-strike combat damage). One-shot consumption happens when the trigger goes
     on the stack (`TriggerProcessor`), so a second matching event the same turn won't re-fire it.
+  - **Any-of events** — a `Triggers.or(a, b, …)` disjunction is a delayed trigger like any other:
+    each atom is matched with its own scoping (a cast atom scopes the caster, an activation atom the
+    activator), the atom that matched shapes the triggering entity, and a one-shot is consumed by
+    whichever atom fires first. "When you next cast an instant spell, cast a sorcery spell, or
+    activate a loyalty ability this turn, copy that spell or ability twice" (**Repeated
+    Reverberation**) = `CreateDelayedTrigger(trigger = Triggers.or(Triggers.you.casts(Instant),
+    Triggers.you.casts(Sorcery), Triggers.you.activatesAbility(loyalty = true)), effect =
+    CopyTargetSpellOrAbility(TriggeringEntity, DynamicAmounts.fixed(2)), fireOnce = true, expiry = EndOfTurn)`.
+    "Copy that spell or ability" reads the triggering object as it last existed on the stack when it
+    was countered first, so the copies are still made (`GameState.departedSpells` /
+    `departedAbilities`).
   - **Return a source exiled as its own cost when a made object dies** — no new vocabulary: an
     activated ability with `Costs.ExileSelf` makes the object, then arms
     `CreateDelayedTrigger(trigger = Triggers.self.dies(), watchedTarget = PipelineTarget(CREATED_TOKENS, 0),
@@ -10985,8 +11017,14 @@ staticAbility {
   permanent is face down (a face-up permanent can't be "turned face up"), so it's applied
   unconditionally. Unable to Scream: "As long as enchanted creature is face down, it can't be turned
   face up."
-- `CantReceiveCounters(filter)` — matching permanents can't have counters put on them (projects the
-  `AbilityFlag.CANT_RECEIVE_COUNTERS` flag).
+- `CantReceiveCounters(filter, counterType = null)` — matching permanents can't have counters put on
+  them (projects the `AbilityFlag.CANT_RECEIVE_COUNTERS` flag). Set `counterType` to scope it to one
+  kind — "Creatures your opponents control can't have +1/+1 counters put on them" (Blightbeetle):
+  `CantReceiveCounters(GroupFilter.AllCreaturesOpponentsControl, CounterType.PLUS_ONE_PLUS_ONE)`.
+  Every placement path asks `ProjectedState.canReceiveCounters(id, kind)` through the placement
+  chokepoint, so only that kind is refused: other kinds still go on, a creature entering with that
+  kind enters without it, a cost that would put that kind on it can't be paid (CR 614.17b), and
+  counters already on it stay (unlike `MaxCounters(kind, 0)`, no state-based removal).
 - `MaxCounters(counterType, max)` — "This permanent can't have more than `max` `counterType` counters
   on it" (Rasputin Dreamweaver). A `ProjectedStaticAbility` on the holder, read by the
   counter-placement chokepoint (`ReplacementEffectUtils.applyCounterPlacementModifiers`) after every
@@ -17001,7 +17039,7 @@ forbids `DynamicAmount.X` in card definitions.
   matching permanents. `aggregation` defaults to `COUNT`; other modes: `MAX`/`MIN`/`SUM` over a
   `property` (`POWER`/`TOUGHNESS`/`MANA_VALUE`), and the distinct-set counters
   `DISTINCT_TYPES`, `DISTINCT_PERMANENT_TYPES`, `DISTINCT_COLORS`, `DISTINCT_COLOR_PAIRS`,
-  `DISTINCT_NAMES`, `DISTINCT_BASIC_LAND_SUBTYPES`
+  `DISTINCT_NAMES`, `DISTINCT_MANA_COSTS` (see `AggregateZone` below), `DISTINCT_BASIC_LAND_SUBTYPES`
   (Domain; reads *projected* subtypes, so a land that lost all land types — Ultima, Origin of
   Oblivion's blight — still matches a land filter but adds no type),
   `DISTINCT_PLANESWALKER_SUBTYPES` (planeswalker types, CR 205.3j, among the matched
@@ -17076,6 +17114,14 @@ forbids `DynamicAmount.X` in card definitions.
   `fewestControlledBySinglePlayer(Land)` lands, then `leastAmongPlayers(cardsInYourHand())` cards,
   then `fewestControlledBySinglePlayer(Creature)` creatures, each counted at its own part.
 - `AggregateZone(player, zone, filter?, aggregation?)` — count cards in a zone.
+  `DISTINCT_MANA_COSTS` counts the *different mana costs* (CR 202.1) among the matched cards — by
+  printed symbol, not mana value: {2}{B} and {1}{B}{B} are two costs, {X} and {0} are two, a hybrid
+  {B/R} is neither {B} nor {R}, and symbol order is ignored. A card with no mana cost (CR 202.1b)
+  adds nothing while a printed {0} counts; a split card's cost is its halves combined (CR 709.4b,
+  Fire // Ice is {2}{U}{R}); a Room on the battlefield has only its unlocked halves' costs. Facade
+  `DynamicAmounts.zone(Player.You, Zone.GRAVEYARD, GameObjectFilter.Nonland).distinctManaCosts()` —
+  Embodiment of Agonies' "a +1/+1 counter on it for each different mana cost among nonland cards in
+  your graveyard". The aggregation works over `AggregateBattlefield` too.
 - `CountPermanentsOfType(player, subtype)` — count by creature type.
 - `CountCreaturesYouControl` — shorthand for "your creatures".
 
@@ -19844,6 +19890,8 @@ are their printed spellings (`CounterType.printed`). Text converts back only thr
 - `ghostform` (`CounterType.GHOSTFORM`): KHM — Kaya the Inexorable. A pure reminder with no inherent rule: Kaya's +1 puts one on a creature alongside a `Duration.Permanent` granted dies / leaves-to-exile trigger, and that trigger keeps working if the counter is removed.
 - `night` (`CounterType.NIGHT`): KHM — Replicating Ring. Passive countdown with no inherent rule (unrelated to the day/night designation): its upkeep trigger adds one, then `Effects.If(Conditions.SourceCounterCountAtLeast(NIGHT, 8), Effects.RemoveAllCountersOfType(NIGHT, Self) then Effects.CreatePredefinedToken("Replicated Ring", 8))`. The passive-counter badge displays its count.
 - `task` (`CounterType.TASK`): THB — Heliod's Punishment. Passive countdown with no inherent rule: the Aura enters with four (`EntersWithCounters(TASK, 4, selfOnly = true)`) and grants the enchanted creature "{T}: remove one" — `Effects.RemoveCounters(TASK, 1, EffectTarget.GrantingSource) then Effects.If(Conditions.Not(Conditions.TargetHasCounter(TASK, EffectTarget.GrantingSource)), Effects.Destroy(EffectTarget.GrantingSource))`. The passive-counter badge displays its count.
+- `hour` (`CounterType.HOUR`): ELD — Midnight Clock. Passive tally with no inherent rule: one each upkeep and from `{2}{U}`, and `Triggers.self.getsCounters(HOUR, nth = 12)` fires the reset. The passive-counter badge displays its count.
+- `knowledge` (`CounterType.KNOWLEDGE`): ELD — The Magic Mirror. Passive tally with no inherent rule: the upkeep trigger adds one, then draws `DynamicAmounts.countersOnSelf(KNOWLEDGE)`. The passive-counter badge displays its count.
 - `charge`, `time`, `level`, `quest`, `fade`, `vanishing`, `experience`, `age`, `velocity`, `awakening`,
   `blood`, `cage`, `doom`, `storage`, `divinity` (`CounterType.DIVINITY`, a passive counter used by the Myojin
   cycle), `charm`, `music`, `crumble`, `corpse`, `germ`, `ink`, `growth`,

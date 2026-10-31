@@ -419,6 +419,11 @@ class TriggerDetector(
         // many matching permanents were tapped simultaneously; the per-event path skips batch taps.
         detectTapBatchTriggers(state, events, triggers, index)
 
+        // Detect "whenever you and/or one or more permanents you control become the target of a
+        // spell or ability …" batching triggers (BecomesTargetEvent(batch = true), e.g. Leyline of
+        // Combustion). Fires once per targeting spell or ability; the per-event path skips them.
+        detectBecomesTargetBatchTriggers(state, events, triggers, index)
+
         // Detect "whenever one or more [players] lose [exactly N] life" batching triggers
         // (LifeLossEvent(batch = true), e.g. Ob Nixilis, Captive Kingpin). Fires once per life-loss
         // occurrence (simultaneous damage summed per player); the per-event path skips them.
@@ -1210,14 +1215,16 @@ class TriggerDetector(
                 }
                 if (delayed.fireOnce && delayed.id in firedOnceIds) continue
                 val spec = delayed.trigger ?: continue
-                if (!matchesEventForWatchedEntity(spec, event, delayed.watchedEntityId, delayed.watchedRecipientId, delayed.id, delayed.sourceId, delayed.controllerId, state, delayed.watchedObject)) continue
+                // An any-of delayed trigger ("when you next cast an instant spell, cast a sorcery
+                // spell, or activate a loyalty ability this turn" — Repeated Reverberation) fires
+                // through the atom that matched, so the per-event shaping below reads that atom.
+                val specEvent = matchedDelayedAtom(spec, event, delayed, state) ?: continue
 
                 // A filter-scoped attack delayed trigger ("this turn, whenever a creature you control
                 // attacks alone, do X to it" — The Last Ronin III) must fan out one trigger per
                 // declared attacker so EffectTarget.TriggeringEntity resolves to each attacker.
                 // AttackersDeclaredEvent carries no single triggering entity (fromEvent returns none),
                 // so mirror the non-delayed per-attacker path (Rule 603.2c).
-                val specEvent = spec.event
                 if (specEvent is com.wingedsheep.sdk.scripting.EventPattern.AttackEvent &&
                     event is AttackersDeclaredEvent && delayed.watchedEntityId == null
                 ) {
@@ -1409,6 +1416,26 @@ class TriggerDetector(
      *    These delegate to the shared [TriggerMatcher] so they behave identically to battlefield
      *    triggers, honoring the filter (including its controller predicate) and binding.
      */
+    /**
+     * The event pattern of [delayed]'s trigger that [event] matches — the trigger's own pattern,
+     * or for a disjunction the first of its atoms that matches, each atom scoped exactly as it
+     * would be on its own. Null when nothing matches.
+     */
+    private fun matchedDelayedAtom(
+        spec: com.wingedsheep.sdk.scripting.TriggerSpec,
+        event: EngineGameEvent,
+        delayed: DelayedTriggeredAbility,
+        state: GameState
+    ): com.wingedsheep.sdk.scripting.EventPattern? {
+        val pattern = spec.event
+        if (pattern is com.wingedsheep.sdk.scripting.EventPattern.AnyOf) {
+            return pattern.events.firstNotNullOfOrNull { matchedDelayedAtom(spec.copy(event = it), event, delayed, state) }
+        }
+        return pattern.takeIf {
+            matchesEventForWatchedEntity(spec, event, delayed.watchedEntityId, delayed.watchedRecipientId, delayed.id, delayed.sourceId, delayed.controllerId, state, delayed.watchedObject)
+        }
+    }
+
     private fun matchesEventForWatchedEntity(
         spec: com.wingedsheep.sdk.scripting.TriggerSpec,
         event: EngineGameEvent,
@@ -3487,6 +3514,55 @@ class TriggerDetector(
     }
 
     /**
+     * Detect "one or more … become the target of a spell or ability" batching triggers
+     * (`BecomesTargetEvent(batch = true)` — Leyline of Combustion).
+     *
+     * A spell or ability emits one engine `BecomesTargetEvent` per distinct target as it is put on
+     * the stack, so the events are grouped by the targeting object and the trigger fires once per
+     * group in which at least one target passes every per-target axis (the same matcher the
+     * per-event path uses). Two spells targeting in the same event list are two groups, so two
+     * firings. The first matching target is the triggering entity, and its event supplies the
+     * targeting object ("that spell or ability") the payoff reads.
+     */
+    private fun detectBecomesTargetBatchTriggers(
+        state: GameState,
+        events: List<EngineGameEvent>,
+        triggers: MutableList<PendingTrigger>,
+        index: TriggerIndex
+    ) {
+        val targetEvents = events.filterIsInstance<com.wingedsheep.engine.core.BecomesTargetEvent>()
+        if (targetEvents.isEmpty()) return
+        val byTargetingObject = targetEvents.groupBy { it.sourceEntityId }
+
+        for (entry in index.getEntitiesForCategory(TriggerCategory.BECOMES_TARGET)) {
+            for (ability in entry.abilities) {
+                val trigger = ability.trigger
+                if (trigger !is EventPattern.BecomesTargetEvent || !trigger.batch) continue
+                // "One or more … become the target" is an observer wording (ANY binding).
+                if (ability.binding != TriggerBinding.ANY) continue
+                val perTarget = trigger.copy(batch = false)
+
+                for (group in byTargetingObject.values) {
+                    val first = group.firstOrNull { event ->
+                        matcher.matchesBecomesTargetTrigger(
+                            perTarget, TriggerBinding.ANY, event, entry.entityId, entry.controllerId, state
+                        )
+                    } ?: continue
+                    triggers.add(
+                        PendingTrigger(
+                            ability = ability,
+                            sourceId = entry.entityId,
+                            sourceName = entry.cardComponent.name,
+                            controllerId = entry.controllerId,
+                            triggerContext = TriggerContext.fromEvent(first)
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    /**
      * Detect "whenever one or more [players] lose life" / "… each lose exactly N life" batching
      * triggers (`LifeLossEvent(batch = true)` — Ob Nixilis, Captive Kingpin).
      *
@@ -3665,15 +3741,10 @@ class TriggerDetector(
      * per-permanent path uses, so the two multiplicities can never disagree about which placements
      * count (the shape [DamageTriggerDetector.detectDamageObserverBatchTriggers] uses).
      *
-     * A permanent that can't have counters put on it (`ProjectedState.canReceiveCounters`) stays out
-     * of the batch only when the executor doing the placing checks that prohibition before emitting:
-     * [com.wingedsheep.engine.handlers.effects.permanent.counters.AddCountersExecutor] and its
-     * single-target siblings do, but `AddCountersToCollectionExecutor` and
-     * `DistributeCountersAmongTargetsExecutor` — the multi-recipient paths this batch template most
-     * often observes — do not, and a no-op placement from those would enter the batch. That gap is
-     * per-executor and pre-dates this pass (the counters are wrongly added to the component too, not
-     * just reported), so this is not the place to fix it; it is recorded here so no one reads a
-     * guarantee into the batch that the engine doesn't provide.
+     * A permanent that can't have counters put on it (`ProjectedState.canReceiveCounters`, all kinds
+     * or the placed kind) stays out of the batch: every placing executor runs the placement through
+     * `ReplacementEffectUtils.applyCounterPlacementModifiers`, which refuses a prohibited placement,
+     * and emits nothing for a placement that came to zero.
      *
      * Separate resolutions are separate detection passes and so separate batches: two effects each
      * placing counters in the same turn fire the trigger twice.
