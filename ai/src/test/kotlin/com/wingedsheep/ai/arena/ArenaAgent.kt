@@ -267,6 +267,7 @@ object ArenaAgents {
         ArenaAgent("production-surpluslands", AiProfile.PRODUCTION_SURPLUSLANDS),
         ArenaAgent("production-candidate-surpluslands", AiProfile.PRODUCTION_CANDIDATE_SURPLUSLANDS),
         ArenaAgent("production-candidate-oneshotmana", AiProfile.PRODUCTION_CANDIDATE_ONESHOTMANA),
+        ArenaAgent("production-candidate-synergy", AiProfile.PRODUCTION_CANDIDATE_SYNERGY),
         // An until-end-of-turn P/T change read only on a creature already in a fight.
         ArenaAgent("production-expiringstats", AiProfile.PRODUCTION_EXPIRINGSTATS),
         ArenaAgent("production-candidate-expiringstats", AiProfile.PRODUCTION_CANDIDATE_EXPIRINGSTATS),

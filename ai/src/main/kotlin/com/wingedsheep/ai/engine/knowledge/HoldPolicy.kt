@@ -1,5 +1,6 @@
 package com.wingedsheep.ai.engine.knowledge
 
+import com.wingedsheep.ai.engine.evaluation.SynergyPresence
 import com.wingedsheep.ai.engine.evaluation.EvaluationWeights
 import com.wingedsheep.engine.core.ActivateAbility
 import com.wingedsheep.engine.core.CastSpell
@@ -54,6 +55,11 @@ class HoldPolicy(
      * which is where the whole idea lives.
      */
     private val holdRemovalForBetterTargets: Boolean = false,
+    /**
+     * [com.wingedsheep.ai.engine.AiProfile.payoffsReadTheirFuel]: under [holdRemovalForBetterTargets],
+     * a payoff's fuel counts toward whether it is worth the removal spell.
+     */
+    private val payoffsReadTheirFuel: Boolean = false,
     /**
      * [AiProfile.holdCountersForBetterSpells][com.wingedsheep.ai.engine.AiProfile.holdCountersForBetterSpells]
      * — charge a counterspell for answering a spell smaller than what the caster can still deploy.
@@ -161,6 +167,7 @@ class HoldPolicy(
      */
     private val legalActions: ((GameState, EntityId) -> List<LegalAction>)? = null,
 ) {
+    private val synergy = SynergyPresence(intents)
 
     /** Whether this policy can say anything. False when the agent has no card knowledge. */
     val isEnabled: Boolean get() = intents.isEnabled
@@ -296,7 +303,10 @@ class HoldPolicy(
         val card = state.getEntity(cast.cardId)?.get<CardComponent>() ?: return 0.0
 
         val removal = if (holdRemovalForBetterTargets) {
-            RemovalPatience.discount(state, playerId, intent, card, cast.targets, boardPresenceWeight)
+            RemovalPatience.discount(
+                state, playerId, intent, card, cast.targets, boardPresenceWeight,
+                synergy = if (payoffsReadTheirFuel) synergy else null,
+            )
         } else {
             0.0
         }

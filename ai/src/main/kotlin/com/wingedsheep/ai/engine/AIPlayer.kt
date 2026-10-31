@@ -286,6 +286,7 @@ class AIPlayer(
                 libraryClock = profile.libraryClock,
                 surplusLandsReadTheHand = profile.surplusLandsReadTheHand,
                 oneShotManaIsMana = profile.oneShotManaIsMana,
+                payoffsReadTheirFuel = profile.payoffsReadTheirFuel,
             )
             val combatAdvisor = CombatAdvisor(
                 simulator, evaluator, cardRegistry, advisorRegistry,
@@ -347,6 +348,7 @@ class AIPlayer(
                     intents = intents,
                     combatTricksWaitForBlocks = profile.combatTricksWaitForBlocks,
                     holdRemovalForBetterTargets = profile.holdRemovalForBetterTargets,
+                    payoffsReadTheirFuel = profile.payoffsReadTheirFuel,
                     holdCountersForBetterSpells = profile.holdCountersForBetterSpells,
                     cashCantripsInTheEndStep = profile.cashCantripsInTheEndStep,
                     holdFlashPermanentsForAmbush = profile.holdFlashPermanentsForAmbush,
