@@ -1298,6 +1298,23 @@ data class AiProfile(
      */
     val threatAwareDefender: Boolean = false,
     /**
+     * A creature stolen until end of turn ("Threaten" — Involuntary Employment, Sibling Rivalry)
+     * is worth the attack it makes and nothing more: it goes home at cleanup.
+     *
+     * Off the 2026-10-31 AI-vs-humans review: `380b3fe6` turn 16, Involuntary Employment on the
+     * opponent's Lathril (untapped, hasty, menace) with the opponent on 8, then no attack;
+     * `f8b2915e` turns 7 and 9, Sibling Rivalry on the opposing Amalia — paying 3 life to ward
+     * each time — then no attack. The attack planner scored the board after combat with the
+     * borrowed creature still ours: a blocker for the crack-back, and an asset lost if it died.
+     *
+     * With this on, [CombatAdvisor] scores every plan with until-end-of-turn control changes
+     * ended, so a borrowed creature attacks for free; and
+     * [com.wingedsheep.ai.engine.knowledge.ExpiringGrantWindow] refuses the steal itself once the
+     * turn has no fight left for the creature (after the last combat damage, with no sacrifice
+     * outlet of ours in play). Pinned by `TemporaryControlAttackTest`.
+     */
+    val borrowedCreaturesGoHome: Boolean = false,
+    /**
      * Read a blocker whose block trigger destroys the attacker it blocks as a killer, the way
      * deathtouch is read.
      *
@@ -2298,6 +2315,7 @@ data class AiProfile(
             blockTriggersKill = true,
             stressCrackBack = true,
             threatAwareDefender = true,
+            borrowedCreaturesGoHome = true,
             rollouts = PRODUCTION_CANDIDATE_EXPIRING.rollouts?.copy(staticPriorPlayouts = 1.0),
         )
 
