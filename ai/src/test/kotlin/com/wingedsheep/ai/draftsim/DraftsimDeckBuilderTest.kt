@@ -236,4 +236,59 @@ class DraftsimDeckBuilderTest : FunSpec({
 
         best.colors.toSet() shouldBe setOf("W", "B", "G")
     }
+
+    // A drafted pool with only 19 castable spells in its pair used to make up the four-card gap in
+    // basics: 21 lands beside 19 spells (2026-10-31 games 2d31a409, 8d182668, ee882769 ran 22/18).
+    // A light black splash fills it instead, and the deck runs at most one land over 17.
+    test("19 castable spells in the pair splash for depth rather than pad to 21 lands") {
+        val ratings = HashMap<String, Double>()
+        val cards = mutableListOf<DraftsimPoolCard>()
+        var n = 0
+        fun add(card: ScorerCard, rating: Double) {
+            ratings[DraftsimData.nameKey(card.name)] = rating
+            cards += DraftsimPoolCard(card, "id-${n++}")
+        }
+        for (i in 1..10) add(BCard("WhiteBear$i", if (i % 2 == 0) "{1}{W}" else "{2}{W}", "Creature — Human", listOf("W")), 3.0)
+        for (i in 1..9) add(BCard("BlueDrake$i", if (i % 2 == 0) "{2}{U}" else "{3}{U}", "Creature — Drake", listOf("U")), 3.0)
+        for (i in 1..4) add(BCard("BlackRogue$i", "{3}{B}", "Creature — Rogue", listOf("B")), 2.0)
+        add(BCard("GreenGiant", "{3}{G}{G}", "Creature — Giant", listOf("G")), 2.5)
+        val byId = cards.associateBy { it.instanceId }
+
+        val build = DraftsimDeckBuilder(DraftsimSetTables(ratings, HashSet(), emptyMap())).buildDecks(cards, mode = "draft").first()
+
+        val inDeck = build.deckInstanceIds.mapNotNull { byId[it]?.card }
+        val lands = inDeck.count { it.typeLine.contains("Land") } + build.basicsNeeded.values.sum()
+        (inDeck.size + build.basicsNeeded.values.sum()) shouldBe 40
+        (lands <= 18) shouldBe true
+        build.colors.toSet() shouldBe setOf("W", "U", "B")
+        build.splashColor shouldBe "B"
+        inDeck.count { it.name.startsWith("BlackRogue") } shouldBe 3
+        inDeck.none { it.name == "GreenGiant" } shouldBe true
+        // A light splash: a few Swamps, not a full share of the lands.
+        (build.basicsNeeded["B"] ?: 0) shouldBe 4
+    }
+
+    // 2026-10-31 production games: off-colour tapped duals and colourless utility lands in place of
+    // basics. A B/G deck has no use for a {B}/{R} Annex (a tapped Swamp) or a colourless Arena.
+    test("a B/G build leaves out an off-colour tapped dual and colourless utility lands") {
+        val ratings = HashMap<String, Double>()
+        val cards = mutableListOf<DraftsimPoolCard>()
+        var n = 0
+        fun add(card: ScorerCard, rating: Double) {
+            ratings[DraftsimData.nameKey(card.name)] = rating
+            cards += DraftsimPoolCard(card, "id-${n++}")
+        }
+        for (i in 1..12) add(BCard("BlackRogue$i", if (i % 2 == 0) "{1}{B}" else "{2}{B}", "Creature — Rogue", listOf("B")), 3.0)
+        for (i in 1..12) add(BCard("GreenBeast$i", if (i % 2 == 0) "{1}{G}" else "{2}{G}", "Creature — Beast", listOf("G")), 3.0)
+        add(BCard("Stingerquill Annex", "", "Land", colorIdentity = listOf("B", "R")), 2.0)
+        repeat(2) { add(BCard("Hexhaven Dueling Arena", "", "Land"), 2.0) }
+        add(BCard("Formidable Commons", "", "Land", colorIdentity = listOf("B", "G")), 2.0)
+        val byId = cards.associateBy { it.instanceId }
+
+        val build = DraftsimDeckBuilder(DraftsimSetTables(ratings, HashSet(), emptyMap())).buildDecks(cards, mode = "draft").first()
+
+        val lands = build.deckInstanceIds.mapNotNull { byId[it]?.card }.filter { it.typeLine.contains("Land") }.map { it.name }
+        build.colors.toSet() shouldBe setOf("B", "G")
+        lands shouldBe listOf("Formidable Commons")
+    }
 })
