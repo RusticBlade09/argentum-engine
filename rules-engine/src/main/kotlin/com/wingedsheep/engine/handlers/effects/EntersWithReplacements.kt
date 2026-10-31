@@ -471,7 +471,7 @@ object EntersWithReplacements {
         for (sourceId in sourceState.getBattlefield()) {
             if (sourceId == enteringEntityId) continue
             val container = sourceState.getEntity(sourceId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = sourceState.activeReplacementSource(sourceId) ?: continue
             val sourceControllerId = container.get<ControllerComponent>()?.playerId ?: continue
             val effects = replacementComponent.replacementEffects
                 .filter { Zone.BATTLEFIELD in it.activeZones }

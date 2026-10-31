@@ -342,7 +342,7 @@ class DamageCalculator(
 
         for (entityId in state.getBattlefield()) {
             val container = state.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
             val sourceControllerId = container.get<ControllerComponent>()?.playerId ?: continue
 
             for (effect in replacementComponent.replacementEffects) {

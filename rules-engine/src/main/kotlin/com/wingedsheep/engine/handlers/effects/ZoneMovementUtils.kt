@@ -981,7 +981,7 @@ object ZoneMovementUtils {
 
         for (permanentId in battlefieldSourceState.getBattlefield()) {
             val permContainer = battlefieldSourceState.getEntity(permanentId) ?: continue
-            val replacementComponent = permContainer.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = battlefieldSourceState.activeReplacementSource(permanentId) ?: continue
             val sourceControllerId = permContainer.get<ControllerComponent>()?.playerId ?: continue
 
             for (effect in replacementComponent.replacementEffects) {
