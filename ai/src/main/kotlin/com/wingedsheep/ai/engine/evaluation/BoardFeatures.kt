@@ -62,6 +62,52 @@ object LifeDifferential : BoardFeature {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// Library Clock
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * How close each library is to running out — [com.wingedsheep.ai.engine.AiProfile.libraryClock].
+ *
+ * Drawing from an empty library loses the game (CR 704.5b), but only at the next draw, so a leaf
+ * that has just exiled or milled its own library looks like any other board: game a7fc150e (Momir
+ * Basic) played a land with Territorial Bruntar out, its landfall trigger exiled all 48 basics, and
+ * the AI decked out at 20 life. A library is a clock of about one card a turn, so this prices it
+ * the way [LifeDifferential] prices life: nothing until the last few cards, then steeply — an
+ * empty library is most of the way to a loss. Symmetric, in life units, folded over the field like
+ * life: milling ourselves out is bad, milling an opponent out is good.
+ *
+ * Zero from [SAFE_CARDS] up, so a 40- or 60-card game far from the end of its library scores
+ * exactly as it did without it.
+ */
+object LibraryClock : BoardFeature {
+    override fun score(state: GameState, projected: ProjectedState, playerId: EntityId): Double {
+        val sides = state.sidesFor(playerId) ?: return 0.0
+        val mine = sideValue(state, sides.mine)
+        return sides.against(OpponentAggregate.FIELD) { opponent -> mine - sideValue(state, opponent) }
+    }
+
+    private fun sideValue(state: GameState, side: List<EntityId>): Double =
+        side.sumOf { libraryValue(state.getLibrary(it).size) }
+
+    /**
+     * Cards left from which the library scores nothing. Three draws is three turns of game still
+     * to play; scenario positions routinely hold libraries of four to six cards, and a search or a
+     * cycle out of one is not the misplay this term exists for.
+     */
+    const val SAFE_CARDS = 3
+
+    /** An empty library: one draw from a loss — most of [LifeDifferential]'s −100 for dead. */
+    private const val EMPTY_LIBRARY = -60.0
+
+    /** Each card left keeps this fraction of the penalty of one fewer: −60, −15, −3.75, then 0. */
+    private const val DECAY = 0.25
+
+    /** What a library of [cards] is worth to its owner, in life units; 0 from [SAFE_CARDS] up. */
+    fun libraryValue(cards: Int): Double =
+        if (cards >= SAFE_CARDS) 0.0 else EMPTY_LIBRARY * Math.pow(DECAY, cards.coerceAtLeast(0).toDouble())
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // Board Presence
 // ═════════════════════════════════════════════════════════════════════════════
 

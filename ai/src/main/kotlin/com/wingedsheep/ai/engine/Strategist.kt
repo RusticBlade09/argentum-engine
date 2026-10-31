@@ -8,6 +8,7 @@ import com.wingedsheep.ai.engine.budget.LegacyBudgetPolicy
 import com.wingedsheep.ai.engine.evaluation.BoardEvaluator
 import com.wingedsheep.ai.engine.evaluation.BoardPresence
 import com.wingedsheep.ai.engine.evaluation.EvaluationWeights
+import com.wingedsheep.ai.engine.evaluation.LibraryClock
 import com.wingedsheep.ai.engine.evaluation.ThreatAssessment
 import com.wingedsheep.ai.engine.knowledge.EffectWalker
 import com.wingedsheep.ai.engine.knowledge.ExpiringGrantWindow
@@ -198,6 +199,11 @@ class Strategist(
      * See [landDropFollowUps].
      */
     private val landDropUnlocksSpells: Boolean = false,
+    /**
+     * [AiProfile.libraryClock] — the Momir avatar does not wait for a land drop that would drain
+     * our library. The evaluator half lives in `LibraryClock`. See [momirActivations].
+     */
+    private val libraryClock: Boolean = false,
     /**
      * [AiProfile.activatedPumpsNeedAPlannedAttack] — before our attack, an activation that buys
      * nothing but end-of-turn creature grants is floored below passing unless the attack plan sends
@@ -2492,15 +2498,32 @@ class Strategist(
         actions: List<LegalAction>,
         playerId: EntityId
     ): List<LegalAction> {
-        val landDropAvailable = actions.any { it.action is PlayLand && it.affordable }
+        val landDrops = actions.filter { it.action is PlayLand && it.affordable }
+        // Simulated only when a Momir activation asks, and only under [libraryClock].
+        val landDropAvailable = lazy(LazyThreadSafetyMode.NONE) {
+            landDrops.any { !libraryClock || !landDropDrainsLibrary(state, it.action, playerId) }
+        }
         return actions.flatMap { action -> expandXCost(state, action, playerId, landDropAvailable) }
+    }
+
+    /**
+     * Whether playing [land] leaves our library closer to empty by a margin the evaluator's
+     * `LibraryClock` prices — a landfall trigger that exiles or mills the library (Territorial
+     * Bruntar over a Momir library of basics exiles all of it). A land the processor refuses
+     * counts as draining: it is no land drop to wait for.
+     */
+    private fun landDropDrainsLibrary(state: GameState, land: GameAction, playerId: EntityId): Boolean {
+        val result = simulator.simulate(state, land)
+        if (result is SimulationResult.Illegal) return true
+        val before = LibraryClock.libraryValue(state.getLibrary(playerId).size)
+        return LibraryClock.libraryValue(result.state.getLibrary(playerId).size) < before
     }
 
     private fun expandXCost(
         state: GameState,
         action: LegalAction,
         playerId: EntityId,
-        landDropAvailable: Boolean,
+        landDropAvailable: Lazy<Boolean>,
     ): List<LegalAction> {
         val base = action.action
         val maxX = action.maxAffordableX
@@ -2563,13 +2586,14 @@ class Strategist(
      * on a mana value with nothing castable in it.
      *
      * Also empty while [landDropAvailable] and a card would still be left to discard after the land:
-     * the land is one more point of X for the same card, so it goes first.
+     * the land is one more point of X for the same card, so it goes first. Under [libraryClock] a
+     * land drop that would drain the library is not one to wait for — see [landDropDrainsLibrary].
      */
     private fun momirActivations(
         state: GameState,
         action: LegalAction,
         playerId: EntityId,
-        landDropAvailable: Boolean,
+        landDropAvailable: Lazy<Boolean>,
     ): List<LegalAction> {
         val base = action.action as? ActivateAbility ?: return listOf(action)
         val info = action.additionalCostInfo
@@ -2585,7 +2609,7 @@ class Strategist(
         }
         // Land drop first: the land is one more point of X for the same card. Only while another
         // card would be left to discard — playing the last card as a land forfeits the activation.
-        if (landDropAvailable && (info?.validDiscardTargets?.size ?: 0) > (info?.discardCount ?: 0)) {
+        if ((info?.validDiscardTargets?.size ?: 0) > (info?.discardCount ?: 0) && landDropAvailable.value) {
             return emptyList()
         }
         return momirXCandidates(state, action.maxAffordableX ?: 0, playerId).map { x ->

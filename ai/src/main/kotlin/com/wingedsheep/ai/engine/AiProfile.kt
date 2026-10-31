@@ -940,6 +940,20 @@ data class AiProfile(
      */
     val surplusAwareLands: Boolean = false,
     /**
+     * Price **how close each library is to running out** — the evaluator's `LibraryClock` term:
+     * nothing from three cards up, then steeply toward an empty library, which scores as most of a
+     * loss. Milling ourselves out is bad, milling an opponent out is good.
+     *
+     * 2026-10-31 AI-vs-human review, game a7fc150e (Momir Basic) turn 13: the avatar flipped
+     * Territorial Bruntar, then the AI played a Plains. Bruntar's landfall exiles until a nonland
+     * card, and a Momir library is all basics, so all 48 cards went; it decked out at 20 life. No
+     * evaluator term read the library, and the loss only comes at the next draw step.
+     *
+     * Also keeps the Momir avatar's land-first wait ([landDropUnlocksSpells]'s X half) from holding
+     * the activation for a land drop that would drain the library. `LibraryClockAiTest` pins both.
+     */
+    val libraryClock: Boolean = false,
+    /**
      * Cast **enablers before what they discount**: in our own main phase a spell scores as at
      * least the best spell it makes cheaper (or castable), judged from the position right after it
      * — the same credit [landDropUnlocksSpells] gives a land.
@@ -2371,6 +2385,7 @@ data class AiProfile(
             curveAwareMulligan = true,
             landcyclingNeedsAUse = true,
             lookDigsForLand = true,
+            libraryClock = true,
             rollouts = PRODUCTION_CANDIDATE_EXPIRING.rollouts?.copy(staticPriorPlayouts = 1.0),
         )
 
