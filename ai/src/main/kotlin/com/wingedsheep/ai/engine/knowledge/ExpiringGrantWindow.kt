@@ -149,7 +149,16 @@ internal object ExpiringGrantWindow {
         }
 
         if ((refuseUnspendable || readShrinks) && activation != null &&
-            nothingCanSpend(state, playerId, ability, activation, intents, refuseUnspendable, readShrinks)
+            nothingCanSpend(
+                state, playerId, ability.effect,
+                sourceId = activation.sourceId,
+                targets = activation.targets,
+                sourceTaps = tapsItsSource(ability),
+                pendingSelfGrant = selfGrantPending(state, activation.sourceId, ability),
+                intents = intents,
+                readGrants = refuseUnspendable,
+                readShrinks = readShrinks,
+            )
         ) {
             return true
         }
@@ -196,7 +205,7 @@ internal object ExpiringGrantWindow {
     }
 
     /**
-     * Whether **no** window left this turn can spend what [activation] buys — the floor
+     * Whether **no** window left this turn can spend what [effect] buys — the floor
      * [com.wingedsheep.ai.engine.AiProfile.refuseUnspendableGrants] adds.
      *
      * The deferral floor in [holds] answers "is a better window still ahead?". This answers the
@@ -225,28 +234,29 @@ internal object ExpiringGrantWindow {
     private fun nothingCanSpend(
         state: GameState,
         playerId: EntityId,
-        ability: ActivatedAbility,
-        activation: ActivateAbility,
+        effect: Effect,
+        /** The permanent the ability is printed on; null for a spell, which has no `Self` to fight. */
+        sourceId: EntityId?,
+        targets: List<ChosenTarget>,
+        /**
+         * Whether paying taps the source — as the cost ({T}) or as a rider ("Tap it.") — so it
+         * cannot be the creature that attacks or blocks with the grant afterwards.
+         */
+        sourceTaps: Boolean,
+        /** The same self-grant is already on the stack from this source. */
+        pendingSelfGrant: Boolean,
         intents: IntentCatalog,
         readGrants: Boolean = true,
         readShrinks: Boolean = false,
     ): Boolean {
-        val payoffs = expiringPayoffs(ability.effect, readShrinks) ?: return false
+        val payoffs = expiringPayoffs(effect, readShrinks) ?: return false
         // Without [readGrants] only the shrink half is asked about; a grant is left to the leaf.
         if (!readGrants && payoffs.any { it.kind != PayoffKind.SHRINK }) return false
         if (somethingOnTheStackThreatensUs(state, playerId, intents)) return false
 
         val projected = state.projectedState
-        // A source that taps itself — as the cost ({T}) or as a rider ("Tap it.") — cannot be the
-        // creature that attacks or blocks with the grant afterwards.
-        val sourceTaps = tapsItsSource(ability)
-        val pendingOnStack = state.stack.any { stackId ->
-            val onStack = state.getEntity(stackId)?.get<ActivatedAbilityOnStackComponent>()
-            onStack != null && onStack.sourceId == activation.sourceId && onStack.effect == ability.effect
-        }
-
         return payoffs.none { payoff ->
-            val affected = affectedBy(state, projected, playerId, payoff.target, activation)
+            val affected = affectedBy(state, projected, playerId, payoff.target, sourceId, targets)
                 ?: return false
             when (payoff.kind) {
                 PayoffKind.CREATURE -> {
@@ -257,24 +267,69 @@ internal object ExpiringGrantWindow {
                     val fresh = affected.filterNot { id ->
                         keyword != null && (
                             projected.hasKeyword(id, keyword) ||
-                                (pendingOnStack && payoff.target == EffectTarget.Self)
+                                (pendingSelfGrant && payoff.target == EffectTarget.Self)
                             )
                     }
                     fresh.any {
-                        canStillFight(state, projected, playerId, it, activation.sourceId, sourceTaps, keyword)
+                        canStillFight(state, projected, playerId, it, sourceId, sourceTaps, keyword)
                     }
                 }
                 PayoffKind.LAND -> affected.any { canStillMatter(state, projected, playerId, it) }
                 PayoffKind.SHRINK -> affected.any { id ->
                     killedBy(state, projected, id, payoff.toughnessLoss) ||
                         if (projected.getController(id) == playerId) {
-                            canStillFight(state, projected, playerId, id, activation.sourceId, sourceTaps)
+                            canStillFight(state, projected, playerId, id, sourceId, sourceTaps)
                         } else {
                             opposingCanStillFight(state, projected, playerId, id)
                         }
                 }
             }
         }
+    }
+
+    /** Whether the same ability from the same source is already on the stack. */
+    private fun selfGrantPending(state: GameState, sourceId: EntityId, ability: ActivatedAbility): Boolean =
+        state.stack.any { stackId ->
+            val onStack = state.getEntity(stackId)?.get<ActivatedAbilityOnStackComponent>()
+            onStack != null && onStack.sourceId == sourceId && onStack.effect == ability.effect
+        }
+
+    /**
+     * [nothingCanSpend]'s shrink reading for a **spell** — the floor
+     * [com.wingedsheep.ai.engine.AiProfile.refuseWastedPayoffs] puts under a cast whose every
+     * payoff is an end-of-turn stat loss on a creature that kills nothing and has no fight left
+     * this turn to lose it in.
+     *
+     * The activation path has read this since the Proft position; the spell twin went unread
+     * because the floor hung off the activation alone. Off a live game (2026-10-29, `aa989771`,
+     * turn 17): Icy Reception's "target creature gets -5/-0 until end of turn" cast in our own
+     * precombat main on the opponent's *tapped* 5/5 flier — a creature that could neither block
+     * our attack nor make its own before cleanup — at 6 life, as the noncreature spell that
+     * discounted Traxos. The leaf priced the flier's lost power as if it outlived the turn. Held,
+     * the same card shrinks that flier when it attacks.
+     *
+     * [effects] are what the cast resolves — the chosen modes of a modal spell — and [targets] the
+     * permanents it commits to. A spell has no source on the battlefield, so a `Self` leaf declines
+     * and the leaf score stays in charge. Grants are not asked about here: a pump spell has its own
+     * combat-trick reading in [HoldPolicy].
+     */
+    fun castBuysNothing(
+        state: GameState,
+        playerId: EntityId,
+        effects: List<Effect>,
+        targets: List<ChosenTarget>,
+        intents: IntentCatalog,
+    ): Boolean = effects.isNotEmpty() && effects.all { effect ->
+        nothingCanSpend(
+            state, playerId, effect,
+            sourceId = null,
+            targets = targets,
+            sourceTaps = false,
+            pendingSelfGrant = false,
+            intents = intents,
+            readGrants = false,
+            readShrinks = true,
+        )
     }
 
     /**
@@ -334,7 +389,8 @@ internal object ExpiringGrantWindow {
         val projected = state.projectedState
         val ourTurn = state.isActiveTurnFor(playerId)
         for ((cantAttack, target) in restrictions) {
-            val affected = affectedBy(state, projected, playerId, target, activation) ?: return false
+            val affected = affectedBy(state, projected, playerId, target, activation.sourceId, activation.targets)
+                ?: return false
             for (creature in affected) {
                 if (!projected.isCreature(creature)) return false
                 val controller = projected.getController(creature) ?: return false
@@ -411,7 +467,7 @@ internal object ExpiringGrantWindow {
         projected: ProjectedState,
         playerId: EntityId,
         creature: EntityId,
-        sourceId: EntityId,
+        sourceId: EntityId?,
         sourceTaps: Boolean,
         keyword: String? = null,
     ): Boolean {
@@ -491,9 +547,10 @@ internal object ExpiringGrantWindow {
         projected: ProjectedState,
         playerId: EntityId,
         target: EffectTarget?,
-        activation: ActivateAbility,
+        sourceId: EntityId?,
+        targets: List<ChosenTarget>,
     ): List<EntityId>? = when (target) {
-        EffectTarget.Self -> listOf(activation.sourceId)
+        EffectTarget.Self -> sourceId?.let(::listOf)
         // A player-level grant ("you have hexproof until end of turn") has no creature to fight
         // with and no land to tap, and is not a shape this reads.
         EffectTarget.Controller -> null
@@ -502,7 +559,7 @@ internal object ExpiringGrantWindow {
         EffectTarget.IterationEntity -> projected.getBattlefieldControlledBy(playerId)
             .filter { projected.isCreature(it) }
         null -> null
-        else -> activation.targets.mapNotNull { (it as? ChosenTarget.Permanent)?.entityId }
+        else -> targets.mapNotNull { (it as? ChosenTarget.Permanent)?.entityId }
             .filter { it in state.getBattlefield() }
             .ifEmpty { null }
     }
@@ -534,9 +591,10 @@ internal object ExpiringGrantWindow {
      * Whether an **opposing** creature can still be in a fight this turn that a shrink on it would
      * change — [canStillFight] from the other side of the table.
      *
-     *  - **Our turn**: it can block. Before our attack that is any untapped creature of theirs; once
+     *  - **Our turn**: it can block. Before our attack that is any untapped creature of theirs while
+     *    a creature of ours can still attack — with none, there is no attack for it to block; once
      *    attackers are declared it needs an attacker to block, and once blocks are in it must be
-     *    blocking.
+     *    blocking. A tapped one stays tapped until *their* untap step, so it fights nothing here.
      *  - **Their turn**: it can attack. Before their attack that is any untapped creature; once
      *    attackers are declared it must be attacking.
      *
@@ -555,7 +613,8 @@ internal object ExpiringGrantWindow {
         val untapped = !entity.has<TappedComponent>()
         return if (state.isActiveTurnFor(playerId)) {
             when (state.step) {
-                in UNTIL_ATTACKERS_DECLARED -> untapped
+                in UNTIL_ATTACKERS_DECLARED -> untapped &&
+                    CombatMath.getCreaturesThatCanAttack(state, projected, playerId).isNotEmpty()
                 Step.DECLARE_ATTACKERS -> untapped &&
                     state.getBattlefield().any { state.getEntity(it)?.has<AttackingComponent>() == true }
                 in FIGHT_STILL_AHEAD -> entity.has<BlockingComponent>()

@@ -16,9 +16,12 @@ import com.wingedsheep.engine.state.components.stack.ChosenTarget
 import com.wingedsheep.engine.state.components.stack.TargetsComponent
 import com.wingedsheep.sdk.core.Step
 import com.wingedsheep.sdk.core.Zone
+import com.wingedsheep.sdk.model.CardDefinition
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.ActivatedAbility
 import com.wingedsheep.sdk.scripting.TimingRule
+import com.wingedsheep.sdk.scripting.effects.Effect
+import com.wingedsheep.sdk.scripting.effects.ModalEffect
 
 /**
  * "Is this the window for this card?" — the timing half of Phase 6.
@@ -207,6 +210,15 @@ class HoldPolicy(
             ) {
                 return TimingVerdict.NoWindow
             }
+            // An end-of-turn shrink with no fight left to shrink — the spell twin of the
+            // activation reading in [activationVerdictFor].
+            val resolves = definition?.let { castEffects(it, cast) }
+            if (resolves != null && ExpiringGrantWindow.castBuysNothing(
+                    state, playerId, resolves, cast.targets + cast.modeTargetsOrdered.flatten(), intents,
+                )
+            ) {
+                return TimingVerdict.NoWindow
+            }
         }
 
         val window = windowVerdictFor(state, playerId, intent, cast, leaf)
@@ -233,6 +245,19 @@ class HoldPolicy(
             windowDelta + stackCredit - patience.coerceAtLeast(0.0),
             reason = if (stackCredit > 0.0) "first of stacked tax counters" else "patience",
         )
+    }
+
+    /**
+     * What [cast] resolves: the spell's effect, or for a modal spell the modes it chose. Null for a
+     * shape this does not read — a split or adventure face, a fused cast, or a modal spell cast
+     * without its modes named.
+     */
+    private fun castEffects(definition: CardDefinition, cast: CastSpell): List<Effect>? {
+        if (cast.faceIndex != null || cast.castFused || definition.cardFaces.isNotEmpty()) return null
+        val effect = definition.script.spellEffect ?: return null
+        if (effect !is ModalEffect) return listOf(effect)
+        if (cast.chosenModes.isEmpty()) return null
+        return cast.chosenModes.map { effect.modes.getOrNull(it)?.effect ?: return null }
     }
 
     /**

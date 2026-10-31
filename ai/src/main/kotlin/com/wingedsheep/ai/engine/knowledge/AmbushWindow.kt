@@ -244,6 +244,8 @@ internal object AmbushWindow {
     ): Boolean {
         if (state.activePlayerId != playerId) return false
         val cost = state.getEntity(castCardId)?.get<CardComponent>()?.manaCost?.cmc ?: return false
+        val available = intents.availableMana(state, playerId) ?: return false
+        // An instant the mana we have cannot pay for at all is not competing for it.
         val cheapestOther = state.getZone(playerId, Zone.HAND)
             .filter { it != castCardId }
             .mapNotNull { id ->
@@ -251,8 +253,8 @@ internal object AmbushWindow {
                 if (intents.forName(card.name)?.speed != Speed.INSTANT) return@mapNotNull null
                 card.manaCost.cmc
             }
+            .filter { it <= available }
             .minOrNull() ?: return false
-        val available = intents.availableMana(state, playerId) ?: return false
         return available < cost + cheapestOther
     }
 
