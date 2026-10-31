@@ -296,6 +296,7 @@ class AIPlayer(
                 chumpForTheClock = profile.chumpForTheClock,
                 walkerEngines = if (profile.walkersPricedAsEngines) IntentCatalog.of(cardRegistry) else null,
                 stackChumpsOnTramplers = profile.stackChumpsOnTramplers,
+                freeGangBlocks = profile.freeGangBlocks,
                 attacksReadTheRace = profile.attacksReadTheRace,
                 borrowedCreaturesGoHome = profile.borrowedCreaturesGoHome,
                 raceWeight = EvalWeights.resolve(profile.evalWeightsId).threatAssessment,

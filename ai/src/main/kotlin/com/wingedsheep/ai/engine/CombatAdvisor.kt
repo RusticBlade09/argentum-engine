@@ -110,6 +110,11 @@ class CombatAdvisor(
      */
     private val stackChumpsOnTramplers: Boolean = false,
     /**
+     * Gang up on an attacker two blockers kill without either dying, before trading for it
+     * ([freeGangBlock]). [AiProfile.freeGangBlocks] carries the argument.
+     */
+    private val freeGangBlocks: Boolean = false,
+    /**
      * Score attack plans by the race: credit our follow-up swing ([followUpValue]), read the board
      * as it stands at our next untap so the crack-back is a tapped attacker's only price, and take
      * the worse of the predicted blocks and no blocks when the blocks cost the defender a creature
@@ -838,6 +843,7 @@ class CombatAdvisor(
      * - Pass 1 (Free kills): blocker kills attacker AND survives — always take these
      * - Pass 2 (Profitable trades): blocker kills attacker, dies, trade favorable by value
      * - Pass 3 (Damage prevention): blocker survives without killing attacker, prevents damage
+     * - Pass 1b (Free gang kills, under [freeGangBlocks]): two blockers kill the attacker and both survive
      * - Pass 4 (Gang blocks): two blockers combine to kill what neither could alone
      */
     private fun chooseBlockersViaHeuristic(
@@ -862,6 +868,20 @@ class CombatAdvisor(
             blockerMap[blocker] = listOf(attacker)
             assignedBlockers.add(blocker)
             blockedAttackers.add(attacker)
+        }
+
+        // ── Pass 1b: Free gang kills — two blockers kill the attacker and both survive ──
+        // Better than any trade below: the attacker dies and we lose nothing.
+        if (freeGangBlocks) {
+            for (attacker in sortedAttackers) {
+                if (attacker in blockedAttackers) continue
+                val pair = freeGangBlock(state, projected, attacker, validBlockers, assignedBlockers) ?: continue
+                pair.forEach { blocker ->
+                    blockerMap[blocker] = listOf(attacker)
+                    assignedBlockers.add(blocker)
+                }
+                blockedAttackers.add(attacker)
+            }
         }
 
         // ── Pass 2: Profitable trades — blocker kills attacker but dies ──
@@ -1030,6 +1050,53 @@ class CombatAdvisor(
                 }
             }
         }
+    }
+
+    /**
+     * The cheapest pair of blockers that kills [attacker] while neither of them can die to it:
+     * each survives the attacker's whole power (or is indestructible), the attacker has no
+     * deathtouch, and the pair's combat damage reaches its toughness. Null when there is none, or
+     * when the attacker can't be destroyed by damage.
+     */
+    private fun freeGangBlock(
+        state: GameState,
+        projected: ProjectedState,
+        attacker: EntityId,
+        validBlockers: List<EntityId>,
+        assignedBlockers: Set<EntityId>,
+    ): List<EntityId>? {
+        val aKeywords = projected.getKeywords(attacker)
+        if (Keyword.DEATHTOUCH.name in aKeywords || Keyword.INDESTRUCTIBLE.name in aKeywords) return null
+        val aPower = projected.getPower(attacker) ?: 0
+        val aToughness = projected.getToughness(attacker) ?: 0
+        if (aToughness <= 0) return null
+        // Damage each survivor deals to the attacker; deathtouch makes any of it lethal.
+        val survivors = availableBlockersFor(state, projected, attacker, validBlockers, assignedBlockers)
+            .filter { blocker ->
+                val bKeywords = projected.getKeywords(blocker)
+                (Keyword.INDESTRUCTIBLE.name in bKeywords || (projected.getToughness(blocker) ?: 0) > aPower) &&
+                    (projected.getPower(blocker) ?: 0) > 0 &&
+                    CombatMath.blockerDealsDamage(state, projected, attacker, blocker)
+            }
+            .associateWith { blocker ->
+                val power = projected.getPower(blocker) ?: 0
+                if (Keyword.DEATHTOUCH.name in projected.getKeywords(blocker)) maxOf(power, aToughness) else power
+            }
+        if (survivors.size < 2) return null
+        val ids = survivors.keys.toList()
+        var best: List<EntityId>? = null
+        var bestCost = Double.MAX_VALUE
+        for (i in ids.indices) {
+            for (j in i + 1 until ids.size) {
+                if (survivors.getValue(ids[i]) + survivors.getValue(ids[j]) < aToughness) continue
+                val cost = CombatMath.creatureValue(state, projected, ids[i]) + CombatMath.creatureValue(state, projected, ids[j])
+                if (cost < bestCost) {
+                    bestCost = cost
+                    best = listOf(ids[i], ids[j])
+                }
+            }
+        }
+        return best
     }
 
     /**
