@@ -1055,28 +1055,28 @@ class PredicateEvaluator(
                 projectedValues?.isFaceDown != true && !card.manaCost.isEmpty() && spent.couldPay(card.manaCost)
             }
             is CardPredicate.ManaValueAtMostDynamic -> {
-                val cap = evaluateDynamicCap(state, predicate.amount, context) ?: return false
+                val cap = evaluateDynamicCap(state, predicate.amount, context, entityId) ?: return false
                 val cmc = if (projectedValues?.isFaceDown == true) 0 else ManaValues.of(state, entityId, card)
                 cmc <= cap
             }
             is CardPredicate.ManaValueEqualsDynamic -> {
-                val want = evaluateDynamicCap(state, predicate.amount, context) ?: return false
+                val want = evaluateDynamicCap(state, predicate.amount, context, entityId) ?: return false
                 val cmc = if (projectedValues?.isFaceDown == true) 0 else ManaValues.of(state, entityId, card)
                 cmc == want
             }
             is CardPredicate.PowerEqualsDynamic -> {
-                val want = evaluateDynamicCap(state, predicate.amount, context) ?: return false
+                val want = evaluateDynamicCap(state, predicate.amount, context, entityId) ?: return false
                 // No power at all (a noncreature spell) never matches — `null == want` is false.
                 (projectedValues?.power ?: amounts.offBattlefieldStat(state, entityId, isPower = true, projected)) == want
             }
             is CardPredicate.PowerAtMostDynamic -> {
-                val cap = evaluateDynamicCap(state, predicate.amount, context) ?: return false
+                val cap = evaluateDynamicCap(state, predicate.amount, context, entityId) ?: return false
                 // No power at all (a noncreature spell) never matches.
                 val power = projectedValues?.power ?: amounts.offBattlefieldStat(state, entityId, isPower = true, projected) ?: return false
                 power <= cap
             }
             is CardPredicate.ToughnessEqualsDynamic -> {
-                val want = evaluateDynamicCap(state, predicate.amount, context) ?: return false
+                val want = evaluateDynamicCap(state, predicate.amount, context, entityId) ?: return false
                 (projectedValues?.toughness ?: amounts.offBattlefieldStat(state, entityId, isPower = false, projected)) == want
             }
             CardPredicate.ManaValueIsEven -> {
@@ -1187,7 +1187,10 @@ class PredicateEvaluator(
                     val x = context?.xValue ?: return context?.resolution == null
                     return compareAmounts(value, predicate.operator, x)
                 }
-                val effectContext = context?.toEffectContext() ?: return false
+                // The candidate's controller is Player.Candidate, as in [evaluateDynamicCap].
+                val effectContext = context?.toEffectContext()
+                    ?.copy(candidatePlayerId = TargetResolutionUtils.controllerOf(state, entityId, projected))
+                    ?: return false
                 val amount = amounts.evaluate(state, predicate.amount, effectContext, projected)
                 compareAmounts(value, predicate.operator, amount)
             }
@@ -1808,14 +1811,21 @@ class PredicateEvaluator(
      * snapshot threaded through, its LKI branch found nothing here and fell through to base
      * characteristics — a pending "copy your next spell" rider capped on its dead source's power
      * read the printed value instead of the pumped one.
+     *
+     * The controller of the [candidate] being matched is bound as the candidate player, so a cap
+     * phrased relative to the object under test reads *that* object's controller — "target spell
+     * with mana value less than or equal to the number of cards in **its controller's** graveyard"
+     * (Drown in the Loch) is `cardsInYourGraveyard(Player.Candidate)`, evaluated once per candidate.
      */
     private fun evaluateDynamicCap(
         state: GameState,
         amount: DynamicAmount,
         context: PredicateContext?,
+        candidate: EntityId,
     ): Int? {
         context ?: return null
-        return amounts.evaluate(state, amount, context.toEffectContext())
+        val candidatePlayer = TargetResolutionUtils.controllerOf(state, candidate)
+        return amounts.evaluate(state, amount, context.toEffectContext().copy(candidatePlayerId = candidatePlayer))
     }
 
     /**
