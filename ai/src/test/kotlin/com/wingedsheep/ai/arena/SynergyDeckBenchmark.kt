@@ -9,6 +9,7 @@ import com.wingedsheep.sdk.model.Deck
 import io.kotest.core.spec.style.FunSpec
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.sqrt
 import kotlin.random.Random
 import kotlin.time.Duration
@@ -63,6 +64,9 @@ class SynergyDeckBenchmark : FunSpec({
         println("=== SYNERGY DECKS: $setCode, ${matchups.size} pools with differing builds " +
             "($identical identical skipped), ${matchups.size * 2} games, live vs live ===")
 
+        val finished = AtomicInteger(0)
+        val winsSoFar = AtomicInteger(0)
+        val decidedSoFar = AtomicInteger(0)
         val executor = Executors.newFixedThreadPool(threads)
         val results: List<Future<Pair<Int, Int>>> = try {
             matchups.mapIndexed { index, (pairSeed, on, off) ->
@@ -72,6 +76,12 @@ class SynergyDeckBenchmark : FunSpec({
                     val b = ArenaGameRunner.play(registry, agent, agent, off, on, pairSeed, index, 1, gameTimeout = gameTimeout)
                     val wins = (if (a.winnerSeat == 0) 1 else 0) + (if (b.winnerSeat == 1) 1 else 0)
                     val decided = listOf(a, b).count { it.winnerSeat != null }
+                    val done = finished.incrementAndGet()
+                    val totalWins = winsSoFar.addAndGet(wins)
+                    val totalDecided = decidedSoFar.addAndGet(decided)
+                    println("[$done/${matchups.size}] pool $index: synergy won $wins of $decided " +
+                        "(${a.turns}+${b.turns} turns, ${(a.durationMs + b.durationMs) / 1000}s) — " +
+                        "running $totalWins/$totalDecided")
                     wins to decided
                 }
             }.also { futures -> futures.forEach { it.get() } }
