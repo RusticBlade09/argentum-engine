@@ -173,4 +173,23 @@ class HeuristicDeckBuilderTest : FunSpec({
         val spells = deck.keys.mapNotNull { byName[it] }.filterNot { it.typeLine.isLand }
         spells.all { castableWithColors(it, setOf(Color.BLUE, Color.BLACK)) } shouldBe true
     }
+
+    // A drafted pool with only 19 castable spells in its pair used to make up the four-card gap in
+    // basics: 21 lands beside 19 spells (2026-10-31 games 2d31a409, 8d182668, ee882769 ran 22/18).
+    // A light black splash fills it instead, and the deck runs at most one land over 17.
+    test("19 castable spells in the pair splash for depth rather than pad to 21 lands") {
+        val pool = (1..10).map { creature("White $it", "{1}{W}") } +
+            (1..9).map { creature("Blue $it", "{2}{U}") } +
+            (1..4).map { creature("Black $it", "{3}{B}") } +
+            creature("Green Giant", "{3}{G}{G}")
+
+        val deck = buildHeuristicSealedDeck(pool)
+
+        deck.values.sum() shouldBe 40
+        val basics = listOf("Plains", "Island", "Swamp", "Forest", "Mountain")
+        (basics.sumOf { deck[it] ?: 0 } <= 18) shouldBe true
+        (1..4).count { "Black $it" in deck } shouldBe 3
+        deck shouldNotContainKey "Green Giant"
+        deck["Swamp"] shouldBe 3
+    }
 })
