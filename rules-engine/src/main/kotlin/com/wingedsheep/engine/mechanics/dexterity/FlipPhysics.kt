@@ -52,14 +52,14 @@ data class FlipReleaseProfile(
  */
 object FlipPhysics {
     const val SWEET_SPOT = 0.74
-    const val CLEAN_FROM = 0.70
-    const val CLEAN_TO = 0.78
+    const val CLEAN_FROM = 0.72
+    const val CLEAN_TO = 0.76
     const val TOO_SOFT_BELOW = 0.2
 
     /** How far (mm) a release carries short or long per unit of strength off the sweet spot. */
     const val DEPTH_PER_STRENGTH = 800.0
     /** How far (mm) a release at the very edge of the hand's sway pulls to that side. */
-    const val SIDE_PER_SWAY = 110.0
+    const val SIDE_PER_SWAY = 140.0
 
     /** Scatter (one standard deviation, mm) of a clean release, before distance. */
     const val BASE_SCATTER = 3.0
@@ -68,7 +68,7 @@ object FlipPhysics {
     /** Extra scatter of the worst possible release. */
     const val SLOPPY_SCATTER = 35.0
     /** How far outside the clean zone a release must stray to be as sloppy as it gets. */
-    const val SLOP_RANGE = 0.4
+    const val SLOP_RANGE = 0.25
 
     /** Spread (degrees, one standard deviation) of the resting angle of a clean / the sloppiest release. */
     const val CLEAN_SKEW = 7.0

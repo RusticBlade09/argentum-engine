@@ -88,17 +88,6 @@ export function carryPoint(table: FlipTable, profile: FlipReleaseProfile, aim: P
   return { x: aim.x + ux * drift - uy * pull, y: aim.y + uy * drift + ux * pull }
 }
 
-/** A carry error as the player reads it: "on target", "6 cm short · 3 cm left", "4 cm long". */
-export function driftLabel(drift: number, pull = 0): string {
-  const depth = Math.round(Math.abs(drift) / 10)
-  const side = Math.round(Math.abs(pull) / 10)
-  const parts = [
-    ...(depth === 0 ? [] : [`${depth} cm ${drift < 0 ? 'short' : 'long'}`]),
-    ...(side === 0 ? [] : [`${side} cm ${pull < 0 ? 'left' : 'right'}`]),
-  ]
-  return parts.length === 0 ? 'on target' : parts.join(' · ')
-}
-
 /** One standard deviation of scatter (mm) for a throw at [aim] — the engine's formula, its numbers. */
 export function scatterSigma(table: FlipTable, profile: FlipReleaseProfile, aim: Point, strength: number): number {
   const distance = Math.hypot(aim.x - table.handX, aim.y - table.handY)
