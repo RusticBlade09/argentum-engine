@@ -68,8 +68,8 @@ class StatRelevanceTest : ScenarioTestBase() {
             val outclassedBy = facing("Craw Wurm")
             val gap = outclassed.state.valueOf("Hill Giant", outclassed.player1Id, readsTheBoard) -
                 outclassedBy.state.valueOf("Hill Giant", outclassedBy.player1Id, readsTheBoard)
-            // Kills the Bears and survives them; neither against the Wurm.
-            gap shouldBe ((StatRelevance.OUTSIZES + StatRelevance.OUTLASTS) plusOrMinus EPSILON)
+            // Beats the Bears (kills and survives them); against the Wurm it does neither.
+            gap shouldBe ((StatRelevance.BEATS + StatRelevance.OUTLASTS) plusOrMinus EPSILON)
 
             withClue("the linear reading cannot tell the two boards apart") {
                 outclassed.state.valueOf("Hill Giant", outclassed.player1Id, legacy) shouldBe
@@ -84,7 +84,23 @@ class StatRelevanceTest : ScenarioTestBase() {
                 .build()
             val context = StatContext.facing(game.state, game.state.projectedState, game.player1Id, null)
 
-            StatRelevance.thresholdBonus(3, 3, none, context) shouldBe (StatRelevance.OUTSIZES plusOrMinus EPSILON)
+            // It kills the Rats, but the Rats kill it too: a trade, which earns nothing.
+            StatRelevance.thresholdBonus(3, 3, none, context) shouldBe (0.0 plusOrMinus EPSILON)
+        }
+
+        test("an even trade earns neither side anything, so trading Giant for Giant is not a loss") {
+            // The PressWhenAheadTest shape: their Giants cannot kill our Serra Angel, ours can kill
+            // their Giants — but neither Giant survives the other, so neither is paid.
+            val game = scenario().withPlayers()
+                .withCardOnBattlefield(1, "Serra Angel")
+                .withCardOnBattlefield(1, "Hill Giant")
+                .withCardOnBattlefield(2, "Hill Giant")
+                .build()
+            val ours = StatContext.facing(game.state, game.state.projectedState, game.player1Id, null)
+            val theirs = StatContext.facing(game.state, game.state.projectedState, game.player2Id, null)
+
+            StatRelevance.thresholdBonus(3, 3, none, ours) shouldBe (0.0 plusOrMinus EPSILON)
+            StatRelevance.thresholdBonus(3, 3, none, theirs) shouldBe (0.0 plusOrMinus EPSILON)
         }
 
         test("an empty opposing board satisfies both fight thresholds, so killing their last creature costs nothing") {
@@ -92,7 +108,7 @@ class StatRelevanceTest : ScenarioTestBase() {
             val context = StatContext.facing(game.state, game.state.projectedState, game.player1Id, null)
 
             StatRelevance.thresholdBonus(2, 2, none, context) shouldBe
-                ((StatRelevance.OUTSIZES + StatRelevance.OUTLASTS) plusOrMinus EPSILON)
+                ((StatRelevance.BEATS + StatRelevance.OUTLASTS) plusOrMinus EPSILON)
         }
 
         // ── Shown removal ──

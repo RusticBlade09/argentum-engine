@@ -25,13 +25,17 @@ import kotlin.math.ln
  *   *damaging the opponent* or *killing their creature* lower the value of our own big creature,
  *   and the search would learn to avoid both.
  * - **Board thresholds** ([thresholdBonus]). A 5/5 facing 4/4s kills whatever blocks it and
- *   survives whatever it blocks; a 4/4 facing the same board only trades. Each threshold — power at
- *   least the biggest opposing toughness ([OUTSIZES]), toughness above the biggest opposing power
- *   ([OUTLASTS], void against deathtouch), toughness above the biggest size-limited removal the
- *   opponent has *shown* ([OUT_OF_REACH]) — is a step in value. Both combat thresholds read the
- *   leaf's board, and both move the right way: removing the creature that walls ours raises our
- *   creatures' worth, which is exactly the removal target we want the search to find. An empty
- *   opposing board satisfies both, so killing their last creature never costs us a bonus.
+ *   survives whatever it blocks; a 4/4 facing the same board only trades. [BEATS] is paid for the
+ *   share of opposing creatures it would win a fight against — kill *and* survive — [OUTLASTS]
+ *   for the share whose power its toughness survives (none, against deathtouch), and
+ *   [OUT_OF_REACH] when its toughness is above the biggest size-limited removal the opponent has
+ *   *shown*. A trade earns nothing on either side, and that is load-bearing: a bonus for merely
+ *   killing let our Hill Giants beside a Serra Angel out-earn their Hill Giants (which cannot kill
+ *   the Angel), so an even Giant-for-Giant trade read as a loss and the AI stopped pressing a lead.
+ *   Shares rather than "beats the biggest one" for the same reason, one creature at a time. Both
+ *   read the leaf's board, with temporary pumps taken off, and both move the right way: removing
+ *   the creature that walls ours raises our creatures' worth. An empty opposing board pays both in
+ *   full, so killing their last creature never costs us a bonus.
  *
  * "Shown" removal is public information only: damage and -N/-N spells in the opponent's graveyard
  * and repeatable ones on their battlefield (a Prodigal Sorcerer), read through
@@ -51,11 +55,11 @@ object StatRelevance {
     /** How slowly the tail flattens: the first point past the knee is still worth almost a full point. */
     private const val TAIL = 3.0
 
-    /** Power at least the biggest opposing toughness: it kills anything that blocks it or that it blocks. */
-    const val OUTSIZES = 1.0
+    /** Paid in full when it wins a fight against every opposing creature: kills it and survives it. */
+    const val BEATS = 0.75
 
-    /** Toughness above the biggest opposing power: no creature across the table kills it in a fight. */
-    const val OUTLASTS = 1.0
+    /** Paid in full when its toughness survives every opposing creature's power. */
+    const val OUTLASTS = 0.5
 
     /** Toughness above the biggest damage or -N/-N removal the opponent has shown. */
     const val OUT_OF_REACH = 0.75
@@ -75,32 +79,39 @@ object StatRelevance {
      */
     fun thresholdBonus(power: Int, toughness: Int, keywords: Set<String>, context: StatContext): Double {
         val indestructible = Keyword.INDESTRUCTIBLE.name in keywords
-        var bonus = 0.0
-        if (power > 0 && (power >= context.opposingToughness || Keyword.DEATHTOUCH.name in keywords)) {
-            bonus += OUTSIZES
+        val opposing = context.opposingToughnesses.size
+        val deathtouch = Keyword.DEATHTOUCH.name in keywords
+        var beaten = 0
+        var survived = 0
+        for (i in 0 until opposing) {
+            val survives = indestructible || toughness > context.opposingPowers[i]
+            if (!survives) continue
+            survived++
+            if (power > 0 && (deathtouch || power >= context.opposingToughnesses[i])) beaten++
         }
-        if (indestructible || (!context.opposingDeathtouch && toughness > context.opposingPower)) {
-            bonus += OUTLASTS
-        }
+        var bonus = BEATS * share(beaten, opposing) + OUTLASTS * share(survived, opposing)
+        if (opposing == 0 && power <= 0) bonus -= BEATS // a 0-power wall wins no fight, even on an empty board
         val reach = context.shownReach
         if (reach != null && (indestructible || toughness > reach)) bonus += OUT_OF_REACH
         return bonus
     }
+
+    /** [count] of [total], with an empty board counting as beaten in full. */
+    private fun share(count: Int, total: Int): Double = if (total == 0) 1.0 else count.toDouble() / total
 }
 
 /**
  * The opposing side's numbers that [StatRelevance.thresholdBonus] compares a creature against.
  *
- * @property opposingPower the biggest power among the opposing creatures, 0 when there are none.
- * @property opposingToughness the biggest toughness among them, 0 when there are none.
- * @property opposingDeathtouch whether any of them has deathtouch and power to use it.
+ * @property opposingPowers each opposing creature's settled power — [Int.MAX_VALUE] for one with
+ *   deathtouch and power to use it, which no toughness survives.
+ * @property opposingToughnesses each opposing creature's settled toughness, in the same order.
  * @property shownReach the biggest size-limited removal the opponents have shown at the decision
  *   root, or null when they have shown none (or the evaluation was not rooted).
  */
 class StatContext(
-    val opposingPower: Int,
-    val opposingToughness: Int,
-    val opposingDeathtouch: Boolean,
+    val opposingPowers: IntArray,
+    val opposingToughnesses: IntArray,
     val shownReach: Int?,
 ) {
     companion object {
@@ -111,21 +122,22 @@ class StatContext(
             controller: EntityId,
             shownReach: Map<EntityId, Int>?,
         ): StatContext {
-            var power = 0
-            var toughness = 0
-            var deathtouch = false
+            val powers = ArrayList<Int>()
+            val toughnesses = ArrayList<Int>()
             var reach: Int? = null
             for (opponent in state.getOpponents(controller)) {
                 for (id in projected.getBattlefieldControlledBy(opponent)) {
                     if (!projected.isCreature(id)) continue
-                    val p = projected.getPower(id) ?: 0
-                    power = maxOf(power, p)
-                    toughness = maxOf(toughness, projected.getToughness(id) ?: 0)
-                    if (p > 0 && Keyword.DEATHTOUCH.name in projected.getKeywords(id)) deathtouch = true
+                    // Settled stats, as for the creature being priced: a pump that is gone at
+                    // cleanup must not read as having outgrown — or out-toughed — anything.
+                    val (powerMod, toughnessMod) = ExpiringStats.temporaryModification(state, id)
+                    val p = (projected.getPower(id) ?: 0) - powerMod
+                    powers += if (p > 0 && Keyword.DEATHTOUCH.name in projected.getKeywords(id)) Int.MAX_VALUE else p
+                    toughnesses += (projected.getToughness(id) ?: 0) - toughnessMod
                 }
                 shownReach?.get(opponent)?.let { reach = maxOf(reach ?: 0, it) }
             }
-            return StatContext(power, toughness, deathtouch, reach)
+            return StatContext(powers.toIntArray(), toughnesses.toIntArray(), reach)
         }
 
         /**

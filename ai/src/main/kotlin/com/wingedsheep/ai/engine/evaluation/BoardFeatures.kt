@@ -204,9 +204,9 @@ data class CreatureValuation(
     /**
      * Price power and toughness by what they do against the table instead of linearly
      * ([StatRelevance]): diminishing returns past a knee, so a 1000/1000 is not worth fifty 20/20s,
-     * and step bonuses for the thresholds that decide fights — power that kills the biggest opposing
-     * creature, toughness that survives it, toughness out of reach of the damage removal the
-     * opponent has shown. [com.wingedsheep.ai.engine.AiProfile.LIVE] ships it.
+     * and bonuses for the fights its size decides — the share of opposing creatures its power kills
+     * and its toughness survives, and toughness out of reach of the damage removal the opponent has
+     * shown. [com.wingedsheep.ai.engine.AiProfile.LIVE] ships it.
      */
     val statsReadTheBoard: Boolean = false,
 ) {

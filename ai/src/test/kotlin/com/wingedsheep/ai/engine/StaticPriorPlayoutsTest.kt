@@ -24,9 +24,13 @@ import io.kotest.matchers.shouldNotBe
  */
 class StaticPriorPlayoutsTest : ScenarioTestBase() {
 
+    // Board-reading stat values ([CreatureValuation.statsReadTheBoard]) also tip this position to
+    // casting, so the reproduction turns them off too: it pins what the static prior fixes on the
+    // AI as it was.
     private val before = AiProfile.LIVE.copy(
         id = "live-without-static-prior",
         rollouts = AiProfile.LIVE.rollouts!!.copy(staticPriorPlayouts = 0.0),
+        creatureValuation = AiProfile.LIVE.creatureValuation.copy(statsReadTheBoard = false),
     )
 
     private fun TestGame.choice(profile: AiProfile = AiProfile.LIVE): GameAction =
