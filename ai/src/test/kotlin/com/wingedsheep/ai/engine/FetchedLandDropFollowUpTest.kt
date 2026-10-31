@@ -69,8 +69,14 @@ class FetchedLandDropFollowUpTest : ScenarioTestBase() {
      * lands, two Mountains untapped, and a hand of Swamp, Mountain and Apex Witchstalker — its only
      * spell. Both land drops it can see coming are already in hand, so landcycling the 6/4 buys no
      * land play and throws away the threat. It cycled; the game ended with two Swamps in hand.
+     *
+     * The opponent's library is a turn-7 game's, not a token handful: Theorix Charm's "mill three,
+     * then draw" would otherwise empty a six-card library inside the rollout horizon, and
+     * `LibraryClock` prices that near-decked opponent at up to 60 life — playout noise that drowned
+     * out the cards in our hand. The seed pins the rollouts so the position replays identically.
      */
     private fun witchstalkerPosition() = scenario().withPlayers()
+        .withRngSeed(1)
         .withTurnNumber(7)
         .withLandsOnBattlefield(1, "Mountain", 2)
         .withCardOnBattlefield(1, "Swamp", tapped = true)
@@ -88,7 +94,7 @@ class FetchedLandDropFollowUpTest : ScenarioTestBase() {
         .withCardInHand(2, "Null Summoner")
         .withCardInHand(2, "Theorix Charm")
         .withLifeTotal(2, 16)
-        .apply { repeat(6) { withCardInLibrary(2, "Island") } }
+        .apply { repeat(20) { withCardInLibrary(2, "Island") } }
         .build()
         .advanceToPriority(1, Step.PRECOMBAT_MAIN)
 
