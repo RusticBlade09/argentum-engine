@@ -167,6 +167,11 @@ object ArenaAgents {
         // LIVE without the opponent's combat responses: `just arena live-without-responses live 300`
         // prices the opponent-ability model on its own.
         ArenaAgent("live-without-responses", AiProfile.LIVE.copy(id = "live-without-responses", anticipateCombatResponses = false)),
+        // LIVE aiming pod attacks at the lowest life total again: `just arena-pod ffa4 live-without-threat-defender live 300`
+        ArenaAgent(
+            "live-without-threat-defender",
+            AiProfile.LIVE.copy(id = "live-without-threat-defender", threatAwareDefender = false),
+        ),
         // LIVE with the crack-back read off creatures only: `just arena live-without-crackback-stress live 300`
         // prices reading the opponent's visible abilities into the swing back.
         ArenaAgent(

@@ -300,6 +300,7 @@ class AIPlayer(
                 pressWhenAhead = profile.pressWhenAhead,
                 anticipateCombatResponses = profile.anticipateCombatResponses,
                 minimalLethalInPods = profile.minimalLethalInPods,
+                threatAwareDefender = profile.threatAwareDefender,
                 blockTriggersKill = profile.blockTriggersKill,
                 stressCrackBack = profile.stressCrackBack,
             )
