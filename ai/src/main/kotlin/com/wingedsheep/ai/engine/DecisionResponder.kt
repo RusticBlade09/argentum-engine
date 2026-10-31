@@ -805,8 +805,33 @@ class DecisionResponder(
         if (holdUnusablePumps && yesScore >= noScore && payoffIsUnspendable(state, yesResult, noResult, yesScore, noScore, playerId)) {
             return YesNoResponse(decision.id, false)
         }
+        if (yesScore >= noScore && yesOnlyDeclinesThePayment(state, decision)) {
+            return YesNoResponse(decision.id, false)
+        }
         return YesNoResponse(decision.id, yesScore >= noScore)
     }
+
+    /**
+     * Whether yes opens an optional mana payment that [respondManaSelection] would decline — the
+     * "Pay {1}?" half of the same rule. The engine offers yes whenever the cost is payable at all,
+     * counting sources this AI never picks on an optional payment (Gene Pollinator's "tap an
+     * untapped permanent you control"). The yes then reaches a source prompt with no auto-pay
+     * solution and an empty selection follows: a no in two steps. The simulated branches tie
+     * (nothing was paid on either), and a tie goes to yes, so the decline has to be read off the
+     * prompt itself.
+     *
+     * 2026-10-31 AI-vs-humans review, game eee158b2 T13/T17: Wooden Sphere's "Pay {1}?" answered
+     * yes with only Pollinator untapped, then an empty payment, on every green spell.
+     */
+    private fun yesOnlyDeclinesThePayment(state: GameState, decision: YesNoDecision): Boolean {
+        val next = simulator.nextDecisionAfter(state, YesNoResponse(decision.id, true))
+        return next is SelectManaSourcesDecision && next.playerId == decision.playerId &&
+            declinesPayment(next)
+    }
+
+    /** [respondManaSelection]'s decline: an optional payment with no auto-pay solution. */
+    private fun declinesPayment(decision: SelectManaSourcesDecision): Boolean =
+        decision.autoPaySuggestion.isEmpty() && decision.canDecline
 
     /**
      * Whether saying yes buys nothing but end-of-turn grants on creatures that cannot use them —
@@ -1353,7 +1378,7 @@ class DecisionResponder(
 
         // No auto-pay solution. If declining is allowed (e.g. "you may pay"),
         // decline rather than burn permanents on an optional effect.
-        if (decision.canDecline) {
+        if (declinesPayment(decision)) {
             return ManaSourcesSelectedResponse(
                 decision.id,
                 autoPay = false,
