@@ -13,7 +13,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { listPlayableSets } from '@/api/playableSets'
 import { PageShell, pageStyles } from '@/components/ui/PageShell'
 import { SetIcon } from '@/components/ui/SetIcon'
-import { MechanicChips, RatingMeters } from './SetProfileParts'
+import { RatingMeters, ThemeTags, TryIf } from './SetProfileParts'
 import { SetCompareDialog, SetProfileDialog } from './SetGuideDialogs'
 import {
   filterGuideSets,
@@ -166,7 +166,7 @@ export function SetGuidePage() {
           ))}
           <span className={styles.filterDivider} aria-hidden />
           {SET_THEMES.map((t) => (
-            <button key={t.id} type="button" className={styles.filterChip} data-kind="theme" aria-pressed={themes.has(t.id)} onClick={() => toggle(setThemes, t.id)}>
+            <button key={t.id} type="button" className={styles.filterChip} data-kind="theme" title={t.hint} aria-pressed={themes.has(t.id)} onClick={() => toggle(setThemes, t.id)}>
               {t.label}
             </button>
           ))}
@@ -291,8 +291,9 @@ function SetTile({
       {p ? (
         <>
           <p className={styles.tagline}>{p.tagline}</p>
+          <TryIf text={p.tryIf} compact />
           <RatingMeters profile={p} compact />
-          <MechanicChips mechanics={p.mechanics} single />
+          <ThemeTags themes={p.themes} single />
         </>
       ) : (
         <p className={`${styles.tagline} ${pageStyles.muted}`}>No guide written yet.</p>

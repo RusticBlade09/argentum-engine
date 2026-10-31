@@ -6,7 +6,7 @@ import { ManaSymbol } from '@/components/ui/ManaSymbols'
 import { getArchetypeGradient, type Archetype } from '@/components/draft/SetSynergiesOverlay'
 import { getScryfallArtCropUrl } from '@/utils/cardImages'
 import { RATINGS, ratingWord, type RatingKey } from './setGuideModel'
-import { SET_THEMES, type Rating, type SetMechanic, type SetProfile } from './setProfiles'
+import { SET_THEMES, type Rating, type SetMechanic, type SetProfile, type SetTheme } from './setProfiles'
 import styles from './SetGuide.module.css'
 
 export function RatingMeter({ ratingKey, value, compact = false }: { ratingKey: RatingKey; value: Rating; compact?: boolean }) {
@@ -74,8 +74,30 @@ export function TipList({ tips }: { tips: readonly string[] }) {
   )
 }
 
-export function themeLabel(id: string): string {
-  return SET_THEMES.find((t) => t.id === id)?.label ?? id
+/** The set's theme tags, each explaining itself on hover. `single` keeps them to one line. */
+export function ThemeTags({ themes, single = false }: { themes: readonly SetTheme[]; single?: boolean }) {
+  return (
+    <ul className={styles.chips} data-single={single} aria-label="Themes">
+      {themes.map((id) => {
+        const theme = SET_THEMES.find((t) => t.id === id)
+        return (
+          <li key={id} className={styles.themeTag} title={theme?.hint}>
+            {theme?.label ?? id}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+/** "Try it if you like …" as a callout. */
+export function TryIf({ text, compact = false }: { text: string; compact?: boolean }) {
+  return (
+    <p className={styles.tryIf} data-compact={compact}>
+      <span className={styles.tryIfLabel}>Try it if you like</span>
+      <span className={styles.tryIfText}>{text}</span>
+    </p>
+  )
 }
 
 /** Colour pips for an archetype, e.g. W U. */

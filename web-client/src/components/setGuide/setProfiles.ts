@@ -36,21 +36,24 @@ export type SetTheme =
   | 'bigThings'
   | 'legends'
 
-/** Theme chips in display order. */
-export const SET_THEMES: readonly { readonly id: SetTheme; readonly label: string }[] = [
-  { id: 'aggro', label: 'Aggro' },
-  { id: 'flyers', label: 'Fliers' },
-  { id: 'tribal', label: 'Creature types' },
-  { id: 'tokens', label: 'Go wide' },
-  { id: 'counters', label: 'Counters' },
-  { id: 'graveyard', label: 'Graveyard' },
-  { id: 'spells', label: 'Spells' },
-  { id: 'artifacts', label: 'Artifacts' },
-  { id: 'sacrifice', label: 'Sacrifice' },
-  { id: 'multicolor', label: 'Multicolour' },
-  { id: 'lifegain', label: 'Life gain' },
-  { id: 'bigThings', label: 'Ramp & big threats' },
-  { id: 'legends', label: 'Legends' },
+/**
+ * Theme tags in display order: what a deck in the set is built around, phrased as how it plays.
+ * `hint` explains the tag on hover, on the set's tile and on the guide's filter chips.
+ */
+export const SET_THEMES: readonly { readonly id: SetTheme; readonly label: string; readonly hint: string }[] = [
+  { id: 'aggro', label: 'Fast aggro', hint: 'Cheap attackers and curving out win games; slow hands get run over' },
+  { id: 'flyers', label: 'Fliers win', hint: 'Ground boards stall, so evasive creatures do most of the damage' },
+  { id: 'tribal', label: 'Creature-type synergy', hint: 'Cards reward sticking to one creature type, so draft for your tribe' },
+  { id: 'tokens', label: 'Go wide with tokens', hint: 'Fill the board with small creatures, then pump or swarm' },
+  { id: 'counters', label: '+1/+1 counters', hint: 'Creatures grow over the game; counters change which trades are good' },
+  { id: 'graveyard', label: 'Graveyard value', hint: 'Cards in the graveyard are a resource: recursion, flashback, self-mill' },
+  { id: 'spells', label: 'Spells matter', hint: 'Instants and sorceries power your creatures; count your non-creature spells' },
+  { id: 'artifacts', label: 'Artifacts matter', hint: 'Artifacts and colourless cards are a deck of their own and a common payoff' },
+  { id: 'sacrifice', label: 'Sacrifice engines', hint: 'Creatures are fuel: sacrifice outlets and death triggers grind value' },
+  { id: 'multicolor', label: 'Multicolour & splashes', hint: 'Gold cards and fixing reward three-colour decks and splashing bombs' },
+  { id: 'lifegain', label: 'Life gain payoffs', hint: 'Gaining life is a plan, not just a buffer: payoffs trigger on it' },
+  { id: 'bigThings', label: 'Ramp into bombs', hint: 'Games go long enough for expensive threats; ramp and big rares decide them' },
+  { id: 'legends', label: 'Legendary heroes', hint: 'Lots of legendary creatures, and many decks are built around one' },
 ]
 
 /** A signature mechanic and what it does to a game — how it changes decisions, not its rules text. */
