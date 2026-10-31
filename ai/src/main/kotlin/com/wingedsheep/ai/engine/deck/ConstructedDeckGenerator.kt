@@ -86,10 +86,13 @@ class ConstructedDeckGenerator(
         val basics = cardPool.basicLands(setCodes)
 
         logger.info(
-            "Building a {} deck from {} legal cards ({})",
+            "Building a {} deck from {} legal cards ({}); nonland cards per colour: {}",
             format.displayName,
             pool.size,
             if (setCodes.isEmpty()) "all sets" else setCodes.joinToString(", "),
+            pool.filterNot { it.isLand }
+                .flatMap { card -> card.colors.map { it.symbol.toString() }.ifEmpty { listOf("C") } }
+                .groupingBy { it }.eachCount(),
         )
 
         val deckList = draftsimBuild(pool, shape)
@@ -112,6 +115,7 @@ class ConstructedDeckGenerator(
                 ).generate()
             }
         val played = deckList.keys.mapTo(HashSet()) { it.substringBefore('#') }
+        requirePlayable(deckList, pool, shape, format)
         // Canadian Highlander plays without a sideboard, so there is nowhere to put a wishboard.
         val sideboard = if (format == DeckFormat.CANADIAN_HIGHLANDER) {
             emptyMap()
@@ -119,6 +123,27 @@ class ConstructedDeckGenerator(
             Wishboard.build(pool, random, exclude = played)
         }
         return GeneratedDeck(deckList, sideboard = sideboard)
+    }
+
+    /**
+     * Refuse a deck the pool was too thin to really build: too few spells (the shortfall went to
+     * basics) or too few creatures to put a body on the board. Throwing is what lets
+     * `RandomDeckResolver` fall back to another answer instead of seating a 44-land pile.
+     */
+    private fun requirePlayable(deckList: Map<String, Int>, pool: List<CardDefinition>, shape: DeckShape, format: DeckFormat) {
+        val byName = pool.associateBy { it.name }
+        var nonland = 0
+        var creatures = 0
+        for ((key, count) in deckList) {
+            val card = byName[key.substringBefore('#')] ?: continue
+            if (card.isLand) continue
+            nonland += count
+            if (card.typeLine.isCreature) creatures += count
+        }
+        require(nonland >= shape.minNonland && creatures >= shape.minCreatures) {
+            "The ${format.displayName}-legal pool is too thin for a playable deck: " +
+                "$nonland nonland cards (need ${shape.minNonland}), $creatures creatures (need ${shape.minCreatures})"
+        }
     }
 
     /** Convenience overload: build from the whole format-legal card base. */
@@ -175,6 +200,13 @@ class ConstructedDeckGenerator(
             logger.warn("Draftsim constructed build came back {} cards short of {}", shape.deckSize - size, shape.deckSize)
             return null
         }
+        // Draftsim makes up a spell shortfall in basics, so a full-size build can still be thin:
+        // count the spells, not the deck.
+        val spells = build.deckInstanceIds.count { it in nameByInstance }
+        if (spells < shape.minNonland) {
+            logger.warn("Draftsim constructed build found only {} of {} spells", spells, shape.draftsim.nonlandCount)
+            return null
+        }
         return deckList
     }
 
@@ -213,6 +245,12 @@ class ConstructedDeckGenerator(
         HIGHLANDER(DraftsimDeckShape.HIGHLANDER, shortlistSize = 240, copiesPerCard = 1);
 
         val deckSize: Int get() = draftsim.nonlandCount + draftsim.landCount
+
+        /** Fewest spells a playable build may hold: four in five of the nonland slots. */
+        val minNonland: Int get() = draftsim.nonlandCount * 4 / 5
+
+        /** Fewest creatures a playable build may hold: 8 of 60, 13 of 100. */
+        val minCreatures: Int get() = draftsim.creatureFloor * 2 / 5
     }
 
     private companion object {
