@@ -979,7 +979,12 @@ class TriggerMatcher(
                     matchesPlayer(state, trigger.player, event.playerId, controllerId, sourceId)
             }
             is EventPattern.DiscardEvent -> {
-                event is CardsDiscardedEvent &&
+                // A SELF-bound discard trigger ("when you discard this card", Titanbones) belongs to
+                // the discarded card itself and is detected by `detectSelfDiscardTriggers`. The same
+                // card sitting on the battlefield wasn't discarded, so it must not fire off another
+                // card's discard.
+                binding != TriggerBinding.SELF &&
+                    event is CardsDiscardedEvent &&
                     matchingDiscardedCards(trigger, event, sourceId, controllerId, state).isNotEmpty()
             }
             is EventPattern.SearchLibraryEvent -> {
