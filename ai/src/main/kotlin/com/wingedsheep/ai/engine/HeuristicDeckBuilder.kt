@@ -23,12 +23,14 @@ import kotlin.math.pow
  * Algorithm:
  * 1. Rate every card in the pool
  * 2. Score each color by the total rating of its cards (weighted toward creatures)
- * 3. Pick the best 2 colors (no splash)
+ * 3. Pick the best 2 colors
  * 4. Select the top 23 on-color spells by rating — each copy valued at its marginal worth, so a
  *    legend's duplicates rank below its first copy ([rankByMarginalValue]) — then refine: drop
  *    spells that do nothing in this deck ([DeckDependencies]), reach [CREATURES_PER_40] creatures
  *    when the pool allows, and cut cards whose pips the mana base can't support ([PipDemand])
- * 5. Fill to 40 cards with basic lands split by weighted pip demand, with per-color source floors
+ * 5. When the pair can't fill the spell slots, add a light splash ([lightSplash]) so the deck runs
+ *    at most one land over the 17 rather than padding the gap with basics
+ * 6. Fill to 40 cards with basic lands split by weighted pip demand, with per-color source floors
  *
  * When [locked] is non-empty the builder switches to **completion mode**: the locked cards are
  * treated as already-chosen (always kept, counted toward the 4-of limit) and only the remaining
@@ -80,7 +82,7 @@ private fun buildFreshSealedDeck(pool: List<CardDefinition>, targetSize: Int): M
         }
     }
 
-    // Pick top 2 colors — the builder never splashes, so this is also the color cap.
+    // Pick top 2 colors. Only a pool too thin in them to fill the spell slots splashes a third.
     val bestColors = colorScores.entries.sortedByDescending { it.value }.take(2).map { it.key }.toSet()
 
     // Cards castable off the chosen colors, best first — by each copy's *marginal* value, so a
@@ -112,21 +114,82 @@ private fun buildFreshSealedDeck(pool: List<CardDefinition>, targetSize: Int): M
     )
     selection.supportPips(bestColors, nonbasicCount = nonbasics.values.sum(), targetSize = targetSize, fixedSources = fixedSources)
 
+    // A pool too thin in the pair fills the gap with a light splash before it reaches for a
+    // nineteenth land: 22 lands beside 18 spells floods out of most games (2026-10-31 game 2d31a409).
+    val maxLands = targetSize - spellTarget + 1
+    val splash = lightSplash(
+        nonLands = nonLands,
+        ratings = ratings,
+        mainColors = bestColors,
+        taken = selection.selected.map { it.card },
+        need = minOf(targetSize - maxLands - selection.selected.size, targetSize * SPLASH_CARDS_PER_40 / 40),
+    )
+
     for (slot in selection.selected) {
         deck[slot.card.name] = (deck[slot.card.name] ?: 0) + 1
     }
+    splash?.cards?.forEach { deck[it.name] = (deck[it.name] ?: 0) + 1 }
     for ((name, n) in nonbasics) deck[name] = (deck[name] ?: 0) + n
 
-    // Fill to target size with basic lands split by weighted pip demand.
+    // A splash colour gets [SPLASH_SOURCES] sources — its non-basics first, basics for the rest.
+    if (splash != null) {
+        val land = COLOR_TO_LAND.getValue(splash.color)
+        val basics = (SPLASH_SOURCES - fixedSources(splash.color)).coerceAtLeast(0)
+        if (basics > 0) deck[land] = (deck[land] ?: 0) + basics
+    }
+
+    // Fill to target size with basic lands split by weighted pip demand. Only a pool with nothing
+    // castable left — not even a splash — still pads past [maxLands]: a deck has to reach 40.
     val landsNeeded = (targetSize - deck.values.sum()).coerceAtLeast(0)
     addBasicLands(
         deck, bestColors, landsNeeded,
         spells = selection.selected.map { it.card to 1 },
         fixedSources = fixedSources,
-        landCount = landsNeeded + nonbasics.values.sum(),
+        landCount = targetSize - selection.selected.size - (splash?.cards?.size ?: 0),
     )
 
     return deck
+}
+
+/** Sources a light splash runs: enough to cast a single-pip card by the mid-game. */
+private const val SPLASH_SOURCES = 3
+
+/** Most cards a light splash adds to a 40-card deck: past that, the pair itself was the wrong call. */
+private const val SPLASH_CARDS_PER_40 = 4
+
+/** The off-colour cards a light splash adds, all needing one pip of [color] and nothing else off-colour. */
+private class Splash(val color: Color, val cards: List<CardDefinition>)
+
+/**
+ * Up to [need] off-colour spells for a two-colour deck that couldn't fill its spell slots: the
+ * best-rated cards that a single basic-land colour on top of [mainColors] makes castable, each
+ * asking exactly one plain pip of it. The colour picked is the one whose best [need] cards are
+ * worth the most. `null` when nothing is needed or nothing in the pool qualifies.
+ */
+private fun lightSplash(
+    nonLands: List<CardDefinition>,
+    ratings: Map<CardDefinition, Double>,
+    mainColors: Set<Color>,
+    taken: List<CardDefinition>,
+    need: Int,
+): Splash? {
+    if (need <= 0 || mainColors.size != 2) return null
+    val takenNames = taken.groupingBy { it.name }.eachCount()
+    val offColour = nonLands.filter { !castableWithColors(it, mainColors) }
+    val options = (Color.entries - mainColors).mapNotNull { color ->
+        val withSplash = mainColors + color
+        val copies = mutableMapOf<String, Int>()
+        val cards = offColour
+            .filter { castableWithColors(it, withSplash) && strictPips(it, color) == 1 && !DeckDependencies.inert(it, taken) }
+            .sortedByDescending { ratings[it] ?: 0.0 }
+            .filter { card ->
+                val n = (takenNames[card.name] ?: 0) + (copies[card.name] ?: 0)
+                (n < 4).also { if (it) copies[card.name] = (copies[card.name] ?: 0) + 1 }
+            }
+            .take(need)
+        cards.takeIf { it.isNotEmpty() }?.let { Splash(color, it) }
+    }
+    return options.maxByOrNull { option -> option.cards.sumOf { ratings[it] ?: 0.0 } }
 }
 
 /**

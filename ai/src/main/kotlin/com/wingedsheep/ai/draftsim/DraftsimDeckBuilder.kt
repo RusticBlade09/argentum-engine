@@ -14,6 +14,8 @@ data class DraftsimBuild(
     val manaBaseScore: Double,
     val deckInstanceIds: Set<String>,
     val basicsNeeded: Map<String, Int>,
+    /** The one colour of [colors] the deck only splashes, if any: its manabase runs a few sources, not a full share. */
+    val splashColor: String? = null,
 )
 
 /**
@@ -110,6 +112,8 @@ class DraftsimDeckBuilder(
         // Final-score points (0–10 scale) per creature below the floor / per spell below the target.
         const val CREATURE_SHORTFALL_PENALTY = 0.2
         const val SPELL_SHORTFALL_PENALTY = 0.3
+        // Most cards [shortfallSplash] adds to a 23-spell deck; scaled to the shape.
+        const val SPLASH_CARDS_PER_23 = 4
         val COLOR_TO_BASIC = mapOf("W" to "Plains", "U" to "Island", "B" to "Swamp", "R" to "Mountain", "G" to "Forest")
         // Ten three-color guild shells for the sealed good-stuff build.
         val THREE_COLOR = DraftsimDeckScorerGuilds.THREE_COLOR
@@ -335,19 +339,53 @@ class DraftsimDeckBuilder(
             if ((st.copies[item.pc.card.name] ?: 0) < copyCap(item.pc.card)) st.add(item)
         }
         // No castability-relaxed phase: a pool too thin in these colours leaves the deck short, the
-        // splash pass gets first claim on the room, and [buildManabase] covers the rest with basics.
-        // An uncastable card is a dead draw; an extra land is merely a weak one.
+        // splash passes get first claim on the room ([splashPass], then [shortfallSplash]), and
+        // [buildManabase] covers whatever is left with basics. An uncastable card is a dead draw.
 
         creatureFloor(st, scored, archColors)
-        val splashColor = splashPass(st, scored, poolLands, archColors)
+        val bombSplash = splashPass(st, scored, poolLands, archColors)
+        // Completion keeps the colours the player locked; only a fresh build may splash for depth.
+        val splashColor = if (forced.isEmpty()) shortfallSplash(st, scored, archColors, bombSplash) else bombSplash
 
         val deckColors = if (splashColor != null) archColors + splashColor else archColors
         val chosenCards = st.deck.map { it.pc }
-        val mana = buildManabase(chosenCards, poolLands, deckColors)
+        val mana = buildManabase(chosenCards, poolLands, deckColors, splashColor)
         val includedIds = (chosenCards.map { it.instanceId } + mana.usefulPoolLands.map { it.instanceId }).toSet()
         val fullDeck = chosenCards.map { it.card } + mana.usefulPoolLands.map { it.card } + basics(mana.basicsNeeded).map { it.card }
         val final = deckScorer.scoreDeck(fullDeck)
-        return DraftsimBuild(archName, deckColors, final.score, final.manaBaseScore, includedIds, mana.basicsNeeded)
+        return DraftsimBuild(archName, deckColors, final.score, final.manaBaseScore, includedIds, mana.basicsNeeded, splashColor)
+    }
+
+    /**
+     * A deck the pool couldn't fill in [archColors] would otherwise make up the gap in basics — 22
+     * lands beside 18 spells, which floods (2026-10-31 game 2d31a409). Before that, take the best
+     * cards a light splash makes castable — one plain pip of one extra colour, nothing else off-colour
+     * — until the deck runs at most one land over the shape's count. A bomb splash already chosen
+     * ([bombSplash]) fixes the colour; a three-colour shell takes no fourth. At most
+     * [SPLASH_CARDS_PER_23] cards per 23 spells: a pair too thin for that is the wrong pair, and a
+     * hypothesis with nothing castable must not turn its "splash" into the whole deck.
+     */
+    private fun shortfallSplash(st: BuildState, scored: List<Scored>, archColors: List<String>, bombSplash: String?): String? {
+        val need = minOf(nonlandTarget - 1 - st.deck.size, nonlandTarget * SPLASH_CARDS_PER_23 / 23)
+        if (need <= 0 || archColors.size >= 3) return bombSplash
+        fun candidates(color: String): List<Scored> {
+            val copies = HashMap<String, Int>()
+            return scored.filter { item ->
+                val card = item.pc.card
+                item.pc.instanceId !in st.chosen && !ops.isLand(card) && !castable(card, archColors) &&
+                    DraftsimMana.fitsColors(card.manaCost, archColors + color) &&
+                    DraftsimMana.offPips(card.manaCost, archColors) == 1 &&
+                    ((st.copies[card.name] ?: 0) + (copies[card.name] ?: 0) < copyCap(card))
+                        .also { ok -> if (ok) copies[card.name] = (copies[card.name] ?: 0) + 1 }
+            }.take(need)
+        }
+        val color = bombSplash ?: COLOR_TO_BASIC.keys.filter { it !in archColors }
+            .maxByOrNull { c -> candidates(c).sumOf { it.total } }
+            ?: return null
+        val picks = candidates(color)
+        if (picks.isEmpty()) return bombSplash
+        picks.forEach(st::add)
+        return color
     }
 
     /**
@@ -406,9 +444,12 @@ class DraftsimDeckBuilder(
         val usefulPoolLands: List<DraftsimPoolCard>, val basicsNeeded: Map<String, Int>,
     )
 
-    private fun buildManabase(deckCards: List<DraftsimPoolCard>, poolLands: List<DraftsimPoolCard>, forcedColors: List<String>): Manabase {
+    private fun buildManabase(
+        deckCards: List<DraftsimPoolCard>, poolLands: List<DraftsimPoolCard>, forcedColors: List<String>, splashColor: String? = null,
+    ): Manabase {
         // A deck the pool couldn't fill with castable spells makes up the shortfall in lands, so it
-        // still reaches the shape's total.
+        // still reaches the shape's total. A fresh build splashes first ([shortfallSplash]), so this
+        // runs past one extra land only when the pool has nothing castable left at all.
         val lands = landTarget + max(0, nonlandTarget - deckCards.size)
         // §3.1 allowed set.
         val a: Set<String> = if (forcedColors.isNotEmpty()) forcedColors.toSet() else {
@@ -443,8 +484,10 @@ class DraftsimDeckBuilder(
         val basicDemand = demand.filterKeys { it in deckColorSet }.ifEmpty { demand }
 
         // §3.4 allocate basics by weighted pip demand, raised to each color's source floor (what its
-        // most demanding card needs, [PipDemand.sourcesNeeded]) where another color has room.
-        val floors = basicDemand.keys.associateWith { color ->
+        // most demanding card needs, [PipDemand.sourcesNeeded]) where another color has room. A
+        // splash colour has no such floor — it would claim a main colour's share of the lands — and
+        // gets its few sources from §3.5 instead.
+        val floors = basicDemand.keys.filter { it != splashColor }.associateWith { color ->
             deckCards.maxOfOrNull { pc ->
                 val pips = DraftsimMana.castRequirement(pc.card.manaCost).plainPips[color] ?: 0
                 PipDemand.sourcesNeeded(pips.toDouble(), lands)
@@ -533,7 +576,7 @@ class DraftsimDeckBuilder(
         }
 
         val poolLands = pool.filter { ops.isLand(it.card) && !ops.isBasic(it.card) }
-        val mana = buildManabase(deckNonland, poolLands, build.colors)
+        val mana = buildManabase(deckNonland, poolLands, build.colors, build.splashColor)
         val deckIds = (deckNonland.map { it.instanceId } + mana.usefulPoolLands.map { it.instanceId }).toSet()
         val fullDeck = deckNonland.map { it.card } + mana.usefulPoolLands.map { it.card } + basics(mana.basicsNeeded).map { it.card }
         val final = deckScorer.scoreDeck(fullDeck)
