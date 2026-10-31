@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- #PR Keeps its blockers home when only they stop a lethal swing back: the crack-back no longer counts an opposing creature that won't untap, an attack plan the simulator can't score is no longer submitted unscored, and a plan whose crack-back is lethal earns no credit for our next swing
 - #4094 Crews Vehicles and saddles Mounts when the attack it buys beats the attack without it, tapping the creatures that give up least (summoning-sick ones first), instead of never riding at all
 - #4092 Refuses a generated constructed deck its pool can't really fill (under 4/5 of the spell slots or under 8 creatures in 60) and falls back to another deck, instead of seating a 44-land pile with no creatures
 - #4085 Returning its own permanent to hand (Rescue Girl, First Responder) now picks the permanent worth recasting, like an enters-trigger creature, instead of a land or a token, and counts that recast as the reason to activate

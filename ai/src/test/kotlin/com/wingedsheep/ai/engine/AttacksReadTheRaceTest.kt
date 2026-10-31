@@ -3,8 +3,10 @@ package com.wingedsheep.ai.engine
 import com.wingedsheep.ai.puzzles.advanceToDeclaration
 import com.wingedsheep.ai.puzzles.seatId
 import com.wingedsheep.engine.core.DeclareAttackers
+import com.wingedsheep.engine.state.components.battlefield.CountersComponent
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.support.ScenarioTestBase
+import com.wingedsheep.sdk.core.CounterType
 import com.wingedsheep.sdk.core.Step
 import com.wingedsheep.sdk.model.EntityId
 import io.kotest.assertions.withClue
@@ -49,6 +51,13 @@ class AttacksReadTheRaceTest : ScenarioTestBase() {
     private fun TestGame.attackersChosenBy(profile: AiProfile): Set<EntityId> =
         (AIPlayer.create(cardRegistry, seatId(1), profile).chooseAction(state) as? DeclareAttackers)
             ?.attackers?.keys.orEmpty()
+
+    private fun TestGame.addCounters(cardName: String, type: CounterType, count: Int) {
+        val id = findPermanent(cardName)!!
+        state = state.updateEntity(id) { c ->
+            c.with((c.get<CountersComponent>() ?: CountersComponent()).withCounters(type, count))
+        }
+    }
 
     private fun TestGame.names(ids: Collection<EntityId>): List<String> =
         ids.map { state.getEntity(it)?.get<CardComponent>()?.name ?: it.value }
@@ -124,6 +133,42 @@ class AttacksReadTheRaceTest : ScenarioTestBase() {
             withClue("attacked with ${game.names(after)}") {
                 after shouldNotContain baloth
             }
+        }
+
+        // Game ee882769 turn 20: at 9 life the AI sent Yargle, its only real blocker, at a Jace
+        // token beside its 3/3. Opposite: two 2/1s, a 2/2, a 2/3 flier and four 1/1 fliers that
+        // untap, plus a 1/2 locked down by the AI's own Infinite Coursework. Both creatures home
+        // block two 2-power attackers and the swing back leaves the AI on 1; either one away and
+        // it is lethal. The crack-back estimate counted the locked 1/2, read staying home as
+        // lethal too, and with every plan dead the attack won on board score. The swing back came
+        // for 10 and the game ended at -1.
+        test("ee882769 turn 20: a creature that doesn't untap isn't in the crack-back, so the blockers stay home") {
+            var builder = scenario().withRngSeed(SCENARIO_SEED).withPlayers()
+                .withLifeTotal(1, 9)
+                .withLifeTotal(2, 18)
+                .withCardOnBattlefield(1, "Void Extrapolator")
+                .withCardOnBattlefield(1, "Yargle, Goliath of Otaria")
+                .withLandsOnBattlefield(1, "Swamp", 9)
+                .withCardOnBattlefield(2, "Mindseeker Oculus")
+                .withCardOnBattlefield(2, "Mindseeker Oculus")
+                .withCardOnBattlefield(2, "Fatehold Chronologist")
+                .withCardOnBattlefield(2, "Grizzly Bears")
+                .withCardOnBattlefield(2, "Stingerquill Voxmancer", tapped = true)
+                .withCardAttachedTo(1, "Infinite Coursework", "Stingerquill Voxmancer")
+                .withCardOnBattlefield(2, "Jace", isToken = true)
+                .withLandsOnBattlefield(2, "Island", 9)
+            // The four Thopters attacked last turn; they untap for the swing back.
+            repeat(4) { builder = builder.withCardOnBattlefield(2, "Suntail Hawk", tapped = true) }
+            repeat(6) { builder = builder.withCardInLibrary(1, "Swamp").withCardInLibrary(2, "Island") }
+            // Threshold: the Extrapolator is a 3/3.
+            repeat(7) { builder = builder.withCardInGraveyard(1, "Swamp") }
+            val game = builder.build()
+            game.addCounters("Fatehold Chronologist", CounterType.PLUS_ONE_PLUS_ONE, 1)
+            game.addCounters("Jace", CounterType.LOYALTY, 2)
+            val ready = game.advanceToDeclaration(1, Step.DECLARE_ATTACKERS)
+
+            val attackers = ready.attackersChosenBy(AiProfile.LIVE)
+            withClue("attacked with ${ready.names(attackers)}") { attackers.shouldBeEmpty() }
         }
 
         test("still attacks when the opponent's blockers are all tapped and the swing back is survivable") {
