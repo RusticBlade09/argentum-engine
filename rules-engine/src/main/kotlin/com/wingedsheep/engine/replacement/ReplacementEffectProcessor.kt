@@ -433,8 +433,7 @@ class ReplacementEffectProcessor(
         // 1. Battlefield permanents with ReplacementEffectSourceComponent
         for (entityId in battlefieldSet) {
             val container = state.getEntity(entityId) ?: continue
-            val replacementSource = container.get<ReplacementEffectSourceComponent>() ?: continue
-            if (event is PendingGameEvent.LifeGainPending && (state.projectedState.hasLostAllAbilities(entityId) || state.projectedState.isFaceDown(entityId))) continue
+            val replacementSource = state.activeReplacementSource(entityId) ?: continue
             // Projected, not base: control change is a layer-2 effect (see EffectApplicator's
             // ChangeController branch), so a stolen permanent's ControllerComponent still names
             // its original controller. A `Player.You` replacement has to follow the permanent.

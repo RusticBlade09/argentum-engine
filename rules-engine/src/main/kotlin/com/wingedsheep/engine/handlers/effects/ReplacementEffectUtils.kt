@@ -36,7 +36,7 @@ object ReplacementEffectUtils {
     fun isExtraTurnPrevented(state: GameState): Boolean {
         for (entityId in state.getBattlefield()) {
             val container = state.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
             for (effect in replacementComponent.replacementEffects) {
                 if (effect is PreventExtraTurns) return true
             }
@@ -108,7 +108,7 @@ object ReplacementEffectUtils {
         for (entityId in sourceIds + listOfNotNull(entrantSelfSource)) {
             val selfEntry = entityId == entrantSelfSource
             val container = (if (selfEntry) state else sources).getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = (if (selfEntry) state else sources).activeReplacementSource(entityId) ?: continue
             // A stolen source works for its new controller (layer 2): read the projected controller.
             val sourceControllerId = (if (selfEntry) null else sources.projectedState.getController(entityId))
                 ?: container.get<ControllerComponent>()?.playerId ?: continue
@@ -323,7 +323,7 @@ object ReplacementEffectUtils {
         var cap: Int? = null
         for (entityId in replacementSourceState.getBattlefield()) {
             val container = replacementSourceState.getEntity(entityId) ?: continue
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = replacementSourceState.activeReplacementSource(entityId) ?: continue
             // "You" is the source's current (projected) controller — a stolen Melira protects its thief.
             val sourceControllerId = replacementSourceState.projectedState.getController(entityId) ?: continue
             for (effect in replacementComponent.replacementEffects) {

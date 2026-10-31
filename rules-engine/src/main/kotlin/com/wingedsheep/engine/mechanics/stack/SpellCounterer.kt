@@ -638,7 +638,7 @@ class SpellCounterer(
         if (countererId == null) return null
         val projected = state.projectedState
         for (entityId in state.getBattlefield()) {
-            val effects = state.getEntity(entityId)?.get<ReplacementEffectSourceComponent>()?.replacementEffects
+            val effects = state.activeReplacementSource(entityId)?.replacementEffects
                 ?: continue
             val controller = projected.getController(entityId)
                 ?: state.getEntity(entityId)?.get<ControllerComponent>()?.playerId

@@ -1553,6 +1553,23 @@ data class GameState(
         result
     }
 
+    /**
+     * The printed replacement effects [entityId] currently has, or null when it has none in force.
+     * A permanent that has lost all abilities (Humility, Infinite Coursework) or is face down
+     * (CR 708.2) keeps its [com.wingedsheep.engine.state.components.battlefield.ReplacementEffectSourceComponent]
+     * in base state, but none of its replacement abilities apply — so every read site that walks
+     * permanents for their replacement effects goes through here rather than reading the
+     * component directly. Emblems and objects off the battlefield have no projection entry and
+     * read their component as is.
+     */
+    fun activeReplacementSource(entityId: EntityId): com.wingedsheep.engine.state.components.battlefield.ReplacementEffectSourceComponent? {
+        val component = getEntity(entityId)
+            ?.get<com.wingedsheep.engine.state.components.battlefield.ReplacementEffectSourceComponent>()
+            ?: return null
+        if (projectedState.hasLostAllAbilities(entityId) || projectedState.isFaceDown(entityId)) return null
+        return component
+    }
+
     private val cachedBattlefield: List<EntityId> by lazy {
         val result = ArrayList<EntityId>()
         for ((key, ids) in zones) {

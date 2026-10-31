@@ -538,7 +538,7 @@ object TokenCreationReplacementHelper {
             val entityController = container.get<ControllerComponent>()?.playerId ?: continue
             if (entityController != controllerId) continue
 
-            val replacementComponent = container.get<ReplacementEffectSourceComponent>() ?: continue
+            val replacementComponent = state.activeReplacementSource(entityId) ?: continue
 
             for (re in replacementComponent.replacementEffects) {
                 if (re !is ReplaceTokenCreationWithAttachedCopy) continue
