@@ -83,4 +83,12 @@ class AiReadingByAbilityTest : FunSpec({
         }
         reading.readFully shouldBe true
     }
+
+    test("a counter on its own source needs no intent, and reads as understood rather than unchecked") {
+        val reading = AiReadingAudit.read(card("Ajani's Pridemate"))
+        reading.readFully shouldBe true
+        val trigger = reading.abilities.single { it.ability.kind == AbilityKind.TRIGGERED }
+        trigger.checked shouldBe true
+        trigger.findings.single { it.check == Check.INTENT }.reason shouldContain "needs no intent"
+    }
 })

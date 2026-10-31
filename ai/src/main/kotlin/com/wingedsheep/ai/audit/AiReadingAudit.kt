@@ -17,6 +17,8 @@ import com.wingedsheep.sdk.scripting.ActivatedAbility
 import com.wingedsheep.sdk.scripting.Duration
 import com.wingedsheep.sdk.scripting.TimingRule
 import com.wingedsheep.sdk.scripting.costs.CostAtom
+import com.wingedsheep.sdk.scripting.effects.AddCountersEffect
+import com.wingedsheep.sdk.scripting.effects.AddDynamicCountersEffect
 import com.wingedsheep.sdk.scripting.effects.CardDestination
 import com.wingedsheep.sdk.scripting.effects.CardSource
 import com.wingedsheep.sdk.scripting.effects.Effect
@@ -25,6 +27,7 @@ import com.wingedsheep.sdk.scripting.effects.GatherCardsEffect
 import com.wingedsheep.sdk.scripting.effects.ModalEffect
 import com.wingedsheep.sdk.scripting.effects.ModifyStatsEffect
 import com.wingedsheep.sdk.scripting.effects.MoveCollectionEffect
+import com.wingedsheep.sdk.scripting.targets.EffectTarget
 import com.wingedsheep.sdk.scripting.targets.TargetRequirement
 import java.util.Locale
 
@@ -51,7 +54,8 @@ import java.util.Locale
  *    their own; a slot whose leaves each read but disagree is `mixed(A+B)`.
  *  - [Check.INTENT] — [CardIntentAnalyzer.analyzeEffect] per effect slot (the spell, each trigger,
  *    each non-mana ability): a slot that earns no [IntentTag] at all is invisible to every intent
- *    consumer, and is attributed to each of its leaves.
+ *    consumer, and is attributed to each of its leaves — except the leaves that need no tag
+ *    ([needsNoIntent]: a non-keyword counter on the source itself or on its controller).
  *  - [Check.COMBAT] — [CombatReach] over each leaf of a non-mana activated ability that changes
  *    power/toughness, keywords, P/T counters or blocking, and that combat simulation cannot see.
  *  - [Check.TIMING] — an until-end-of-turn leaf on an instant-speed activation or an instant-speed
@@ -388,14 +392,21 @@ object AiReadingAudit {
             return
         }
         val unread = "no intent: the AI doesn't know what this effect is for"
+        val before = sink.findings.size
         val leaves = EffectWalker.leaves(root)
-        labels(leaves.filterNot { it is ForEachEffect }).forEach { (label, leaf) ->
+        val unreadLeaves = leaves.filterNot(::needsNoIntent)
+        labels(unreadLeaves.filterNot { it is ForEachEffect }).forEach { (label, leaf) ->
             sink += gap(Check.INTENT, unread, label, step(leaves, leaf))
         }
-        for (each in leaves.filterIsInstance<ForEachEffect>()) {
-            labels(EffectWalker.leaves(each.body)).forEach { (label, _) ->
+        for (each in unreadLeaves.filterIsInstance<ForEachEffect>()) {
+            labels(EffectWalker.leaves(each.body).filterNot(::needsNoIntent)).forEach { (label, _) ->
                 sink += gap(Check.INTENT, unread, "ForEach>$label", step(leaves, each))
             }
+        }
+        // Every untagged step needed no tag: say so, so the ability reads as understood rather
+        // than as one nobody asked about.
+        if (sink.findings.size == before) {
+            sink += Finding(Check.INTENT, read = true, reason = "needs no intent: it only puts counters on its source or its controller")
         }
     }
 
@@ -515,6 +526,26 @@ object AiReadingAudit {
     private fun names(leaf: Effect, req: TargetRequirement, index: Int): Boolean {
         val text = leaf.toString()
         return (req.id != null && "BoundVariable(name=${req.id})" in text) || "ContextTarget(index=$index)" in text
+    }
+
+    /**
+     * A counter the effect puts on its own source or its own controller — a creature growing itself,
+     * a charge, oil, quest or loyalty counter, `{E}` for you. There is no target to choose and nothing
+     * to hold it for, and its payoff is already on the board (the evaluator reads a grown creature's
+     * projected stats) or belongs to the ability that later spends it, so it needs no intent tag. A
+     * keyword counter stays flagged: it grants a keyword the way [com.wingedsheep.sdk.scripting.effects.GrantKeywordEffect]
+     * does, and the reader tags the evasion and protective ones. A keyword counter is recognised by
+     * its id naming a [Keyword]; that also keeps the few counters merely named after a keyword (fuse,
+     * training) flagged, which errs toward flagging.
+     */
+    private fun needsNoIntent(leaf: Effect): Boolean {
+        val (counter, target) = when (leaf) {
+            is AddCountersEffect -> leaf.counterType to leaf.target
+            is AddDynamicCountersEffect -> leaf.counterType to leaf.target
+            else -> return false
+        }
+        if (target != EffectTarget.Self && target != EffectTarget.Controller) return false
+        return Keyword.entries.none { it.name == counter.name }
     }
 
     /** Whether [effect] carries a `duration` of [Duration.EndOfTurn]. Effects share no interface for it. */
