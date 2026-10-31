@@ -136,6 +136,12 @@ class CombatAdvisor(
      */
     internal val minimalLethalInPods: Boolean = false,
     /**
+     * In a pod, aim the attack at a seat it kills, else at the opponent with the biggest board,
+     * instead of the lowest life total ([CombatSeed.primaryDefender]).
+     * [AiProfile.threatAwareDefender] carries the argument.
+     */
+    internal val threatAwareDefender: Boolean = false,
+    /**
      * Let the block heuristic see a blocker whose block trigger destroys the attacker it blocks
      * (Alaborn Zealot), as it sees deathtouch ([BlockTriggerRemoval]). The attack evaluator predicts
      * the defender's blocks with that heuristic, so this is also what prices such a blocker into an
@@ -317,6 +323,7 @@ class CombatAdvisor(
             aimAtPlaneswalkers = attackPlaneswalkers,
             walkerEngines = walkerEngines,
             minimalLethalInPods = minimalLethalInPods,
+            threatAwareDefender = threatAwareDefender,
         )
         val opponentId = seed.defenderId ?: return DeclareAttackers(playerId, emptyMap())
         // Which defender each attacker may legally take (CR 508.1b–c) — the engine lists it per
@@ -338,6 +345,7 @@ class CombatAdvisor(
                             state, cardRegistry, playerId, seed.attackers, validAttackers, mandatory.toSet(), canAttack,
                         ),
                         opponentId,
+                        threatAwareDefender,
                     ),
                     mandatory.toSet(),
                 ),
@@ -360,7 +368,7 @@ class CombatAdvisor(
         // Who each attacker may hit: its default seat, plus — under [attackPlaneswalkers] — every
         // opposing planeswalker it may legally attack. With a walker in reach the choice of
         // defender is a real one even when nothing can block, so the search runs then too.
-        val defenderOf = { attacker: EntityId -> CombatSeed.defenderFor(state, legalAction, attacker, opponentId) }
+        val defenderOf = { attacker: EntityId -> CombatSeed.defenderFor(state, legalAction, attacker, opponentId, threatAwareDefender) }
         val defendersOf = { attacker: EntityId ->
             val primary = listOfNotNull(defenderOf(attacker))
             if (!attackPlaneswalkers) primary
@@ -395,6 +403,7 @@ class CombatAdvisor(
                         validAttackers, mandatory.toSet(), canAttack,
                     ),
                     opponentId,
+                    threatAwareDefender,
                 ),
                 mandatory.toSet(),
             ),

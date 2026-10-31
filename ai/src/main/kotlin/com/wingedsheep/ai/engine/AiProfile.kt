@@ -1285,6 +1285,19 @@ data class AiProfile(
      */
     val minimalLethalInPods: Boolean = false,
     /**
+     * In a pod, aim the attack at a seat it can kill, else at the opponent whose board threatens
+     * the table most (total power of creatures that can attack), with the lowest life total only
+     * breaking ties — instead of always at the lowest life total ([CombatSeed.primaryDefender]).
+     *
+     * Off the 2026-10-31 AI-vs-humans review: in three 4-player Commander games (47b94d02,
+     * c92b4495, 8743af0c) every AI seat chased whichever AI opponent was lowest, the human with the
+     * runaway board (an 8/8 Animar and three more creatures against a 7-power and an empty board)
+     * was attacked zero times, and the AIs finished each other off while the human sat at 38+ life.
+     * A kill is still taken first, so "finish off the opponent you can kill" is unchanged; 1v1 is
+     * untouched. Pinned by `MultiplayerAttackDefenderThreatTest`.
+     */
+    val threatAwareDefender: Boolean = false,
+    /**
      * Read a blocker whose block trigger destroys the attacker it blocks as a killer, the way
      * deathtouch is read.
      *
@@ -2284,6 +2297,7 @@ data class AiProfile(
             minimalLethalInPods = true,
             blockTriggersKill = true,
             stressCrackBack = true,
+            threatAwareDefender = true,
         )
 
         /**

@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- #4100 In multiplayer, attacks the opponent it can kill, else the one with the biggest board, instead of always the lowest life total
 - #4099 Won't attack away blockers when one activated ability visible on the opponent's board (removal on a blocker, a pump) would make the swing back lethal, and counts idle blockers ganging up on a trampler instead of reading every crack-back past one as lethal
 - #4097 Keeps its blockers home when only they stop a lethal swing back: the crack-back no longer counts an opposing creature that won't untap, an attack plan the simulator can't score is no longer submitted unscored, and a plan whose crack-back is lethal earns no credit for our next swing
 - #4094 Crews Vehicles and saddles Mounts when the attack it buys beats the attack without it, tapping the creatures that give up least (summoning-sick ones first), instead of never riding at all
