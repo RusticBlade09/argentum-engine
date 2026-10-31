@@ -1091,6 +1091,20 @@ data class AiProfile(
      */
     val stackChumpsOnTramplers: Boolean = false,
     /**
+     * Block with a **free gang block** before reaching for a trade: when no single blocker kills an
+     * attacker and survives, two blockers that together kill it while neither can be killed by it
+     * take the attacker for nothing.
+     *
+     * 2026-10-31 logs, `LIVE`. Game `a41c9386` turn 9: the AI swung Theorix Metamage (2/3) into
+     * Marwyn, the Preserver (3/2) and two Greenhouse Propagators (2/3), every opposing land tapped.
+     * The two Propagators double-blocked and killed it without a loss. The block heuristic — which
+     * is also the opponent model the attack search simulates against — only ganged up on an
+     * attacker after the trade pass, so it predicted Marwyn trading with the Metamage, and the
+     * attack read as a fair trade or two free damage. Here it predicts the double block, which is
+     * also what the AI itself now does as the defender.
+     */
+    val freeGangBlocks: Boolean = false,
+    /**
      * Pay a **convoke** spell with mana first and tap creatures only for the shortfall, cheapest
      * creatures first.
      *
@@ -2367,6 +2381,7 @@ data class AiProfile(
             spendFuelWalkers = true,
             walkersPricedAsEngines = true,
             stackChumpsOnTramplers = true,
+            freeGangBlocks = true,
             convokeLandsFirst = true,
             selectionSeesWhoseCards = true,
             topOrBottomWeighsTheDraw = true,
