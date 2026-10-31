@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- #4122 Answers no to an optional "Pay {1}?" it would then decline to pay (only a tap-another-permanent source like Gene Pollinator could pay), instead of yes followed by an empty payment
 - #4120 Prices how close each library is to running out: no longer plays a land that exiles its whole library (Territorial Bruntar in Momir) or mills itself out, and values milling an opponent out
 - #4119 Plays its land drop before activating the Momir avatar or casting an already-affordable X spell, so the activation or spell gets the land's extra point of X
 - #4118 Sees an opponent's on-board +1/+1-counter pumps (Tenured Tethermage) and abilities with tap or sacrifice costs as combat answers, so it no longer attacks into a blocker the defender can grow before blocks
