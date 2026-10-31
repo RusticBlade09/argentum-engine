@@ -49,7 +49,9 @@ import java.util.concurrent.ConcurrentHashMap
  * ## What it does not read
  *
  * Modal interiors, `ForEach` bodies and pipeline stages are leaves to the walk — see [EffectWalker]
- * for why widening it is a separate change. A card whose whole payoff is inside one of those reads
+ * for why widening it is a separate change. This analyzer opens the first two itself in [tagsOf]: a
+ * `ForEach` reads as its body, and a modal spell as the union of its modes (a cast of one reads as
+ * the modes it chose — [analyzeModes]). A card whose whole payoff is inside a pipeline still reads
  * as uninterpretable and gets [CardIntent.UNKNOWN]'s flat prior, which is exactly the value the AI
  * gave *every* non-creature permanent before this existed. The failure mode is "no better than
  * before", never "confidently wrong".

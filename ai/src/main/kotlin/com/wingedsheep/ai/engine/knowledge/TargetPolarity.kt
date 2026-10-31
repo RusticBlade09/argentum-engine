@@ -228,6 +228,7 @@ object TargetPolarityAnalyzer {
         if (requirements.isEmpty()) return emptyList()
         if (effect == null) return requirements.map { TargetPolarity.UNKNOWN }
         val perSlot = List(requirements.size) { mutableListOf<TargetPolarity>() }
+        val recursions = mutableSetOf<Int>()
         for (leaf in EffectWalker.leaves(effect)) {
             // "Destroy up to two target artifacts and/or enchantments" (Force of Vigor) runs its
             // body once per target, each seeing its target as `ContextTarget(0)`. With one slot
@@ -253,7 +254,7 @@ object TargetPolarityAnalyzer {
             }
             val recursion = recursionSlot(leaf, requirements)
             if (recursion != null) {
-                perSlot[recursion] += TargetPolarity.BENEFICIAL
+                recursions += recursion
             } else {
                 for ((target, polarity) in classify(leaf, definitions)) {
                     val slot = slotOf(target, requirements) ?: continue
@@ -262,7 +263,9 @@ object TargetPolarityAnalyzer {
             }
             if (requirements.size == 1) implicitTargetPolarity(leaf)?.let { perSlot[0] += it }
         }
-        return perSlot.map(::combine)
+        // Getting a card back is the point of a recursion slot: a finality or -1/-1 counter it
+        // comes back with (Rite of the Moth, Soulcoil Viper) is the price, not the other side of it.
+        return perSlot.mapIndexed { slot, readings -> if (slot in recursions) TargetPolarity.BENEFICIAL else combine(readings) }
     }
 
     /** One polarity for a slot, from every leaf that acts on it. */
