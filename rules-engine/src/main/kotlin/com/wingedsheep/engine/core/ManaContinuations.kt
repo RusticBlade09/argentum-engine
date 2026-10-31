@@ -482,45 +482,36 @@ data class ManaSourceOption(
 
 /**
  * Resume after the player picks which permanent to tap to satisfy the secondary
- * tap-permanents sub-cost of a mana ability selected during ward payment
- * (e.g. Springleaf Drum's "Tap an untapped creature you control").
+ * tap-permanents sub-cost of a mana source they hand-picked during a mana payment
+ * (Springleaf Drum's "Tap an untapped creature you control", Gene Pollinator's
+ * "Tap an untapped permanent you control").
  *
  * Pushed by [com.wingedsheep.engine.handlers.continuations.ManaPaymentContinuationResumer]
- * when the player's manual ward-payment selection contains one or more sources with
- * [ManaSourceOption.requiresTappingAnotherPermanent]. The resumer pre-tapped any
- * non-sub-cost sources before pushing this, so [currentPool]-style state already lives
- * on the player's mana pool component.
+ * when a manual selection contains one or more sources with
+ * [ManaSourceOption.requiresTappingAnotherPermanent]. The resumer already tapped the selection's
+ * other sources and floated their mana in the payer's pool before pushing this.
  *
- * Head of [pendingSubCostSources] is the source the current prompt is targeting; on
- * response, that source is tapped, the chosen creature is tapped, and its mana is added
- * to the pool. If more sub-cost sources remain, a new prompt is pushed; otherwise we
- * attempt to pay the ward cost and either resolve the spell or counter it.
+ * Head of [pendingSubCostSources] is the source the current prompt is for; on response, that
+ * source and the chosen permanent(s) are tapped and the source's mana is floated. When no
+ * sub-cost sources remain, [resume] — the payment-selection continuation that raised the
+ * prompt (ward / counter-unless, "you may pay", a targeted may-pay trigger) — is re-entered
+ * with an empty confirmation, so it spends the floated mana exactly as if the player had
+ * activated those mana abilities inside the payment window (CR 605.3a).
  */
 @Serializable
-data class WardTapPermanentsSubCostContinuation(
+data class TapPermanentsSubCostContinuation(
     val payingPlayerId: EntityId,
-    val spellEntityId: EntityId,
-    val manaCost: com.wingedsheep.sdk.core.ManaCost,
-    val counterDestination: CounterDestination,
-    val controllerId: EntityId?,
     /** Source IDs still to process. Head is the one the current prompt is for. */
     val pendingSubCostSources: List<EntityId>,
-    /** Original mana-source menu, kept for source-name lookups when emitting events. */
+    /** Original mana-source menu, kept for source-name and produced-mana lookups. */
     val availableSources: List<ManaSourceOption>,
-    /** See [CounterUnlessPaysContinuation.onPaid]. Carried so the rider fires after the
-     *  spell's controller finishes paying through a tap-permanents sub-cost source. */
-    val onPaid: Effect? = null,
-    /** See [CounterUnlessPaysContinuation.sourceId]. Carried for the rider's [EffectContext]. */
-    val sourceId: EntityId? = null,
-    /** See [CounterUnlessPaysManaSelectionContinuation.remainingWardParts] — the not-yet-paid
-     *  components of an enclosing composite ward cost, charged once this mana part is fully paid. */
-    val remainingWardParts: List<WardCost> = emptyList(),
-    /** See [CounterUnlessPaysManaSelectionContinuation.wardSourceId]. */
-    val wardSourceId: EntityId? = null,
-    val objectReferences: com.wingedsheep.engine.handlers.ObjectReferenceEnvironment = com.wingedsheep.engine.handlers.ObjectReferenceEnvironment(),
-    val resolvingTriggeredAbility: com.wingedsheep.sdk.scripting.TriggeredAbility? = null,
-    /** See [CounterUnlessPaysContinuation.deferCounter]. */
-    val deferCounter: Boolean = false,
+    /**
+     * The payment-selection continuation to finish the payment with once every sub-cost is
+     * paid: a [CounterUnlessPaysManaSelectionContinuation], [MayPayManaSelectionContinuation]
+     * or [ManaSourceSelectionContinuation], with any waterbend reduction already applied to
+     * its cost.
+     */
+    val resume: AnswerContinuation,
 ) : AnswerContinuation
 
 /**

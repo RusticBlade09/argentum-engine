@@ -30,7 +30,7 @@ internal fun AnswerContinuation.objectReferences(): ObjectReferenceEnvironment? 
     is MayPayXContinuation -> effectContext.objectReferences
     is MayPayLifeXContinuation -> effectContext.objectReferences
     is CounterUnlessPaysManaSelectionContinuation -> objectReferences
-    is WardTapPermanentsSubCostContinuation -> objectReferences
+    is TapPermanentsSubCostContinuation -> resume.objectReferences()
     is AddDynamicManaContinuation -> objectReferences
     is AddManaPipsContinuation -> objectReferences
     is ChooseNumberForSourceContinuation -> objectReferences
@@ -163,7 +163,7 @@ internal fun AnswerContinuation.withObjectReferences(refs: ObjectReferenceEnviro
     is MayPayXContinuation -> copy(effectContext = effectContext.copy(objectReferences = refs))
     is MayPayLifeXContinuation -> copy(effectContext = effectContext.copy(objectReferences = refs))
     is CounterUnlessPaysManaSelectionContinuation -> copy(objectReferences = refs)
-    is WardTapPermanentsSubCostContinuation -> copy(objectReferences = refs)
+    is TapPermanentsSubCostContinuation -> copy(resume = resume.withObjectReferences(refs))
     is AddDynamicManaContinuation -> copy(objectReferences = refs)
     is AddManaPipsContinuation -> copy(objectReferences = refs)
     is ChooseNumberForSourceContinuation -> copy(objectReferences = refs)

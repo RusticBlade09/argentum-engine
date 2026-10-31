@@ -1505,7 +1505,11 @@ internal class BlockPhaseManager(
             List(totalTax) { com.wingedsheep.sdk.core.ManaSymbol.generic(1) }
         )
         val manaSolver = com.wingedsheep.engine.mechanics.mana.ManaSolver(cardRegistry, predicateEvaluator)
+        // Sources with a "tap another permanent" sub-cost (Springleaf Drum, Gene Pollinator) stay
+        // off the menu: the combat-tax resumer can't ask for the extra permanent. The player can
+        // still activate them inside the payment window (CR 605.3a), as ManaPaymentWindow does.
         val sources = manaSolver.findAvailableManaSources(state, blockingPlayer)
+            .filter { it.tapPermanentsSubCost == null }
         val sourceOptions = sources.map { source ->
             com.wingedsheep.engine.core.ManaSourceOption(
                 entityId = source.entityId,
@@ -1514,7 +1518,6 @@ internal class BlockPhaseManager(
                 producesColorless = source.producesColorless,
                 requiresSacrifice = source.requiresSacrifice,
                 manaAmount = source.manaAmount,
-                requiresTappingAnotherPermanent = source.tapPermanentsSubCost != null,
             )
         }
         val solution = manaSolver.solve(state, blockingPlayer, manaCost)
