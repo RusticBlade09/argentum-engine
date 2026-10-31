@@ -233,7 +233,7 @@ class CostHandler(private val zones: ZoneTransitionService) {
                 // a legal blight target — CR 614.17b: the cost's event can't happen.
                 val projected = state.projectedState
                 projected.getBattlefieldControlledBy(controllerId)
-                    .any { projected.isCreature(it) && projected.canReceiveCounters(it) }
+                    .any { projected.isCreature(it) && projected.canReceiveCounters(it, CounterType.MINUS_ONE_MINUS_ONE) }
             }
             is AbilityCost.Craft -> {
                 // Source on battlefield + enough materials in the unified BF+GY pool (CR 702.167a-b).
@@ -618,7 +618,7 @@ class CostHandler(private val zones: ZoneTransitionService) {
                 if (projected.getController(targetId) != controllerId || !projected.isCreature(targetId)) {
                     return CostPaymentResult.failure("Blight target must be a creature you control")
                 }
-                if (!projected.canReceiveCounters(targetId)) {
+                if (!projected.canReceiveCounters(targetId, CounterType.MINUS_ONE_MINUS_ONE)) {
                     return CostPaymentResult.failure("Blight target can't have counters put on it")
                 }
                 // A cost isn't an effect: placement replacements apply, Doubling Season's doesn't.
@@ -845,7 +845,7 @@ class CostHandler(private val zones: ZoneTransitionService) {
         // have counters put on it at all (Solemnity): the event can't happen, so the cost can't be
         // chosen (CR 614.17b; Devoted Druid's 2018-12-07 ruling). A replacement that only shrinks
         // the placement — Vizier of Remedies cutting it to zero — leaves the cost payable.
-        is CostAtom.PutCountersOnSelf -> state.projectedState.canReceiveCounters(sourceId)
+        is CostAtom.PutCountersOnSelf -> state.projectedState.canReceiveCounters(sourceId, atom.counterType)
         // Selected-permanent counter placement is a PayCost only (Tourach's Chant); no printed
         // activated ability pays it, so it is reported unpayable on this rail.
         is CostAtom.PutCountersOnPermanent -> false
@@ -951,7 +951,16 @@ class CostHandler(private val zones: ZoneTransitionService) {
                 if (choices.discardChoices.size < atom.count) {
                     return CostPaymentResult.failure("Must choose ${atom.count} card(s) to discard")
                 }
-                choices.discardChoices.take(atom.count)
+                // A GameAction is client-supplied: the discards must be distinct cards in the
+                // payer's hand that match the cost's filter ("Discard a Mountain card or a red card").
+                val chosen = choices.discardChoices.take(atom.count)
+                val eligible = findMatchingCardsUnified(
+                    state, state.getZone(ZoneKey(controllerId, Zone.HAND)), atom.filter, controllerId, sourceId
+                ).toSet()
+                if (chosen.distinct().size != chosen.size || chosen.any { it !in eligible }) {
+                    return CostPaymentResult.failure("Must choose ${atom.count} matching card(s) in hand to discard")
+                }
+                chosen
             }
             val result = zones.discardCards(workState, controllerId, toDiscard)
             CostPaymentResult.success(result.state, manaPool, result.events)
@@ -1104,7 +1113,7 @@ class CostHandler(private val zones: ZoneTransitionService) {
             // counters can't pay it at all (CR 614.17b) — canPayAtom keeps the activation from
             // being offered, and this refuses one that slips past it.
             val counterType = atom.counterType
-            if (!state.projectedState.canReceiveCounters(sourceId)) {
+            if (!state.projectedState.canReceiveCounters(sourceId, counterType)) {
                 CostPaymentResult.failure("Counters can't be put on this permanent")
             } else {
                 val current = state.getEntity(sourceId)?.get<CountersComponent>() ?: CountersComponent()
