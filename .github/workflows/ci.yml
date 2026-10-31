@@ -65,13 +65,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v5
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -87,7 +87,7 @@ jobs:
       # other's save; the second restore-key lets a group bootstrap from any other group's cache
       # (e.g. a fresh `tools` run reuses `engine`'s compiled rules-engine).
       - name: Cache Gradle build outputs
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/.gradle/build-cache
           key: gradle-build-cache-${{ runner.os }}-${{ matrix.name }}-${{ github.sha }}
@@ -194,21 +194,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v5
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
       - name: Set up Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 26
 
       - name: Build and smoke-test the browser checker
         working-directory: oracle-assay/browser
@@ -227,13 +227,13 @@ jobs:
       GRADLE_BUILD_CACHE_DIR: ${{ github.workspace }}/.gradle/build-cache
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v5
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -244,7 +244,7 @@ jobs:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Cache Gradle build outputs
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/.gradle/build-cache
           key: gradle-build-cache-${{ runner.os }}-coverage-${{ github.sha }}
@@ -270,7 +270,7 @@ jobs:
           echo "coverage=$PERCENT" >> $GITHUB_OUTPUT
 
 #      - name: Update coverage badge
-#        uses: schneegans/dynamic-badges-action@v1.7.0
+#        uses: schneegans/dynamic-badges-action@v1.9.0
 #        with:
 #          auth: ${{ secrets.GIST_SECRET }}
 #          gistID: ${{ vars.COVERAGE_GIST_ID }}
@@ -286,12 +286,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
-      - name: Set up Node 22
-        uses: actions/setup-node@v6
+      - name: Set up Node 26
+        uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 26
           cache: npm
           cache-dependency-path: web-client/package-lock.json
 
@@ -313,21 +313,21 @@ jobs:
   #
   #   steps:
   #     - name: Checkout repository
-  #       uses: actions/checkout@v6
+  #       uses: actions/checkout@v7
   #
-  #     - name: Set up JDK 21
-  #       uses: actions/setup-java@v5
+  #     - name: Set up JDK 25
+  #       uses: actions/setup-java@v6
   #       with:
   #         distribution: temurin
-  #         java-version: 21
+  #         java-version: 25
   #
   #     - name: Setup Gradle
   #       uses: gradle/actions/setup-gradle@v6
   #
-  #     - name: Set up Node 22
-  #       uses: actions/setup-node@v5
+  #     - name: Set up Node 26
+  #       uses: actions/setup-node@v7
   #       with:
-  #         node-version: 22
+  #         node-version: 26
   #         cache: npm
   #         cache-dependency-path: |
   #           web-client/package-lock.json
