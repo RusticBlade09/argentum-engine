@@ -70,6 +70,7 @@ import com.wingedsheep.sdk.scripting.effects.RegenerateEffect
 import com.wingedsheep.sdk.scripting.effects.TapUntapEffect
 import com.wingedsheep.sdk.scripting.filters.unified.Scope
 import com.wingedsheep.sdk.scripting.targets.EffectTarget
+import com.wingedsheep.sdk.scripting.targets.TargetObject
 import com.wingedsheep.sdk.scripting.targets.TargetRequirement
 import com.wingedsheep.sdk.scripting.values.DynamicAmount
 import java.util.concurrent.ConcurrentHashMap
@@ -250,9 +251,14 @@ object TargetPolarityAnalyzer {
                 }
                 continue
             }
-            for ((target, polarity) in classify(leaf, definitions)) {
-                val slot = slotOf(target, requirements) ?: continue
-                perSlot[slot] += polarity
+            val recursion = recursionSlot(leaf, requirements)
+            if (recursion != null) {
+                perSlot[recursion] += TargetPolarity.BENEFICIAL
+            } else {
+                for ((target, polarity) in classify(leaf, definitions)) {
+                    val slot = slotOf(target, requirements) ?: continue
+                    perSlot[slot] += polarity
+                }
             }
             if (requirements.size == 1) implicitTargetPolarity(leaf)?.let { perSlot[0] += it }
         }
@@ -270,6 +276,26 @@ object TargetPolarityAnalyzer {
         is EffectTarget.BoundVariable -> requirements.indexOfFirst { it.id == target.name }.takeIf { it >= 0 }
         is EffectTarget.ContextTarget -> target.index.takeIf { it in requirements.indices }
         else -> null
+    }
+
+    /**
+     * The slot a **recursion** names — a card moved out of a graveyard into a hand or onto the
+     * battlefield ("return target creature card from your graveyard to your hand") — or null.
+     *
+     * Read here rather than in [classify] because the move alone often cannot say where the card
+     * comes from: `Effects.ReturnToHand` leaves `fromZone` unset and the *requirement* is what puts
+     * the target in a graveyard. Getting a card back is good for whoever gets it — the polarity's
+     * "controller" of a card in a graveyard is its owner — so the slot reads beneficial and the
+     * best card is the one to return. Unread, the removal ranking ranked a card that is no
+     * opponent's permanent by its negated value, and returned the worst one.
+     */
+    private fun recursionSlot(leaf: Effect, requirements: List<TargetRequirement>): Int? {
+        if (leaf !is MoveToZoneEffect || leaf.faceDown != null) return null
+        if (leaf.destination != Zone.HAND && leaf.destination != Zone.BATTLEFIELD) return null
+        val slot = slotOf(leaf.target, requirements) ?: return null
+        val fromGraveyard = leaf.fromZone == Zone.GRAVEYARD ||
+            (leaf.fromZone == null && (requirements[slot] as? TargetObject)?.filter?.zone == Zone.GRAVEYARD)
+        return slot.takeIf { fromGraveyard }
     }
 
     /**
