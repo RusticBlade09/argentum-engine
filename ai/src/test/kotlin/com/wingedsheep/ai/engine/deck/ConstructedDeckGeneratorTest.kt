@@ -212,6 +212,35 @@ class ConstructedDeckGeneratorTest : FunSpec({
         shouldThrow<IllegalArgumentException> { gen.generate(listOf("AAA"), DeckFormat.STANDARD) }
     }
 
+    test("refuses a pool too thin to fill the spell slots rather than padding it with lands") {
+        // A set whose only legal cards are four R/W reprint rows — the shape of a single-set
+        // "matched" build from a set the corpus barely covers. Draftsim padded the missing spell
+        // slots with basics and the short-build check counted those lands, so the AI was seated
+        // with 44 lands, 16 instants and no creatures. Throwing is what lets the resolver fall back.
+        val thin = listOf(
+            CardDefinition.instant("Thin Strike", ManaCost.parse("{1}{R}"), ""),
+            CardDefinition.instant("Thin Crescendo", ManaCost.parse("{1}{R}"), ""),
+            CardDefinition.instant("Thin Shield", ManaCost.parse("{1}{W}"), ""),
+            CardDefinition.instant("Thin Web", ManaCost.parse("{W}"), ""),
+        ).map { it.copy(legalFormats = setOf(DeckFormat.LEGACY)) }
+        val gen = generatorOver("THN" to thin)
+
+        shouldThrow<IllegalArgumentException> { gen.generateDeck(listOf("THN"), DeckFormat.LEGACY) }
+    }
+
+    test("refuses a build without enough creatures to play") {
+        // Plenty of distinct spells, but a single creature: a deck that can't put a body on the
+        // board isn't a deck the AI can win with, whatever its size.
+        val spells = (1..30).map { i ->
+            CardDefinition.instant("Spell $i", ManaCost.parse("{${i % 4}}{G}"), "")
+                .copy(legalFormats = setOf(DeckFormat.MODERN))
+        }
+        val creatures = (1..1).map { i -> card("Body $i", "{1}{G}", Rarity.COMMON, setOf(DeckFormat.MODERN)) }
+        val gen = generatorOver("AAA" to (spells + creatures))
+
+        shouldThrow<IllegalArgumentException> { gen.generateDeck(listOf("AAA"), DeckFormat.MODERN) }
+    }
+
     test("rejects an unknown set code") {
         val gen = generatorOver("AAA" to pool("AAA"))
 
