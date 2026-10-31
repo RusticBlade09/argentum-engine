@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- #4113 Keeps a spell instead of landcycling it when the lands already in hand cover this turn's and next turn's land drops and no other spell in hand needs the extra land
 - #4111 Mulligans a seven-card opening hand whose lands cannot cast any of its spells, and a two-lander with too few early plays (fewer than two spells castable off its two lands on the play; none, or no second three-drop, on the draw)
 - #4110 Attacks with a creature it stole until end of turn instead of keeping it home as if it were its own, and no longer casts a steal once the turn has no combat left for the borrowed creature
 - #4108 Holds an until-end-of-turn shrink spell instead of casting it on a creature that can no longer fight this turn (a tapped attacker on its own turn), and holds a flash creature when the other instant in hand costs more than all its mana
