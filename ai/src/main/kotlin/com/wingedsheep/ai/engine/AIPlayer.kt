@@ -283,6 +283,7 @@ class AIPlayer(
                 evasionAfterAttacking = profile.evasionAfterAttacking,
                 pendingLandDropIsMana = profile.pendingLandDropIsMana,
                 surplusAwareLands = profile.surplusAwareLands,
+                libraryClock = profile.libraryClock,
             )
             val combatAdvisor = CombatAdvisor(
                 simulator, evaluator, cardRegistry, advisorRegistry,
@@ -358,6 +359,7 @@ class AIPlayer(
                     defendPlaneswalkers = profile.defendPlaneswalkers,
                     spendFuelWalkers = profile.spendFuelWalkers,
                     landDropUnlocksSpells = profile.landDropUnlocksSpells,
+                    libraryClock = profile.libraryClock,
                     activatedPumpsNeedAPlannedAttack = profile.activatedPumpsNeedAPlannedAttack,
                     enablersFirst = profile.enablersFirst,
                     fetchedLandDropFollowUp = profile.fetchedLandDropFollowUp,
