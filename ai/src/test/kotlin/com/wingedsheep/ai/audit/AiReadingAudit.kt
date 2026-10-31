@@ -274,8 +274,10 @@ object AiReadingAudit {
      * a charge, oil, quest or loyalty counter, `{E}` for you. There is no target to choose and nothing
      * to hold it for, and its payoff is already on the board (the evaluator reads a grown creature's
      * projected stats) or belongs to the ability that later spends it, so it needs no intent tag. A
-     * keyword counter is excluded: it grants a keyword like [com.wingedsheep.sdk.scripting.effects.GrantKeywordEffect],
-     * which the intent reader does tag.
+     * keyword counter stays flagged: it grants a keyword the way [com.wingedsheep.sdk.scripting.effects.GrantKeywordEffect]
+     * does, and the reader tags the evasion and protective ones. A keyword counter is recognised by
+     * its id naming a [Keyword]; that also keeps the few counters merely named after a keyword (fuse,
+     * training) flagged, which errs toward flagging.
      */
     private fun needsNoIntent(leaf: Effect): Boolean {
         val (counter, target) = when (leaf) {

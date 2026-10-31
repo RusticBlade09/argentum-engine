@@ -48,7 +48,8 @@ Two label shapes need explaining:
 
 The `intent` check leaves out one shape the reader is right to leave untagged: a counter an
 effect puts on its own source or on its own controller (a creature growing itself, a charge, oil or
-quest counter, `{E}`), unless it is a keyword counter. There is no target to choose and no window to
+quest counter, `{E}` or experience for you), unless it is a keyword counter. Counters on another
+player (poison, rad) are not this shape and stay flagged. There is no target to choose and no window to
 time, and tagging a self-grown flash creature `PUMP` would make `AmbushWindow` stop holding it.
 
 Not every flag is a bug. Some effects legitimately carry no intent tag, and an until-end-of-turn
