@@ -1311,6 +1311,9 @@ class Strategist(
      * ours and the land's mana is still there for it. "Not castable before" is the raw enumerated
      * action, so an evoke cast that was already affordable does not count, and the hard cast of the
      * same card does. Stops when the budget does.
+     *
+     * An X-cost spell or ability that was already affordable counts too, at the X values only the
+     * land's mana reaches: spent first, it is cast one X smaller and the land adds nothing to it.
      */
     private fun landDropFollowUps(
         root: GameState,
@@ -1323,6 +1326,12 @@ class Strategist(
         if (!root.isActiveTurnFor(playerId) || root.stack.isNotEmpty()) return emptyList()
         if (root.step != Step.PRECOMBAT_MAIN && root.step != Step.POSTCOMBAT_MAIN) return emptyList()
         val castableNow = legalActions.filter { it.affordable }.map { it.action }.toSet()
+        val rootMaxX = HashMap<Any, Int>()
+        for (action in legalActions) {
+            if (!action.affordable || !action.hasXCost) continue
+            val key = xCostSourceKey(action.action) ?: continue
+            rootMaxX.merge(key, action.maxAffordableX ?: 0, ::maxOf)
+        }
         val followUps = mutableListOf<LandFollowUp>()
         for (i in leaves.indices) {
             if (leaves[i].action !is PlayLand) continue
@@ -1330,8 +1339,17 @@ class Strategist(
             if (afterLand.pendingDecision != null || afterLand.stack.isNotEmpty() ||
                 afterLand.step != root.step || afterLand.priorityPlayerId != playerId
             ) continue
-            val unlocked = candidatesFrom(simulator.getLegalActions(afterLand, playerId)).filter {
-                it.action is CastSpell && it.action !in castableNow && !it.hasUnfillableTargetRequirement &&
+            val candidates = candidatesFrom(simulator.getLegalActions(afterLand, playerId))
+            val newlyCastable = candidates.filter { it.action is CastSpell && it.action !in castableNow }
+            // Already castable, but the land raises its X: only the X values past the root's reach.
+            fun rootX(action: LegalAction): Int? = xCostSourceKey(action.action)?.let { rootMaxX[it] }
+            val biggerX = expandXCostAbilities(
+                afterLand,
+                candidates.filter { it.hasXCost && (it.maxAffordableX ?: 0) > (rootX(it) ?: Int.MAX_VALUE) },
+                playerId,
+            ).filter { (xValueOf(it.action) ?: 0) > (rootX(it) ?: Int.MAX_VALUE) }
+            val unlocked = (newlyCastable + biggerX).filter {
+                !it.hasUnfillableTargetRequirement &&
                     !(targetPolarityFromEffect && TargetSelection.aimsOnlyAtTheWrongSide(afterLand, it, playerId, intents))
             }
             if (unlocked.isEmpty()) continue
@@ -1344,6 +1362,19 @@ class Strategist(
             }
         }
         return followUps
+    }
+
+    /** What identifies an X-cost action across positions: the spell's card, or the ability's source and index. */
+    private fun xCostSourceKey(action: GameAction): Any? = when (action) {
+        is CastSpell -> action.cardId
+        is ActivateAbility -> action.sourceId to action.abilityId
+        else -> null
+    }
+
+    private fun xValueOf(action: GameAction): Int? = when (action) {
+        is CastSpell -> action.xValue
+        is ActivateAbility -> action.xValue
+        else -> null
     }
 
     /**
@@ -2453,13 +2484,24 @@ class Strategist(
      *   which X values are worth a simulation and the narrowing that keeps the resulting action
      *   legal.
      *
-     * An action with an additional cost we don't know how to pay passes through untouched.
+     * An action with an additional cost we don't know how to pay passes through untouched. The
+     * Momir avatar waits while a land drop is on offer — see [momirActivations].
      */
     private fun expandXCostAbilities(
         state: GameState,
         actions: List<LegalAction>,
         playerId: EntityId
-    ): List<LegalAction> = actions.flatMap { action ->
+    ): List<LegalAction> {
+        val landDropAvailable = actions.any { it.action is PlayLand && it.affordable }
+        return actions.flatMap { action -> expandXCost(state, action, playerId, landDropAvailable) }
+    }
+
+    private fun expandXCost(
+        state: GameState,
+        action: LegalAction,
+        playerId: EntityId,
+        landDropAvailable: Boolean,
+    ): List<LegalAction> {
         val base = action.action
         val maxX = action.maxAffordableX
         val info = action.additionalCostInfo
@@ -2473,17 +2515,17 @@ class Strategist(
         // what the guard would let through — spending the once-each-turn activation and a card to
         // look for a mana-value-0 creature, a bucket that holds no castable card at all.
         if (isMomirAvatarActivation(state, action)) {
-            return@flatMap momirActivations(state, action, playerId)
+            return momirActivations(state, action, playerId, landDropAvailable)
         }
         if (!action.hasXCost || maxX == null || maxX < 1 || !payableCost) {
-            return@flatMap listOf(action)
+            return listOf(action)
         }
-        if (!bindsXWithoutTheEnginesHelp(action)) return@flatMap listOf(action)
-        when (base) {
+        if (!bindsXWithoutTheEnginesHelp(action)) return listOf(action)
+        return when (base) {
             is ActivateAbility -> {
                 val discard = chooseActivationDiscard(state, action, playerId)
                 if (info?.costType == "DiscardCard" && info.discardCount > 0 && discard == null) {
-                    return@flatMap emptyList()
+                    return emptyList()
                 }
                 // A no-target ability has nothing to narrow, so the X values are all there is.
                 val xCandidates =
@@ -2519,11 +2561,15 @@ class Strategist(
      * want to activate" must not fall back to the enumerator's bare action, whose `xValue` is 0.
      * X=0 is never a candidate here, so the AI can't spend its once-each-turn activation and a card
      * on a mana value with nothing castable in it.
+     *
+     * Also empty while [landDropAvailable] and a card would still be left to discard after the land:
+     * the land is one more point of X for the same card, so it goes first.
      */
     private fun momirActivations(
         state: GameState,
         action: LegalAction,
         playerId: EntityId,
+        landDropAvailable: Boolean,
     ): List<LegalAction> {
         val base = action.action as? ActivateAbility ?: return listOf(action)
         val info = action.additionalCostInfo
@@ -2535,6 +2581,11 @@ class Strategist(
         val discard = chooseActivationDiscard(state, action, playerId)
         // No card to discard ⇒ the cost can't be paid at any X.
         if (info?.costType == "DiscardCard" && info.discardCount > 0 && discard == null) {
+            return emptyList()
+        }
+        // Land drop first: the land is one more point of X for the same card. Only while another
+        // card would be left to discard — playing the last card as a land forfeits the activation.
+        if (landDropAvailable && (info?.validDiscardTargets?.size ?: 0) > (info?.discardCount ?: 0)) {
             return emptyList()
         }
         return momirXCandidates(state, action.maxAffordableX ?: 0, playerId).map { x ->

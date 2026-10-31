@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- #4119 Plays its land drop before activating the Momir avatar or casting an already-affordable X spell, so the activation or spell gets the land's extra point of X
 - #4118 Sees an opponent's on-board +1/+1-counter pumps (Tenured Tethermage) and abilities with tap or sacrifice costs as combat answers, so it no longer attacks into a blocker the defender can grow before blocks
 - #4116 Picks a "choose two" modal spell's modes by simulating each combination, aiming each mode by what it does (Ashling's Command draws for itself), instead of taking the first modes in printed order at the opponent
 - #4115 Aims a granted "draw a card" trigger, "becomes prepared" and "target player draws" at its own side, and when it cannot tell which side an effect is for, simulates its best target on each side instead of only the opponent's

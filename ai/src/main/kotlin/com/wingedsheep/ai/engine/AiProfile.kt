@@ -849,6 +849,10 @@ data class AiProfile(
      * were already castable are not looked through: the land adds nothing to them, and counting
      * them would argue land-first even where the order is a real choice (a landfall creature cast
      * before the land). Bounded by the decision budget; positions with no land drop pay nothing.
+     *
+     * The one exception is an already-castable X spell or ability, credited at the X values only the
+     * land's mana reaches (2026-10-31 AI-vs-human Momir games: the avatar activated for X=4, then
+     * the land played — one X short every turn). `LandDropRaisesXAiTest` pins it.
      */
     val landDropUnlocksSpells: Boolean = false,
     /**
