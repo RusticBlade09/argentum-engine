@@ -240,7 +240,8 @@ class ManaPaymentContinuationResumer(
                 onPaid = continuation.onPaid,
                 resolvingTriggeredAbility = continuation.resolvingTriggeredAbility,
                 sourceId = continuation.sourceId,
-            objectReferences = continuation.objectReferences
+                objectReferences = continuation.objectReferences,
+                deferCounter = continuation.deferCounter
             )
 
             return state.suspendForDecision(
@@ -250,6 +251,7 @@ class ManaPaymentContinuationResumer(
             )
         } else {
             // Player chose not to pay — counter the spell
+            if (continuation.deferCounter) return deferUnpaidToBatch(state, continuation.spellEntityId, checkForMore)
             return counterForUnpaidCost(
                 state, continuation.spellEntityId, continuation.counterDestination,
                 continuation.controllerId ?: continuation.payingPlayerId, checkForMore
@@ -716,6 +718,23 @@ class ManaPaymentContinuationResumer(
     }
 
     /**
+     * A batch object ([CounterUnlessPaysContinuation.deferCounter]) went unpaid: record it on the
+     * [CounterEachUnlessPaysContinuation] directly beneath this question rather than countering it
+     * now, then let that frame ask about the next object (or counter the whole unpaid set).
+     */
+    private fun deferUnpaidToBatch(
+        state: GameState,
+        objectId: EntityId,
+        checkForMore: CheckForMore,
+        precedingEvents: List<GameEvent> = emptyList()
+    ): ExecutionResult {
+        val batch = state.peekContinuation() as? CounterEachUnlessPaysContinuation
+            ?: return ExecutionResult.error(state, "Deferred counter has no batch frame beneath it")
+        val (_, popped) = state.popContinuation()
+        return checkForMore(popped.pushContinuation(batch.copy(unpaid = batch.unpaid + objectId)), precedingEvents)
+    }
+
+    /**
      * The ward / pay-life / discard / sacrifice continuations still carry a plain
      * `exileOnCounter` flag: ward's own vocabulary has only those two destinations, and no printed
      * ward or punisher counter puts the spell into a hand. Only the two continuations reachable
@@ -740,6 +759,7 @@ class ManaPaymentContinuationResumer(
         // If the player declined (no mana sources, no auto-pay, no Ward—Waterbend taps to help,
         // and nothing floating that already covers the cost), counter the spell.
         if (response.isDecline(floatingCovers(state, continuation.payingPlayerId, continuation.manaCost))) {
+            if (continuation.deferCounter) return deferUnpaidToBatch(state, continuation.spellEntityId, checkForMore)
             return counterForUnpaidCost(
                 state, continuation.spellEntityId, continuation.counterDestination,
                 continuation.controllerId ?: continuation.payingPlayerId, checkForMore
@@ -855,7 +875,8 @@ class ManaPaymentContinuationResumer(
                         resolvingTriggeredAbility = continuation.resolvingTriggeredAbility,
                         sourceId = continuation.sourceId,
                         remainingWardParts = continuation.remainingWardParts,
-                        wardSourceId = continuation.wardSourceId
+                        wardSourceId = continuation.wardSourceId,
+                        deferCounter = continuation.deferCounter
                     )
                 }
             }
@@ -864,6 +885,7 @@ class ManaPaymentContinuationResumer(
         val newPool = currentPool.pay(effectiveCost)
         if (newPool == null) {
             // Payment failed — counter the spell
+            if (continuation.deferCounter) return deferUnpaidToBatch(state, continuation.spellEntityId, checkForMore)
             return counterForUnpaidCost(
                 state, continuation.spellEntityId, continuation.counterDestination,
                 continuation.controllerId ?: continuation.payingPlayerId, checkForMore
@@ -1697,7 +1719,8 @@ class ManaPaymentContinuationResumer(
         sourceId: EntityId? = null,
         remainingWardParts: List<com.wingedsheep.sdk.scripting.effects.WardCost> = emptyList(),
         wardSourceId: EntityId? = null,
-        resolvingTriggeredAbility: com.wingedsheep.sdk.scripting.TriggeredAbility? = null
+        resolvingTriggeredAbility: com.wingedsheep.sdk.scripting.TriggeredAbility? = null,
+        deferCounter: Boolean = false
     ): ExecutionResult {
         val headSourceId = pendingSubCostSources.first()
         val sourceName = availableSources.firstOrNull { it.entityId == headSourceId }?.name
@@ -1748,7 +1771,8 @@ class ManaPaymentContinuationResumer(
             resolvingTriggeredAbility = resolvingTriggeredAbility,
             sourceId = sourceId,
             remainingWardParts = remainingWardParts,
-            wardSourceId = wardSourceId
+            wardSourceId = wardSourceId,
+            deferCounter = deferCounter
         )
 
         return state.suspendForDecision(
@@ -1865,13 +1889,17 @@ class ManaPaymentContinuationResumer(
                 resolvingTriggeredAbility = continuation.resolvingTriggeredAbility,
                 sourceId = continuation.sourceId,
                 remainingWardParts = continuation.remainingWardParts,
-                wardSourceId = continuation.wardSourceId
+                wardSourceId = continuation.wardSourceId,
+                deferCounter = continuation.deferCounter
             )
         }
 
         // No more sub-costs — attempt to pay the ward cost. On failure, counter the spell.
         val newPool = pool.pay(continuation.manaCost)
         if (newPool == null) {
+            if (continuation.deferCounter) {
+                return deferUnpaidToBatch(currentState, continuation.spellEntityId, checkForMore, precedingEvents = events)
+            }
             return counterForUnpaidCost(
                 currentState, continuation.spellEntityId, continuation.counterDestination,
                 continuation.controllerId ?: continuation.payingPlayerId, checkForMore,
