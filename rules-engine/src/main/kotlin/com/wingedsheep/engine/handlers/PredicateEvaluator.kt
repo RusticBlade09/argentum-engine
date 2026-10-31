@@ -262,7 +262,12 @@ class PredicateEvaluator(
      * [com.wingedsheep.sdk.scripting.ReduceActivatedAbilityCost], reads snapshots built by
      * `activationSourceSnapshot`, which populates every field this function answers directly except
      * the combat and tap status (its filters never ask about those — the snapshot is a per-turn
-     * identity, so it must not vary with tapping); a third caller must do one or the other.
+     * identity, so it must not vary with tapping). The third,
+     * [com.wingedsheep.sdk.scripting.conditions.PlayerAttackedWithCreaturesThisTurn], reads the
+     * attack record's `declaredAs` snapshots from `AttackPhaseManager.declaredAttackerSnapshots`:
+     * taken just before declaration, they populate types, subtypes, colors, keywords, controller
+     * and token-ness but leave tap, combat and battlefield-entry status at their defaults ("attacked
+     * with a tapped creature" is not a shape any card prints). A further caller must do one or the other.
      */
     fun matchesSnapshot(
         state: GameState,
@@ -387,6 +392,10 @@ class PredicateEvaluator(
             // A departed object is the effect's source only if it is that very object; with no
             // source context the question has no answer.
             StatePredicate.IsSource -> context.sourceId?.let { it == snapshot.entityId }
+            // Commander-ness belongs to the card (CR 903.3), not to one battlefield visit, so the
+            // card's own designation answers it — "if you attacked with your commander" (Neriv).
+            StatePredicate.IsCommander -> state.getEntity(snapshot.entityId)
+                ?.has<com.wingedsheep.engine.state.components.identity.CommanderComponent>()
             is StatePredicate.Not -> matchesSnapshotState(state, snapshot, predicate.predicate, context, onBattlefield)?.not()
             is StatePredicate.And -> {
                 val results = predicate.predicates.map { matchesSnapshotState(state, snapshot, it, context, onBattlefield) }
