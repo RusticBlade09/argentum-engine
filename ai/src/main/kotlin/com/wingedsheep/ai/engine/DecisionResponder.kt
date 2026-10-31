@@ -306,6 +306,10 @@ class DecisionResponder(
             // For small target pools, simulate each; for large pools, use heuristics then simulate top candidates
             val candidates = if (targets.size <= maxCandidates) {
                 targets
+            } else if (targetPolarityFromEffect) {
+                TargetSelection.simulationCandidates(
+                    state, targets.sortedByDescending(heuristic), maxCandidates, playerId, polarities[req.index],
+                )
             } else {
                 targets.sortedByDescending(heuristic).take(maxCandidates)
             }
@@ -384,8 +388,15 @@ class DecisionResponder(
             } else if (targets.isEmpty()) {
                 emptyList()
             } else {
+                val candidates = if (targetPolarityFromEffect && targets.size > maxCandidates) {
+                    TargetSelection.simulationCandidates(
+                        state, targets.sortedByDescending(heuristic), maxCandidates, playerId, polarities[req.index],
+                    )
+                } else {
+                    targets.take(maxCandidates)
+                }
                 val best = pickBestBySimulation(
-                    state, targets.take(maxCandidates), playerId,
+                    state, candidates, playerId,
                     reject = { req.minTargets == 0 && strandsALand(state, it.state, playerId) },
                     heuristic = heuristic,
                     beneficial = polarities[req.index] == TargetPolarity.BENEFICIAL,
@@ -393,7 +404,7 @@ class DecisionResponder(
                     probe(req.index, listOf(target))
                 }
                 val picks = if (fillUpToMaxTargets) {
-                    growTargets(state, playerId, req, best, targets.take(maxCandidates), targets) { picked ->
+                    growTargets(state, playerId, req, best, candidates, targets) { picked ->
                         probe(req.index, picked)
                     }
                 } else {

@@ -271,6 +271,37 @@ object TargetSelection {
     }
 
     /**
+     * The first [limit] of [ranked] worth simulating for a slot of [polarity] — except that a slot
+     * whose side of the table cannot be read ([TargetPolarity.UNKNOWN], or no reading at all) takes
+     * the sides in turn, best of each first, so the simulation always gets to compare our best
+     * candidate with theirs.
+     *
+     * [ranked] is ordered by a removal-oriented ranking that puts every opposing permanent ahead
+     * of every one of ours. Cut straight to the top few, an unread slot would never be *tried* on
+     * our side: the simulation that could tell a gift from a curse only ever saw curses' targets.
+     * One candidate per side is kept even when [limit] is smaller, since a single candidate is no
+     * comparison at all. A slot with a read polarity keeps the plain cut — its pool is already the
+     * right side.
+     */
+    fun simulationCandidates(
+        state: GameState,
+        ranked: List<EntityId>,
+        limit: Int,
+        playerId: EntityId,
+        polarity: TargetPolarity?,
+    ): List<EntityId> {
+        if (polarity == TargetPolarity.BENEFICIAL || polarity == TargetPolarity.HARMFUL) return ranked.take(limit)
+        // groupBy keeps first-appearance order, so the top-ranked candidate's side leads.
+        val sides = ranked.groupBy { sideOf(state, it, playerId) }.values.map { ArrayDeque(it) }
+        if (sides.size < 2) return ranked.take(limit)
+        val interleaved = ArrayList<EntityId>(ranked.size)
+        while (interleaved.size < ranked.size) {
+            for (side in sides) side.removeFirstOrNull()?.let(interleaved::add)
+        }
+        return interleaved.take(maxOf(limit, sides.size))
+    }
+
+    /**
      * Whether [entityId] sits on our side of the table for [playerId] — the side a
      * [TargetPolarity.BENEFICIAL] slot wants. A teammate's permanent is ours (CR 810).
      */

@@ -40,6 +40,8 @@ import com.wingedsheep.sdk.scripting.effects.AdaptAsThoughNoCountersEffect
 import com.wingedsheep.sdk.scripting.effects.AdaptEffect
 import com.wingedsheep.sdk.scripting.effects.AddCountersEffect
 import com.wingedsheep.sdk.scripting.effects.AddDynamicCountersEffect
+import com.wingedsheep.sdk.scripting.effects.BecomePreparedEffect
+import com.wingedsheep.sdk.scripting.effects.UnprepareEffect
 import com.wingedsheep.sdk.scripting.effects.CantBeRegeneratedEffect
 import com.wingedsheep.sdk.scripting.effects.CantBlockEffect
 import com.wingedsheep.sdk.scripting.effects.CounterEffect
@@ -54,6 +56,7 @@ import com.wingedsheep.sdk.scripting.effects.GrantEvasionKeywordEffect
 import com.wingedsheep.sdk.scripting.effects.GrantHexproofFromChosenColorEffect
 import com.wingedsheep.sdk.scripting.effects.GrantKeywordEffect
 import com.wingedsheep.sdk.scripting.effects.GrantProtectionFromChosenColorEffect
+import com.wingedsheep.sdk.scripting.effects.GrantTriggeredAbilityEffect
 import com.wingedsheep.sdk.scripting.effects.MarkExileOnDeathEffect
 import com.wingedsheep.sdk.scripting.effects.ModalEffect
 import com.wingedsheep.sdk.scripting.effects.Mode
@@ -259,6 +262,9 @@ object TargetPolarityAnalyzer {
     private fun combine(readings: List<TargetPolarity>): TargetPolarity =
         readings.distinct().singleOrNull() ?: TargetPolarity.UNKNOWN
 
+    /** Whether [this] names a chosen target rather than a fixed player or object. */
+    private fun EffectTarget.isSlot(): Boolean = this is EffectTarget.BoundVariable || this is EffectTarget.ContextTarget
+
     private fun slotOf(target: EffectTarget, requirements: List<TargetRequirement>): Int? = when (target) {
         is EffectTarget.BoundVariable -> requirements.indexOfFirst { it.id == target.name }.takeIf { it >= 0 }
         is EffectTarget.ContextTarget -> target.index.takeIf { it in requirements.indices }
@@ -323,6 +329,22 @@ object TargetPolarityAnalyzer {
             is CreateAuraTokenEffect -> leaf.target to definitions(leaf.tokenName)
                 ?.let { auraPolarity(it, definitions) }
                 ?.takeIf { it != TargetPolarity.UNKNOWN }
+            // "Target creature gains '<trigger>' until end of turn" (Sygg, Wanderwine Wisdom): the
+            // granted ability is controlled by the creature's controller, so it reads exactly like
+            // the same trigger granted by an Aura.
+            is GrantTriggeredAbilityEffect -> leaf.target to grantedTriggerPolarity(leaf.ability)
+                .takeIf { it != TargetPolarity.UNKNOWN }
+            // Only a creature with a prepare spell can become prepared, and its controller is the
+            // one who may cast that spell (Hexhaven Dueling Arena); unpreparing takes it away.
+            is BecomePreparedEffect -> leaf.target to TargetPolarity.BENEFICIAL
+            is UnprepareEffect -> leaf.target to TargetPolarity.HARMFUL
+            // "Target player draws / gains / loses …" (Inspiration, Sign in Blood). Only a slot is
+            // read here: a draw for "you" is not a target, and [grantedTriggerPolarity] reads it
+            // through [controllerPolarity] instead. Sign in Blood's draw and life loss disagree
+            // and combine to UNKNOWN, which is right — it is aimed at either side.
+            is DrawCardsEffect -> if (leaf.target.isSlot()) leaf.target to TargetPolarity.BENEFICIAL else return emptyList()
+            is GainLifeEffect -> if (leaf.target.isSlot()) leaf.target to TargetPolarity.BENEFICIAL else return emptyList()
+            is LoseLifeEffect -> if (leaf.target.isSlot()) leaf.target to TargetPolarity.HARMFUL else return emptyList()
             else -> return emptyList()
         }
         val (target, reading) = polarity

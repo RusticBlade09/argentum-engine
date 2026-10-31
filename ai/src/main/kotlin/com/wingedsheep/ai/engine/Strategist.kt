@@ -1883,9 +1883,13 @@ class Strategist(
             if (budget.expired() && !forceTargetRefinement) break
             val info = targetInfos[i]
             val priorIds = chosenTargetIds.take(i).toSet()
-            val candidates = worth(i, info.validTargets.filterNot { info.mustDifferFromEarlier && it in priorIds })
+            val ranked = worth(i, info.validTargets.filterNot { info.mustDifferFromEarlier && it in priorIds })
                 .sortedByDescending(rankTarget)
-                .take(targetCandidates)
+            val candidates = if (targetPolarityFromEffect) {
+                TargetSelection.simulationCandidates(state, ranked, targetCandidates, playerId, slotPolarities.getOrNull(i))
+            } else {
+                ranked.take(targetCandidates)
+            }
             if (candidates.size <= 1) continue
             val best = candidates.maxByOrNull { candidate ->
                 val trial = chosenTargets.toMutableList()
