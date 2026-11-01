@@ -1895,6 +1895,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
         'Click a set’s score, or its AI gaps tab, to see the cards the AI does not fully read, grouped by what it misses — “doesn’t know what the effect is for: AddCountersEffect”. One fix to the AI covers every card in a group, so the biggest groups are the work worth doing first.',
         'The panel also gives a second, gentler number: how many of the set’s individual abilities are read.',
         'Pick a group to narrow the card grid to it, or click a card name to open it in the Assay Explorer at its AI reading.',
+        'Each card in the grid wears its own reading: the badge counts the abilities the AI reads (◐ 1/3, or ! when it reads none), and the chips along the bottom name what it misses — Target, Purpose, Combat, Timing, Modes. Hover a card for each gap in plain words; click it to open its AI reading in the Assay Explorer.',
       ] },
     ],
     related: ['assay-explorer', 'set-completion', 'ai-rating'],

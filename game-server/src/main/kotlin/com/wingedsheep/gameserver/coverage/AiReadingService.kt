@@ -102,8 +102,11 @@ class AiReadingService(private val registry: CardRegistry) : AiReadingProvider {
     /** One effect-type group the AI misses in a set — an audit flag key and the set's cards carrying it. */
     data class GapGroup(val key: String, val check: String, val effectType: String, val cards: List<String>)
 
-    /** One card the AI does not read fully, with its flag keys. */
-    data class UnreadCard(val name: String, val flags: List<String>)
+    /**
+     * One card the AI does not read fully: its flag keys, and how many of its checked abilities the
+     * readers do understand — the per-card "AI reads 1/3 abilities" the set's card grid shows.
+     */
+    data class UnreadCard(val name: String, val flags: List<String>, val abilitiesRead: Int, val abilities: Int)
 
     /**
      * A set's AI-reading detail: its score, its unread cards, and those cards grouped by the effect
@@ -158,7 +161,7 @@ class AiReadingService(private val registry: CardRegistry) : AiReadingProvider {
             ready = true,
             score = score(entries).takeIf { it.total > 0 },
             groups = groups,
-            unread = unread.map { UnreadCard(it.name, it.flags) },
+            unread = unread.map { UnreadCard(it.name, it.flags, it.abilitiesRead, it.abilities) },
             draft = draftRatings(set),
         )
     }

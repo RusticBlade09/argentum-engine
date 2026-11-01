@@ -168,12 +168,23 @@ export interface AiGapGroup {
   readonly cards: readonly string[]
 }
 
+/**
+ * One implemented card the AI doesn't fully read: its audit flag keys (`intent: AddCountersEffect`)
+ * and how many of its checked abilities the readers do understand.
+ */
+export interface AiUnreadCard {
+  readonly name: string
+  readonly flags: readonly string[]
+  readonly abilitiesRead: number
+  readonly abilities: number
+}
+
 /** A set's unread cards, grouped by what the AI misses — biggest group first. */
 export interface SetAiReadingDetail {
   readonly ready: boolean
   readonly score: SetAiReading | null
   readonly groups: readonly AiGapGroup[]
-  readonly unread: readonly { readonly name: string; readonly flags: readonly string[] }[]
+  readonly unread: readonly AiUnreadCard[]
   /** Where the draft AI's pick ratings for the set come from; absent while the index builds. */
   readonly draft?: SetDraftRatings | null
 }
