@@ -28,6 +28,7 @@ import com.wingedsheep.sdk.scripting.effects.GatherCardsEffect
 import com.wingedsheep.sdk.scripting.effects.ModalEffect
 import com.wingedsheep.sdk.scripting.effects.ModifyStatsEffect
 import com.wingedsheep.sdk.scripting.effects.MoveCollectionEffect
+import com.wingedsheep.sdk.scripting.effects.MoveToZoneEffect
 import com.wingedsheep.sdk.scripting.targets.EffectTarget
 import com.wingedsheep.sdk.scripting.targets.TargetRequirement
 import java.util.Locale
@@ -407,7 +408,7 @@ object AiReadingAudit {
         // Every untagged step needed no tag: say so, so the ability reads as understood rather
         // than as one nobody asked about.
         if (sink.findings.size == before) {
-            sink += Finding(Check.INTENT, read = true, reason = "needs no intent: it only grows or attaches its own source, or adds counters for its controller")
+            sink += Finding(Check.INTENT, read = true, reason = "needs no intent: it only grows, attaches or moves its own source, or adds counters for its controller")
         }
     }
 
@@ -530,7 +531,8 @@ object AiReadingAudit {
     }
 
     /**
-     * A counter the effect puts on its own source or its own controller — a creature growing itself,
+     * The leaves that need no intent tag: equip / attach and a card moving itself (commented
+     * inline below), and a counter the effect puts on its own source or its own controller — a creature growing itself,
      * a charge, oil, quest or loyalty counter, `{E}` for you. There is no target to choose and nothing
      * to hold it for, and its payoff is already on the board (the evaluator reads a grown creature's
      * projected stats) or belongs to the ability that later spends it, so it needs no intent tag. A
@@ -544,6 +546,10 @@ object AiReadingAudit {
         // what the Equipment is *for* is the card's reading of its "equipped creature" statics
         // (CardIntentAnalyzer tags those), and which creature gets it is the polarity check.
         if (leaf is AttachEquipmentEffect) return true
+        // A card moving itself — "return this card to its owner's hand" when it dies, ninjutsu,
+        // "shuffle it into its owner's library" — has no target to aim and is no spell to time:
+        // whether it is worth doing is the simulation's call on the activation or trigger.
+        if (leaf is MoveToZoneEffect && leaf.target == EffectTarget.Self) return true
         val (counter, target) = when (leaf) {
             is AddCountersEffect -> leaf.counterType to leaf.target
             is AddDynamicCountersEffect -> leaf.counterType to leaf.target
