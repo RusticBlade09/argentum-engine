@@ -81,7 +81,7 @@ how a format plays. It is the floor, not the goal.
 
 | Consumer | Ratings used |
 |----------|--------------|
-| AI draft picks (`EngineAiPlayerController.chooseDraftPick`, Winston, grid) | Draftsim tables for the pack's sets, with fallback ratings (below) |
+| AI draft picks (`EngineAiPlayerController.chooseDraftPick`, Winston, grid) | Draftsim tables for the pack's sets, with fallback ratings and synergy (below) |
 | Draftsim deckbuild (`DraftsimDeckBuildAdvisor`) — AI quick-game sealed decks, the human Auto-build | Same |
 | AI deck from a tournament pool (`HeuristicDeckBuilder`) | `LimitedCardRater.rate` |
 | "Draftsim" Suggest Pick advisor | Draftsim tables only (rarity ladder for unrated cards) |
@@ -102,6 +102,37 @@ to Draftsim's own land handling.
 Once a table has *any* ratings, the scorer and deckbuilder switch to their ratings-aware paths, which
 cost several times more per build than the rarity-only path. That is the normal cost for every rated
 set.
+
+### Synergy on top of the ratings
+
+A rating prices a card for a typical deck, so it can't tell Blood Artist beside three sacrifice
+outlets from Blood Artist with nothing to sacrifice. The AI reads that from the cards themselves:
+`SynergyAxes` says which resources a card **feeds** (creatures dying, tokens, life gain, spells,
++1/+1 counters, the graveyard) and which it **rewards**, and `DeckSynergy` counts how fed each payoff
+is — fully at three feeders among the other cards, never by itself.
+
+Creature types work the same way (`CreatureTypeSynergy`). A card **asks for** a type when any filter
+in its abilities names it: the "other Goblins" a lord pumps, the "another Elf you control" a trigger
+watches, a tribal cost reducer or tutor. Filters under "non-" or scoped to an opponent don't count.
+A card **feeds** the types on its type line and the types of the tokens it makes, and a changeling
+feeds every type. A tribal payoff is fully fed at five members among the other cards, since a lord
+pays per body. A hoser that names a type with no controller ("tap target Wall") still reads as
+asking for it; such cards are rare.
+
+- **Draft picks and the Draftsim deckbuild.** `DraftsimSetTables.withSynergyAxes(cards)` attaches
+  the reading, and the scorer adds `DraftsimSynergy.pickAdjustment`: a card gains for the payoffs it
+  feeds in the pool, and a payoff loses for the fuel it lacks — nothing in pack 1, all of it once
+  the pool is complete. Either way it's capped at 0.75, under one rarity step, so a bomb still beats
+  a synergy common. The deck scorer's synergy sub-score adds the payoffs the deck keeps fed, so the
+  build's swap pass compares whole decks. Cards a set's archetype table already tags keep Draftsim's
+  own enabler/payoff counting and count here as fuel only. Without the call every score matches the
+  ported bundle; the "Draftsim" Suggest Pick advisor stays that way.
+- **`HeuristicDeckBuilder`.** After the creature minimum, `feedPayoffs` swaps cards while the deck's
+  worth rises: the cards' ratings less 0.75 per payoff-share left unfed. Feeding swaps go first; only
+  then is a payoff that still lacks fuel cut for a better body.
+
+`just arena-synergy-decks GAMES SET` measures whether it makes stronger decks: the AI's build of
+each seeded pool with synergy against the same pool's build without, played live AI vs live AI.
 
 ## Seeing a card's rating
 

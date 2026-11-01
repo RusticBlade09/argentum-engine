@@ -124,11 +124,15 @@ internal class CommanderSynergy(commander: CardDefinition) {
     private val ownTribes: Set<Subtype> =
         commander.typeLine.subtypes.filter { it.value in Subtype.ALL_CREATURE_TYPES }.toSet()
 
-    /** Creature types the commander's text names, singular or plural. */
+    /**
+     * Creature types the commander asks for: the ones its text names, singular or plural, and the
+     * ones its abilities' filters name ([SynergyProfile.tribesRewarded]) — which also catches a card
+     * whose printed text spells the type differently from the subtype.
+     */
     val namedTribes: Set<Subtype> = Subtype.ALL_CREATURE_TYPES
         .filter { type -> mentions(type) || mentions(pluralNounPhrase(type)) }
         .map { Subtype(it) }
-        .toSet()
+        .toSet() + SynergyAxes.of(commander).tribesRewarded
 
     /** "Elf"/"Elves" as word patterns, compiled once — [score] runs them over the whole pool. */
     private val namedTribePatterns: List<Regex> = namedTribes.flatMap { listOf(it.value, pluralNounPhrase(it.value)) }
@@ -179,6 +183,8 @@ internal class CommanderSynergy(commander: CardDefinition) {
             when {
                 changeling || tribes.any { it in namedTribes } -> score += 5.0
                 namedTribePatterns.any { it.containsMatchIn(cardText) } -> score += 3.0
+                SynergyAxes.of(card).let { read -> (read.tribes + read.tribesRewarded).any { it in namedTribes } } ->
+                    score += 3.0
             }
         } else if (ownTribes.isNotEmpty() && (changeling || tribes.any { it in ownTribes })) {
             score += 1.0
