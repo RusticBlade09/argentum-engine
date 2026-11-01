@@ -105,22 +105,37 @@ Never touch a PR, branch or worktree without our prefix. Work on our PR in its w
       names the reading. Run it with 'just test-class <Name>' and watch it FAIL for the reason the group
       names; keep the failure line for the PR body. If you cannot build any position where the reading
       changes the decision, that is evidence for AUDIT FALSE POSITIVE or JUDGMENT CALL: go back to (b).
-   d. TEACH the reader that effect (Scope above). Re-run the test: it must pass. If the reading needs SDK
-      information that isn't there, revert your edits, mark [s], and end with STEP 5 DONE (no PR).
-   e. RE-AUDIT and RE-BLESS: 'just ai-reading-audit' again (the group's count must drop; record before -> after
+   d. TEACH the reader that effect (Scope above). Before you edit the reader, run
+      'just ai-card "<A>|<B>|<C>"' on three of the group's example cards and keep the output: it is the
+      'before' for (e). Re-run the test: it must pass. If the reading needs SDK information that isn't there,
+      revert your edits, mark [s], and end with STEP 5 DONE (no PR).
+   e. VALUE. Run the same 'just ai-card' again and compare it with the 'before'. The question: now that the AI
+      reads what the effect does, does what it thinks the card is WORTH follow? Check its board value in play,
+      its synergy axes, and its draft rating, but the rating only when 'ai-card' says it comes from the effect
+      heuristic (a Draftsim/17Lands-rated card keeps its table rating; never edit rating tables here). A value
+      that still ignores the new reading is a gap, e.g. a permanent now read as removal whose board value
+      didn't move, or a heuristic-rated card whose effect still scores nothing. Close it in the same PR, in the
+      ai module, keyed by the effect and never the card: the intent prior in evaluation/BoardFeatures.kt, a
+      leaf in LimitedCardRater's LimitedScoreFold, a SynergyAxes entry. When closing it would be a bigger
+      change than the reading (a new evaluator feature), don't: note 'value gap: <what>' on the group's ledger
+      line and in the PR body. Polarity, combat and timing readings often have nothing to carry into value;
+      then say 'no value change' and why. A value change can move other AI tests; 'just loop-gate' shows it.
+   f. RE-AUDIT and RE-BLESS: 'just ai-reading-audit' again (the group's count must drop; record before -> after
       and the overall read-fully fraction), then 'just ai-reading-baseline'. Read the baseline diff: cards
       may only LOSE flags, and the ones that do should be the group's. A card that gains a flag is a reader
       regression: fix it, never bless it. Update AiReadingAuditSnapshotTest when a pinned card's flags move.
-   f. CHANGELOG: add a line at the top of ai/CHANGELOG.md's list ('- #<pr> <what the AI now does
-      differently>', following its header) ONLY when the new reading changes how the AI plays a common card —
+   g. CHANGELOG: add a line at the top of ai/CHANGELOG.md's list ('- #<pr> <what the AI now does
+      differently>', following its header) ONLY when the new reading or value changes how the AI plays a common card —
       a group of commonly played effects (removal, pump, counters, tricks), not a niche one. A pure audit fix
       or a reading no common card reaches gets none; say which in the PR body.
-   g. Commit by explicit path, never 'git add -A': reader + test; then the audit/snapshot changes and the
-      re-blessed baseline. Gate with 'just loop-gate' and review per the PR LIFECYCLE, then open the PR titled
+   h. Commit by explicit path, never 'git add -A': reader + test (and any value change from (e)); then the
+      audit/snapshot changes and the re-blessed baseline. Gate with 'just loop-gate' and review per the PR LIFECYCLE, then open the PR titled
       '[agent-loop: <MODEL_ID>] AI reading: <group key>' (or '... AI reading audit: stop flagging <shape>').
       The body gives: the group key and sub-shape, the JUDGE verdict and why, the reader change in one
       paragraph, the decision test and the failure it showed before the fix, the group's unread count and the
-      read-fully fraction before -> after, a summary of the baseline diff, the changelog line or why there is
+      read-fully fraction before -> after, a summary of the baseline diff, the value check (the example
+      cards' 'ai-card' value before -> after, and the value change made, the 'value gap' left, or why there is
+      no value change), the changelog line or why there is
       none, and that it came from an agentic loop driven by <MODEL_ID>. Mark the group [r] with the PR number.
 
 If a step fails twice for the same PR, comment on it, mark the group [!] in the ledger, and move on.

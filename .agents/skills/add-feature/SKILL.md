@@ -286,7 +286,7 @@ answers). Read its four answers against the cards' Oracle text:
   (a new `PendingDecision` shape, a new choice inside resolution) also needs `DecisionResponder` to
   answer it sensibly rather than with its first legal option — test the choice it makes.
 - **Rating** (`Pick`). A heuristic breakdown with no term for the ability means
-  `LimitedCardRater.scoreEffect` scores it at zero: give it a term sized against comparable effects
+  `LimitedCardRater`'s leaf scoring (`LimitedScoreFold`) scores it at zero: give it a term sized against comparable effects
   (`docs/limited-card-ratings.md`, section 3, "The effect heuristic").
 - **Synergy** (`Synergy`). If the feature makes or rewards a resource on an existing `SynergyAxis` — a
   new token-making or sacrifice effect, a new cost that sacrifices, a new `EventPattern` a payoff can
@@ -295,6 +295,17 @@ answers). Read its four answers against the cards' Oracle text:
   mechanic that *is* a new resource players build around (an axis no existing one covers) gets its axis
   only when it has both a feeder and a payoff side among real cards; say why in the PR. Trigger patterns
   bound to the card itself or to opponents' objects stay out of `rewards`.
+
+**Then ask whether the value follows the reading.** Run the same `just ai-card` again once the readers
+know the feature, and compare it with the first run: now that the AI reads what the ability does, does
+what it thinks the card is *worth* move with it? Teaching the target, combat or timing readers changes
+only decisions: the board evaluator never sees them, so a card can be aimed and timed correctly while its
+`In play` value still prices it as a vanilla body. A permanent now read as removal, card advantage or a
+mana source whose `In play` value didn't move is the gap: carry the reading into the intent prior
+(`evaluation/BoardFeatures.kt`, via `CardIntentAnalyzer`) keyed by the effect, never the card. Do the
+same for `Pick`, but only when it comes from the effect heuristic; a Draftsim/17Lands-rated card keeps
+its table rating. When no value should move (a pure targeting or timing reading), say so and why. When
+closing the gap would be a feature of its own, name it in the PR body as `value gap: <what>`.
 
 Prove each reading with an AI test (a decision that changes, a profile or score that's pinned), re-bless
 `just ai-reading-baseline` so the cards it fixed move to read-fully, and add the `ai/CHANGELOG.md` line.
