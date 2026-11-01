@@ -34,6 +34,8 @@ import com.wingedsheep.sdk.scripting.effects.GrantEvasionKeywordEffect
 import com.wingedsheep.sdk.scripting.effects.GrantKeywordEffect
 import com.wingedsheep.sdk.scripting.effects.IterationSpace
 import com.wingedsheep.sdk.scripting.effects.ModifyStatsEffect
+import com.wingedsheep.sdk.scripting.effects.PreventDamageEffect
+import com.wingedsheep.sdk.scripting.effects.PreventionDirection
 import com.wingedsheep.sdk.scripting.effects.SetLandTypeEffect
 import com.wingedsheep.sdk.scripting.effects.TapUntapEffect
 import com.wingedsheep.sdk.scripting.targets.EffectTarget
@@ -180,13 +182,14 @@ internal object ExpiringGrantWindow {
         if (ability.timing != TimingRule.InstantSpeed) return false
 
         val expires = if (refuseUnspendable) {
-            // Only creature grants defer. A land-type change is bought to deny or fix mana, and
-            // mana is spent in the main phase this floor would defer it past.
-            expiringPayoffs(ability.effect)?.all { it.kind == PayoffKind.CREATURE } == true
+            // Only creature grants and damage shields defer. A land-type change is bought to deny
+            // or fix mana, and mana is spent in the main phase this floor would defer it past.
+            expiringPayoffs(ability.effect)?.all { it.kind in DEFERRABLE } == true
         } else {
             everyPayoffExpiresThisTurn(ability.effect)
         }
         if (!expires) return false
+        if (shieldFacesTheStack(state, expiringPayoffs(ability.effect).orEmpty())) return false
 
         val untilBlocks = lifelinkWaitsForBlocks && waitsForBlocks(ability.effect)
         if (!laterWindowIsStillAhead(state, playerId, untilBlocks)) return false
@@ -267,9 +270,14 @@ internal object ExpiringGrantWindow {
         val borrows = payoffs.any { it.kind == PayoffKind.BORROW }
         if (!readGrants && !borrows && payoffs.any { it.kind != PayoffKind.SHRINK }) return false
         if (somethingOnTheStackThreatensUs(state, playerId, intents)) return false
+        if (shieldFacesTheStack(state, payoffs)) return false
 
         val projected = state.projectedState
         return payoffs.none { payoff ->
+            if (payoff.kind == PayoffKind.SHIELD) {
+                return@none shieldCanStillPrevent(state, projected, playerId, payoff.target, sourceId, targets, sourceTaps)
+                    ?: return false
+            }
             val affected = affectedBy(state, projected, playerId, payoff.target, sourceId, targets)
                 ?: return false
             when (payoff.kind) {
@@ -289,6 +297,7 @@ internal object ExpiringGrantWindow {
                     }
                 }
                 PayoffKind.LAND -> affected.any { canStillMatter(state, projected, playerId, it) }
+                PayoffKind.SHIELD -> true // answered above: a shield can land on a player
                 PayoffKind.BORROW -> affected.any { projected.isCreature(it) } &&
                     (state.step in UNTIL_ATTACKERS_DECLARED || state.step in FIGHT_STILL_AHEAD ||
                         controlsASacrificeOutlet(state, playerId, intents))
@@ -480,7 +489,8 @@ internal object ExpiringGrantWindow {
      */
     fun hasExpiringReading(effect: Effect, creatureGrants: Boolean): Boolean {
         val payoffs = expiringPayoffs(effect, readShrinks = true, readBorrows = true) ?: return false
-        return creatureGrants || payoffs.none { it.kind == PayoffKind.CREATURE }
+        // A spell's shield is not read either: [castBuysNothing] asks only about shrinks.
+        return creatureGrants || payoffs.none { it.kind in DEFERRABLE }
     }
 
     /**
@@ -617,6 +627,47 @@ internal object ExpiringGrantWindow {
             .ifEmpty { null }
     }
 
+    /**
+     * Whether a [PayoffKind.SHIELD] on [target] can still prevent damage this turn, or null when
+     * the recipient cannot be told — which keeps the leaf in charge.
+     *
+     * A creature of ours is the same question as a pump on it: [canStillFight]. Our own life is
+     * attacked only on the opponent's turn, until combat damage is dealt. A shield on anything else —
+     * a planeswalker or battle of ours, anything of theirs — is a shape this does not judge, and
+     * counts as spendable. Damage on the stack is [shieldFacesTheStack]'s, read before this.
+     */
+    private fun shieldCanStillPrevent(
+        state: GameState,
+        projected: ProjectedState,
+        playerId: EntityId,
+        target: EffectTarget?,
+        sourceId: EntityId?,
+        targets: List<ChosenTarget>,
+        sourceTaps: Boolean,
+    ): Boolean? {
+        val recipients = when (target) {
+            EffectTarget.Self -> listOfNotNull(sourceId)
+            EffectTarget.Controller -> listOf(playerId)
+            null -> emptyList()
+            else -> targets.mapNotNull {
+                when (it) {
+                    is ChosenTarget.Permanent -> it.entityId
+                    is ChosenTarget.Player -> it.playerId
+                    else -> null
+                }
+            }
+        }.ifEmpty { return null }
+        return recipients.any { id ->
+            when {
+                id == playerId -> !state.isActiveTurnFor(playerId) &&
+                    (state.step in UNTIL_ATTACKERS_DECLARED || state.step in FIGHT_STILL_AHEAD)
+                id in state.getBattlefield() && projected.getController(id) == playerId && projected.isCreature(id) ->
+                    canStillFight(state, projected, playerId, id, sourceId, sourceTaps)
+                else -> true
+            }
+        }
+    }
+
     /** Whether paying for [ability] taps its own source — `{T}` in the cost, or "Tap it." on resolution. */
     private fun tapsItsSource(ability: ActivatedAbility): Boolean {
         fun costTaps(cost: AbilityCost): Boolean = when (cost) {
@@ -705,7 +756,33 @@ internal object ExpiringGrantWindow {
          * [com.wingedsheep.ai.engine.AiProfile.borrowedCreaturesGoHome].
          */
         BORROW,
+
+        /**
+         * A damage shield that ends at cleanup — "prevent the next 1 damage that would be dealt to
+         * any target this turn" (Samite Healer, Abuna Acolyte, Benevolent Ancestor). Its payoff
+         * is damage that does not happen, so it buys something only while damage can still come
+         * to its recipient this turn: a fight the creature is in, an attack on us, or a spell or
+         * ability on the stack (which releases the floor outright — see [shieldFacesTheStack]). Raised before it is needed,
+         * it is the same shield raised later — at the same cost, with the source still untapped
+         * to block in between. Read with the grants, under
+         * [com.wingedsheep.ai.engine.AiProfile.refuseUnspendableGrants].
+         */
+        SHIELD,
     }
+
+    /**
+     * Whether a [PayoffKind.SHIELD] is among [payoffs] while anything at all is on the stack. A
+     * shield answers damage, and [somethingOnTheStackThreatensUs] sees only part of it: burn aimed at
+     * our face reads as removal (Lava Axe), but a damage trigger without that tag ("deals 2 damage
+     * to each opponent") names no permanent of ours, and our own burn (an Earthquake) is excluded
+     * as ours. So any stack object hands the shield back to the leaf, whose simulation resolves the
+     * stack and prices what it prevents.
+     */
+    private fun shieldFacesTheStack(state: GameState, payoffs: List<Payoff>): Boolean =
+        state.stack.isNotEmpty() && payoffs.any { it.kind == PayoffKind.SHIELD }
+
+    /** The payoffs [holds]' deferral holds for a later window this turn. */
+    private val DEFERRABLE = setOf(PayoffKind.CREATURE, PayoffKind.SHIELD)
 
     /** One leaf of an ability whose payoff ends at cleanup, and where it lands. */
     private data class Payoff(
@@ -759,6 +836,7 @@ internal object ExpiringGrantWindow {
                 }
                 leaf is SetLandTypeEffect && leaf.duration == Duration.EndOfTurn ->
                     payoffs += Payoff(PayoffKind.LAND, leaf.target)
+                isShield(leaf) -> payoffs += Payoff(PayoffKind.SHIELD, (leaf as PreventDamageEffect).target)
                 leaf is GrantKeywordEffect && leaf.duration == Duration.EndOfTurn ->
                     payoffs += Payoff(PayoffKind.CREATURE, leaf.target, leaf.keyword)
                 leaf is GrantEvasionKeywordEffect && leaf.duration == Duration.EndOfTurn ->
@@ -788,7 +866,7 @@ internal object ExpiringGrantWindow {
      * which is the conservative reading: an ability that *might* make a token is an ability that
      * buys something permanent.
      *
-     * Only the three duration-carrying grant leaves are recognized as expiring. Everything else —
+     * Only the three duration-carrying grant leaves and a damage shield ([isShield]) are recognized as expiring. Everything else —
      * including an unrecognized effect — fails the test, so a shape this cannot read keeps the
      * pre-flag behaviour rather than earning a veto. That is the same fail-safe direction
      * [IntentCatalog] takes about a card it has never seen.
@@ -812,10 +890,21 @@ internal object ExpiringGrantWindow {
                 is GrantEvasionKeywordEffect -> leaf.duration == Duration.EndOfTurn
                 is ModifyStatsEffect ->
                     leaf.duration == Duration.EndOfTurn && isPump(leaf)
+                is PreventDamageEffect -> isShield(leaf)
                 else -> false
             }
         }
     }
+
+    /**
+     * Whether [effect] is a [PayoffKind.SHIELD]: damage prevented *to* one recipient until end of
+     * turn. A shield over a group (Fog's "all combat damage") or one that stops a creature dealing
+     * damage ([PreventionDirection.FromTarget], a Maze of Ith) is a different payoff and stays
+     * unread, as does a "shield" that lets the damage through ([PreventDamageEffect.preventDamage]).
+     */
+    private fun isShield(effect: Effect): Boolean =
+        effect is PreventDamageEffect && effect.duration == Duration.EndOfTurn && effect.preventDamage &&
+            effect.direction == PreventionDirection.ToTarget && effect.recipientGroup == null
 
     /** Whether [effect] only ever adds stats — see [everyPayoffExpiresThisTurn]. */
     private fun isPump(effect: ModifyStatsEffect): Boolean {
