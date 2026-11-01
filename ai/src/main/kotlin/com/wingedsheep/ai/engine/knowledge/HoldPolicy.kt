@@ -1,5 +1,7 @@
 package com.wingedsheep.ai.engine.knowledge
 
+import com.wingedsheep.sdk.scripting.costs.CostAtom
+import com.wingedsheep.sdk.scripting.AbilityCost
 import com.wingedsheep.ai.engine.evaluation.SynergyPresence
 import com.wingedsheep.ai.engine.evaluation.EvaluationWeights
 import com.wingedsheep.engine.core.ActivateAbility
@@ -379,7 +381,7 @@ class HoldPolicy(
     }
 
     /**
-     * An instant-speed activation that only draws or scries ([ACTIVATION_FLOW_TAGS]), judged under
+     * An instant-speed activation that only draws, scries or surveils ([ACTIVATION_FLOW_TAGS]), judged under
      * [drawWithIdleMana]: cashed at the opponent's end step, held everywhere before it while an
      * instant-speed card in hand wants the mana. Null when the ability is not that shape or the hold does not apply.
      *
@@ -412,6 +414,10 @@ class HoldPolicy(
                     it is com.wingedsheep.sdk.scripting.effects.CopyCollectionIntoCollectionEffect
             }
         ) return null
+        // A look at the top is worth about nothing on the board, so the window's bonus would decide
+        // alone: it may only spend what empties at cleanup anyway, never life or a permanent
+        // (Doom Whisperer's 2 life, Zahur's sacrifice). A draw is a card, worth its own price.
+        if (IntentTag.DRAW !in tags && !costsOnlyUntilCleanup(ability.cost)) return null
         if (isOpponentEndStep(state, playerId)) {
             return TimingVerdict.Adjust(END_STEP_WINDOW, reason = "card flow at their end step")
         }
@@ -419,6 +425,14 @@ class HoldPolicy(
         if (!holdsInstantSpeedCard(state, playerId)) return null
         if (Patience.releasedOutright(state, state.projectedState, playerId)) return null
         return TimingVerdict.NoWindow
+    }
+
+    /** Whether [cost] spends only mana and untapped permanents — what the turn's cleanup takes back anyway. */
+    private fun costsOnlyUntilCleanup(cost: AbilityCost): Boolean = when (cost) {
+        AbilityCost.Free, AbilityCost.Tap -> true
+        is AbilityCost.Atom -> cost.atom is CostAtom.Mana || cost.atom is CostAtom.TapPermanents
+        is AbilityCost.Composite -> cost.costs.all(::costsOnlyUntilCleanup)
+        else -> false
     }
 
     /**
@@ -788,7 +802,7 @@ class HoldPolicy(
         /** Tags of a spell whose whole payoff is card flow — cards into hand, or a scry — see [idleDrawWindow]. */
         val CARD_FLOW_TAGS = setOf(IntentTag.DRAW, IntentTag.TUTOR, IntentTag.CARD_SELECTION)
 
-        /** What [drawActivationVerdict] cashes at the opponent's end step: a draw, or a look at the top (scry). */
+        /** What [drawActivationVerdict] cashes at the opponent's end step: a draw, or a look at the top (scry, surveil). */
         val ACTIVATION_FLOW_TAGS = setOf(IntentTag.DRAW, IntentTag.CARD_SELECTION)
 
         /** Our turn, attackers already declared — see [trickTargetSitsOutTheFight]. */
