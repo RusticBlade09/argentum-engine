@@ -192,7 +192,7 @@ class GatedEffectExecutor(
             }
             // A search that also reads a hand or graveyard ("search your graveyard and/or library")
             // can still be chosen for those zones; its gather drops only the forbidden library.
-            if (searcher != null && leadingSearch != null &&
+            if (searcher != null &&
                 LibrarySearchRestrictions.readsOnlyLibraries(leadingSearch.source) &&
                 LibrarySearchRestrictions.isSearchForbidden(
                     state, searcher, context.effectControllerId ?: context.controllerId,

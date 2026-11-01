@@ -165,7 +165,7 @@ internal class NonPermanentSpellResolver(
                     com.wingedsheep.sdk.core.Keyword.FUSE.name, context.programOrigin))
                 processPreTargetedEffectQueue(newState, entries + spliceEntries,
                     PreTargetedEffectContext(baseContext = halves, controllerId = context.controllerId,
-                        sourceId = spellId, sourceName = cardComponent?.name, xValue = context.xValue,
+                        sourceId = spellId, sourceName = cardComponent.name, xValue = context.xValue,
                         triggeringEntityId = null, objectReferences = context.objectReferences),
                     effects::execute, spliceTargetValidator, emptyList())
             } else runMainEffectThenSplice(
@@ -520,7 +520,7 @@ internal class NonPermanentSpellResolver(
         // "Exile <name> with N time counters on it." is the spell's own last instruction, like
         // cipher's: a resolving spell that suspends itself is never put into a graveyard, so a
         // graveyard-worded rider (Quistis Trepe, Kylox's Voltstrider) has nothing to replace.
-        val selfSuspendCounters = if (selfExile) resolvedScript?.selfExileTimeCounters ?: 0 else 0
+        val selfSuspendCounters = if (selfExile) resolvedScript.selfExileTimeCounters ?: 0 else 0
         val exileAfterResolveComp = newState.getEntity(spellId)?.get<AfterResolveDestinationComponent>()
             ?.takeUnless { cipherExile || selfSuspendCounters > 0 }
         // Adventure face (CR 715.3d): when an Adventure resolves, exile it instead of putting

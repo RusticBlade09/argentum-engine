@@ -349,7 +349,7 @@ object TokenCreationReplacementHelper {
                     }
 
                     newState = newState.withEntity(tokenId, tokenContainer)
-                    if (cardRegistry != null) newState = com.wingedsheep.engine.handlers.effects.copy.GrantedEntryCopy.applyBeforeEntry(newState, tokenId, cardRegistry, predicateEvaluator)
+                    newState = com.wingedsheep.engine.handlers.effects.copy.GrantedEntryCopy.applyBeforeEntry(newState, tokenId, cardRegistry, predicateEvaluator)
                     newState = com.wingedsheep.engine.handlers.effects.BattlefieldEntry
                         .place(newState, tokenControllerId, tokenId)
                     // Honor global "[filter] enter tapped" replacements on the added token too.

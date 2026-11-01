@@ -586,7 +586,7 @@ object DamageUtils {
                 // It is still damage, so the excess (CR 120.4a) is measured against lethal damage
                 // exactly as for marked damage, before the counters change the toughness.
                 val witherLethalNeeded =
-                    if (sourceId != null && sourceHasDeathtouch(zones.cardRegistry, newState, projected, sourceId)) 1
+                    if (sourceHasDeathtouch(zones.cardRegistry, newState, projected, sourceId)) 1
                     else (projected.lethalDamageThreshold(targetId) -
                         (newState.getEntity(targetId)?.get<DamageComponent>()?.amount ?: 0)).coerceAtLeast(0)
                 creatureExcessDamage = (effectiveAmount - witherLethalNeeded).coerceAtLeast(0)
@@ -616,7 +616,7 @@ object DamageUtils {
                 // dealt damage by this source, so a deathtouch source still marks it for
                 // destruction as an SBA (CR 702.2b / 704.5h) even though nothing is marked as
                 // normal damage. Record the deathtouch flag without marking damage.
-                if (sourceId != null && sourceHasDeathtouch(zones.cardRegistry, newState, projected, sourceId)) {
+                if (sourceHasDeathtouch(zones.cardRegistry, newState, projected, sourceId)) {
                     newState = newState.updateEntity(targetId) { container ->
                         val existing = container.get<DamageComponent>()
                         container.with(DamageComponent(

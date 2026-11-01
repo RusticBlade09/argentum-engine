@@ -273,7 +273,7 @@ class DeathAndLeaveTriggerDetector(
         val auraEntityId = event.entityId
         val info = resolveDyingEntity(state, event) ?: return
         val abilities = abilityResolver.getDepartedTriggeredAbilities(event, info.cardDefinitionId, state, statics)
-        val controllerId = event.lastKnown?.controllerId ?: event.ownerId
+        val controllerId = event.lastKnown.controllerId ?: event.ownerId
 
         for (ability in abilities) {
             if (ability.binding != TriggerBinding.ATTACHED) continue
