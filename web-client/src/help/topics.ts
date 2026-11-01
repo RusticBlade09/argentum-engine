@@ -1107,16 +1107,16 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     section: 'playing',
     title: 'Flipping cards (Chaos Orb, Falling Star)',
     summary:
-      'Cards that tell you to flip them onto the table — Chaos Orb, Falling Star — are played for real: the battlefield is laid out as a card table, you aim, press and hold to swing, and let go with the needle on the gold line. Your aim and your timing decide what it lands on.',
+      'Cards that tell you to flip them onto the table — Chaos Orb, Falling Star — are played for real: the battlefield is laid out as a card table, you spin the card up and flick it at what you want to hit. How hard, which way and how much spin you put on it decide what it lands on.',
     body: [
       { kind: 'p', text: 'When Chaos Orb’s ability or a Falling Star spell resolves, a table opens with every permanent lying where it would on a paper battlefield — creatures in front, lands at the back, tapped cards sideways, Auras and Equipment peeking out from behind what they’re attached to. Your side is at the bottom; the card sits in your hand at the edge, and the card’s text is shown above the table.' },
       { kind: 'ol', items: [
-        'Aim — move over the table. The crosshair is your aim and the dashed card shows where a perfect release lands; anything it would affect lights up red, your own permanents amber, and what it can’t affect grey (Chaos Orb spares tokens; Falling Star only hits creatures). A clean flip lands within a few millimetres of your aim, so aim carefully.',
-        'Swing — press and hold. The swing starts the moment you press, so aim first. The needle swings up and down the gauge, and the dashed card slides with it: below the gold line the card falls short, back towards your own permanents; above it, it sails long. Your hand also sways left and right — the dot under the card — pulling the flip to that side, so let go with it centred. Every swing is quicker than the last, and hold too long and your hand starts to shake.',
-        'Let go — release with the needle on the gold line to land on your aim. Let go far too low and the card won’t turn over completely, which means it does nothing.',
+        'Read the table — move over it to see what a card resting there would cover: anything it would affect lights up red, your own permanents amber, and what it can’t affect grey (Chaos Orb spares tokens; Falling Star only hits creatures).',
+        'Spin it up — press and hold, then circle the pointer. Each circle winds spin into the card, shown on the gauge beside the table; stop circling and the spin slowly bleeds away. Below the red band it can’t turn over completely, in the gold band it flies true, and above it the card wobbles, scatters and skids on after it lands.',
+        'Flick — swipe towards your target and let go while you’re still moving. The direction of the swipe is the line the card flies, its speed is how far it goes: a faster flick carries further. Nothing shows where it will land — that’s your hand’s job. Letting go with the pointer standing still keeps the card in your hand, so you can try again.',
       ] },
-      { kind: 'p', text: 'The server decides where it lands from your aim and release, so every player sees the same flight. If it turned over, it affects everything it came to rest on, yours included: Chaos Orb destroys each nontoken permanent it touches and then itself; Falling Star deals 3 damage to each creature it lands on and taps them. Your opponent watches the same flip from their side of the table.' },
-      { kind: 'tip', text: 'Aim at the seam between two cards to take both — a precise aim and a clean release can. Your first swing is the slowest, so it’s usually the one to take. Space works as the swing button too, and Esc stops a swing without throwing.' },
+      { kind: 'p', text: 'The server decides where it lands from your flick, so every player sees the same flight. If it turned over, it affects everything it came to rest on, yours included: Chaos Orb destroys each nontoken permanent it touches and then itself; Falling Star deals 3 damage to each creature it lands on and taps them. Your opponent watches the same flip from their side of the table.' },
+      { kind: 'tip', text: 'Flick at the seam between two cards to take both. Wind the spin a little past the gold before you flick — it bleeds away as you swipe. Esc or a right-click drops the wind-up without throwing.' },
     ],
     related: ['decisions', 'game-table'],
   },

@@ -28,6 +28,7 @@ Format — newest first, one bullet each:
 
 ## Changes
 
+- #4169 Throws Chaos Orb and Falling Star as a flick, with a human's error in speed, direction and spin instead of a timed release — it still usually hits what it aims at, but misses a little more often
 - #4171 Drafts and builds limited decks for creature types: beside a lord or tribal payoff (Goblin King, "whenever another Elf enters") a creature of that type, a changeling or a maker of its tokens is worth more, and a tribal payoff with too few members is worth less; Commander decks also find their tribe in the commander's abilities, not only its text
 - #4158 Values power and toughness by what they do against the board: huge stats taper off (a 1000/1000 is worth under twice a 20/20), and a creature is worth more for each opposing creature it would beat in a fight (kill and survive) or survive, and when it is out of reach of the burn they've shown
 - #4163 Drafts and builds limited decks for synergy: a pick or a slot is worth more when it feeds a payoff already taken, a payoff with too little fuel is worth less, and the deck score counts payoffs the deck keeps fed
