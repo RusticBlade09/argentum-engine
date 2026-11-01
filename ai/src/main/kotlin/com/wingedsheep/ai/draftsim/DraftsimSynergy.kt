@@ -7,7 +7,7 @@ import com.wingedsheep.sdk.model.CardDefinition
 
 /**
  * These tables plus the structural synergy reading ([SynergyAxes]) of every nonland card in
- * [cards], so the Draftsim scorers can see enablers and payoffs on sets whose archetype tables don't
+ * [cards] — every one, since any card may be what some payoff asks for — so the Draftsim scorers can see enablers and payoffs on sets whose archetype tables don't
  * list them — which is most sets, and every card in a set we ship no archetype file for.
  *
  * The tables' [DraftsimSetTables.axes] stay empty without this call, and every score then matches
@@ -19,8 +19,7 @@ fun DraftsimSetTables.withSynergyAxes(cards: Collection<CardDefinition>): Drafts
         if (card.typeLine.isLand) continue
         val key = DraftsimData.nameKey(card.name)
         if (key in axes || key in read) continue
-        val profile = SynergyAxes.of(card)
-        if (!profile.isEmpty) read[key] = profile
+        read[key] = SynergyAxes.of(card)
     }
     if (read.isEmpty()) return this
     return copy(axes = axes + read)
@@ -40,7 +39,7 @@ internal class DraftsimSynergy(private val ops: DraftsimCardOps) {
     fun profile(card: ScorerCard): SynergyProfile {
         val read = ops.tables.axes[DraftsimData.nameKey(card.name)] ?: return SynergyProfile.NONE
         val tagged = ops.archRecord(card.name)?.archetypes?.isNotEmpty() == true
-        return if (tagged && read.isPayoff) read.copy(rewards = emptySet(), tribesRewarded = emptySet()) else read
+        return if (tagged && read.isPayoff) read.copy(rewards = emptySet(), tribesRewarded = emptySet(), asks = emptyList()) else read
     }
 
     /** Payoff-equivalents [nonland] keeps fed ([DeckSynergy.fedPayoffs]); zero when synergy is off. */
@@ -66,19 +65,20 @@ internal class DraftsimSynergy(private val ops: DraftsimCardOps) {
     fun pickAdjustment(card: ScorerCard, pool: List<ScorerCard>): Adjustment? {
         if (!enabled) return null
         val profile = profile(card)
-        if (profile.isEmpty) return null
+        if (!profile.isFeeder && !profile.isPayoff) return null
         val others = withoutOneCopy(pool, card).map(::profile)
         val gain = DeckSynergy.feedGain(profile, others)
-        val unfed = if (!profile.isPayoff) 0.0
-            else 1.0 - DeckSynergy.fedShare(profile, DeckSynergy.counts(others + profile))
+        val unfed = DeckSynergy.unfed(profile, DeckSynergy.counts(others + profile))
         val points = (FEED_WEIGHT * gain - UNDERFED_WEIGHT * unfed * progress(others.size)).coerceIn(-CAP, CAP)
         if (points == 0.0) return null
-        val axes = if (points > 0) {
-            (profile.feeds.map { it.name.lowercase() } + profile.tribes.map { it.value }).joinToString("/")
+        val reason = if (points > 0) {
+            val fed = others.flatMap { it.asks }.filter(profile::answers).map { it.filter.description }
+            "Feeds payoffs in pool (${(profile.feeds.map { it.name.lowercase() } + profile.tribes.map { it.value } + fed).distinct().joinToString("/")})"
         } else {
-            (profile.rewards.map { it.name.lowercase() } + profile.tribesRewarded.map { it.value }).joinToString("/")
+            val wants = profile.rewards.map { it.name.lowercase() } + profile.tribesRewarded.map { it.value } +
+                profile.asks.map { it.filter.description }
+            "Payoff short of fuel (${wants.joinToString("/")})"
         }
-        val reason = if (points > 0) "Feeds payoffs in pool ($axes)" else "Payoff short of fuel ($axes)"
         return Adjustment(round2(points), reason)
     }
 

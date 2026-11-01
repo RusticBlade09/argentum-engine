@@ -1,6 +1,7 @@
 package com.wingedsheep.ai.engine.knowledge
 
 import com.wingedsheep.sdk.core.Subtype
+import com.wingedsheep.sdk.scripting.GameObjectFilter
 import java.util.EnumMap
 import kotlin.math.min
 
@@ -11,7 +12,8 @@ import kotlin.math.min
  * A payoff (a card that [SynergyProfile.rewards] an axis or asks for a creature type) is **fed** to
  * the extent the *other* cards feed one of its axes — [FEEDERS_WANTED] feeders make it fully fed,
  * fewer make it partly fed — or are its creature type: [TRIBE_MEMBERS_WANTED] Goblins (changelings
- * included) fully feed Goblin King. A card
+ * included) fully feed Goblin King — or are the kind of card it asks for ([CardAsks]): every
+ * noncreature spell feeds Monastery Mentor, every artifact feeds Etherium Sculptor. A card
  * that rewards several axes counts its best-fed one — it only needs one to be live. A card never
  * feeds itself: Young Pyromancer's tokens don't count toward its own spells axis, and a second copy
  * of a payoff is a payoff, not fuel.
@@ -32,14 +34,19 @@ object DeckSynergy {
      */
     const val TRIBE_MEMBERS_WANTED = 5.0
 
-    /** Per-axis and per-creature-type feeder counts over a list of cards, read by [fedShare]. */
+    /**
+     * Per-axis, per-creature-type and per-ask feeder counts over a list of cards, read by
+     * [fedShare]. Asks are counted only for the filters the list's own payoffs ask with.
+     */
     class Counts internal constructor(
         private val feeders: EnumMap<SynergyAxis, Int>,
         private val members: Map<Subtype, Int>,
         private val everyTribe: Int,
+        private val answers: Map<GameObjectFilter, Int>,
     ) {
         fun feedersOf(axis: SynergyAxis): Int = feeders[axis] ?: 0
         fun membersOf(tribe: Subtype): Int = (members[tribe] ?: 0) + everyTribe
+        fun answersTo(ask: CardAsk): Int = answers[ask.filter] ?: 0
     }
 
     fun counts(cards: List<SynergyProfile>): Counts {
@@ -50,12 +57,16 @@ object DeckSynergy {
             for (axis in card.feeds) feeders.merge(axis, 1, Int::plus)
             if (card.everyTribe) everyTribe++ else for (tribe in card.tribes) members.merge(tribe, 1, Int::plus)
         }
-        return Counts(feeders, members, everyTribe)
+        val answers = HashMap<GameObjectFilter, Int>()
+        for (ask in cards.flatMap { it.asks }) {
+            if (ask.filter !in answers) answers[ask.filter] = cards.count { it.answers(ask) }
+        }
+        return Counts(feeders, members, everyTribe, answers)
     }
 
     /**
-     * How fed [payoff] is, 0–1, beside the cards [counts] was taken over: its best-fed axis or
-     * creature type. Those cards include [payoff] itself, so its own contribution is subtracted.
+     * How fed [payoff] is, 0–1, beside the cards [counts] was taken over: its best-fed axis,
+     * creature type or ask. Those cards include [payoff] itself, so its own contribution is subtracted.
      * Zero for a card that is no payoff.
      */
     fun fedShare(payoff: SynergyProfile, counts: Counts): Double {
@@ -68,7 +79,11 @@ object DeckSynergy {
             val own = if (payoff.feedsTribe(tribe)) 1 else 0
             min(1.0, (counts.membersOf(tribe) - own).coerceAtLeast(0) / TRIBE_MEMBERS_WANTED)
         } ?: 0.0
-        return maxOf(axes, tribes)
+        val asks = payoff.asks.maxOfOrNull { ask ->
+            val own = if (payoff.answers(ask)) 1 else 0
+            min(1.0, (counts.answersTo(ask) - own).coerceAtLeast(0) / ask.wanted)
+        } ?: 0.0
+        return maxOf(axes, tribes, asks)
     }
 
     /** How many payoff-equivalents [cards] keep fed: the sum of every payoff's [fedShare]. */
@@ -79,12 +94,17 @@ object DeckSynergy {
 
     /**
      * How short [cards] leave their payoffs: per payoff, the share it is *not* fed, summed. A payoff's
-     * rating assumes a deck that feeds it, so this is what the deck loses against those ratings.
+     * rating assumes a deck that feeds it, so this is what the deck loses against those ratings —
+     * except a payoff that [SynergyProfile.standsAlone], whose rating is earned as an answer.
      */
     fun shortfall(cards: List<SynergyProfile>): Double {
         val counts = counts(cards)
-        return cards.sumOf { if (!it.isPayoff) 0.0 else 1.0 - fedShare(it, counts) }
+        return cards.sumOf { unfed(it, counts) }
     }
+
+    /** The share of [payoff] left unfed beside [counts], or zero for a card that needs no fuel. */
+    fun unfed(payoff: SynergyProfile, counts: Counts): Double =
+        if (!payoff.isPayoff || payoff.standsAlone) 0.0 else 1.0 - fedShare(payoff, counts)
 
     /**
      * How much adding [card] to [others] closes the deck's [shortfall]: the share it fills in other

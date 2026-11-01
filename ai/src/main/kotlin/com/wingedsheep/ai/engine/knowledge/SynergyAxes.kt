@@ -61,6 +61,13 @@ enum class SynergyAxis {
  * Which axes a card [feeds] and which it [rewards], and the same for creature types: the [tribes]
  * it is or makes (every one, for a changeling: [everyTribe]) and the [tribesRewarded] it asks for
  * ([CreatureTypeSynergy]). The axis sets are empty for most cards; every creature has a tribe.
+ *
+ * [asks] are the other kinds of card it wants beside it, as the payoff's own filters ([CardAsks]),
+ * and [card] is the printed card any other card's asks are matched against ([PrintedFilter]) — so
+ * any card can feed an ask, and [card] is set on every profile [SynergyAxes.of] reads.
+ *
+ * A payoff that [standsAlone] is also an answer — removal, a Pacifism, a counterspell — so its
+ * synergy is a rider: fuel makes it better, but it is worth its rating with none.
  */
 data class SynergyProfile(
     val feeds: Set<SynergyAxis>,
@@ -68,15 +75,23 @@ data class SynergyProfile(
     val tribes: Set<Subtype> = emptySet(),
     val tribesRewarded: Set<Subtype> = emptySet(),
     val everyTribe: Boolean = false,
+    val asks: List<CardAsk> = emptyList(),
+    val card: CardDefinition? = null,
+    val standsAlone: Boolean = false,
 ) {
+    /** No synergy reading at all — though [card] may still match another card's [asks]. */
     val isEmpty: Boolean
-        get() = feeds.isEmpty() && rewards.isEmpty() && tribes.isEmpty() && tribesRewarded.isEmpty() && !everyTribe
+        get() = feeds.isEmpty() && rewards.isEmpty() && tribes.isEmpty() && tribesRewarded.isEmpty() &&
+            !everyTribe && asks.isEmpty()
 
-    /** Rewards an axis or asks for a creature type: a card whose value hangs on the rest of the deck. */
-    val isPayoff: Boolean get() = rewards.isNotEmpty() || tribesRewarded.isNotEmpty()
+    /** Rewards an axis or asks for a kind of card: a card whose value hangs on the rest of the deck. */
+    val isPayoff: Boolean get() = rewards.isNotEmpty() || tribesRewarded.isNotEmpty() || asks.isNotEmpty()
 
-    /** Feeds an axis or is (or makes) some creature type. */
-    val isFeeder: Boolean get() = feeds.isNotEmpty() || tribes.isNotEmpty() || everyTribe
+    /** Feeds an axis, is (or makes) some creature type, or is a printed card some ask can match. */
+    val isFeeder: Boolean get() = feeds.isNotEmpty() || tribes.isNotEmpty() || everyTribe || card != null
+
+    /** Whether this card is one of the cards [ask] wants. */
+    fun answers(ask: CardAsk): Boolean = card != null && !card.typeLine.isLand && SynergyAxes.matches(card, ask.filter)
 
     fun feedsTribe(tribe: Subtype): Boolean = everyTribe || tribe in tribes
 
@@ -141,8 +156,17 @@ object SynergyAxes {
             tribes = CreatureTypeSynergy.fed(card),
             tribesRewarded = CreatureTypeSynergy.rewarded(card),
             everyTribe = CreatureTypeSynergy.everyType(card),
-        ).takeUnless { it.isEmpty } ?: SynergyProfile.NONE
+            asks = CardAsks.of(card),
+            card = card,
+            standsAlone = CardIntentAnalyzer.analyze(card).tags.any { it in ANSWERS },
+        )
     }
+
+    private val matchCache = ConcurrentHashMap<Pair<String, GameObjectFilter>, Boolean>()
+
+    /** [PrintedFilter.matches], memoized per card name and filter; an unreadable answer is a no. */
+    internal fun matches(card: CardDefinition, filter: GameObjectFilter): Boolean =
+        matchCache.getOrPut(card.name to filter) { PrintedFilter.matches(card, filter) == true }
 
     // ── Rewards ────────────────────────────────────────────────────────────────
 
@@ -259,6 +283,12 @@ object SynergyAxes {
         is AdditionalCost.Composite -> cost.steps.any(::sacrifices)
         else -> false
     }
+
+    /** What makes a card an answer, worth playing whatever the rest of the deck does. */
+    private val ANSWERS: Set<IntentTag> = setOf(
+        IntentTag.REMOVAL, IntentTag.EXILE_REMOVAL, IntentTag.SWEEPER, IntentTag.NEUTRALIZE, IntentTag.FIGHT,
+        IntentTag.COUNTERSPELL,
+    )
 
     private val SPELL_PREDICATES: Set<CardPredicate> =
         setOf(CardPredicate.IsInstant, CardPredicate.IsSorcery, CardPredicate.IsNoncreature)
