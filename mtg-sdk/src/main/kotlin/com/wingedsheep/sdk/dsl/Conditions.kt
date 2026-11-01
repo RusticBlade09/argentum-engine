@@ -1059,7 +1059,7 @@ object Conditions {
 
     /**
      * "If one or more of them entered from exile or was cast from exile" — the batch-enters,
-     * any-of exile counterpart of [TriggeringEntityEnteredOrWasCastFromGraveyard]. Evaluated over
+     * any-of exile counterpart of [TriggeringEntityEnteredOrWasCastFrom]. Evaluated over
      * the permanents a `Triggers.oneOrMore(filter).enter()` batch captured; works as a real
      * intervening-"if" (`interveningIf`) as well as a resolution-time gate. Extraordinary
      * Journey.
@@ -2741,11 +2741,20 @@ object Conditions {
         com.wingedsheep.sdk.scripting.conditions.TriggeringSpellManaSpentAtLeast(amount)
 
     /**
-     * If the triggering entity entered or was cast from a graveyard.
-     * Used by Twilight Diviner: "if they entered or were cast from a graveyard".
+     * If the triggering entity entered or was cast from a graveyard — the named shorthand for
+     * `TriggeringEntityEnteredOrWasCastFrom(Zone.GRAVEYARD)`, kept because the graveyard is the
+     * zone almost every printed card asks about (like the `AnyEnteredOrWasCastFromGraveyard`
+     * twin). Used by Twilight Diviner: "if they entered or were cast from a graveyard".
      */
     val TriggeringEntityEnteredOrWasCastFromGraveyard: ConditionInterface =
-        com.wingedsheep.sdk.scripting.conditions.TriggeringEntityEnteredOrWasCastFromGraveyard
+        com.wingedsheep.sdk.scripting.conditions.TriggeringEntityEnteredOrWasCastFrom(Zone.GRAVEYARD)
+
+    /**
+     * If the triggering entity entered from [zone] or was cast from [zone] — the zone-general form
+     * of [TriggeringEntityEnteredOrWasCastFromGraveyard]. Fblthp, the Lost (`Zone.LIBRARY`).
+     */
+    fun TriggeringEntityEnteredOrWasCastFrom(zone: Zone): ConditionInterface =
+        com.wingedsheep.sdk.scripting.conditions.TriggeringEntityEnteredOrWasCastFrom(zone)
 
     /**
      * If the triggering entity had a -1/-1 counter on it when it left the battlefield.
