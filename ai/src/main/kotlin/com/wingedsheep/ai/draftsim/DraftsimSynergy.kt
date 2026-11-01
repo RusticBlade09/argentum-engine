@@ -40,7 +40,7 @@ internal class DraftsimSynergy(private val ops: DraftsimCardOps) {
     fun profile(card: ScorerCard): SynergyProfile {
         val read = ops.tables.axes[DraftsimData.nameKey(card.name)] ?: return SynergyProfile.NONE
         val tagged = ops.archRecord(card.name)?.archetypes?.isNotEmpty() == true
-        return if (tagged && read.rewards.isNotEmpty()) read.copy(rewards = emptySet()) else read
+        return if (tagged && read.isPayoff) read.copy(rewards = emptySet(), tribesRewarded = emptySet()) else read
     }
 
     /** Payoff-equivalents [nonland] keeps fed ([DeckSynergy.fedPayoffs]); zero when synergy is off. */
@@ -69,11 +69,15 @@ internal class DraftsimSynergy(private val ops: DraftsimCardOps) {
         if (profile.isEmpty) return null
         val others = withoutOneCopy(pool, card).map(::profile)
         val gain = DeckSynergy.feedGain(profile, others)
-        val unfed = if (profile.rewards.isEmpty()) 0.0
+        val unfed = if (!profile.isPayoff) 0.0
             else 1.0 - DeckSynergy.fedShare(profile, DeckSynergy.counts(others + profile))
         val points = (FEED_WEIGHT * gain - UNDERFED_WEIGHT * unfed * progress(others.size)).coerceIn(-CAP, CAP)
         if (points == 0.0) return null
-        val axes = (if (points > 0) profile.feeds else profile.rewards).joinToString("/") { it.name.lowercase() }
+        val axes = if (points > 0) {
+            (profile.feeds.map { it.name.lowercase() } + profile.tribes.map { it.value }).joinToString("/")
+        } else {
+            (profile.rewards.map { it.name.lowercase() } + profile.tribesRewarded.map { it.value }).joinToString("/")
+        }
         val reason = if (points > 0) "Feeds payoffs in pool ($axes)" else "Payoff short of fuel ($axes)"
         return Adjustment(round2(points), reason)
     }

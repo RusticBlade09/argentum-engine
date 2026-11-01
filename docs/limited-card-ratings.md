@@ -111,6 +111,14 @@ outlets from Blood Artist with nothing to sacrifice. The AI reads that from the 
 +1/+1 counters, the graveyard) and which it **rewards**, and `DeckSynergy` counts how fed each payoff
 is — fully at three feeders among the other cards, never by itself.
 
+Creature types work the same way (`CreatureTypeSynergy`). A card **asks for** a type when any filter
+in its abilities names it: the "other Goblins" a lord pumps, the "another Elf you control" a trigger
+watches, a tribal cost reducer or tutor. Filters under "non-" or scoped to an opponent don't count.
+A card **feeds** the types on its type line and the types of the tokens it makes, and a changeling
+feeds every type. A tribal payoff is fully fed at five members among the other cards, since a lord
+pays per body. A hoser that names a type with no controller ("tap target Wall") still reads as
+asking for it; such cards are rare.
+
 - **Draft picks and the Draftsim deckbuild.** `DraftsimSetTables.withSynergyAxes(cards)` attaches
   the reading, and the scorer adds `DraftsimSynergy.pickAdjustment`: a card gains for the payoffs it
   feeds in the pool, and a payoff loses for the fuel it lacks — nothing in pack 1, all of it once
