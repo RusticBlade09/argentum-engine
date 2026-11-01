@@ -1082,9 +1082,9 @@ data class BudgetModalDecision(
 
 /**
  * Player must physically flip a card onto the battlefield (Chaos Orb). The engine lays the
- * battlefield out as [table]; the player answers with a [FlipThrowResponse] — where they aim and
- * how hard they let go — and the engine rolls where it lands. [release] is the strength meter the
- * engine scores the release against, so the client can draw its zones.
+ * battlefield out as [table]; the player answers with a [FlipThrowResponse] — the flick they let
+ * go with — and the engine rolls where it lands. [release] holds the numbers the engine scores a
+ * flick against, so the client can draw its spin gauge.
  */
 @Serializable
 @SerialName("FlipOntoBattlefieldDecision")
@@ -1101,20 +1101,33 @@ data class FlipOntoBattlefieldDecision(
 ) : PendingDecision
 
 /**
- * Response to [FlipOntoBattlefieldDecision]: the aim point in table millimetres, the release
- * strength (0..1) and where the throwing hand's sideways sway was at release (-1 full left ..
- * 1 full right, from the thrower's seat; 0 is straight). Out-of-range values are clamped by the
- * engine, never trusted.
+ * Response to [FlipOntoBattlefieldDecision]: the flick the card left the hand with — its velocity
+ * in table millimetres per second ([velocityX], [velocityY]; the table's y grows towards the
+ * thrower, so a forward flick has a negative [velocityY]) and how fast it was spinning, in turns
+ * per second. Out-of-range values are clamped by the engine, never trusted.
  */
 @Serializable
 @SerialName("FlipThrowResponse")
 data class FlipThrowResponse(
     override val decisionId: String,
-    val aimX: Double,
-    val aimY: Double,
-    val strength: Double,
-    val sway: Double = 0.0,
-) : DecisionResponse
+    val velocityX: Double,
+    val velocityY: Double,
+    val spin: Double,
+) : DecisionResponse {
+    companion object {
+        /** A flick that carries exactly to ([x], [y]) on [table] with [spin] — for the AI and tests. */
+        fun toward(
+            decisionId: String,
+            table: com.wingedsheep.engine.mechanics.dexterity.FlipTable,
+            x: Double,
+            y: Double,
+            spin: Double = com.wingedsheep.engine.mechanics.dexterity.FlipPhysics.IDEAL_SPIN,
+        ): FlipThrowResponse {
+            val (vx, vy) = com.wingedsheep.engine.mechanics.dexterity.FlipPhysics.flickToward(table, x, y)
+            return FlipThrowResponse(decisionId, vx, vy, spin)
+        }
+    }
+}
 
 /**
  * A single mode option in a budget modal decision (cost + description, no effect data).

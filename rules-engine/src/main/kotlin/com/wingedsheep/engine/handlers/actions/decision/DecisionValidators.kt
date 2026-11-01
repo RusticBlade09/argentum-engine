@@ -558,12 +558,10 @@ object DecisionValidators {
         return null
     }
 
-    /** A throw's numbers only need to be numbers; the engine clamps aim, strength and sway itself. */
+    /** A flick's numbers only need to be numbers; the engine clamps speed and spin itself. */
     private fun validateFlipThrow(response: DecisionResponse): String? {
         if (response !is FlipThrowResponse) return "Expected flip throw response"
-        if (!response.aimX.isFinite() || !response.aimY.isFinite() || !response.strength.isFinite() ||
-            !response.sway.isFinite()
-        ) {
+        if (!response.velocityX.isFinite() || !response.velocityY.isFinite() || !response.spin.isFinite()) {
             return "Flip throw values must be finite numbers"
         }
         return null

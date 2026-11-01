@@ -894,7 +894,7 @@ export interface FlipShow {
   /** True on the thrower's own client. */
   isYours: boolean
   /** The thrower's intent, known only on their client before the result arrives. */
-  aim: { x: number; y: number; strength: number } | null
+  aim: { x: number; y: number } | null
   result: {
     landing: FlipLanding
     turnedOver: boolean
@@ -1106,7 +1106,7 @@ export type GameStore = {
   submitOptionDecision: (decisionId: string, optionIndex: number) => void
   submitReplacementDecision: (decisionId: string, fromIndex: number, toIndex: number) => void
   submitBudgetModalDecision: (decisionId: string, selectedModeIndices: readonly number[]) => void
-  submitFlipThrow: (decisionId: string, aimX: number, aimY: number, strength: number, sway: number) => void
+  submitFlipThrow: (decisionId: string, velocityX: number, velocityY: number, spin: number) => void
   submitDistributeDecision: (decisionId: string, distribution: Record<EntityId, number>) => void
   submitDamageAssignmentDecision: (decisionId: string, assignments: Record<EntityId, number>) => void
   submitCombatResolutionDecision: (decisionId: string, edges: ReadonlyArray<{ edgeId: string; amount: number }>) => void

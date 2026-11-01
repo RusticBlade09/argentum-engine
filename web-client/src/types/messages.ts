@@ -942,21 +942,23 @@ export interface FlipTable {
   readonly handY: number
 }
 
-/** The release meter and scatter the engine scores a throw against. */
+/** The numbers the engine scores a flick against. */
 export interface FlipReleaseProfile {
-  /** The release that carries exactly to the aim. */
-  readonly sweetSpot: number
-  /** Millimetres a release carries short of the aim (below the sweet spot) or past it, per unit of strength. */
-  readonly depthPerStrength: number
-  /** Millimetres the hand's sway pulls a release sideways at the very edge of the swing. */
-  readonly sidePerSway: number
-  readonly cleanFrom: number
-  readonly cleanTo: number
-  readonly tooSoftBelow: number
+  /** Seconds of release speed the card carries: landing = hand + velocity × flightTime. */
+  readonly flightTime: number
+  /** Seconds the card spins in the air. */
+  readonly airTime: number
+  /** Below this spin (turns/s) it can't turn over completely. */
+  readonly tooLittleSpinBelow: number
+  /** The spin band (turns/s) in which it flies true. */
+  readonly cleanSpinFrom: number
+  readonly cleanSpinTo: number
+  /** How far outside the clean band a spin is as wild as it gets. */
+  readonly spinSlop: number
+  readonly maxSpin: number
   readonly baseScatter: number
   readonly scatterPerMm: number
   readonly sloppyScatter: number
-  readonly slopRange: number
 }
 
 /** Where a flipped card came to rest. `halfTurns` ≥ 2 means it turned over completely. */
@@ -965,18 +967,17 @@ export interface FlipLanding {
   readonly y: number
   readonly rotation: number
   readonly halfTurns: number
-  /** How far (mm) the release carried it short of the aim (negative) or past it; absent when on target. */
-  readonly drift?: number
-  /** How far (mm) the hand's sway pulled it to the thrower's right (positive) or left; absent when straight. */
-  readonly pull?: number
-  /** Where the thrower aimed. */
-  readonly aimX?: number | null
-  readonly aimY?: number | null
+  /** How fast (mm/s) the flick left the hand. */
+  readonly speed?: number
+  /** How fast (turns/s) it was spinning. */
+  readonly spin?: number
+  /** How far (mm) an over-spun card skidded on after it came down. */
+  readonly skid?: number
 }
 
 /**
- * Player must flip a card onto the battlefield (Chaos Orb): aim on the table, then time the
- * release. Answered with a FlipThrowResponse; the server rolls where it lands.
+ * Player must flip a card onto the battlefield (Chaos Orb): wind up spin, then flick it from the
+ * hand. Answered with a FlipThrowResponse (velocity + spin); the server rolls where it lands.
  */
 export interface FlipOntoBattlefieldDecision extends PendingDecisionBase {
   readonly type: 'FlipOntoBattlefieldDecision'
