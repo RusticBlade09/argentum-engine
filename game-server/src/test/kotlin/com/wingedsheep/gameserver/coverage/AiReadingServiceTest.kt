@@ -9,6 +9,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.comparables.shouldBeGreaterThanOrEqualTo as shouldBeGreaterThanOrEqual
 import io.kotest.matchers.comparables.shouldBeLessThanOrEqualTo as shouldBeLessThanOrEqual
+import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -83,6 +84,7 @@ class AiReadingServiceTest : FunSpec({
         val vial = detail.unread.single { it.name == "Alchemist's Vial" }
         detail.groups.single { it.key == "combat: CantBlockEffect" }.cards shouldContain "Alchemist's Vial"
         vial.flags shouldContain "timing: CantAttackEffect"
+        vial.abilitiesRead shouldBeLessThan vial.abilities
         service.setDetail("NOPE") shouldBe null
     }
 })

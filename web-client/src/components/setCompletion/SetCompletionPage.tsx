@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { SetIcon } from '../ui/SetIcon'
 import { HelpTip } from '../help/HelpTip'
@@ -13,6 +13,7 @@ import {
   fetchSetDetail,
   fetchAiReadingSummary,
   fetchSetAiReading,
+  type AiUnreadCard,
   type SetAiReading,
   type SetAiReadingDetail,
   type SetDraftRatings,
@@ -841,6 +842,82 @@ const AI_CHECK_WORDS: Record<string, string> = {
   modal: "Can't pay for extra modes",
 }
 
+/** One word per audit check, for the chips on a card tile — the hover panel carries the full sentence. */
+const AI_CHECK_SHORT: Record<string, string> = {
+  polarity: 'Target',
+  intent: 'Purpose',
+  combat: 'Combat',
+  timing: 'Timing',
+  modal: 'Modes',
+}
+
+/** An audit flag key (`intent: AddCountersEffect`) split into its check and effect type. */
+function splitFlag(key: string): { check: string; effectType: string } {
+  const at = key.indexOf(': ')
+  return at < 0 ? { check: key, effectType: '' } : { check: key.slice(0, at), effectType: key.slice(at + 2) }
+}
+
+/** How the coverage view keys a double-faced card: by its front face. */
+function frontFace(name: string): string {
+  return name.split(' // ')[0] ?? name
+}
+
+/** "AI reads 1/3 abilities" on a tile: partly read is ◐, nothing read is !. */
+function cardAiBand(card: AiUnreadCard): AiBand {
+  return card.abilitiesRead > 0 ? 'fair' : 'low'
+}
+
+/** One line for a screen reader or a tooltip: what the AI misses on this card. */
+function cardAiSummary(card: AiUnreadCard): string {
+  const read = card.abilities > 0 ? `AI reads ${card.abilitiesRead} of ${card.abilities} ${card.abilities === 1 ? 'ability' : 'abilities'}` : 'AI reading has gaps'
+  const misses = card.flags.map((f) => {
+    const { check, effectType } = splitFlag(f)
+    return `${AI_CHECK_WORDS[check] ?? check}${effectType ? ` (${effectType})` : ''}`
+  })
+  return `${read}. Misses: ${misses.join('; ')}`
+}
+
+/**
+ * The AI's reading of one hovered card, under its preview: how many abilities the readers
+ * understand and each gap in plain words, with the effect type behind it — so a reader scanning the
+ * grid sees why a card is here without leaving it. The card's page in the Assay Explorer has the
+ * ability-by-ability detail; clicking the tile goes there.
+ */
+function AiCardPanel({ card, selected }: { card: AiUnreadCard; selected: string | null }) {
+  const band = cardAiBand(card)
+  return (
+    <div className={styles.aiHoverPanel}>
+      <div className={styles.aiHoverHead} data-band={band}>
+        <span aria-hidden="true">{AI_BAND[band].icon}</span>{' '}
+        {card.abilities > 0 ? (
+          <>
+            AI reads <strong>{card.abilitiesRead}</strong> of {card.abilities} {card.abilities === 1 ? 'ability' : 'abilities'}
+          </>
+        ) : (
+          <>AI reading has gaps</>
+        )}
+      </div>
+      <ul className={styles.aiHoverList}>
+        {card.flags.map((f) => {
+          const { check, effectType } = splitFlag(f)
+          return (
+            <li key={f} data-on={selected === f || undefined}>
+              <span>{AI_CHECK_WORDS[check] ?? check}</span>
+              {effectType && <code>{effectType}</code>}
+            </li>
+          )
+        })}
+      </ul>
+      <div className={styles.aiHoverHint}>Click to see where, in the Assay Explorer</div>
+    </div>
+  )
+}
+
+/** Rough height of {@link AiCardPanel}, so the preview above it is placed on-screen. */
+function aiCardPanelHeight(card: AiUnreadCard): number {
+  return 64 + card.flags.length * 38
+}
+
 /**
  * What the AI misses in one set: its unread cards grouped by the effect type behind each gap,
  * biggest group first. The groups are the actionable part — one reader entry fixes every card in
@@ -889,7 +966,8 @@ function AiGapsPanel({
         <>
           <p className={styles.aiGapsLead}>
             What it misses, by effect type — one fix to a reader covers every card in a group. Pick a group to narrow
-            the cards below; open a card to see exactly where the gap is.
+            the cards below. Each card shows how many of its abilities the AI reads and what it misses; hover one for
+            the detail, click it to open its AI reading in the Assay Explorer.
           </p>
           <ol className={styles.aiGroups}>
             {data.groups.slice(0, 12).map((g) => (
@@ -1019,6 +1097,7 @@ function SetDetailOverlay({
   const [aiDetail, setAiDetail] = useState<SetAiReadingDetail | null>(null)
   const [aiError, setAiError] = useState<string | null>(null)
   const [aiGroup, setAiGroup] = useState<string | null>(null)
+  const [hover, setHover] = useState<HoverState | null>(null)
   const aiReady = aiDetail?.ready === true
   useEffect(() => {
     if (cardFilter !== 'aiGaps' || aiReady) return
@@ -1043,9 +1122,15 @@ function SetDetailOverlay({
     const names = aiGroup
       ? (aiDetail.groups.find((g) => g.key === aiGroup)?.cards ?? [])
       : aiDetail.unread.map((u) => u.name)
-    return new Set(names.map((n) => n.split(' // ')[0]))
+    return new Set(names.map(frontFace))
   }, [aiDetail, aiGroup])
-  const [hover, setHover] = useState<HoverState | null>(null)
+  // Each unread card's own reading, for its tile and hover panel — only while the AI gaps tab is up,
+  // so the other tabs' tiles keep their plain implemented/missing look.
+  const aiCards = useMemo(() => {
+    if (cardFilter !== 'aiGaps' || !aiDetail?.ready) return null
+    return new Map(aiDetail.unread.map((u) => [frontFace(u.name), u] as const))
+  }, [cardFilter, aiDetail])
+  const hoverAi = hover && aiCards ? (aiCards.get(frontFace(hover.name)) ?? null) : null
 
   useEffect(() => {
     let cancelled = false
@@ -1106,7 +1191,7 @@ function SetDetailOverlay({
         case 'notPlanned':
           return c.notPlanned !== null
         case 'aiGaps':
-          return c.implemented && aiUnread !== null && aiUnread.has(c.name.split(' // ')[0] ?? c.name)
+          return c.implemented && aiUnread !== null && aiUnread.has(frontFace(c.name))
         default:
           return true
       }
@@ -1340,6 +1425,9 @@ function SetDetailOverlay({
                 of={s.of}
                 onHover={onHover}
                 register={registerSection}
+                ai={aiCards}
+                aiGroup={aiGroup}
+                onExplore={onExplore}
               />
             ))}
           </div>
@@ -1351,7 +1439,10 @@ function SetDetailOverlay({
           imageUri={hover.imageUri}
           pos={hover.pos}
           imageRotateDeg={hover.isLandscape ? 90 : 0}
-        />
+          extraHeight={hoverAi ? aiCardPanelHeight(hoverAi) : 0}
+        >
+          {hoverAi && <AiCardPanel card={hoverAi} selected={aiGroup} />}
+        </HoverCardPreview>
       )}
     </div>
   )
@@ -1365,6 +1456,9 @@ const CardSection = memo(function CardSection({
   of,
   onHover,
   register,
+  ai,
+  aiGroup,
+  onExplore,
 }: {
   title: string
   /** The cards passing the active filter — what actually renders. */
@@ -1378,6 +1472,11 @@ const CardSection = memo(function CardSection({
   onHover: (h: HoverState | null) => void
   /** Publishes this section's node so the index can scroll to it and track it. */
   register: (label: string, el: HTMLElement | null) => void
+  /** On the AI gaps tab: each unread card's reading, by front-face name. Null on every other tab. */
+  ai: ReadonlyMap<string, AiUnreadCard> | null
+  /** The gap group picked in the AI gaps panel, whose chip each tile highlights. */
+  aiGroup: string | null
+  onExplore: (name: string) => void
 }) {
   if (total === 0) return null
   return (
@@ -1393,7 +1492,14 @@ const CardSection = memo(function CardSection({
       ) : (
         <div className={styles.cardImageGrid}>
           {cards.map((c) => (
-            <CardTile key={c.name} card={c} onHover={onHover} />
+            <CardTile
+              key={c.name}
+              card={c}
+              onHover={onHover}
+              ai={ai?.get(frontFace(c.name)) ?? null}
+              aiGroup={aiGroup}
+              onExplore={onExplore}
+            />
           ))}
         </div>
       )}
@@ -1404,9 +1510,16 @@ const CardSection = memo(function CardSection({
 const CardTile = memo(function CardTile({
   card,
   onHover,
+  ai,
+  aiGroup,
+  onExplore,
 }: {
   card: CardCoverage
   onHover: (h: HoverState | null) => void
+  /** The AI's reading of this card, on the AI gaps tab; the tile then opens it in the explorer. */
+  ai: AiUnreadCard | null
+  aiGroup: string | null
+  onExplore: (name: string) => void
 }) {
   // A not-planned card is neither done nor outstanding, so it gets its own look and always
   // explains itself — the reason travels with the flag from the manifest to this tooltip.
@@ -1425,6 +1538,9 @@ const CardTile = memo(function CardTile({
   ]
     .filter(Boolean)
     .join('\n')
+  const hoverAt = (e: ReactMouseEvent) =>
+    onHover({ name: card.name, imageUri: card.imageUri, isLandscape: card.isLandscape === true, pos: { x: e.clientX, y: e.clientY } })
+  if (ai) return <AiCardTile card={card} ai={ai} aiGroup={aiGroup} onHover={onHover} hoverAt={hoverAt} onExplore={onExplore} />
   return (
     <div
       className={className}
@@ -1453,3 +1569,69 @@ const CardTile = memo(function CardTile({
     </div>
   )
 })
+
+/**
+ * A card tile on the AI gaps tab. It answers "why is this card here" at a glance — the ability
+ * count the AI reads in the badge, one chip per kind of gap along the bottom — and the hover panel
+ * spells each gap out. The whole tile is a button: what to do with a gap is look at where it is,
+ * and that is the card's page in the Assay Explorer.
+ */
+function AiCardTile({
+  card,
+  ai,
+  aiGroup,
+  onHover,
+  hoverAt,
+  onExplore,
+}: {
+  card: CardCoverage
+  ai: AiUnreadCard
+  aiGroup: string | null
+  onHover: (h: HoverState | null) => void
+  hoverAt: (e: ReactMouseEvent) => void
+  onExplore: (name: string) => void
+}) {
+  const band = cardAiBand(ai)
+  // One chip per kind of gap, not per flag: a card missing two intent readings says "Purpose ×2"
+  // rather than spending the tile's width on the same word twice.
+  const checks = new Map<string, { count: number; on: boolean }>()
+  for (const f of ai.flags) {
+    const { check } = splitFlag(f)
+    const c = checks.get(check) ?? { count: 0, on: false }
+    checks.set(check, { count: c.count + 1, on: c.on || f === aiGroup })
+  }
+  return (
+    <button
+      type="button"
+      className={`${styles.tile} ${styles.tileAi}`}
+      aria-label={`${card.name}. ${cardAiSummary(ai)}. Open in the Assay Explorer.`}
+      onClick={() => {
+        onHover(null)
+        onExplore(card.name)
+      }}
+      onMouseEnter={hoverAt}
+      onMouseMove={hoverAt}
+      onMouseLeave={() => onHover(null)}
+    >
+      <img
+        className={styles.tileImage}
+        src={smallArt(card.name, card.imageUri)}
+        alt=""
+        loading="lazy"
+        decoding="async"
+      />
+      <span className={styles.tileAiBadge} data-band={band} aria-hidden="true">
+        {AI_BAND[band].icon}
+        {ai.abilities > 0 && ` ${ai.abilitiesRead}/${ai.abilities}`}
+      </span>
+      <span className={styles.tileAiChips} aria-hidden="true">
+        {[...checks].map(([check, { count, on }]) => (
+          <span key={check} className={styles.tileAiChip} data-on={on || undefined}>
+            {AI_CHECK_SHORT[check] ?? check}
+            {count > 1 && ` ×${count}`}
+          </span>
+        ))}
+      </span>
+    </button>
+  )
+}
