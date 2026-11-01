@@ -208,7 +208,7 @@ internal object StackPlacement {
                         is ChosenTarget.Spell -> t.spellEntityId
                         is ChosenTarget.Card -> t.cardId
                     }
-                    sourceSpell.damageDistribution?.get(id(old))?.let { amount -> put(id(new), (get(id(new)) ?: 0) + amount) }
+                    sourceSpell.damageDistribution[id(old)]?.let { amount -> put(id(new), (get(id(new)) ?: 0) + amount) }
                 }
             }
         )

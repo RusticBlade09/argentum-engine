@@ -620,7 +620,7 @@ class ConditionEvaluator(
                 val record = sourceId?.let { state.getEntity(it) }
                     ?.get<com.wingedsheep.engine.state.components.combat.TimesAttackedThisTurnComponent>()
                 val attacked = when {
-                    record == null || sourceId == null -> emptySet()
+                    sourceId == null || record == null -> emptySet()
                     sourceId in state.getBattlefield() ->
                         record.attackedPlayersFor(state.turnNumber, state.objectRef(sourceId))
                     record.turnNumber == state.turnNumber -> record.attackedPlayerIds

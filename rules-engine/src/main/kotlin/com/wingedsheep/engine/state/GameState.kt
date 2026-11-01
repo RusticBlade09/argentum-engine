@@ -845,7 +845,7 @@ data class GameState(
         val sameZone = old != null && old.logicalZone.zoneType == key.zoneType &&
             (key.zoneType in SHARED_OBJECT_ZONES || old.logicalZone.ownerId == key.ownerId)
         if (sameZone && key.zoneType != Zone.EXILE) {
-            return if (old!!.logicalZone == key) this else copy(
+            return if (old.logicalZone == key) this else copy(
                 objectIdentities = objectIdentities + (entityId to old.copy(logicalZone = key))
             )
         }

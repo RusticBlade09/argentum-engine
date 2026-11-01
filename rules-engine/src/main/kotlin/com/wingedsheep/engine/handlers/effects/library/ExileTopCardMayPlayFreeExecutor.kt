@@ -76,7 +76,7 @@ class GrantMayPlayFromExileExecutor : EffectExecutor<GrantMayPlayFromExileEffect
             // battlefield-only window is deliberately blind to who holds the source, because the
             // grantee often isn't its controller at all (Shared Fate grants to opponents).
             val sourceStolen = endsWhenSourceUncontrolled && !sourceGone &&
-                state.projectedState.getController(sourceId!!) != activatingPlayer
+                state.projectedState.getController(sourceId) != activatingPlayer
             if (sourceGone || sourceStolen) {
                 return EffectResult.success(state)
             }

@@ -593,9 +593,9 @@ class TargetValidator(
         val projected = state.projectedState
         val onBattlefield = sourceId != null && sourceId in state.getBattlefield()
         val typeLine = sourceId?.let { state.getEntity(it)?.get<CardComponent>()?.typeLine }
-        val supertypes = if (onBattlefield) projected.getSupertypes(sourceId!!)
+        val supertypes = if (onBattlefield) projected.getSupertypes(sourceId)
             else typeLine?.supertypes?.map { it.name }.orEmpty()
-        val cardTypes = if (onBattlefield) projected.getTypes(sourceId!!)
+        val cardTypes = if (onBattlefield) projected.getTypes(sourceId)
             else typeLine?.cardTypes?.map { it.name }.orEmpty()
         val quality = TypeQualityProtection.matchedQuality(projected, entityId, sourceSubtypes, supertypes, cardTypes)
             ?: return null

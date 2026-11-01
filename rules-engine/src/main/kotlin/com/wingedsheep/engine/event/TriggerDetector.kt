@@ -311,7 +311,7 @@ class TriggerDetector(
                         // stripped when the permanent leaves (CR 400.7), but the intervening "if"
                         // is rechecked on resolution (CR 603.4) and how the spell was cast is
                         // fixed, so removing the permanent in response must not untick it.
-                        if (!selfZoneEvent || (event as ZoneChangeEvent).toZone != Zone.BATTLEFIELD) return@let ctx
+                        if (!selfZoneEvent || event.toZone != Zone.BATTLEFIELD) return@let ctx
                         val source = state.getEntity(pending.sourceId) ?: return@let ctx
                         // Same for the mana spent to cast it ("earthbend X, where X is the amount of
                         // mana spent to cast her"): a blink in response returns a new object with
@@ -358,7 +358,7 @@ class TriggerDetector(
                         com.wingedsheep.engine.handlers.meldArrivalMoves(events, eventContext.triggeringObject)).distinct(),
                     origin = if (selfZoneEvent) sourceEventContext?.triggeringOrigin else boundSourceAtEvent,
                     // CR 400.7f allows the Aura's immediate graveyard object, including the unattached SBA.
-                    source = if (attachedDeparture && (event as ZoneChangeEvent).toZone != Zone.GRAVEYARD)
+                    source = if (attachedDeparture && event.toZone != Zone.GRAVEYARD)
                         sourceEventContext?.triggeringOrigin
                     else if (selfZoneEvent) sourceEventContext?.triggeringObject else boundSourceAtEvent,
                     triggering = if (triggeringZoneEvent != null) eventContext.triggeringObject
@@ -1659,7 +1659,7 @@ class TriggerDetector(
                         (ability.binding == TriggerBinding.ANY || ability.binding == TriggerBinding.OTHER) &&
                         event is AttackersDeclaredEvent) {
                         for (attackerId in matcher.matchingAttackers(
-                            trigger as EventPattern.AttackEvent, ability.binding, event, entityId, controllerId, state
+                            trigger, ability.binding, event, entityId, controllerId, state
                         )) {
                             triggers.add(
                                 PendingTrigger(
@@ -1719,7 +1719,7 @@ class TriggerDetector(
                     // create one trigger per matching blocker.
                     else if (trigger is EventPattern.BlockEvent && ability.binding == TriggerBinding.ANY &&
                         event is com.wingedsheep.engine.core.BlockingRelationshipsEvent) {
-                        val blockTrigger = trigger as EventPattern.BlockEvent
+                        val blockTrigger = trigger
                         val blockFilter = blockTrigger.filter
                         // "one or more … block" (batch): a block declaration is one simultaneous
                         // event, so fire once if any declared blocker matches, and never on a
@@ -1786,9 +1786,9 @@ class TriggerDetector(
                     // attackerFilter), create one trigger per blocked attacker matching the filter.
                     // triggeringEntityId = the blocked attacker. Skystinger pattern.
                     else if (trigger is EventPattern.BlockEvent && ability.binding == TriggerBinding.SELF &&
-                        (trigger as EventPattern.BlockEvent).attackerFilter != null &&
+                        trigger.attackerFilter != null &&
                         event is com.wingedsheep.engine.core.BlockingRelationshipsEvent) {
-                        val attackerFilter = (trigger as EventPattern.BlockEvent).attackerFilter!!
+                        val attackerFilter = trigger.attackerFilter!!
                         // CR 509.3b: a creature put onto the battlefield blocking never "blocks a creature".
                         val blockedAttackerIds = if (entityId in event.enteredBlockers) emptyList()
                             else event.blockers[entityId] ?: emptyList()
@@ -1827,7 +1827,7 @@ class TriggerDetector(
                                 ?.get<com.wingedsheep.engine.state.components.battlefield.AttachedToComponent>()
                                 ?.targetId ?: continue
                         } else entityId
-                        val blockerFilter = (trigger as EventPattern.BecomesBlockedEvent).filter
+                        val blockerFilter = trigger.filter
                         if (blockerFilter == null) {
                             val isBlocked = combatCreatureId in event.newlyBlockedAttackers
                             if (isBlocked) {
@@ -1954,9 +1954,9 @@ class TriggerDetector(
                     // player, so bind the unblocked attackers' controller as the triggering player —
                     // once per such player when several attack together (2HG; the card's ruling).
                     else if (trigger is EventPattern.CreaturesAttackYouEvent &&
-                        (trigger as EventPattern.CreaturesAttackYouEvent).unblocked) {
+                        trigger.unblocked) {
                         val attackers = matcher.unblockedAttackersAgainstYou(
-                            trigger as EventPattern.CreaturesAttackYouEvent, event, controllerId, state
+                            trigger, event, controllerId, state
                         )
                         for ((attackingPlayer, theirs) in attackers.groupBy { projected.getController(it) }) {
                             if (attackingPlayer == null) continue
@@ -1979,11 +1979,11 @@ class TriggerDetector(
                     // card's ruling), the attacking player bound by fromEvent as "that player", the
                     // planeswalker as the triggering entity, its attackers as the captured collection.
                     else if (trigger is EventPattern.CreaturesAttackYouEvent &&
-                        (trigger as EventPattern.CreaturesAttackYouEvent).defenders ==
+                        trigger.defenders ==
                         AttackedDefenders.EACH_PLANESWALKER_YOU_CONTROL &&
                         event is AttackersDeclaredEvent) {
                         val attacked = matcher.attackedPlaneswalkersYouControl(
-                            trigger as EventPattern.CreaturesAttackYouEvent, event, controllerId, state
+                            trigger, event, controllerId, state
                         )
                         for ((planeswalkerId, attackers) in attacked) {
                             triggers.add(
@@ -2014,7 +2014,7 @@ class TriggerDetector(
                                 controllerId = controllerId,
                                 triggerContext = TriggerContext.fromEvent(event).copy(
                                     capturedEntityIds = matcher.attackersAgainstYou(
-                                        trigger as EventPattern.CreaturesAttackYouEvent, event, entityId, controllerId, state
+                                        trigger, event, entityId, controllerId, state
                                     )
                                 )
                             )
@@ -2024,10 +2024,10 @@ class TriggerDetector(
                     // attacked, binding that player as "that player" (Echoing Assault, Meriadoc
                     // Brandybuck — the cards' rulings).
                     else if (trigger is EventPattern.YouAttackEvent &&
-                        (trigger as EventPattern.YouAttackEvent).attackedPlayer != null &&
+                        trigger.attackedPlayer != null &&
                         event is AttackersDeclaredEvent) {
                         val attacked = matcher.attackedPlayersFor(
-                            trigger as EventPattern.YouAttackEvent, event, entityId, controllerId, state
+                            trigger, event, entityId, controllerId, state
                         )
                         for (attackedPlayer in attacked) {
                             triggers.add(
@@ -2049,7 +2049,7 @@ class TriggerDetector(
                     // — the matcher computes the final firing count.
                     else if (trigger is EventPattern.DrawEvent && event is CardsDrawnEvent) {
                         val firings = matcher.drawTriggerFiringCount(
-                            trigger as EventPattern.DrawEvent, event, controllerId, state,
+                            trigger, event, controllerId, state,
                             samePlayerDrawsLaterInBatch
                         )
                         repeat(firings) {

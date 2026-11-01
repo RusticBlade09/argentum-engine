@@ -358,7 +358,6 @@ object CardLinter {
             else (tree["type"] as? JsonPrimitive)?.contentOrNull in names ||
                 tree.values.any { ownEffectContains(it, names) }
         is JsonArray -> tree.any { ownEffectContains(it, names) }
-        else -> false
     }
 
     /** A serialized ability or card definition rather than a step of the effect being scanned. */

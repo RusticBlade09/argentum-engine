@@ -175,7 +175,6 @@ class EffectExecutorRegistry(
                 when (effect) {
                     is com.wingedsheep.sdk.scripting.effects.SelectFromCollectionEffect -> effect.from
                     is com.wingedsheep.sdk.scripting.effects.FilterCollectionEffect -> effect.from
-                    else -> null
                 }))
         } else executed
         val references = instructionContext.objectReferences.authorize(result.events)

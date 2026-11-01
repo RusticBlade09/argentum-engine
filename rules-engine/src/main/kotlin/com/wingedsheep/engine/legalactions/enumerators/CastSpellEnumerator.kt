@@ -3091,7 +3091,7 @@ class CastSpellEnumerator(
         val modePricing = cardDef?.takeIf { priceModeByTargets && context.costCalculator.pricedPerTarget(state, it, playerId) }?.let {
             context.costCalculator.priceByTargets(state, it, playerId, cardId, requirements = mode.targetRequirements)
         }
-        val cheapestMode = if (modePricing != null && cardDef != null) {
+        val cheapestMode = if (modePricing != null) {
             context.costCalculator.calculateMinPossibleCost(state, cardDef, playerId, cardId).cmc
         } else null
         fun overCheapest(cost: ManaCost) =
