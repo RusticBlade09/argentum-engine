@@ -119,6 +119,29 @@ feeds every type. A tribal payoff is fully fed at five members among the other c
 pays per body. A hoser that names a type with no controller ("tap target Wall") still reads as
 asking for it; such cards are rare.
 
+Every other kind of card a payoff wants is read from **its own filter** (`CardAsks`): the
+"noncreature spell" Monastery Mentor (and every prowess creature) watches, the "artifact spells"
+Etherium Sculptor discounts, the "enchantment you control" an eerie trigger watches, the "creature
+with power 3 or greater" Garruk's Packleader wants. The filter comes from triggers on another object
+(you cast, enters, dies, attacks), statics that help a group of your permanents, and statics that
+make your spells cheaper or faster. `PrintedFilter` matches it against each printed card in the deck
+(type, colour, mana value, printed power, keyword, any union of them), so a noncreature payoff counts
+artifacts and enchantments as well as instants. Group statics want five matches, everything else
+three. The reader skips:
+
+- filters every deck meets: "spell", "creature", landfall's "land";
+- filters only a game can answer: "the chosen colour";
+- token types such as Treasure or Clue;
+- creature types, which the reader above handles.
+
+A card that also rewards something every deck has (Shalai's "other creatures you control") is never
+short of fuel.
+
+A payoff that is also an answer (removal, a Pacifism, a counterspell, a fight) **stands alone**.
+Caught in the Brights exiles its creature when a Vehicle attacks, but it is a Pacifism first. Fuel
+still makes such a card better, but leaving it unfed costs nothing. `just ai-card` lists a card's
+asks and whether it stands alone.
+
 - **Draft picks and the Draftsim deckbuild.** `DraftsimSetTables.withSynergyAxes(cards)` attaches
   the reading, and the scorer adds `DraftsimSynergy.pickAdjustment`: a card gains for the payoffs it
   feeds in the pool, and a payoff loses for the fuel it lacks — nothing in pack 1, all of it once
